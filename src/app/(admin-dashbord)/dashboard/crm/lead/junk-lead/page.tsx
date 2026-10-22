@@ -8,18 +8,18 @@ export default function JunkLeadPage() {
       breadcrumb="CRM / Leads / Junk Leads"
       title="Junk & Inactive Leads"
       description="Review discarded, uncontactable, or low-intent client inquiries."
-      apiEndpoint="/crm/leads"
+      apiEndpoint="/crm/leads/junk"
+      restoreEndpoint="/crm/leads"
       transformData={(leads: any[]) =>
         leads
-          .filter((l) => l.status === "junk" || l.status === "inactive" || l.lead_score < 30)
           .map((l) => ({
             id: l.uuid || l.id,
             code: l.lead_code || `#${l.id}`,
             name: l.client_name,
             phone: l.phone,
-            reason: l.notes || "Low engagement / uncontactable",
+            reason: l.notes || "No reason provided",
             score: l.lead_score ?? 0,
-            status: l.status || "Junk",
+            status: "Junk",
           }))
       }
       columns={[
