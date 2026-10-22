@@ -2,9 +2,13 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  ChevronLeft,
+  ChevronRight,
   Edit3,
   Eye,
+  EyeOff,
   Filter,
+  KeyRound,
   Loader2,
   MoreHorizontal,
   Plus,
@@ -14,7 +18,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ReactNode, FormEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import UserForm from "@/components/modules/UserForm";
@@ -96,39 +100,81 @@ const DEMO_USERS: User[] = [
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
 
-function getUserIdentifier(target: User): string {
-  return String(target.uuid ?? target.id);
+function getUserIdentifier(user: User) {
+  return String(user.uuid ?? user.id);
+}
+
+function getFullName(user: User) {
+  return (
+    `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
+    user.username ||
+    "Unnamed User"
+  );
+}
+
+function getRoleList(user: User): any[] {
+  const roles = (user as any).roles;
+  if (Array.isArray(roles)) return roles;
+  const roleIds = (user as any).roleIds;
+  if (Array.isArray(roleIds)) return roleIds;
+  return [];
+}
+
+const ROLE_NAMES: Record<number, string> = {
+  1: "Super Admin",
+  2: "Admin",
+  3: "Manager",
+  4: "Employee",
+};
+
+function roleLabel(role: any, index: number): string {
+  if (role === null || role === undefined) return "—";
+
+  if (typeof role === "object") {
+    const name = role.name ?? role.title ?? role.code;
+    if (name) return String(name);
+
+    const id = Number(role.id ?? role.roleId);
+    return (
+      ROLE_NAMES[id] ??
+      (Number.isFinite(id) ? `Role ${id}` : `Role ${index + 1}`)
+    );
+  }
+
+  const id = Number(role);
+  return ROLE_NAMES[id] ?? `Role ${String(role)}`;
 }
 
 export default function UsersPage() {
   const { primaryColor } = useTheme();
-
   const [users, setUsers] = useState<User[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
-
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
   const [page, setPage] = useState(1);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isUsingDummy, setIsUsingDummy] = useState(false);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-
   const [viewOpen, setViewOpen] = useState(false);
   const [viewUser, setViewUser] = useState<User | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
   const [viewError, setViewError] = useState("");
-
   const [menuUserId, setMenuUserId] = useState<string | number | null>(null);
   const menuRootRef = useRef<HTMLDivElement | null>(null);
-
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [deletingId, setDeletingId] = useState<string | number | null>(null);
   const [deleteError, setDeleteError] = useState("");
+
+  const [resetUser, setResetUser] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetNotice, setResetNotice] = useState("");
 
   const requestIdRef = useRef(0);
   const totalPages = Math.max(1, Math.ceil(totalUsers / PAGE_SIZE));
@@ -141,17 +187,13 @@ export default function UsersPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [status]);
+  useEffect(() => setPage(1), [status]);
 
   const loadUsers = useCallback(async () => {
     const requestId = ++requestIdRef.current;
-
     try {
       setLoading(true);
       setError("");
-
       const response = await getUsers({
         page,
         limit: PAGE_SIZE,
@@ -162,84 +204,72 @@ export default function UsersPage() {
       });
 
       if (requestId !== requestIdRef.current) return;
-
-      let rawUserList: User[] = [];
+      let rawUsers: User[] = [];
       let total = 0;
 
       if (Array.isArray(response)) {
-        rawUserList = response;
+        rawUsers = response;
         total = response.length;
       } else if (response && typeof response === "object") {
         const result = response as any;
         if (Array.isArray(result.data)) {
-          rawUserList = result.data;
-          total = result.meta?.total ?? rawUserList.length;
-        } else if (result.data && Array.isArray(result.data.data)) {
-          rawUserList = result.data.data;
-          total = result.data.meta?.total ?? rawUserList.length;
+          rawUsers = result.data;
+          total = result.meta?.total ?? rawUsers.length;
+        } else if (Array.isArray(result.data?.data)) {
+          rawUsers = result.data.data;
+          total = result.data.meta?.total ?? rawUsers.length;
         }
       }
 
-      const userList = rawUserList.filter((user) => {
-        if (!user || typeof user !== "object") return false;
-        return (
+      const validUsers = rawUsers.filter(
+        (user) =>
+          user &&
+          typeof user === "object" &&
           user.id !== undefined &&
           user.id !== null &&
-          String(user.id).trim() !== ""
-        );
-      });
+          String(user.id).trim() !== "",
+      );
 
-      if (userList.length === 0) {
+      if (validUsers.length === 0) {
         setUsers(DEMO_USERS);
         setTotalUsers(DEMO_USERS.length);
-        setIsUsingDummy(true);
-        setError("");
-        return;
-      }
-
-      setUsers(userList);
-      setTotalUsers(total || userList.length);
-      setIsUsingDummy(false);
-
-      if (userList.length === 0 && total > 0 && page > 1) {
-        setPage((current) => Math.max(1, current - 1));
+        setError("The API returned no user records. Showing demo data.");
+      } else {
+        setUsers(validUsers);
+        setTotalUsers(total || validUsers.length);
       }
     } catch (err) {
       if (requestId !== requestIdRef.current) return;
-      setIsUsingDummy(true);
-      setError("");
+      setError(
+        err instanceof Error
+          ? `${err.message} Showing demo data instead.`
+          : "Backend unavailable. Showing demo data.",
+      );
       setUsers(DEMO_USERS);
       setTotalUsers(DEMO_USERS.length);
     } finally {
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
-      }
+      if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [search, status, page]);
+  }, [page, search, status]);
 
   useEffect(() => {
-    loadUsers();
+    void loadUsers();
   }, [loadUsers]);
 
   useEffect(() => {
     if (menuUserId === null) return;
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!menuRootRef.current?.contains(event.target as Node)) {
+    const onPointerDown = (event: MouseEvent) => {
+      if (!menuRootRef.current?.contains(event.target as Node))
         setMenuUserId(null);
-      }
     };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setMenuUserId(null);
     };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
     };
   }, [menuUserId]);
 
@@ -247,7 +277,6 @@ export default function UsersPage() {
     setEditingUser(null);
     setFormOpen(true);
   };
-
   const openEdit = (user: User) => {
     setMenuUserId(null);
     setEditingUser(user);
@@ -260,7 +289,6 @@ export default function UsersPage() {
     setViewLoading(true);
     setViewError("");
     setViewUser(null);
-
     try {
       const data = await getUser(getUserIdentifier(user), true);
       setViewUser(data);
@@ -269,11 +297,53 @@ export default function UsersPage() {
       setViewError(
         err instanceof Error
           ? err.message
-          : "Couldn't load full details — showing cached data.",
+          : "Couldn't load full details; showing cached data.",
       );
     } finally {
       setViewLoading(false);
     }
+  };
+
+  const openResetPassword = (user: User) => {
+    setMenuUserId(null);
+    setResetUser(user);
+    setNewPassword("");
+    setConfirmPassword("");
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setResetError("");
+    setResetNotice("");
+  };
+
+  const closeResetPassword = () => {
+    setResetUser(null);
+    setNewPassword("");
+    setConfirmPassword("");
+    setResetError("");
+    setResetNotice("");
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+  };
+
+  const handleResetPassword = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setResetError("");
+    setResetNotice("");
+    if (newPassword.length < 8) {
+      setResetError("Password must contain at least 8 characters.");
+      return;
+    }
+    if (!/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      setResetError("Use at least one letter and one number.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setResetError("Passwords do not match. Please check again.");
+      return;
+    }
+    setResetNotice(
+      "Validation passed, but the password has NOT been changed. Connect the backend reset-password API to complete this action.",
+    );
   };
 
   const requestDelete = (user: User) => {
@@ -286,7 +356,6 @@ export default function UsersPage() {
     if (!userToDelete) return;
     setDeletingId(userToDelete.id);
     setDeleteError("");
-
     try {
       await deleteUser(getUserIdentifier(userToDelete));
       setUsers((current) =>
@@ -308,30 +377,26 @@ export default function UsersPage() {
     setEditingUser(null);
     setUsers((current) => {
       const exists = current.some((item) => item.id === savedUser.id);
-      if (exists) {
+      if (exists)
         return current.map((item) =>
           item.id === savedUser.id ? { ...item, ...savedUser } : item,
         );
-      }
+      setTotalUsers((total) => total + 1);
       return [savedUser, ...current];
     });
-    setTotalUsers((current) => current + 1);
   };
 
   const getPageNumbers = (): (number | "...")[] => {
-    if (totalPages <= 5) {
-      return Array.from({ length: totalPages }, (_, index) => index + 1);
-    }
+    if (totalPages <= 5)
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
     if (page <= 3) return [1, 2, 3, "...", totalPages];
-    if (page >= totalPages - 2) {
+    if (page >= totalPages - 2)
       return [1, "...", totalPages - 2, totalPages - 1, totalPages];
-    }
     return [1, "...", page, "...", totalPages];
   };
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      {/* HEADER */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Users</h1>
@@ -339,36 +404,23 @@ export default function UsersPage() {
             Manage platform users, roles, permissions and access.
           </p>
         </div>
-
         <button
           type="button"
           onClick={openCreate}
           className="flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-white transition hover:opacity-90"
           style={{ backgroundColor: primaryColor }}
         >
-          <Plus className="h-4 w-4" />
-          Add User
+          <Plus className="h-4 w-4" /> Add User
         </button>
       </div>
 
-      {/* STATS */}
       <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Total Users
-          </p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">{totalUsers}</p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Active (this page)
-          </p>
-          <p className="mt-1 text-2xl font-bold text-emerald-600">
-            {users.filter((user) => user.isActive).length}
-          </p>
-        </div>
-
+        <StatCard label="Total Users" value={totalUsers} />
+        <StatCard
+          label="Active (this page)"
+          value={users.filter((user) => user.isActive).length}
+          valueClass="text-emerald-600"
+        />
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
             Page
@@ -385,28 +437,16 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* DEMO DATA BANNER */}
-      {isUsingDummy && (
-        <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 shadow-sm">
-          <span className="flex h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-          <span>
-            API is offline. Showing <strong>Demo Data</strong>.
-          </span>
-        </div>
-      )}
-
-      {/* TABLE CARD */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        {/* TOOLBAR */}
         <div className="flex flex-col gap-3 border-b border-slate-100 p-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search username or email..."
               aria-label="Search users"
-              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none focus:bg-white focus:ring-4"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none focus:bg-white"
               onFocus={(e) => {
                 e.currentTarget.style.borderColor = primaryColor;
                 e.currentTarget.style.boxShadow = `0 0 0 4px ${primaryColor}1A`;
@@ -417,13 +457,12 @@ export default function UsersPage() {
               }}
             />
           </div>
-
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-slate-400" />
             <select
               value={status}
-              onChange={(event) =>
-                setStatus(event.target.value as "all" | "active" | "inactive")
+              onChange={(e) =>
+                setStatus(e.target.value as "all" | "active" | "inactive")
               }
               aria-label="Filter by status"
               className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-600 outline-none"
@@ -441,27 +480,25 @@ export default function UsersPage() {
           </div>
         </div>
 
-        {/* REAL ERROR (not demo) */}
-        {error && !isUsingDummy && (
+        {error && (
           <div
             role="alert"
-            className="m-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
+            className="m-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
           >
             {error}
           </div>
         )}
 
-        {/* TABLE */}
         <div className="overflow-x-auto">
-          <table className="w-full min-w-275">
+          <table className="w-full min-w-[1200px]">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-left">
                 {[
                   "User",
-                  "Employee ID",
-                  "User Type",
-                  "Roles",
-                  "Company",
+                  "Username",
+                  "Phone Number",
+                  "Email",
+                  "Role",
                   "Status",
                   "Created",
                   "Actions",
@@ -476,7 +513,6 @@ export default function UsersPage() {
                 ))}
               </tr>
             </thead>
-
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
@@ -501,13 +537,8 @@ export default function UsersPage() {
                 </tr>
               ) : (
                 users.map((user, index) => {
-                  const fullName =
-                    `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
-                    user.username;
-                  const roles =
-                    (user as any).roles ?? (user as any).roleIds ?? [];
-                  const companies = (user as any).companies ?? [];
-
+                  const fullName = getFullName(user);
+                  const roles = getRoleList(user);
                   return (
                     <motion.tr
                       key={user.id}
@@ -516,7 +547,6 @@ export default function UsersPage() {
                       transition={{ delay: index * 0.02 }}
                       className="hover:bg-slate-50/70"
                     >
-                      {/* USER */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <div
@@ -536,58 +566,35 @@ export default function UsersPage() {
                               <UserRound className="h-4 w-4" />
                             )}
                           </div>
-                          <div>
-                            <p className="text-sm font-semibold text-slate-800">
-                              {fullName}
-                            </p>
-                            <p className="text-xs text-slate-400">
-                              {user.email || "—"}
-                            </p>
-                            <p className="mt-0.5 text-[11px] text-slate-400">
-                              @{user.username}
-                            </p>
-                          </div>
+                          <p className="whitespace-nowrap text-sm font-semibold text-slate-800">
+                            {fullName}
+                          </p>
                         </div>
                       </td>
-
-                      {/* EMPLOYEE */}
-                      <td className="px-5 py-4">
-                        <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                          {user.employeeId || "—"}
-                        </span>
+                      <td className="px-5 py-4 text-sm text-slate-600">
+                        {user.username ? `@${user.username}` : "—"}
                       </td>
-
-                      {/* USER TYPE */}
-                      <td className="px-5 py-4">
-                        <span
-                          className="rounded-lg px-2.5 py-1 text-xs font-medium"
-                          style={{
-                            backgroundColor: `${primaryColor}15`,
-                            color: primaryColor,
-                          }}
-                        >
-                          {user.userType || "—"}
-                        </span>
+                      <td className="px-5 py-4 whitespace-nowrap text-sm text-slate-600">
+                        {user.phone || "—"}
                       </td>
-
-                      {/* ROLES */}
+                      <td className="px-5 py-4 text-sm text-slate-600">
+                        {user.email || "—"}
+                      </td>
                       <td className="px-5 py-4">
-                        {roles.length > 0 ? (
-                          <div className="flex max-w-45 flex-wrap gap-1.5">
-                            {roles
-                              .slice(0, 2)
-                              .map((role: any, roleIndex: number) => (
-                                <span
-                                  key={role?.id ?? role?.uuid ?? roleIndex}
-                                  className="rounded-md bg-orange-50 px-2 py-1 text-xs font-medium text-[#EE5426]"
-                                >
-                                  {typeof role === "object"
-                                    ? (role.name ??
-                                      role.title ??
-                                      `Role ${role.id ?? roleIndex + 1}`)
-                                    : role}
-                                </span>
-                              ))}
+                        {roles.length ? (
+                          <div className="flex max-w-[200px] flex-wrap gap-1.5">
+                            {roles.slice(0, 2).map((role, i) => (
+                              <span
+                                key={
+                                  role?.id ??
+                                  role?.uuid ??
+                                  `${String(role)}-${i}`
+                                }
+                                className="rounded-md bg-orange-50 px-2 py-1 text-xs font-medium text-[#EE5426]"
+                              >
+                                {roleLabel(role, i)}
+                              </span>
+                            ))}
                             {roles.length > 2 && (
                               <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500">
                                 +{roles.length - 2}
@@ -596,61 +603,52 @@ export default function UsersPage() {
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 text-sm text-slate-400">
-                            <ShieldCheck className="h-4 w-4" />
-                            No Role
+                            <ShieldCheck className="h-4 w-4" /> No Role
                           </div>
                         )}
                       </td>
-
-                      {/* COMPANY */}
-                      <td className="px-5 py-4">
-                        {companies.length > 0 ? (
-                          <div>
-                            <p className="text-sm font-medium text-slate-700">
-                              {companies[0]?.name ??
-                                companies[0]?.title ??
-                                `Company ${
-                                  companies[0]?.id ??
-                                  user.companyIds?.[0] ??
-                                  "—"
-                                }`}
-                            </p>
-                            {companies.length > 1 && (
-                              <p className="text-xs text-slate-400">
-                                +{companies.length - 1} more
-                              </p>
-                            )}
-                          </div>
-                        ) : user.companyIds?.length ? (
-                          <span className="text-sm text-slate-600">
-                            {user.companyIds.join(", ")}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-slate-400">—</span>
-                        )}
-                      </td>
-
-                      {/* STATUS */}
                       <td className="px-5 py-4">
                         <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                            user.isActive
-                              ? "bg-emerald-50 text-emerald-600"
-                              : "bg-slate-100 text-slate-500"
-                          }`}
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${user.isActive ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}
                         >
                           {user.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
-
-                      {/* CREATED */}
-                      <td className="px-5 py-4 text-sm text-slate-500">
+                      <td className="px-5 py-4 whitespace-nowrap text-sm text-slate-500">
                         {formatDate(user.createdAt)}
                       </td>
-
-                      {/* ACTIONS — only dropdown */}
                       <td className="relative px-5 py-4">
-                        <div className="flex items-center justify-end">
+                        <div className="flex items-center gap-1">
+                          <ActionIcon
+                            label={`View ${fullName}`}
+                            title="View user"
+                            onClick={() => void openView(user)}
+                            onColor={primaryColor}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </ActionIcon>
+                          <ActionIcon
+                            label={`Edit ${fullName}`}
+                            title="Edit user"
+                            onClick={() => openEdit(user)}
+                            onColor={primaryColor}
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </ActionIcon>
+                          <button
+                            type="button"
+                            onClick={() => requestDelete(user)}
+                            title="Delete user"
+                            aria-label={`Delete ${fullName}`}
+                            disabled={deletingId === user.id}
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            {deletingId === user.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </button>
                           <button
                             type="button"
                             onClick={() =>
@@ -658,7 +656,7 @@ export default function UsersPage() {
                                 menuUserId === user.id ? null : user.id,
                               )
                             }
-                            title="More actions"
+                            title="More"
                             aria-label={`More actions for ${fullName}`}
                             aria-haspopup="menu"
                             aria-expanded={menuUserId === user.id}
@@ -666,49 +664,40 @@ export default function UsersPage() {
                           >
                             <MoreHorizontal className="h-5 w-5" />
                           </button>
-
-                          {menuUserId === user.id && (
-                            <div
-                              ref={menuRootRef}
-                              role="menu"
-                              className="absolute right-5 top-12 z-20 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl"
-                            >
-                              <button
-                                type="button"
-                                role="menuitem"
-                                onClick={() => openView(user)}
-                                className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-slate-600 hover:bg-slate-50"
-                              >
-                                <Eye className="h-4 w-4" />
-                                View Details
-                              </button>
-                              <button
-                                type="button"
-                                role="menuitem"
-                                onClick={() => openEdit(user)}
-                                className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-slate-600 hover:bg-slate-50"
-                              >
-                                <Edit3 className="h-4 w-4" />
-                                Edit User
-                              </button>
-                              <div className="my-1 border-t border-slate-100" />
-                              <button
-                                type="button"
-                                role="menuitem"
-                                onClick={() => requestDelete(user)}
-                                disabled={deletingId === user.id}
-                                className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                {deletingId === user.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4" />
-                                )}
-                                Delete User
-                              </button>
-                            </div>
-                          )}
                         </div>
+                        {menuUserId === user.id && (
+                          <div
+                            ref={menuRootRef}
+                            role="menu"
+                            className="absolute right-5 top-14 z-20 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl"
+                          >
+                            <MenuButton
+                              onClick={() => void openView(user)}
+                              icon={<Eye className="h-4 w-4" />}
+                            >
+                              View Details
+                            </MenuButton>
+                            <MenuButton
+                              onClick={() => openEdit(user)}
+                              icon={<Edit3 className="h-4 w-4" />}
+                            >
+                              Edit User
+                            </MenuButton>
+                            <MenuButton
+                              onClick={() => openResetPassword(user)}
+                              icon={<KeyRound className="h-4 w-4" />}
+                            >
+                              Reset Password
+                            </MenuButton>
+                            <MenuButton
+                              onClick={() => requestDelete(user)}
+                              danger
+                              icon={<Trash2 className="h-4 w-4" />}
+                            >
+                              Delete User
+                            </MenuButton>
+                          </div>
+                        )}
                       </td>
                     </motion.tr>
                   );
@@ -718,68 +707,57 @@ export default function UsersPage() {
           </table>
         </div>
 
-        {/* PAGINATION */}
         {!loading && totalUsers > PAGE_SIZE && (
           <div className="border-t border-slate-100 px-5 py-3">
             <div className="flex items-center justify-end">
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
-                  className="inline-flex h-8 items-center justify-center rounded-[3px] border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-8 items-center justify-center gap-1 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Previous
+                  <ChevronLeft className="h-3.5 w-3.5" /> Previous
                 </button>
-
-                {getPageNumbers().map((item, index) => {
-                  if (item === "...") {
-                    return (
-                      <span
-                        key={`ellipsis-${index}`}
-                        className="inline-flex h-8 min-w-6 items-center justify-center px-1 text-[11px] text-slate-400"
-                      >
-                        ...
-                      </span>
-                    );
-                  }
-
-                  const active = page === item;
-
-                  return (
+                {getPageNumbers().map((item, index) =>
+                  item === "..." ? (
+                    <span
+                      key={`ellipsis-${index}`}
+                      className="inline-flex h-8 min-w-6 items-center justify-center px-1 text-xs text-slate-400"
+                    >
+                      ...
+                    </span>
+                  ) : (
                     <button
                       key={item}
                       type="button"
                       onClick={() => setPage(item)}
-                      className="inline-flex h-8 min-w-7 items-center justify-center rounded-[3px] border text-[11px] font-medium transition"
+                      className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border text-xs font-medium transition"
                       style={
-                        active
+                        page === item
                           ? {
                               backgroundColor: primaryColor,
                               borderColor: primaryColor,
-                              color: "#ffffff",
+                              color: "#fff",
                             }
                           : {
                               borderColor: "#e2e8f0",
-                              backgroundColor: "#ffffff",
+                              backgroundColor: "#fff",
                               color: "#475569",
                             }
                       }
                     >
                       {item}
                     </button>
-                  );
-                })}
-
+                  ),
+                )}
                 <button
                   type="button"
-                  onClick={() =>
-                    setPage((current) => Math.min(totalPages, current + 1))
-                  }
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
-                  className="inline-flex h-8 items-center justify-center rounded-[3px] border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-8 items-center justify-center gap-1 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Next
+                  Next <ChevronRight className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
@@ -787,7 +765,6 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* ADD / EDIT */}
       <AnimatePresence>
         {formOpen && (
           <Modal
@@ -809,7 +786,6 @@ export default function UsersPage() {
         )}
       </AnimatePresence>
 
-      {/* VIEW */}
       <AnimatePresence>
         {viewOpen && (
           <Modal
@@ -829,16 +805,8 @@ export default function UsersPage() {
                     Complete user information
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setViewOpen(false)}
-                  aria-label="Close"
-                  className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                <CloseButton onClick={() => setViewOpen(false)} />
               </div>
-
               {viewLoading ? (
                 <div className="py-12 text-center">
                   <Loader2
@@ -864,11 +832,120 @@ export default function UsersPage() {
         )}
       </AnimatePresence>
 
-      {/* DELETE CONFIRM */}
+      <AnimatePresence>
+        {resetUser && (
+          <Modal
+            onClose={closeResetPassword}
+            labelledBy="reset-password-heading"
+            maxWidthClass="max-w-md"
+          >
+            <div className="space-y-5">
+              <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex h-11 w-11 items-center justify-center rounded-xl"
+                    style={{
+                      backgroundColor: `${primaryColor}15`,
+                      color: primaryColor,
+                    }}
+                  >
+                    <KeyRound className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2
+                      id="reset-password-heading"
+                      className="text-lg font-bold text-slate-900"
+                    >
+                      Reset Password
+                    </h2>
+                    <p className="text-sm text-slate-500">
+                      Set a new password for this user.
+                    </p>
+                  </div>
+                </div>
+                <CloseButton onClick={closeResetPassword} />
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                  User account
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-800">
+                  {getFullName(resetUser)}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {resetUser.email || `@${resetUser.username}`}
+                </p>
+              </div>
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <PasswordInput
+                  id="new-password"
+                  label="New Password"
+                  value={newPassword}
+                  onChange={setNewPassword}
+                  visible={showNewPassword}
+                  onToggleVisibility={() => setShowNewPassword((v) => !v)}
+                  primaryColor={primaryColor}
+                  placeholder="Enter new password"
+                  autoComplete="new-password"
+                />
+                <PasswordInput
+                  id="confirm-password"
+                  label="Confirm New Password"
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                  visible={showConfirmPassword}
+                  onToggleVisibility={() => setShowConfirmPassword((v) => !v)}
+                  primaryColor={primaryColor}
+                  placeholder="Re-enter new password"
+                  autoComplete="new-password"
+                />
+                <p className="text-xs text-slate-400">
+                  Use at least 8 characters, including a letter and a number.
+                </p>
+                {resetError && (
+                  <p
+                    role="alert"
+                    className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-600"
+                  >
+                    {resetError}
+                  </p>
+                )}
+                {resetNotice && (
+                  <p
+                    role="status"
+                    className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-800"
+                  >
+                    {resetNotice}
+                  </p>
+                )}
+                <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+                  <button
+                    type="button"
+                    onClick={closeResetPassword}
+                    className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white transition hover:opacity-90"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    <KeyRound className="h-4 w-4" /> Validate Password
+                  </button>
+                </div>
+              </form>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {userToDelete && (
           <Modal
-            onClose={() => (deletingId ? null : setUserToDelete(null))}
+            onClose={() => {
+              if (deletingId === null) setUserToDelete(null);
+            }}
             labelledBy="delete-user-heading"
             maxWidthClass="max-w-md"
           >
@@ -899,15 +976,15 @@ export default function UsersPage() {
                   type="button"
                   onClick={() => setUserToDelete(null)}
                   disabled={deletingId !== null}
-                  className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  onClick={confirmDelete}
+                  onClick={() => void confirmDelete()}
                   disabled={deletingId !== null}
-                  className="flex h-10 items-center gap-2 rounded-xl bg-red-500 px-4 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex h-10 items-center gap-2 rounded-xl bg-red-500 px-4 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-60"
                 >
                   {deletingId !== null && (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -923,6 +1000,162 @@ export default function UsersPage() {
   );
 }
 
+function StatCard({
+  label,
+  value,
+  valueClass = "text-slate-900",
+}: {
+  label: string;
+  value: number;
+  valueClass?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p className={`mt-1 text-2xl font-bold ${valueClass}`}>{value}</p>
+    </div>
+  );
+}
+
+function ActionIcon({
+  children,
+  label,
+  title,
+  onClick,
+  onColor,
+}: {
+  children: ReactNode;
+  label: string;
+  title: string;
+  onClick: () => void;
+  onColor: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={label}
+      className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100"
+      onMouseEnter={(e) => {
+        e.currentTarget.style.color = onColor;
+        e.currentTarget.style.backgroundColor = `${onColor}15`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.color = "";
+        e.currentTarget.style.backgroundColor = "";
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function MenuButton({
+  children,
+  icon,
+  onClick,
+  danger = false,
+}: {
+  children: ReactNode;
+  icon: ReactNode;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition ${danger ? "text-red-500 hover:bg-red-50" : "text-slate-600 hover:bg-slate-50"}`}
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
+
+function CloseButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Close"
+      className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+    >
+      <X className="h-5 w-5" />
+    </button>
+  );
+}
+
+function PasswordInput({
+  id,
+  label,
+  value,
+  onChange,
+  visible,
+  onToggleVisibility,
+  primaryColor,
+  placeholder,
+  autoComplete,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  visible: boolean;
+  onToggleVisibility: () => void;
+  primaryColor: string;
+  placeholder: string;
+  autoComplete: string;
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="mb-1.5 block text-sm font-semibold text-slate-700"
+      >
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          id={id}
+          type={visible ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          required
+          minLength={8}
+          className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 pr-11 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:bg-white"
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = primaryColor;
+            e.currentTarget.style.boxShadow = `0 0 0 4px ${primaryColor}1A`;
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = "";
+            e.currentTarget.style.boxShadow = "";
+          }}
+        />
+        <button
+          type="button"
+          onClick={onToggleVisibility}
+          aria-label={visible ? "Hide password" : "Show password"}
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+        >
+          {visible ? (
+            <EyeOff className="h-4 w-4" />
+          ) : (
+            <Eye className="h-4 w-4" />
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function UserDetails({
   user,
   primaryColor,
@@ -930,61 +1163,42 @@ function UserDetails({
   user: User;
   primaryColor: string;
 }) {
-  const roles = (user as any).roles ?? (user as any).roleIds ?? [];
-  const companies = (user as any).companies ?? [];
-
+  const roles = getRoleList(user);
+  const companies = Array.isArray((user as any).companies)
+    ? (user as any).companies
+    : [];
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-4 rounded-2xl bg-slate-50 p-4">
         <div
           className="flex h-14 w-14 items-center justify-center rounded-full"
-          style={{
-            backgroundColor: `${primaryColor}1A`,
-            color: primaryColor,
-          }}
+          style={{ backgroundColor: `${primaryColor}1A`, color: primaryColor }}
         >
           <UserRound className="h-6 w-6" />
         </div>
         <div>
-          <h3 className="font-bold text-slate-900">
-            {`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
-              user.username}
-          </h3>
+          <h3 className="font-bold text-slate-900">{getFullName(user)}</h3>
           <p className="text-sm text-slate-500">{user.email || "—"}</p>
         </div>
         <span
-          className={`ml-auto rounded-full px-3 py-1 text-xs font-semibold ${
-            user.isActive
-              ? "bg-emerald-50 text-emerald-600"
-              : "bg-slate-100 text-slate-500"
-          }`}
+          className={`ml-auto rounded-full px-3 py-1 text-xs font-semibold ${user.isActive ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}
         >
           {user.isActive ? "Active" : "Inactive"}
         </span>
       </div>
-
       <div className="grid gap-4 sm:grid-cols-2">
+        <Detail label="First Name" value={user.firstName} />
+        <Detail label="Last Name" value={user.lastName} />
         <Detail label="Username" value={user.username} />
+        <Detail label="Phone Number" value={user.phone} />
         <Detail label="Email" value={user.email} />
-        <Detail label="Phone" value={user.phone} />
         <Detail label="User Type" value={user.userType} />
-        <Detail label="Employee ID" value={user.employeeId} />
-        <Detail label="Designation ID" value={user.designationId} />
-        <Detail label="Distribution ID" value={user.distributionId} />
-        <Detail label="Warehouse ID" value={user.warehouseId} />
-        <Detail label="Factory ID" value={user.factoryId} />
-        <Detail label="Receiving Point ID" value={user.receivingPointId} />
-        <Detail label="Unit ID" value={user.unitId} />
         <Detail label="Created" value={formatDate(user.createdAt)} />
         <Detail label="Updated" value={formatDate(user.updatedAt)} />
       </div>
-
       <div className="grid gap-4 md:grid-cols-2">
         <ObjectArrayDetail label="Roles" values={roles} />
         <ObjectArrayDetail label="Companies" values={companies} />
-        <ArrayDetail label="Company IDs" values={user.companyIds} />
-        <ArrayDetail label="Office IDs" values={user.officeIds} />
-        <ArrayDetail label="Office Type IDs" values={user.officeTypeIds} />
       </div>
     </div>
   );
@@ -1002,7 +1216,7 @@ function Detail({
       <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
         {label}
       </p>
-      <p className="mt-1 text-sm font-semibold text-slate-700">
+      <p className="mt-1 break-words text-sm font-semibold text-slate-700">
         {value === undefined || value === null || value === "" ? "—" : value}
       </p>
     </div>
@@ -1017,9 +1231,9 @@ function ArrayDetail({ label, values }: { label: string; values?: any[] }) {
       </p>
       {values?.length ? (
         <div className="flex flex-wrap gap-1.5">
-          {values.map((value, index) => (
+          {values.map((value, i) => (
             <span
-              key={`${String(value)}-${index}`}
+              key={`${String(value)}-${i}`}
               className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600"
             >
               {String(value)}
@@ -1047,21 +1261,21 @@ function ObjectArrayDetail({
       </p>
       {values?.length ? (
         <div className="flex flex-wrap gap-1.5">
-          {values.map((value, index) => {
-            const text =
-              typeof value === "object"
-                ? (value?.name ??
-                  value?.title ??
-                  value?.code ??
-                  value?.id ??
-                  `Item ${index + 1}`)
+          {values.map((value, i) => {
+            const labelText =
+              typeof value === "object" && value !== null
+                ? (value.name ??
+                  value.title ??
+                  value.code ??
+                  value.id ??
+                  `Item ${i + 1}`)
                 : value;
             return (
               <span
-                key={value?.id ?? value?.uuid ?? index}
+                key={value?.id ?? value?.uuid ?? i}
                 className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600"
               >
-                {String(text)}
+                {String(labelText)}
               </span>
             );
           })}
@@ -1085,14 +1299,14 @@ function Modal({
   maxWidthClass?: string;
 }) {
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", onKeyDown);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
   }, [onClose]);
@@ -1102,8 +1316,8 @@ function Modal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
       }}
       role="dialog"
       aria-modal="true"
@@ -1114,7 +1328,7 @@ function Modal({
         initial={{ opacity: 0, scale: 0.97, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.97, y: 10 }}
-        onMouseDown={(event) => event.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
         className={`max-h-[92vh] w-full ${maxWidthClass} overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl`}
       >
         {children}
