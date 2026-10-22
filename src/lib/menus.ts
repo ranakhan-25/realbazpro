@@ -329,25 +329,32 @@ configuration
   communication-status
   teams
   lead-category
+  categories
   campaign
   profession
   lead-source
+  sources
   offers
   area
   lead-stage
+  stages
   project
   price-range
 lead
   lead-list
+  pipeline
+  parties
   junk-lead
   transfer-history
 call-center
   follow-up
+  followups
   call-report
   call-report-details
   call-assign-history
 task-visit
   task-visit-list
+  visits
   deal-negotiation-activity
   task-visit-summary-report
   task-visit-details-report
@@ -356,6 +363,8 @@ property
   land
   booking
   sale-offer
+  offers
+  quotations
 reports
   user-wise-report
   user-active-report
@@ -366,9 +375,12 @@ reports
   flat-land-sale-report
   missed-followup-visit-summary
   deal-negotiation-reports
+  perf
 kpi
   employee-kpi-setting
   reports
+   employee-call-report
+   team-call-report
 `;
 
 const procurement = `
