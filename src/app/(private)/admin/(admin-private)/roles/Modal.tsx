@@ -1,11 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable prettier/prettier */
 "use client";
 
+import type { Role } from "@/services/roleService";
+import { useTheme } from "@/lib/theme";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, ShieldCheck, X } from "lucide-react";
 import {
-  ReactNode,
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -36,6 +36,7 @@ export function Modal({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
+
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
@@ -51,7 +52,7 @@ export function Modal({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-[2px]"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-[3px] sm:p-5"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -65,12 +66,12 @@ export function Modal({
         aria-modal="true"
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.97, y: 8 }}
+          initial={{ opacity: 0, scale: 0.98, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.97, y: 8 }}
+          exit={{ opacity: 0, scale: 0.98, y: 10 }}
           transition={{ duration: 0.18 }}
-          className={`flex max-h-[94vh] w-full ${maxWidthClass} flex-col overflow-hidden rounded-xl bg-white shadow-2xl`}
           onMouseDown={(event) => event.stopPropagation()}
+          className={`flex max-h-[94vh] w-full ${maxWidthClass} flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-2xl`}
         >
           {children}
         </motion.div>
@@ -117,171 +118,117 @@ export interface RolePermissionSavePayload {
 export interface RolePermissionModalProps {
   open: boolean;
   onClose: () => void;
-  role?: any | null;
+  loadData?: () => Promise<RolePermissionData>;
+  initialRoleId?: number | string;
+  initialPermissionIds?: Array<number | string>;
+  role?: Role | null;
   onSave?: (payload: RolePermissionSavePayload) => void | Promise<void>;
   title?: string;
 }
 
 /* =========================================================
-   EXPANDED DEMO DATA
+   MODULES
 ========================================================= */
 
-const DEMO_DATA: RolePermissionData = {
-  roles: [
-    {
-      id: 1,
-      name: "HRMS",
-      code: "HRMS",
-      features: [
-        {
-          id: 101,
-          name: "Employee Management",
-          code: "EMPLOYEE_MANAGEMENT",
-          permissions: [
-            { id: 1001, name: "View Employees", code: "VIEW_EMPLOYEES" },
-            { id: 1002, name: "Create Employee", code: "CREATE_EMPLOYEE" },
-            { id: 1003, name: "Edit Employee", code: "EDIT_EMPLOYEE" },
-            { id: 1004, name: "Delete Employee", code: "DELETE_EMPLOYEE" },
-          ],
-        },
-        {
-          id: 102,
-          name: "Attendance",
-          code: "ATTENDANCE",
-          permissions: [
-            { id: 1005, name: "View Attendance", code: "VIEW_ATTENDANCE" },
-            { id: 1006, name: "Manage Attendance", code: "MANAGE_ATTENDANCE" },
-            { id: 1007, name: "Approve Leave", code: "APPROVE_LEAVE" },
-          ],
-        },
-        {
-          id: 103,
-          name: "Payroll",
-          code: "PAYROLL",
-          permissions: [
-            { id: 1008, name: "View Salary", code: "VIEW_SALARY" },
-            { id: 1009, name: "Process Payroll", code: "PROCESS_PAYROLL" },
-          ],
-        },
-      ],
-    },
-    {
-      id: 2,
-      name: "POS",
-      code: "POS",
-      features: [
-        {
-          id: 201,
-          name: "Sales",
-          code: "SALES",
-          permissions: [
-            { id: 2001, name: "View Sales", code: "VIEW_SALES" },
-            { id: 2002, name: "Create Sale", code: "CREATE_SALE" },
-            { id: 2003, name: "Edit Sale", code: "EDIT_SALE" },
-            { id: 2004, name: "Delete Sale", code: "DELETE_SALE" },
-          ],
-        },
-        {
-          id: 202,
-          name: "Products",
-          code: "PRODUCTS",
-          permissions: [
-            { id: 2005, name: "View Products", code: "VIEW_PRODUCTS" },
-            { id: 2006, name: "Manage Products", code: "MANAGE_PRODUCTS" },
-          ],
-        },
-      ],
-    },
-    {
-      id: 3,
-      name: "Production",
-      code: "PRODUCTION",
-      features: [
-        {
-          id: 301,
-          name: "Production Management",
-          code: "PRODUCTION_MANAGEMENT",
-          permissions: [
-            { id: 3001, name: "View Production", code: "VIEW_PRODUCTION" },
-            { id: 3002, name: "Create Production", code: "CREATE_PRODUCTION" },
-          ],
-        },
-      ],
-    },
-    {
-      id: 4,
-      name: "System",
-      code: "SYSTEM",
-      features: [
-        {
-          id: 401,
-          name: "User Management",
-          code: "USER_MANAGEMENT",
-          permissions: [
-            { id: 4001, name: "View Users", code: "VIEW_USERS" },
-            { id: 4002, name: "Create User", code: "CREATE_USER" },
-            { id: 4003, name: "Edit User", code: "EDIT_USER" },
-            { id: 4004, name: "Delete User", code: "DELETE_USER" },
-          ],
-        },
-        {
-          id: 402,
-          name: "Role Management",
-          code: "ROLE_MANAGEMENT",
-          permissions: [
-            { id: 4005, name: "View Roles", code: "VIEW_ROLES" },
-            { id: 4006, name: "Create Role", code: "CREATE_ROLE" },
-            { id: 4007, name: "Edit Role", code: "EDIT_ROLE" },
-            { id: 4008, name: "Delete Role", code: "DELETE_ROLE" },
-          ],
-        },
-      ],
-    },
-    {
-      id: 5,
-      name: "Accounts",
-      code: "ACCOUNTS",
-      features: [
-        {
-          id: 501,
-          name: "Accounting",
-          code: "ACCOUNTING",
-          permissions: [
-            { id: 5001, name: "View Accounts", code: "VIEW_ACCOUNTS" },
-            {
-              id: 5002,
-              name: "Create Transaction",
-              code: "CREATE_TRANSACTION",
-            },
-            { id: 5003, name: "Edit Transaction", code: "EDIT_TRANSACTION" },
-          ],
-        },
-      ],
-    },
+const MODULE_NAMES = [
+  "Project",
+  "Inventory",
+  "Requisition",
+  "Accounts",
+  "HRM",
+  "CRM",
+  "LAMS",
+  "CR",
+] as const;
+
+const COMMON_PERMISSIONS = [
+  { name: "View", code: "VIEW" },
+  { name: "Create", code: "CREATE" },
+  { name: "Edit", code: "EDIT" },
+  { name: "Delete", code: "DELETE" },
+];
+
+const MODULE_FEATURES: Record<string, string[]> = {
+  Project: ["Project Management", "Project Tasks", "Project Reports"],
+  Inventory: ["Inventory Management", "Stock Management", "Inventory Reports"],
+  Requisition: [
+    "Requisition Management",
+    "Requisition Approval",
+    "Requisition Reports",
   ],
+  Accounts: ["Account Management", "Transactions", "Accounts Reports"],
+  HRM: ["Employee Management", "Attendance", "Leave Management", "Payroll"],
+  CRM: ["Customer Management", "Lead Management", "Customer Reports"],
+  LAMS: ["Asset Management", "Asset Allocation", "Asset Reports"],
+  CR: ["Customer Relations", "Complaints", "Customer Reports"],
+};
+
+const EXTRA_PERMISSIONS: Record<string, string[]> = {
+  Project: ["Approve"],
+  Inventory: ["Adjust Stock"],
+  Requisition: ["Approve", "Reject"],
+  Accounts: ["Approve", "Export"],
+  HRM: ["Approve", "Export"],
+  CRM: ["Export"],
+  LAMS: ["Assign", "Manage"],
+  CR: ["Resolve", "Close"],
+};
+
+let permissionCounter = 1;
+let featureCounter = 1;
+
+const DEMO_DATA: RolePermissionData = {
+  roles: MODULE_NAMES.map((moduleName, moduleIndex) => ({
+    id: `module-${moduleIndex + 1}`,
+    name: moduleName,
+    code: moduleName.toUpperCase(),
+    features: MODULE_FEATURES[moduleName].map((featureName) => {
+      const featureId = `feature-${featureCounter++}`;
+      const permissions = [
+        ...COMMON_PERMISSIONS,
+        ...(EXTRA_PERMISSIONS[moduleName] ?? []).map((name) => ({
+          name,
+          code: name.toUpperCase().replace(/\s+/g, "_"),
+        })),
+      ].map((permission) => ({
+        id: `permission-${permissionCounter++}`,
+        name: `${permission.name} ${featureName}`,
+        code: `${moduleName}_${permission.code}_${featureName
+          .toUpperCase()
+          .replace(/\s+/g, "_")}`,
+      }));
+
+      return {
+        id: featureId,
+        name: featureName,
+        code: featureName.toUpperCase().replace(/\s+/g, "_"),
+        permissions,
+      };
+    }),
+  })),
 };
 
 /* =========================================================
    CHECKBOX
 ========================================================= */
 
+interface CheckboxProps {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: () => void;
+  ariaLabel: string;
+}
+
 function Checkbox({
   checked,
   indeterminate = false,
   onChange,
   ariaLabel,
-}: {
-  checked: boolean;
-  indeterminate?: boolean;
-  onChange: () => void;
-  ariaLabel: string;
-}) {
+}: CheckboxProps) {
   const checkboxRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (checkboxRef.current) {
-      checkboxRef.current.indeterminate = indeterminate;
-    }
+    if (checkboxRef.current) checkboxRef.current.indeterminate = indeterminate;
   }, [indeterminate]);
 
   return (
@@ -295,7 +242,7 @@ function Checkbox({
         onChange();
       }}
       onClick={(event) => event.stopPropagation()}
-      className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-[#009432]"
+      className="h-4 w-4 shrink-0 cursor-pointer rounded border-[var(--border)] accent-[var(--color-primary)] focus:ring-[var(--color-primary)]"
     />
   );
 }
@@ -307,89 +254,147 @@ function Checkbox({
 export default function RolePermissionModal({
   open,
   onClose,
+  loadData,
+  initialRoleId,
+  initialPermissionIds = [],
   role,
   onSave,
-  title = "Role Permissions",
+  title = "Add Role",
 }: RolePermissionModalProps) {
+  const { primaryColor } = useTheme();
   const [data, setData] = useState<RolePermissionData | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [usingDemoData, setUsingDemoData] = useState(false);
-
   const [activeRoleId, setActiveRoleId] = useState<number | string | null>(
     null,
   );
   const [selectedByRole, setSelectedByRole] = useState<
     Record<string, string[]>
   >({});
-  const [roleNames, setRoleNames] = useState<Record<string, string>>({});
-
   const [roleName, setRoleName] = useState("");
   const [search, setSearch] = useState("");
 
   const initializedRef = useRef(false);
+  const loadDataRef = useRef(loadData);
+  const initialRoleIdRef = useRef(initialRoleId);
+  const initialPermissionIdsRef = useRef(initialPermissionIds);
   const roleRef = useRef(role);
+
+  useEffect(() => {
+    loadDataRef.current = loadData;
+  }, [loadData]);
+
+  useEffect(() => {
+    initialRoleIdRef.current = initialRoleId;
+  }, [initialRoleId]);
+
+  useEffect(() => {
+    initialPermissionIdsRef.current = initialPermissionIds;
+  }, [initialPermissionIds]);
 
   useEffect(() => {
     roleRef.current = role;
   }, [role]);
 
-  // Initialize & Load Data
   useEffect(() => {
     if (!open) {
       initializedRef.current = false;
       return;
     }
     if (initializedRef.current) return;
+
     initializedRef.current = true;
+    let cancelled = false;
 
-    setLoading(true);
-    setTimeout(() => {
-      const currentRole = roleRef.current;
-      setData(DEMO_DATA);
+    const initialize = async () => {
+      setLoading(true);
+      setUsingDemoData(false);
 
-      const names: Record<string, string> = {};
-      DEMO_DATA.roles.forEach((item) => {
-        names[String(item.id)] = item.name;
-      });
+      try {
+        let result: RolePermissionData | null = null;
 
-      setRoleNames(names);
+        if (loadDataRef.current) {
+          try {
+            result = await loadDataRef.current();
+          } catch {
+            result = null;
+          }
+        }
 
-      const selectedRole = DEMO_DATA.roles[0]; // ডিফল্ট প্রথম রোল
-      setActiveRoleId(selectedRole.id);
-      setRoleName(currentRole ? currentRole.name : selectedRole.name);
+        if (
+          !result ||
+          !Array.isArray(result.roles) ||
+          result.roles.length === 0
+        ) {
+          result = DEMO_DATA;
+          setUsingDemoData(true);
+        }
+        if (cancelled) return;
 
-      // এডিট মোডে থাকলে আগের পারমিশন সিলেক্ট থাকবে
-      if (currentRole && currentRole.permissions) {
-        setSelectedByRole({
-          [String(selectedRole.id)]: currentRole.permissions.map((p: any) =>
-            String(p.id),
-          ),
-        });
-      } else {
-        setSelectedByRole({ [String(selectedRole.id)]: [] });
+        setData(result);
+        const currentRole = roleRef.current;
+        const requestedId = initialRoleIdRef.current ?? currentRole?.id;
+        const selectedRole =
+          result.roles.find(
+            (item) => String(item.id) === String(requestedId),
+          ) ?? result.roles[0];
+
+        if (!selectedRole) {
+          setActiveRoleId(null);
+          return;
+        }
+
+        setActiveRoleId(selectedRole.id);
+        setRoleName(currentRole?.name ?? "");
+
+        const initialIds = initialPermissionIdsRef.current.map(String);
+        const rolePermissions =
+          initialIds.length > 0
+            ? initialIds
+            : currentRole &&
+                String(currentRole.id) === String(selectedRole.id) &&
+                Array.isArray(currentRole.permissions)
+              ? currentRole.permissions.map((item) => String(item.id))
+              : [];
+
+        setSelectedByRole({ [String(selectedRole.id)]: rolePermissions });
+        setSearch("");
+      } catch {
+        if (cancelled) return;
+        setData(DEMO_DATA);
+        setUsingDemoData(true);
+        setActiveRoleId(DEMO_DATA.roles[0]?.id ?? null);
+        setRoleName(roleRef.current?.name ?? "");
+        setSelectedByRole({});
+      } finally {
+        if (!cancelled) setLoading(false);
       }
+    };
 
-      setUsingDemoData(true);
-      setLoading(false);
-      setSearch("");
-    }, 300);
+    void initialize();
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
-  // Derived State
   const activeRole = useMemo(() => {
     if (!data || activeRoleId === null) return null;
     return (
-      data.roles.find((item) => String(item.id) === String(activeRoleId)) ||
+      data.roles.find((item) => String(item.id) === String(activeRoleId)) ??
       null
     );
   }, [data, activeRoleId]);
 
-  const selectedPermissionIds = useMemo(() => {
-    if (activeRoleId === null || activeRoleId === undefined)
-      return new Set<string>();
-    return new Set(selectedByRole[String(activeRoleId)] ?? []);
-  }, [selectedByRole, activeRoleId]);
+  const selectedPermissionIds = useMemo(
+    () =>
+      new Set(
+        activeRoleId === null
+          ? []
+          : (selectedByRole[String(activeRoleId)] ?? []),
+      ),
+    [selectedByRole, activeRoleId],
+  );
 
   const visibleFeatures = useMemo(() => {
     if (!activeRole) return [];
@@ -403,91 +408,94 @@ export default function RolePermissionModal({
           feature.code?.toLowerCase().includes(query);
         if (featureMatches) return feature;
 
-        const matchingPermissions = feature.permissions.filter(
+        const permissions = feature.permissions.filter(
           (permission) =>
             permission.name.toLowerCase().includes(query) ||
             permission.code?.toLowerCase().includes(query),
         );
-        if (matchingPermissions.length === 0) return null;
-        return { ...feature, permissions: matchingPermissions };
+        return permissions.length > 0 ? { ...feature, permissions } : null;
       })
       .filter((feature): feature is FeatureItem => feature !== null);
   }, [activeRole, search]);
 
-  const allActivePermissionIds = useMemo(() => {
-    if (!activeRole) return [];
-    return activeRole.features.flatMap((feature) =>
-      feature.permissions.map((permission) => String(permission.id)),
-    );
-  }, [activeRole]);
+  const allPermissionIds = useMemo(
+    () =>
+      activeRole?.features.flatMap((feature) =>
+        feature.permissions.map((permission) => String(permission.id)),
+      ) ?? [],
+    [activeRole],
+  );
 
-  const allActiveSelected =
-    allActivePermissionIds.length > 0 &&
-    allActivePermissionIds.every((id) => selectedPermissionIds.has(id));
-  const someActiveSelected = allActivePermissionIds.some((id) =>
+  const allSelected =
+    allPermissionIds.length > 0 &&
+    allPermissionIds.every((id) => selectedPermissionIds.has(id));
+  const someSelected = allPermissionIds.some((id) =>
     selectedPermissionIds.has(id),
   );
 
-  // Handlers
-  const updateCurrentRolePermissions = useCallback(
+  const updatePermissions = useCallback(
     (updater: (current: Set<string>) => Set<string>) => {
-      if (activeRoleId === null || activeRoleId === undefined) return;
-      const roleKey = String(activeRoleId);
+      if (activeRoleId === null) return;
+      const key = String(activeRoleId);
       setSelectedByRole((previous) => {
-        const current = new Set(previous[roleKey] ?? []);
+        const current = new Set(previous[key] ?? []);
         const next = updater(current);
-        return { ...previous, [roleKey]: Array.from(next) };
+        return { ...previous, [key]: Array.from(next) };
       });
     },
     [activeRoleId],
   );
 
-  const togglePermission = (permissionId: number | string) => {
-    updateCurrentRolePermissions((current) => {
-      const permissionKey = String(permissionId);
-      if (current.has(permissionKey)) current.delete(permissionKey);
-      else current.add(permissionKey);
+  const togglePermission = useCallback(
+    (permissionId: number | string) => {
+      const key = String(permissionId);
+      updatePermissions((current) => {
+        if (current.has(key)) current.delete(key);
+        else current.add(key);
+        return current;
+      });
+    },
+    [updatePermissions],
+  );
+
+  const toggleFeature = useCallback(
+    (feature: FeatureItem) => {
+      const ids = feature.permissions.map((item) => String(item.id));
+      updatePermissions((current) => {
+        const fullySelected =
+          ids.length > 0 && ids.every((id) => current.has(id));
+        ids.forEach((id) => {
+          if (fullySelected) current.delete(id);
+          else current.add(id);
+        });
+        return current;
+      });
+    },
+    [updatePermissions],
+  );
+
+  const toggleAll = useCallback(() => {
+    updatePermissions((current) => {
+      const fullySelected =
+        allPermissionIds.length > 0 &&
+        allPermissionIds.every((id) => current.has(id));
+      allPermissionIds.forEach((id) => {
+        if (fullySelected) current.delete(id);
+        else current.add(id);
+      });
       return current;
     });
-  };
+  }, [allPermissionIds, updatePermissions]);
 
-  const toggleFeature = (feature: FeatureItem) => {
-    const featurePermissionIds = feature.permissions.map((permission) =>
-      String(permission.id),
-    );
-    updateCurrentRolePermissions((current) => {
-      const allSelected =
-        featurePermissionIds.length > 0 &&
-        featurePermissionIds.every((id) => current.has(id));
-      featurePermissionIds.forEach((id) =>
-        allSelected ? current.delete(id) : current.add(id),
-      );
-      return current;
-    });
-  };
-
-  const toggleAll = () => {
-    if (!activeRole) return;
-    updateCurrentRolePermissions((current) => {
-      if (allActiveSelected)
-        allActivePermissionIds.forEach((id) => current.delete(id));
-      else allActivePermissionIds.forEach((id) => current.add(id));
-      return current;
-    });
-  };
-
-  const handleRoleChange = (roleId: number | string) => {
-    setActiveRoleId(roleId);
+  const handleModuleChange = (moduleId: number | string) => {
+    setActiveRoleId(moduleId);
     setSearch("");
-    setRoleName(roleNames[String(roleId)] || "");
   };
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (activeRoleId === null || !roleName.trim()) return;
-
-    const roleKey = String(activeRoleId);
-    const permissionIds = selectedByRole[roleKey] ?? [];
-
+    const key = String(activeRoleId);
+    const permissionIds = selectedByRole[key] ?? [];
     const featureIds =
       activeRole?.features
         .filter((feature) =>
@@ -497,81 +505,101 @@ export default function RolePermissionModal({
         )
         .map((feature) => feature.id) ?? [];
 
+    const payload: RolePermissionSavePayload = {
+      roleId: activeRoleId,
+      roleName: roleName.trim(),
+      permissionIds,
+      featureIds,
+    };
+
     try {
       setSaving(true);
-      // Simulate API Call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      const payload: RolePermissionSavePayload = {
-        roleId: role?.id || Date.now(), // প্যারেন্ট থেকে আসলে সেটাই ব্যবহার হবে
-        roleName: roleName.trim(),
-        permissionIds,
-        featureIds,
-      };
-
-      onClose();
-      if (onSave) onSave(payload);
+      await onSave?.(payload);
     } finally {
       setSaving(false);
     }
-  };
+  }, [activeRole, activeRoleId, onSave, roleName, selectedByRole]);
 
   if (!open) return null;
 
-  return (
-    <Modal
-      onClose={onClose}
-      labelledBy="role-permission-modal-title"
-      maxWidthClass="max-w-[1180px]"
-    >
-      {/* HEADER */}
-      <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-3">
-        <div>
-          <h2
-            id="role-permission-modal-title"
-            className="text-[15px] font-semibold text-[#009432]"
-          >
-            {title}
-          </h2>
-          {usingDemoData && (
-            <p className="mt-0.5 text-[10px] text-amber-600">
-              Demo data is being displayed.
-            </p>
-          )}
-        </div>
-        <button
-          onClick={onClose}
-          className="flex h-7 w-7 items-center justify-center rounded text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-        >
-          <X size={15} />
-        </button>
-      </div>
+  const accentStyle = {
+    "--color-primary": primaryColor,
+    "--color-primary-hover": primaryColor,
+    "--color-primary-light": `${primaryColor}18`,
+  } as React.CSSProperties;
 
-      {/* BODY */}
-      <div className="flex min-h-0 flex-1 flex-col">
-        {/* ROLE TABS + SEARCH */}
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-2.5">
-          <div className="flex items-center gap-1.5 overflow-x-auto">
+  return (
+    <div style={accentStyle}>
+      <Modal
+        onClose={onClose}
+        labelledBy="role-permission-modal-title"
+        maxWidthClass="max-w-[1320px]"
+      >
+        <div className="shrink-0 border-b border-[var(--border)] bg-[var(--card)] px-5 py-4">
+          <label
+            htmlFor="role-name"
+            className="mb-1.5 block text-xs font-semibold text-[var(--foreground)]"
+          >
+            <span className="mr-1" style={{ color: primaryColor }}>
+              *
+            </span>
+            Role Name
+          </label>
+          <input
+            id="role-name"
+            type="text"
+            value={roleName}
+            onChange={(event) => setRoleName(event.target.value)}
+            placeholder="Enter role name"
+            className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[var(--muted-foreground)] focus:ring-2"
+            style={
+              { "--tw-ring-color": `${primaryColor}25` } as React.CSSProperties
+            }
+          />
+        </div>
+
+        <div className="flex shrink-0 flex-col justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-5 py-3 lg:flex-row lg:items-center">
+          <div className="flex flex-wrap items-center gap-2">
             {data?.roles.map((item) => {
               const isActive = String(activeRoleId) === String(item.id);
               const selectedCount =
                 selectedByRole[String(item.id)]?.length ?? 0;
-
               return (
                 <button
                   key={String(item.id)}
                   type="button"
-                  onClick={() => handleRoleChange(item.id)}
-                  className={`flex shrink-0 items-center gap-1.5 rounded px-2.5 py-1.5 text-[10px] font-medium transition ${
+                  onClick={() => handleModuleChange(item.id)}
+                  className="flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition"
+                  style={
                     isActive
-                      ? "bg-[#009432] text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
+                      ? {
+                          borderColor: primaryColor,
+                          backgroundColor: primaryColor,
+                          color: "#fff",
+                          boxShadow: "0 1px 2px rgb(0 0 0 / 0.08)",
+                        }
+                      : {
+                          borderColor: "var(--border)",
+                          backgroundColor: "var(--card)",
+                          color: "var(--muted-foreground)",
+                        }
+                  }
                 >
-                  <span>{item.name}</span>
+                  {item.name}
                   {selectedCount > 0 && (
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[8px] ${isActive ? "bg-white/20 text-white" : "bg-white text-slate-500"}`}
+                      className="rounded-full px-1.5 py-0.5 text-[10px]"
+                      style={
+                        isActive
+                          ? {
+                              backgroundColor: "rgb(255 255 255 / 0.2)",
+                              color: "#fff",
+                            }
+                          : {
+                              backgroundColor: `${primaryColor}18`,
+                              color: primaryColor,
+                            }
+                      }
                     >
                       {selectedCount}
                     </span>
@@ -581,108 +609,110 @@ export default function RolePermissionModal({
             })}
           </div>
 
-          <div className="relative w-full sm:w-[230px]">
+          <div className="relative w-full lg:max-w-[270px]">
             <Search
-              size={13}
-              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+              size={15}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]"
             />
             <input
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search features or permissions..."
-              className="h-8 w-full rounded-md border border-slate-200 bg-white pl-8 pr-2.5 text-[10px] text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#009432] focus:ring-1 focus:ring-[#009432]/20"
+              className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] pl-9 pr-3 text-xs text-[var(--foreground)] outline-none transition placeholder:text-[var(--muted-foreground)]"
+              style={
+                {
+                  "--tw-ring-color": `${primaryColor}25`,
+                } as React.CSSProperties
+              }
             />
           </div>
         </div>
 
-        {/* ROLE NAME INPUT */}
-        <div className="shrink-0 border-b border-slate-200 px-5 py-2.5">
-          <div className="flex items-center gap-2">
-            <label
-              htmlFor="role-name"
-              className="w-[70px] shrink-0 text-[10px] font-medium text-slate-600"
-            >
-              Role Name
-            </label>
-            <input
-              id="role-name"
-              type="text"
-              value={roleName}
-              onChange={(event) => setRoleName(event.target.value)}
-              placeholder="Enter role name"
-              className="h-8 w-full max-w-[320px] rounded-md border border-slate-200 bg-white px-2.5 text-[10px] text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#009432] focus:ring-1 focus:ring-[#009432]/20"
-            />
+        <div className="flex shrink-0 items-center justify-between gap-3 px-5 py-3">
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">
+              {activeRole?.name ?? "Features"} — Features & Permissions
+            </h3>
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+              Select the permissions this role can access.
+            </p>
           </div>
+          <span
+            className="shrink-0 rounded-full px-3 py-1 text-xs font-semibold"
+            style={{
+              backgroundColor: `${primaryColor}18`,
+              color: primaryColor,
+            }}
+          >
+            {selectedPermissionIds.size} selected
+          </span>
         </div>
 
-        {/* PERMISSION TABLE */}
-        <div className="min-h-0 flex-1 overflow-auto px-5 py-3">
+        <div className="min-h-0 flex-1 overflow-auto px-5 pb-4">
+          {usingDemoData && (
+            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Demo features and permissions are displayed. Connect your backend
+              data before production use.
+            </div>
+          )}
           {loading ? (
-            <div className="flex min-h-[220px] items-center justify-center">
-              <div className="text-[10px] text-slate-400">
-                Loading permissions...
-              </div>
+            <div className="flex min-h-[220px] items-center justify-center text-sm text-[var(--muted-foreground)]">
+              Loading features and permissions...
             </div>
           ) : !activeRole ? (
-            <div className="flex min-h-[220px] items-center justify-center">
-              <div className="text-[10px] text-slate-400">No role found.</div>
+            <div className="flex min-h-[220px] items-center justify-center text-sm text-[var(--muted-foreground)]">
+              No modules found.
             </div>
           ) : (
-            <div className="overflow-hidden rounded border border-slate-200">
-              {/* TABLE HEADER */}
-              <div className="grid grid-cols-[210px_minmax(0,1fr)] border-b border-slate-200 bg-slate-50">
-                <div className="flex items-center gap-2 border-r border-slate-200 px-2.5 py-2">
+            <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+              <div className="sticky top-0 z-10 grid grid-cols-[minmax(150px,230px)_minmax(0,1fr)] border-b border-[var(--border)] bg-[var(--muted)]">
+                <div className="flex items-center gap-2 border-r border-[var(--border)] px-3 py-3">
                   <Checkbox
-                    checked={allActiveSelected}
-                    indeterminate={!allActiveSelected && someActiveSelected}
+                    checked={allSelected}
+                    indeterminate={!allSelected && someSelected}
                     onChange={toggleAll}
                     ariaLabel="Select all permissions"
                   />
                   <button
                     type="button"
                     onClick={toggleAll}
-                    className="text-[10px] font-semibold text-slate-700"
+                    className="text-xs font-semibold text-[var(--foreground)]"
                   >
                     Features
                   </button>
                 </div>
-                <div className="flex items-center px-2.5 py-2">
-                  <span className="text-[10px] font-semibold text-slate-700">
+                <div className="flex items-center px-3 py-3">
+                  <span className="text-xs font-semibold text-[var(--foreground)]">
                     Permissions
                   </span>
                 </div>
               </div>
 
-              {/* FEATURES */}
               {visibleFeatures.length === 0 ? (
-                <div className="flex min-h-[120px] items-center justify-center">
-                  <span className="text-[10px] text-slate-400">
-                    No features or permissions found.
-                  </span>
+                <div className="flex min-h-[130px] items-center justify-center text-sm text-[var(--muted-foreground)]">
+                  No features or permissions found.
                 </div>
               ) : (
                 visibleFeatures.map((feature) => {
-                  const featurePermissionIds = feature.permissions.map((p) =>
-                    String(p.id),
+                  const permissionIds = feature.permissions.map((item) =>
+                    String(item.id),
                   );
-                  const selectedCount = featurePermissionIds.filter((id) =>
+                  const selectedCount = permissionIds.filter((id) =>
                     selectedPermissionIds.has(id),
                   ).length;
                   const fullySelected =
-                    featurePermissionIds.length > 0 &&
-                    selectedCount === featurePermissionIds.length;
+                    permissionIds.length > 0 &&
+                    selectedCount === permissionIds.length;
                   const partiallySelected =
-                    selectedCount > 0 &&
-                    selectedCount < featurePermissionIds.length;
+                    selectedCount > 0 && selectedCount < permissionIds.length;
 
                   return (
                     <div
                       key={String(feature.id)}
-                      className="grid grid-cols-[210px_minmax(0,1fr)] border-b border-slate-200 last:border-b-0"
+                      className="grid grid-cols-[minmax(150px,230px)_minmax(0,1fr)] border-b border-[var(--border)] last:border-b-0"
                     >
-                      {/* FEATURE */}
-                      <div className="flex min-h-[38px] items-center gap-2 border-r border-slate-200 px-2.5">
+                      <div className="flex min-h-[56px] items-center gap-2 border-r border-[var(--border)] bg-[var(--card)] px-3 py-3">
                         <Checkbox
                           checked={fullySelected}
                           indeterminate={partiallySelected}
@@ -692,36 +722,46 @@ export default function RolePermissionModal({
                         <button
                           type="button"
                           onClick={() => toggleFeature(feature)}
-                          className="min-w-0 truncate text-left text-[9px] font-medium text-slate-700"
+                          className="min-w-0 text-left text-xs font-medium leading-5 text-[var(--foreground)] transition"
+                          onMouseEnter={(event) => {
+                            event.currentTarget.style.color = primaryColor;
+                          }}
+                          onMouseLeave={(event) => {
+                            event.currentTarget.style.color =
+                              "var(--foreground)";
+                          }}
                         >
-                          {feature.name} (ID: {feature.id})
+                          {feature.name}
                         </button>
                       </div>
 
-                      {/* PERMISSIONS */}
-                      <div className="grid grid-cols-1 gap-1 p-1.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {feature.permissions.map((p) => {
+                      <div className="grid grid-cols-1 gap-x-3 gap-y-2 bg-[var(--card)] p-3 sm:grid-cols-2 xl:grid-cols-3">
+                        {feature.permissions.map((permission) => {
                           const checked = selectedPermissionIds.has(
-                            String(p.id),
+                            String(permission.id),
                           );
                           return (
-                            <button
-                              key={String(p.id)}
-                              type="button"
-                              onClick={() => togglePermission(p.id)}
-                              className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-left transition hover:bg-slate-50"
+                            <label
+                              key={String(permission.id)}
+                              className="flex min-w-0 cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-xs transition"
+                              style={{
+                                backgroundColor: checked
+                                  ? `${primaryColor}0D`
+                                  : "transparent",
+                                color: checked
+                                  ? primaryColor
+                                  : "var(--muted-foreground)",
+                              }}
                             >
                               <Checkbox
                                 checked={checked}
-                                onChange={() => togglePermission(p.id)}
-                                ariaLabel={p.name}
+                                onChange={() => togglePermission(permission.id)}
+                                ariaLabel={permission.name}
                               />
-                              <span
-                                className={`text-[9px] leading-4 ${checked ? "font-medium text-slate-800" : "text-slate-500"}`}
-                              >
-                                {p.name}
+                              <span className="break-words leading-5">
+                                {permission.name}
                               </span>
-                            </button>
+                            </label>
                           );
                         })}
                       </div>
@@ -732,34 +772,38 @@ export default function RolePermissionModal({
             </div>
           )}
         </div>
-      </div>
 
-      {/* FOOTER */}
-      <div className="flex shrink-0 items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-2.5">
-        <div className="flex items-center gap-2 text-[10px] text-slate-500">
-          <ShieldCheck size={13} className="text-[#009432]" />
-          <span>{selectedPermissionIds.size} permissions selected</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-medium text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saving || loading || !activeRole || !roleName.trim()}
-            className="rounded-md bg-[#009432] px-3 py-1.5 text-[10px] font-medium text-white transition hover:bg-[#007f2a] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save"}
-          </button>
-        </div>
-      </div>
-    </Modal>
+        <footer className="flex shrink-0 flex-col gap-3 border-t border-[var(--border)] bg-[var(--background)] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
+            <ShieldCheck size={16} style={{ color: primaryColor }} />
+            <span>
+              <strong className="font-semibold text-[var(--foreground)]">
+                {selectedPermissionIds.size}
+              </strong>{" "}
+              permissions selected
+            </span>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:opacity-80 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={saving || loading || !activeRole || !roleName.trim()}
+              className="rounded-lg px-5 py-2 text-xs font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ backgroundColor: primaryColor }}
+            >
+              {saving ? "Saving..." : "Save Role"}
+            </button>
+          </div>
+        </footer>
+      </Modal>
+    </div>
   );
 }
