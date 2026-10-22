@@ -992,6 +992,19 @@ export default function PermissionsPage() {
    PERMISSION FORM
 ========================================================= */
 
+/* ================= DUMMY FEATURE DATA ================= */
+
+const DUMMY_PERMISSION_FEATURES: FeatureOption[] = [
+  { id: 1, name: "Employee Management", key: "employee-management" },
+  { id: 2, name: "Attendance", key: "attendance" },
+  { id: 3, name: "Leave Management", key: "leave-management" },
+  { id: 4, name: "Payroll", key: "payroll" },
+  { id: 5, name: "Recruitment", key: "recruitment" },
+  { id: 6, name: "Procurement", key: "procurement" },
+  { id: 7, name: "Inventory", key: "inventory" },
+  { id: 8, name: "Real Estate", key: "real-estate" },
+];
+
 function PermissionForm({
   permission,
   onCancel,
@@ -1018,74 +1031,6 @@ function PermissionForm({
 
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-  const [features, setFeatures] = useState<FeatureOption[]>([]);
-  const [featuresLoading, setFeaturesLoading] = useState(true);
-  const [featuresError, setFeaturesError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadFeatures = async () => {
-      try {
-        setFeaturesLoading(true);
-        setFeaturesError("");
-        const loaded = await fetchFeatures();
-        if (!cancelled) setFeatures(loaded);
-      } catch (err) {
-        if (!cancelled) {
-          setFeatures([]);
-          setFeaturesError(
-            err instanceof Error ? err.message : "Failed to load features.",
-          );
-        }
-      } finally {
-        if (!cancelled) setFeaturesLoading(false);
-      }
-    };
-
-    loadFeatures();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const featureOptions = useMemo(() => {
-    if (!permission?.featureId) return features;
-
-    const currentId = String(permission.featureId);
-    if (features.some((feature) => String(feature.id) === currentId)) {
-      return features;
-    }
-
-    if (!permission.feature?.name) return features;
-
-    return [
-      {
-        id: permission.featureId,
-        name: permission.feature.name,
-        ...((permission.feature as { key?: string } | undefined)?.key
-          ? { key: (permission.feature as { key?: string }).key }
-          : {}),
-      },
-      ...features,
-    ];
-  }, [features, permission]);
-
-  useEffect(() => {
-    setValues({
-      name: permission?.name ?? "",
-      key: permission?.key ?? "",
-      description: permission?.description ?? "",
-      resource: permission?.resource ?? "",
-      action: permission?.action ?? ACTIONS[0],
-      context: permission?.context ?? CONTEXTS[0],
-      featureId:
-        permission?.featureId !== undefined && permission?.featureId !== null
-          ? String(permission.featureId)
-          : "",
-    });
-    setFormError("");
-  }, [permission]);
 
   const update = (field: keyof PermissionFormValues, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
@@ -1098,9 +1043,7 @@ function PermissionForm({
     const key = values.key.trim();
     const description = values.description.trim();
     const resource = values.resource.trim();
-    const action = values.action.trim();
-    const context = values.context.trim();
-    const featureIdText = values.featureId.trim();
+    const featureId = Number(values.featureId);
 
     if (!name || !key) {
       setFormError("Name and key are required.");
@@ -1108,17 +1051,15 @@ function PermissionForm({
     }
 
     if (!permission && !resource) {
-      setFormError("Resource is required when creating a permission.");
+      setFormError("Resource is required.");
       return;
     }
 
-    if (!featureIdText) {
-      setFormError("Feature is required.");
-      return;
-    }
-
-    const featureId = Number(featureIdText);
-    if (!Number.isInteger(featureId) || featureId <= 0) {
+    if (
+      !values.featureId ||
+      !Number.isInteger(featureId) ||
+      featureId <= 0
+    ) {
       setFormError("Please select a valid feature.");
       return;
     }
@@ -1127,27 +1068,25 @@ function PermissionForm({
     setFormError("");
 
     try {
+      const payload = {
+        name,
+        key,
+        description: description || undefined,
+        resource: resource || undefined,
+        action: values.action,
+        context: values.context,
+        featureId,
+      };
+
       if (permission) {
-        await updatePermission(permission.id, {
-          name,
-          key,
-          description: description || undefined,
-          resource: resource || undefined,
-          action,
-          context,
-          featureId,
-        });
+        await updatePermission(permission.id, payload);
       } else {
         await createPermission({
-          name,
-          key,
-          description: description || undefined,
+          ...payload,
           resource,
-          action,
-          context,
-          featureId,
         });
       }
+
       onSuccess();
     } catch (err) {
       setFormError(
@@ -1162,196 +1101,432 @@ function PermissionForm({
     }
   };
 
-  const focusHandlers = {
-    onFocus: (
-      e: React.FocusEvent<
-        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-      >,
-    ) => {
-      e.currentTarget.style.borderColor = primaryColor;
-      e.currentTarget.style.boxShadow = `0 0 0 4px ${primaryColor}1A`;
-    },
-    onBlur: (
-      e: React.FocusEvent<
-        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-      >,
-    ) => {
-      e.currentTarget.style.borderColor = "";
-      e.currentTarget.style.boxShadow = "";
-    },
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {formError && (
-        <p
+        <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
         >
           {formError}
-        </p>
+        </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Field label="Name" htmlFor="perm-name">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* NAME */}
+        <div>
+          <label
+            htmlFor="perm-name"
+            className="mb-1.5 block text-sm font-medium text-slate-700"
+          >
+            Permission Name *
+          </label>
+
           <input
             id="perm-name"
             value={values.name}
             onChange={(e) => update("name", e.target.value)}
+            placeholder="e.g. Create Employee"
+            maxLength={150}
             required
             disabled={saving}
-            placeholder="e.g. Create User"
-            className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition disabled:bg-slate-50"
-            {...focusHandlers}
+            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = primaryColor;
+              e.currentTarget.style.boxShadow =
+                `0 0 0 4px ${primaryColor}1A`;
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "";
+              e.currentTarget.style.boxShadow = "";
+            }}
           />
-        </Field>
+        </div>
 
-        <Field
-          label="Key"
-          htmlFor="perm-key"
-          hint="Use a unique permission key, e.g. users.create"
-        >
+        {/* KEY */}
+        <div>
+          <label
+            htmlFor="perm-key"
+            className="mb-1.5 block text-sm font-medium text-slate-700"
+          >
+            Permission Key *
+          </label>
+
           <input
             id="perm-key"
             value={values.key}
             onChange={(e) => update("key", e.target.value)}
+            placeholder="e.g. employees.create"
+            maxLength={150}
             required
             disabled={saving}
-            placeholder="e.g. users.create"
-            className="h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-sm outline-none transition disabled:bg-slate-50"
-            {...focusHandlers}
+            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 font-mono text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:bg-white"
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = primaryColor;
+              e.currentTarget.style.boxShadow =
+                `0 0 0 4px ${primaryColor}1A`;
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "";
+              e.currentTarget.style.boxShadow = "";
+            }}
           />
-        </Field>
-      </div>
+        </div>
 
-      <Field label="Description" htmlFor="perm-description">
-        <textarea
-          id="perm-description"
-          value={values.description}
-          onChange={(e) => update("description", e.target.value)}
-          rows={3}
+        {/* ACTION SEARCH */}
+        <SearchablePermissionSelect
+          id="perm-action"
+          label="Action"
+          placeholder="Search action..."
+          value={values.action}
+          options={ACTIONS.map((action) => ({
+            value: action,
+            label: capitalize(action),
+          }))}
+          primaryColor={primaryColor}
           disabled={saving}
-          placeholder="Describe what this permission allows..."
-          className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition disabled:bg-slate-50"
-          {...focusHandlers}
+          onChange={(value) => update("action", value)}
         />
-      </Field>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Field label="Action" htmlFor="perm-action">
-          <select
-            id="perm-action"
-            value={values.action}
-            onChange={(e) => update("action", e.target.value)}
-            disabled={saving}
-            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none disabled:bg-slate-50"
-            {...focusHandlers}
+        {/* CONTEXT SEARCH */}
+        <SearchablePermissionSelect
+          id="perm-context"
+          label="Context"
+          placeholder="Search context..."
+          value={values.context}
+          options={CONTEXTS.map((context) => ({
+            value: context,
+            label: capitalize(context),
+          }))}
+          primaryColor={primaryColor}
+          disabled={saving}
+          onChange={(value) => update("context", value)}
+        />
+
+        {/* RESOURCE */}
+        <div>
+          <label
+            htmlFor="perm-resource"
+            className="mb-1.5 block text-sm font-medium text-slate-700"
           >
-            {ACTIONS.map((value) => (
-              <option key={value} value={value}>
-                {capitalize(value)}
-              </option>
-            ))}
-          </select>
-        </Field>
+            Resource {!permission && "*"}
+          </label>
 
-        <Field label="Context" htmlFor="perm-context">
-          <select
-            id="perm-context"
-            value={values.context}
-            onChange={(e) => update("context", e.target.value)}
-            disabled={saving}
-            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none disabled:bg-slate-50"
-            {...focusHandlers}
-          >
-            {CONTEXTS.map((value) => (
-              <option key={value} value={value}>
-                {capitalize(value)}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Field
-          label={`Resource${permission ? "" : " *"}`}
-          htmlFor="perm-resource"
-          hint="The resource this permission applies to."
-        >
           <input
             id="perm-resource"
             value={values.resource}
             onChange={(e) => update("resource", e.target.value)}
+            placeholder="e.g. employees"
             required={!permission}
+            maxLength={150}
             disabled={saving}
-            placeholder="e.g. users"
-            className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition disabled:bg-slate-50"
-            {...focusHandlers}
+            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:bg-white"
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = primaryColor;
+              e.currentTarget.style.boxShadow =
+                `0 0 0 4px ${primaryColor}1A`;
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "";
+              e.currentTarget.style.boxShadow = "";
+            }}
           />
-        </Field>
+        </div>
 
-        <Field
-          label="Feature *"
-          htmlFor="perm-feature"
-          hint="Select a feature. The selected feature ID is sent to the API."
-        >
-          <div className="relative">
-            <select
-              id="perm-feature"
-              name="featureId"
-              value={values.featureId}
-              onChange={(e) => update("featureId", e.target.value)}
-              required
-              disabled={saving || featuresLoading}
-              className="h-11 w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 pr-10 text-sm outline-none transition disabled:cursor-not-allowed disabled:bg-slate-50"
-              {...focusHandlers}
-            >
-              <option value="">
-                {featuresLoading ? "Loading features..." : "Select Feature"}
-              </option>
-              {featureOptions.map((feature) => (
-                <option
-                  key={`feature-${String(feature.id)}`}
-                  value={String(feature.id)}
-                >
-                  {feature.name}
-                  {feature.key ? ` — ${feature.key}` : ""}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              aria-hidden="true"
-              className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-            />
-          </div>
-          {featuresError && (
-            <p className="mt-1 text-xs text-red-500">{featuresError}</p>
-          )}
-        </Field>
+        {/* FEATURE SEARCH */}
+        <SearchablePermissionSelect
+          id="perm-feature"
+          label="Feature"
+          placeholder="Search features..."
+          value={values.featureId}
+          options={DUMMY_PERMISSION_FEATURES.map((feature) => ({
+            value: String(feature.id),
+            label: feature.name,
+            description: feature.key,
+          }))}
+          primaryColor={primaryColor}
+          disabled={saving}
+          required
+          onChange={(value) => update("featureId", value)}
+        />
       </div>
 
-      <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
+      {/* DESCRIPTION */}
+      <div>
+        <label
+          htmlFor="perm-description"
+          className="mb-1.5 block text-sm font-medium text-slate-700"
+        >
+          Description
+        </label>
+
+        <textarea
+          id="perm-description"
+          value={values.description}
+          onChange={(e) => update("description", e.target.value)}
+          placeholder="Briefly describe this permission..."
+          rows={2}
+          maxLength={500}
+          disabled={saving}
+          className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:bg-white"
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = primaryColor;
+            e.currentTarget.style.boxShadow =
+              `0 0 0 4px ${primaryColor}1A`;
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = "";
+            e.currentTarget.style.boxShadow = "";
+          }}
+        />
+      </div>
+
+      {/* FOOTER */}
+      <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
         <button
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
         >
           Cancel
         </button>
 
         <button
           type="submit"
-          disabled={saving || featuresLoading}
-          className="flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={saving}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           style={{ backgroundColor: primaryColor }}
         >
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-          {permission ? "Save Changes" : "Create Permission"}
+          {saving
+            ? "Saving..."
+            : permission
+              ? "Save Changes"
+              : "Create Permission"}
         </button>
       </div>
     </form>
+  );
+}
+
+/* ================= SEARCHABLE SELECT ================= */
+
+function SearchablePermissionSelect({
+  id,
+  label,
+  placeholder,
+  value,
+  options,
+  primaryColor,
+  disabled = false,
+  required = false,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  placeholder: string;
+  value: string;
+  options: {
+    value: string;
+    label: string;
+    description?: string;
+  }[];
+  primaryColor: string;
+  disabled?: boolean;
+  required?: boolean;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const selected = options.find((option) => option.value === value);
+
+  const filteredOptions = options.filter((option) => {
+    const query = search.trim().toLowerCase();
+
+    return (
+      option.label.toLowerCase().includes(query) ||
+      option.value.toLowerCase().includes(query) ||
+      (option.description?.toLowerCase().includes(query) ?? false)
+    );
+  });
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleOutside = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    };
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        setSearch("");
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleKey);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative min-w-0">
+      <label
+        htmlFor={`${id}-search`}
+        className="mb-1.5 block text-sm font-medium text-slate-700"
+      >
+        {label} {required && "*"}
+      </label>
+
+      <button
+        type="button"
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => {
+          setOpen((current) => !current);
+          setSearch("");
+        }}
+        className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-left text-sm outline-none transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+        style={
+          open
+            ? {
+                borderColor: primaryColor,
+                boxShadow: `0 0 0 4px ${primaryColor}1A`,
+                backgroundColor: "#fff",
+              }
+            : undefined
+        }
+      >
+        <span
+          className={`truncate ${
+            selected ? "text-slate-700" : "text-slate-400"
+          }`}
+        >
+          {selected?.label ?? placeholder}
+        </span>
+
+        <Search className="h-4 w-4 shrink-0 text-slate-400" />
+      </button>
+
+      {/* Required value for form validation */}
+      {required && (
+        <input
+          tabIndex={-1}
+          aria-hidden="true"
+          required
+          value={value}
+          onChange={() => undefined}
+          className="pointer-events-none absolute h-px w-px opacity-0"
+          style={{ bottom: 0, left: 0 }}
+        />
+      )}
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+          <div className="border-b border-slate-100 p-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+              <input
+                ref={inputRef}
+                id={`${id}-search`}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={placeholder}
+                className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none transition focus:bg-white"
+                onFocus={(event) => {
+                  event.currentTarget.style.borderColor = primaryColor;
+                  event.currentTarget.style.boxShadow =
+                    `0 0 0 3px ${primaryColor}1A`;
+                }}
+                onBlur={(event) => {
+                  event.currentTarget.style.borderColor = "";
+                  event.currentTarget.style.boxShadow = "";
+                }}
+              />
+            </div>
+          </div>
+
+          <div
+            role="listbox"
+            aria-label={label}
+            className="max-h-52 overflow-y-auto p-1"
+          >
+            {filteredOptions.length ? (
+              filteredOptions.map((option) => {
+                const isSelected = option.value === value;
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      onChange(option.value);
+                      setOpen(false);
+                      setSearch("");
+                    }}
+                    className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left transition hover:bg-slate-50"
+                    style={
+                      isSelected
+                        ? {
+                            backgroundColor: `${primaryColor}12`,
+                            color: primaryColor,
+                          }
+                        : undefined
+                    }
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium">
+                        {option.label}
+                      </span>
+
+                      {option.description && (
+                        <span className="mt-0.5 block truncate text-xs text-slate-400">
+                          {option.description}
+                        </span>
+                      )}
+                    </span>
+
+                    {isSelected && (
+                      <span
+                        className="shrink-0 text-xs font-semibold"
+                        style={{ color: primaryColor }}
+                      >
+                        Selected
+                      </span>
+                    )}
+                  </button>
+                );
+              })
+            ) : (
+              <p className="px-3 py-6 text-center text-sm text-slate-400">
+                No results found.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
