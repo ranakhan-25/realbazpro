@@ -165,8 +165,8 @@ function SubStageCard({ stat, index }: { stat: StatCardData; index: number }) {
       <Link
         href={
           stat.leadStageId == null
-            ? "/crm-module/add-lead-account"
-            : `/crm-module/add-lead-account?lead_stages=${stat.leadStageId}`
+            ? "/dashboard/crm/lead/lead-list"
+            : `/dashboard/crm/lead/lead-list?stage_id=${stat.leadStageId}`
         }
         className={clsx(
           "flex flex-col justify-between rounded-lg border border-border bg-surface px-3 py-2.5",
