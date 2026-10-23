@@ -162,7 +162,7 @@ export async function fetchStatCards(): Promise<StatCardData[]> {
   try {
     const res = await api.get("/crm/reports/lead-funnel");
     const funnel = res.data?.data;
-    const stages = funnel?.stage_distribution || [];
+    const stages = funnel?.stage_distribution || funnel?.funnel_stages || [];
     const totalLeads = funnel?.total_leads || 0;
 
     const cards: StatCardData[] = [
@@ -321,8 +321,8 @@ export async function fetchDayActivity(dateISO: string): Promise<DayActivity> {
 
     return {
       date: dateISO,
-      visits: visits || 1,
-      calls: calls || 3,
+      visits,
+      calls,
       birthdays: [],
       anniversaries: [],
     };

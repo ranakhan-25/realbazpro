@@ -35,6 +35,12 @@ const NAV_TREE: NavNode[] = [
     icon: LayoutDashboard,
     children: [
       {
+        id: "overview",
+        label: "Dashboard",
+        icon: LayoutDashboard,
+        href: "/dashboard/crm",
+      },
+      {
         id: "configuration",
         label: "Configuration",
         icon: SlidersHorizontal,
@@ -42,62 +48,62 @@ const NAV_TREE: NavNode[] = [
           {
             id: "communication_status",
             label: "Communication Status",
-            href: "/crm-module/communication_status",
+            href: "/dashboard/crm/configuration/communication-status",
           },
-          { id: "teams", label: "Teams", href: "/crm-module/teams" },
+          { id: "teams", label: "Teams", href: "/dashboard/crm/configuration/teams" },
           {
             id: "lead_category",
             label: "Lead Category",
-            href: "/crm-module/lead_category",
+            href: "/dashboard/crm/configuration/lead-category",
           },
-          { id: "campaign", label: "Campaign", href: "/crm-module/campaign" },
+          { id: "campaign", label: "Campaign", href: "/dashboard/crm/configuration/campaign" },
           {
             id: "profession",
             label: "Profession",
-            href: "/crm-module/profession",
+            href: "/dashboard/crm/configuration/profession",
           },
           {
             id: "lead_source",
             label: "Lead Source",
-            href: "/crm-module/add-lead-source",
+            href: "/dashboard/crm/configuration/lead-source",
           },
-          { id: "offers", label: "Offers", href: "/crm-module/feature" },
-          { id: "area", label: "Area", href: "/crm-module/area" },
+          { id: "offers", label: "Offers", href: "/dashboard/crm/configuration/offers" },
+          { id: "area", label: "Area", href: "/dashboard/crm/configuration/area" },
           {
             id: "lead_stage",
             label: "Lead Stage",
-            href: "/crm-module/lead_status",
+            href: "/dashboard/crm/configuration/lead-stage",
           },
-          { id: "project", label: "Project", href: "/project-module/projects" },
+          { id: "project", label: "Project", href: "/dashboard/crm/configuration/project" },
           {
             id: "price_range",
             label: "Price Range",
-            href: "/crm-module/price-range",
+            href: "/dashboard/crm/configuration/price-range",
           },
           {
             id: "requirement_type",
             label: "Requirement Type",
-            href: "/crm-module/requirement-type",
+            href: "/dashboard/crm/configuration/requirement-type",
           },
           {
             id: "visit_places",
             label: "Visit Places",
-            href: "/crm-module/visit_places",
+            href: "/dashboard/crm/configuration/visit-places",
           },
           {
             id: "visit_status",
             label: "Visit Status",
-            href: "/crm-module/visit_status",
+            href: "/dashboard/crm/configuration/visit-status",
           },
           {
             id: "task_type",
             label: "Task Type",
-            href: "/crm-module/task_type",
+            href: "/dashboard/crm/configuration/task-type",
           },
           {
             id: "internal_task",
             label: "Internal Task",
-            href: "/crm-module/internal-tasks",
+            href: "/dashboard/crm/configuration/internal-task",
           },
         ],
       },
@@ -108,18 +114,18 @@ const NAV_TREE: NavNode[] = [
         children: [
           {
             id: "lead_account",
-            label: "Lead",
-            href: "/crm-module/add-lead-account",
+            label: "Lead Directory",
+            href: "/dashboard/crm/lead/lead-list",
           },
           {
             id: "junk_lead",
             label: "Junk Lead",
-            href: "/crm-module/junk-add-lead-account",
+            href: "/dashboard/crm/lead/junk-lead",
           },
           {
             id: "transfer_history",
             label: "Transfer History",
-            href: "/crm-module/transfer-call-list",
+            href: "/dashboard/crm/lead/transfer-history",
           },
         ],
       },
@@ -131,22 +137,22 @@ const NAV_TREE: NavNode[] = [
           {
             id: "follow_up",
             label: "Follow Up",
-            href: "/crm-module/reminder-call-list",
+            href: "/dashboard/crm/call-center/follow-up",
           },
           {
             id: "call_report",
             label: "Call Report",
-            href: "/crm-module/call-report",
+            href: "/dashboard/crm/call-center/call-report",
           },
           {
             id: "call_details_report",
             label: "Call Details Report",
-            href: "/crm-module/call-details-report",
+            href: "/dashboard/crm/call-center/call-report-details",
           },
           {
             id: "call_assign_history",
             label: "Call Assign History",
-            href: "/crm-module/call-assign-history",
+            href: "/dashboard/crm/call-center/call-assign-history",
           },
         ],
       },
@@ -158,22 +164,22 @@ const NAV_TREE: NavNode[] = [
           {
             id: "reminder_task",
             label: "Task/Visit",
-            href: "/crm-module/reminder-task-list",
+            href: "/dashboard/crm/task-visit/task-visit-list",
           },
           {
             id: "deal_negotiation",
             label: "Deal Negotiation Activity",
-            href: "/crm-module/deal-negotiation-activity-list",
+            href: "/dashboard/crm/task-visit/deal-negotiation-activity",
           },
           {
             id: "visit_task_report",
             label: "Task/Visit Summary Report",
-            href: "/crm-module/visit-task-report",
+            href: "/dashboard/crm/task-visit/task-visit-summary-report",
           },
           {
             id: "visit_details_report",
             label: "Task/Visit Details Report",
-            href: "/crm-module/visit-details-report",
+            href: "/dashboard/crm/task-visit/task-visit-details-report",
           },
         ],
       },
@@ -182,25 +188,17 @@ const NAV_TREE: NavNode[] = [
         label: "Property",
         icon: Building2,
         children: [
-          { id: "flat", label: "Flat", href: "/inventory-module/flat" },
-          {
-            id: "land_group",
-            label: "Land",
-            children: [
-              { id: "road", label: "Road", href: "/project-module/road" },
-              { id: "block", label: "Block", href: "/project-module/block" },
-              { id: "land", label: "Land", href: "/inventory-module/land" },
-            ],
-          },
+          { id: "flat", label: "Flat", href: "/dashboard/crm/property/flat" },
+          { id: "land", label: "Land", href: "/dashboard/crm/property/land" },
           {
             id: "booking",
             label: "Booking",
-            href: "/billing/flat_land_booking_list",
+            href: "/dashboard/crm/property/booking",
           },
           {
             id: "sale_offer",
             label: "Sale Offer",
-            href: "/billing/flat_land_sale_offer_list",
+            href: "/dashboard/crm/property/sale-offer",
           },
         ],
       },
@@ -212,62 +210,62 @@ const NAV_TREE: NavNode[] = [
           {
             id: "user_wise_report",
             label: "User Wise Report",
-            href: "/crm-module/user-wise-call-task-report",
+            href: "/dashboard/crm/reports/user-wise-report",
           },
           {
             id: "user_activity_report",
             label: "User Activity Report",
-            href: "/crm-module/user-wise-activity-report",
+            href: "/dashboard/crm/reports/user-active-report",
           },
           {
             id: "sales_pipeline",
             label: "Sales Pipeline Funnel Report",
-            href: "/crm-module/sales-pipeline-funnel-report",
+            href: "/dashboard/crm/reports/sales-pipeline-funnel-report",
           },
           {
             id: "team_reports",
             label: "Team Reports",
-            href: "/crm-module/team-wise-lead-report",
+            href: "/dashboard/crm/reports/team-reports",
           },
           {
             id: "interested_flat_land",
             label: "Interested Flat/Land",
-            href: "/crm-module/flat-land-interest-list",
+            href: "/dashboard/crm/reports/interested-flat-land-requirements",
           },
           {
             id: "requirements",
             label: "Requirements",
-            href: "/crm-module/see-requirements",
+            href: "/dashboard/crm/reports/requirements",
           },
           {
             id: "sales_probability",
             label: "Sales Probability",
-            href: "/crm-module/sales-probability",
+            href: "/dashboard/crm/reports/sales-probability",
           },
           {
             id: "flat_land_sale_report",
             label: "Flat/Land Sale Report",
-            href: "/billing/flat_land_sale_report",
+            href: "/dashboard/crm/reports/flat-land-sale-report",
           },
           {
             id: "missed_followup",
             label: "Missed FollowUp/Visit Summary",
-            href: "/crm-module/missed-followup-list-report",
+            href: "/dashboard/crm/reports/missed-followup-visit-summary",
           },
           {
             id: "deal_negotiation_report",
             label: "Deal Negotiation Report",
-            href: "/crm-module/deal-negotiation-report",
+            href: "/dashboard/crm/reports/deal-negotiation-reports",
           },
           {
             id: "call_log_report",
             label: "Call Log Report",
-            href: "/crm-module/call-log-report",
+            href: "/dashboard/crm/reports/call-log-report",
           },
           {
             id: "call_log_details",
             label: "Call Log Details Report",
-            href: "/crm-module/call-log-details-report",
+            href: "/dashboard/crm/reports/call-log-details-report",
           },
         ],
       },
@@ -279,7 +277,7 @@ const NAV_TREE: NavNode[] = [
           {
             id: "kpi_settings",
             label: "Employee KPI Setting",
-            href: "/hrm-module/employee_wise_kpi_settings",
+            href: "/dashboard/crm/kpi/employee-kpi-setting",
           },
           {
             id: "kpi_reports",
@@ -288,12 +286,7 @@ const NAV_TREE: NavNode[] = [
               {
                 id: "employee_call_report",
                 label: "Employee Call Report",
-                href: "/hrm-module/employee_wise_call_report",
-              },
-              {
-                id: "team_call_report",
-                label: "Team Call Report",
-                href: "/hrm-module/team_wise_task_report",
+                href: "/dashboard/crm/kpi/reports",
               },
             ],
           },
@@ -316,12 +309,20 @@ export function Sidebar() {
     setOpenNodes((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  // Auto-open parent nodes based on current path
+  const isChildActive = (node: NavNode): boolean => {
+    if (node.href && pathname === node.href) return true;
+    if (node.children) return node.children.some(isChildActive);
+    return false;
+  };
+
   const renderTree = (nodes: NavNode[], depth = 0) => {
     return nodes.map((node) => {
       const Icon = node.icon;
       const hasChildren = node.children && node.children.length > 0;
       const isOpen = openNodes[node.id];
       const isActive = node.href ? pathname === node.href : false;
+      const hasActiveChild = hasChildren && isChildActive(node);
 
       return (
         <div key={node.id} className="space-y-0.5">
@@ -332,7 +333,9 @@ export function Sidebar() {
                 "group relative w-full flex items-center justify-between rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150",
                 depth === 0
                   ? "font-semibold text-ink"
-                  : "text-ink-muted hover:text-ink hover:bg-canvas",
+                  : hasActiveChild
+                    ? "text-accent-strong font-semibold"
+                    : "text-ink-muted hover:text-ink hover:bg-canvas",
               )}
             >
               <div className="flex items-center gap-2.5 min-w-0">
