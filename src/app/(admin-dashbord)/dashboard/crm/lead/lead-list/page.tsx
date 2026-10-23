@@ -26,9 +26,10 @@ import {
   AlertTriangle,
   Download,
   AlertCircle,
-  Camera,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft,
+  ChevronDown
 } from "lucide-react";
 
 interface LeadRecord {
@@ -55,20 +56,26 @@ interface LeadRecord {
   createdAt?: string;
   lastActivity?: string;
   nextActivity?: string;
+  remark?: string;
+  query?: string;
 }
 
 const mockLeadsData: LeadRecord[] = [
   {
     id: "lead-1",
     leadId: "L261015-0135",
-    name: "Riaz",
-    phone: "1643235522",
-    badge: "New Assignment",
+    name: "jannati2222232323",
+    phone: "1754252246",
+    badge: "JUNK",
     srOfficer: "Admin",
     cr: "Select CR",
     createdAt: "15-10-2026 04:10:PM",
     lastActivity: "Call Connected\nNote: Interested in 3 BHK",
     nextActivity: "25-10-2026 11:00 AM\nFollow up call",
+    organization: "sdfs",
+    designation: "sfsd",
+    address: "shatkhira",
+    leadSource: "Linkedin"
   },
   {
     id: "lead-2",
@@ -102,7 +109,6 @@ const mockLeadsData: LeadRecord[] = [
 ];
 
 export default function LeadListPage() {
-  // LocalStorage data persistent state
   const [leads, setLeads] = useState<LeadRecord[]>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("crm_leads_data");
@@ -117,7 +123,6 @@ export default function LeadListPage() {
     return mockLeadsData;
   });
 
-  // Save to LocalStorage whenever leads list changes
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("crm_leads_data", JSON.stringify(leads));
@@ -127,40 +132,64 @@ export default function LeadListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
 
-  // Filter States
   const [filterCategory, setFilterCategory] = useState("");
   const [filterProject, setFilterProject] = useState("");
 
-  // Modals Toggle States
   const [isNewOrEditModalOpen, setIsNewOrEditModalOpen] = useState(false);
-  const [isCallModalOpen, setIsCallModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  // Top Action Buttons Modals
+  const [isLeadDetailsOpen, setIsLeadDetailsOpen] = useState(true);
+  const [isPersonalInfoOpen, setIsPersonalInfoOpen] = useState(false);
+
   const [isCallAssignOpen, setIsCallAssignOpen] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [isSmsOpen, setIsSmsOpen] = useState(false);
+  const [isWishSmsOpen, setIsWishSmsOpen] = useState(false);
+  const [isSmsConfirmOpen, setIsSmsConfirmOpen] = useState(false);
   const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
-  // Active Lead State
+  const [callAssignDate, setCallAssignDate] = useState("");
+  const [callAssignUserType, setCallAssignUserType] = useState("Officer/SR");
+  const [callAssignNote, setCallAssignNote] = useState("");
+
+  const [transferUser, setTransferUser] = useState("");
+  const [transferType, setTransferType] = useState("Officer/SR");
+  const [transferFollowup, setTransferFollowup] = useState(false);
+  const [transferManualSet, setTransferManualSet] = useState(false);
+
+  const [smsTemplate, setSmsTemplate] = useState("");
+  const [smsText, setSmsText] = useState("");
+
   const [activeLead, setActiveLead] = useState<LeadRecord | null>(null);
 
-  // Call Activity Modal States
-  const [activeTab, setActiveTab] = useState<"pending" | "requirements" | "followup" | "visits">("pending");
+  const [isCallActivityPageOpen, setIsCallActivityPageOpen] = useState(false);
+
+  const [activeTab, setActiveTab] = useState("Upcoming/Pending");
+  const [currentActivity, setCurrentActivity] = useState("Followup");
+  const [nextActivityType, setNextActivityType] = useState("Followup");
   const [followupStatus, setFollowupStatus] = useState("");
   const [followupComment, setFollowupComment] = useState("");
   const [nextFollowupDate, setNextFollowupDate] = useState("");
   const [nextFollowupNote, setNextFollowupNote] = useState("");
   const [isJunk, setIsJunk] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
 
-  // Pagination State
+  const [reqPrice, setReqPrice] = useState("");
+  const [reqSize, setReqSize] = useState("");
+  const [reqArea, setReqArea] = useState("");
+  const [reqType, setReqType] = useState("");
+  const [reqDesc, setReqDesc] = useState("");
+
+  const [propProject, setPropProject] = useState("");
+  const [noteInput, setNoteInput] = useState("");
+
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Form State
   const [formData, setFormData] = useState({
     date: "2026-10-22",
     leadCode: "L261022-0136",
@@ -182,6 +211,16 @@ export default function LeadListPage() {
     address: "",
     email: "",
   });
+
+  const tabs = [
+    { name: "Upcoming/Pending", count: null },
+    { name: "Requirements", count: 0 },
+    { name: "Deal Negotiation", count: 0 },
+    { name: "Property", count: 0 },
+    { name: "Follow-up", count: 1 },
+    { name: "Visits", count: 0 },
+    { name: "Note", count: 0 },
+  ];
 
   const verifySelection = (actionCallback: () => void) => {
     if (selectedLeads.length === 0) {
@@ -243,14 +282,14 @@ export default function LeadListPage() {
     setIsNewOrEditModalOpen(true);
   };
 
-  const handleOpenCallModal = (item: LeadRecord) => {
+  const handleOpenCallActivityPage = (item: LeadRecord) => {
     setActiveLead(item);
     setFollowupStatus("");
     setFollowupComment("");
     setNextFollowupDate("");
     setNextFollowupNote("");
-    setIsJunk(item.badge === "Junk");
-    setIsCallModalOpen(true);
+    setIsJunk(item.badge === "JUNK" || item.badge === "Junk");
+    setIsCallActivityPageOpen(true);
   };
 
   const handleOpenDeleteModal = (item: LeadRecord) => {
@@ -323,14 +362,13 @@ export default function LeadListPage() {
     setIsNewOrEditModalOpen(false);
   };
 
-  // Call Activity Modal Save Functionality
-  const handleSaveCallModalChanges = () => {
+  const handleSaveCallPageChanges = () => {
     if (!activeLead) return;
 
     setLeads((prevLeads) =>
       prevLeads.map((item) => {
         if (item.id === activeLead.id) {
-          const updatedStage = isJunk ? "Junk" : activeLead.badge;
+          const updatedStage = isJunk ? "JUNK" : activeLead.badge;
           
           let lastAct = item.lastActivity;
           if (followupStatus || followupComment) {
@@ -344,6 +382,7 @@ export default function LeadListPage() {
 
           return {
             ...item,
+            ...activeLead,
             badge: updatedStage,
             lastActivity: lastAct,
             nextActivity: nextAct,
@@ -353,7 +392,7 @@ export default function LeadListPage() {
       })
     );
 
-    setIsCallModalOpen(false);
+    setIsCallActivityPageOpen(false);
   };
 
   const handleMarkAsSold = () => {
@@ -376,6 +415,13 @@ export default function LeadListPage() {
     }
   };
 
+  const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      alert(`Attachment "${file.name}" uploaded successfully!`);
+    }
+  };
+
   const handleSelectAll = () => {
     if (selectedLeads.length === currentTableData.length) {
       setSelectedLeads([]);
@@ -392,7 +438,12 @@ export default function LeadListPage() {
     }
   };
 
-  // Safe Dynamic Filtering Logic
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
   const filteredData = leads.filter((item) => {
     const search = searchQuery.trim().toLowerCase();
     const matchesSearch =
@@ -414,19 +465,798 @@ export default function LeadListPage() {
     return matchesSearch && matchesCategory && matchesProject;
   });
 
-  // Pagination Calculation
   const totalEntries = filteredData.length;
   const totalPages = Math.ceil(totalEntries / entriesPerPage) || 1;
   const indexOfLastItem = currentPage * entriesPerPage;
   const indexOfFirstItem = indexOfLastItem - entriesPerPage;
   const currentTableData = filteredData.slice(indexOfFirstItem, indexOfLastItem);
 
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-    }
-  };
+  if (isCallActivityPageOpen && activeLead) {
+    return (
+      <div className="w-full min-h-screen bg-[#f4f6f9] dark:bg-slate-950 px-3 md:px-6 py-4 text-slate-800 dark:text-slate-100 font-sans space-y-4">
+        
+        {/* Top Header Navigation Bar */}
+        <div className="w-full bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs px-4 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsCallActivityPageOpen(false)}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-600 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition"
+            >
+              <ChevronLeft size={14} /> Back
+            </button>
+            <div className="flex items-center gap-1.5 ml-1">
+              <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                {activeLead.name}
+              </h1>
+              <CheckCircle2 size={18} className="text-blue-600 fill-blue-600/10" />
+            </div>
+          </div>
 
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsCallActivityPageOpen(false)}
+              className="px-4 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 font-bold text-xs text-slate-600 dark:text-slate-300 transition"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveCallPageChanges}
+              className="px-5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition active:scale-95"
+            >
+              Save changes
+            </button>
+          </div>
+        </div>
+
+        {/* Main 2-Column Dashboard Layout */}
+        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4">
+          
+          {/* LEFT COLUMN: Lead Profile & Details Form */}
+          <div className="lg:col-span-4 space-y-4">
+            
+            {/* Top Profile Box */}
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs text-center space-y-3">
+              <div>
+                <span className="px-3 py-1 rounded-md bg-[#2b255e] text-white font-black text-[10px] uppercase tracking-wider">
+                  {isJunk ? "JUNK" : activeLead.badge}
+                </span>
+              </div>
+
+              {/* Avatar Upload */}
+              <div className="relative group w-20 h-20 mx-auto">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-20 h-20 rounded-full bg-[#ff9900] text-white font-black text-2xl flex items-center justify-center shadow-xs cursor-pointer overflow-hidden"
+                >
+                  {activeLead.avatarUrl ? (
+                    <img src={activeLead.avatarUrl} alt={activeLead.name} className="w-full h-full object-cover" />
+                  ) : (
+                    activeLead.name.substring(0, 2).toUpperCase()
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-1.5 text-[10px] font-bold text-slate-400 hover:text-blue-600 transition block mx-auto"
+                >
+                  Click to upload image
+                </button>
+              </div>
+
+              {/* Functional Quick Action Buttons */}
+              <div className="grid grid-cols-4 gap-1 pt-3 border-t border-slate-100 dark:border-slate-800 text-[10px] font-bold">
+                {/* WhatsApp Button */}
+                <a
+                  href={`https://wa.me/880${activeLead.phone}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex flex-col items-center gap-1.5 text-blue-600 hover:scale-105 transition"
+                >
+                  <div className="w-9 h-9 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center">
+                    <MessageCircle size={18} />
+                  </div>
+                  <span>WhatsApp</span>
+                </a>
+
+                {/* Call Button */}
+                <a
+                  href={`tel:+880${activeLead.phone}`}
+                  className="flex flex-col items-center gap-1.5 text-blue-600 hover:scale-105 transition"
+                >
+                  <div className="w-9 h-9 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center">
+                    <Phone size={18} />
+                  </div>
+                  <span>Call</span>
+                </a>
+
+                {/* Message Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsSmsOpen(true)}
+                  className="flex flex-col items-center gap-1.5 text-blue-600 hover:scale-105 transition"
+                >
+                  <div className="w-9 h-9 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center">
+                    <MessageSquare size={18} />
+                  </div>
+                  <span>Message</span>
+                </button>
+
+                {/* Attachment Button */}
+                <input
+                  type="file"
+                  ref={attachmentInputRef}
+                  onChange={handleAttachmentUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => attachmentInputRef.current?.click()}
+                  className="flex flex-col items-center gap-1.5 text-blue-600 hover:scale-105 transition"
+                >
+                  <div className="w-9 h-9 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center">
+                    <Paperclip size={18} />
+                  </div>
+                  <span>Attachment</span>
+                </button>
+              </div>
+
+              <div className="pt-2 text-[11px] font-mono text-slate-500 dark:text-slate-400 space-y-0.5">
+                <div>ID: <span className="text-slate-800 dark:text-slate-200 font-bold">{activeLead.leadId}</span></div>
+                <div>Added By: <span className="text-slate-800 dark:text-slate-200 font-bold">{activeLead.srOfficer}</span></div>
+              </div>
+            </div>
+
+            {/* Left Column Detailed Form Fields */}
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs space-y-3 text-xs font-semibold">
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">Category</label>
+                  <select
+                    value={activeLead.leadCategory || "Ready Flat"}
+                    onChange={(e) => setActiveLead({ ...activeLead, leadCategory: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-700 dark:text-slate-200 outline-none"
+                  >
+                    <option value="Ready Flat">Ready Flat</option>
+                    <option value="Ongoing">Ongoing</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={activeLead.name}
+                    onChange={(e) => setActiveLead({ ...activeLead, name: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-700 dark:text-slate-200 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">Phone</label>
+                  <input
+                    type="text"
+                    value={`+880${activeLead.phone}`}
+                    onChange={(e) => setActiveLead({ ...activeLead, phone: e.target.value.replace("+880", "") })}
+                    className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-mono font-bold text-slate-700 dark:text-slate-200 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={activeLead.email || ""}
+                    placeholder="Email"
+                    onChange={(e) => setActiveLead({ ...activeLead, email: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-700 dark:text-slate-200 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">Organization</label>
+                  <input
+                    type="text"
+                    value={activeLead.organization || ""}
+                    onChange={(e) => setActiveLead({ ...activeLead, organization: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-700 dark:text-slate-200 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1">Designation</label>
+                  <input
+                    type="text"
+                    value={activeLead.designation || ""}
+                    onChange={(e) => setActiveLead({ ...activeLead, designation: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-700 dark:text-slate-200 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">Profession</label>
+                  <select
+                    value={activeLead.profession || "Engineer"}
+                    onChange={(e) => setActiveLead({ ...activeLead, profession: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-700 dark:text-slate-200 outline-none"
+                  >
+                    <option value="Engineer">Engineer</option>
+                    <option value="Doctor">Doctor</option>
+                    <option value="Business">Business</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1">Source</label>
+                  <input
+                    type="text"
+                    value={activeLead.leadSource || ""}
+                    onChange={(e) => setActiveLead({ ...activeLead, leadSource: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-700 dark:text-slate-200 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1">Address</label>
+                <textarea
+                  rows={2}
+                  value={activeLead.address || ""}
+                  onChange={(e) => setActiveLead({ ...activeLead, address: e.target.value })}
+                  className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-700 dark:text-slate-200 outline-none resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">CR</label>
+                  <select
+                    value={activeLead.cr || "Select CR"}
+                    onChange={(e) => setActiveLead({ ...activeLead, cr: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-700 dark:text-slate-200 outline-none"
+                  >
+                    <option value="Select CR">Select CR</option>
+                    <option value="Tazmul Reza">Tazmul Reza</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1">SR</label>
+                  <input
+                    type="text"
+                    value={activeLead.srOfficer}
+                    readOnly
+                    className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 font-bold text-slate-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1">Project</label>
+                <select
+                  value={activeLead.interestedProject || "Mustain Villa"}
+                  onChange={(e) => setActiveLead({ ...activeLead, interestedProject: e.target.value })}
+                  className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-700 dark:text-slate-200 outline-none"
+                >
+                  <option value="Mustain Villa">Mustain Villa</option>
+                  <option value="Royal City">Royal City</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1">Remark</label>
+                <textarea
+                  rows={2}
+                  value={activeLead.remark || ""}
+                  onChange={(e) => setActiveLead({ ...activeLead, remark: e.target.value })}
+                  className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-700 dark:text-slate-200 outline-none resize-none"
+                />
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* RIGHT COLUMN: Tab Navigation & Dynamic Form Panels */}
+          <div className="lg:col-span-8 space-y-4">
+            
+            {/* Top Navigation Tabs */}
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-2 shadow-xs flex flex-wrap gap-1">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.name}
+                  onClick={() => setActiveTab(tab.name)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                    activeTab === tab.name
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-transparent text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {tab.name}
+                  {tab.count !== null && (
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      activeTab === tab.name ? "bg-white text-blue-600" : "bg-rose-500 text-white"
+                    }`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* TAB 1: Upcoming/Pending */}
+            {activeTab === "Upcoming/Pending" && (
+              <div className="space-y-4">
+                
+                {/* STAGE Box */}
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs space-y-3 text-xs font-bold">
+                  <div className="text-slate-400 uppercase tracking-wider text-[10px]">STAGE</div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex-1 min-w-[200px]">
+                      <select
+                        value={activeLead.badge}
+                        onChange={(e) => setActiveLead({ ...activeLead, badge: e.target.value })}
+                        className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 font-bold text-blue-600 outline-none"
+                      >
+                        <option value="New Assignment">New Assignment</option>
+                        <option value="Priority">Priority</option>
+                        <option value="Prospect">Prospect</option>
+                      </select>
+                    </div>
+
+                    <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-200 bg-blue-50/50 text-blue-600 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-400 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isJunk}
+                        onChange={(e) => setIsJunk(e.target.checked)}
+                        className="rounded text-blue-600 focus:ring-blue-500"
+                      />
+                      Move to junk
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={handleMarkAsSold}
+                      className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold transition active:scale-95"
+                    >
+                      ✓ Mark as Sold
+                    </button>
+                  </div>
+                </div>
+
+                {/* CURRENT ACTIVITY Box */}
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs flex items-center gap-6 text-xs font-bold">
+                  <span className="text-blue-600 uppercase tracking-wider text-[11px]">CURRENT ACTIVITY:</span>
+                  
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="radio"
+                      name="currentActivity"
+                      value="Followup"
+                      checked={currentActivity === "Followup"}
+                      onChange={() => setCurrentActivity("Followup")}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    Followup
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-slate-400">
+                    <input
+                      type="radio"
+                      name="currentActivity"
+                      value="Task/Visit"
+                      checked={currentActivity === "Task/Visit"}
+                      onChange={() => setCurrentActivity("Task/Visit")}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    Task/Visit
+                  </label>
+                </div>
+
+                {/* ADD FOLLOWUP Box */}
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs space-y-2 text-xs font-bold">
+                  <div className="text-blue-600 uppercase tracking-wider text-[11px]">ADD FOLLOWUP</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 mb-1">Status *</label>
+                      <select
+                        value={followupStatus}
+                        onChange={(e) => setFollowupStatus(e.target.value)}
+                        className="w-full p-2.5 rounded-lg border border-blue-300 dark:border-blue-800/80 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 font-semibold outline-none"
+                      >
+                        <option value="">Select Communication</option>
+                        <option value="Call Connected">Call Connected</option>
+                        <option value="Follow Up">Follow Up</option>
+                        <option value="No Answer">No Answer</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 mb-1">Comment *</label>
+                      <textarea
+                        rows={2}
+                        value={followupComment}
+                        onChange={(e) => setFollowupComment(e.target.value)}
+                        placeholder="Enter comment..."
+                        className="w-full p-2.5 rounded-lg border border-blue-300 dark:border-blue-800/80 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 font-semibold outline-none resize-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Accordion Bar */}
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 shadow-xs flex items-center justify-between cursor-pointer hover:bg-slate-50/50 transition">
+                  <span className="font-extrabold text-xs text-slate-700 dark:text-slate-200">Property & Pricing</span>
+                  <ChevronDown size={16} className="text-slate-400" />
+                </div>
+
+                {/* NEXT ACTIVITY Box */}
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs flex items-center justify-between text-xs font-bold">
+                  <div className="flex items-center gap-6">
+                    <span className="text-blue-600 uppercase tracking-wider text-[11px]">NEXT ACTIVITY:</span>
+                    
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="nextActivityType"
+                        value="Followup"
+                        checked={nextActivityType === "Followup"}
+                        onChange={() => setNextActivityType("Followup")}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      Followup
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-slate-400">
+                      <input
+                        type="radio"
+                        name="nextActivityType"
+                        value="Task/Visit"
+                        checked={nextActivityType === "Task/Visit"}
+                        onChange={() => setNextActivityType("Task/Visit")}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      Task/Visit
+                    </label>
+                  </div>
+
+                  <button type="button" className="text-slate-400 hover:text-slate-600 text-xs font-semibold">
+                    Stop Followup/Visit
+                  </button>
+                </div>
+
+                {/* NEXT FOLLOWUP Box */}
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs space-y-2 text-xs font-bold">
+                  <div className="text-blue-600 uppercase tracking-wider text-[11px]">NEXT FOLLOWUP</div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-slate-400 mb-1">Date</label>
+                      <input
+                        type="datetime-local"
+                        value={nextFollowupDate}
+                        onChange={(e) => setNextFollowupDate(e.target.value)}
+                        className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-mono outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 mb-1">Assigned SR</label>
+                      <input
+                        type="text"
+                        value={activeLead.srOfficer}
+                        readOnly
+                        className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 font-bold text-slate-500 outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 mb-1">Note</label>
+                      <input
+                        type="text"
+                        value={nextFollowupNote}
+                        onChange={(e) => setNextFollowupNote(e.target.value)}
+                        placeholder="Note"
+                        className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-semibold outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Save Action Bar */}
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCallActivityPageOpen(false)}
+                    className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-800 font-bold text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-300 transition"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveCallPageChanges}
+                    className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition active:scale-95"
+                  >
+                    Save changes
+                  </button>
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB 2: Requirements */}
+            {activeTab === "Requirements" && (
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-xl space-y-3 text-xs font-bold">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div className="flex border rounded-lg overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                      <span className="bg-slate-100 dark:bg-slate-800 px-3 py-2 border-r text-slate-500 font-bold">Price</span>
+                      <input
+                        type="text"
+                        placeholder="Select A Range"
+                        value={reqPrice}
+                        onChange={(e) => setReqPrice(e.target.value)}
+                        className="w-full p-2 outline-none bg-transparent"
+                      />
+                    </div>
+
+                    <div className="flex border rounded-lg overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                      <span className="bg-slate-100 dark:bg-slate-800 px-3 py-2 border-r text-slate-500 font-bold">Size</span>
+                      <input
+                        type="text"
+                        placeholder="Size"
+                        value={reqSize}
+                        onChange={(e) => setReqSize(e.target.value)}
+                        className="w-full p-2 outline-none bg-transparent"
+                      />
+                    </div>
+
+                    <div className="flex border rounded-lg overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                      <span className="bg-slate-100 dark:bg-slate-800 px-3 py-2 border-r text-slate-500 font-bold">Area</span>
+                      <input
+                        type="text"
+                        placeholder="Select User"
+                        value={reqArea}
+                        onChange={(e) => setReqArea(e.target.value)}
+                        className="w-full p-2 outline-none bg-transparent"
+                      />
+                    </div>
+
+                    <div className="flex border rounded-lg overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                      <span className="bg-slate-100 dark:bg-slate-800 px-3 py-2 border-r text-slate-500 font-bold">Type</span>
+                      <input
+                        type="text"
+                        placeholder="Select Type"
+                        value={reqType}
+                        onChange={(e) => setReqType(e.target.value)}
+                        className="w-full p-2 outline-none bg-transparent"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex border rounded-lg overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                    <span className="bg-slate-100 dark:bg-slate-800 px-3 py-2 border-r text-slate-500 font-bold">Description</span>
+                    <textarea
+                      rows={2}
+                      value={reqDesc}
+                      onChange={(e) => setReqDesc(e.target.value)}
+                      className="w-full p-2 outline-none bg-transparent resize-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-blue-600 text-white font-black uppercase text-[10px]">
+                      <tr>
+                        <th className="p-3">PRICE</th>
+                        <th className="p-3">DESCRIPTION</th>
+                        <th className="p-3">SIZE</th>
+                        <th className="p-3">AREA</th>
+                        <th className="p-3">TYPE</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 font-semibold">
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-slate-400 font-bold">
+                          No Requirements Logged Yet.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: Deal Negotiation */}
+            {activeTab === "Deal Negotiation" && (
+              <div className="space-y-3">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
+                  <table className="w-full text-left text-xs min-w-[700px]">
+                    <thead className="bg-blue-600 text-white font-black uppercase text-[10px]">
+                      <tr>
+                        <th className="p-3">#</th>
+                        <th className="p-3">PROJECT</th>
+                        <th className="p-3">FLAT/LAND/SHARE</th>
+                        <th className="p-3">ACTIVITY TYPE</th>
+                        <th className="p-3">CLIENT OFFER PRICE</th>
+                        <th className="p-3">COUNTER PRICE</th>
+                        <th className="p-3">LISTED PRICE</th>
+                        <th className="p-3">FINAL PRICE</th>
+                        <th className="p-3">STATUS</th>
+                        <th className="p-3">ROUND</th>
+                        <th className="p-3">CREATED BY</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 font-semibold">
+                      <tr>
+                        <td colSpan={11} className="p-6 text-center text-slate-400 font-bold">
+                          No Deal Negotiation Records Found.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: Property */}
+            {activeTab === "Property" && (
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-xl flex items-center justify-between gap-3 text-xs font-bold">
+                  <div className="flex items-center gap-2 flex-1 max-w-xl bg-white dark:bg-slate-900 border rounded-lg overflow-hidden px-3 py-1">
+                    <span className="text-slate-400 font-bold">Project</span>
+                    <select
+                      value={propProject}
+                      onChange={(e) => setPropProject(e.target.value)}
+                      className="w-full p-1.5 outline-none bg-transparent font-bold"
+                    >
+                      <option value="">Select Project</option>
+                      <option value="Mustain Villa">Mustain Villa</option>
+                      <option value="Royal City">Royal City</option>
+                    </select>
+                  </div>
+
+                  <button className="px-5 py-2 rounded-lg bg-blue-600 text-white font-black text-xs shadow-xs hover:bg-blue-700 transition">
+                    See Flat/Land
+                  </button>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
+                  <table className="w-full text-left text-xs min-w-[650px]">
+                    <thead className="bg-blue-600 text-white font-black uppercase text-[10px]">
+                      <tr>
+                        <th className="p-3">ID</th>
+                        <th className="p-3">PROJECT</th>
+                        <th className="p-3">FLAT NO</th>
+                        <th className="p-3">SIZE</th>
+                        <th className="p-3">BEDROOMS</th>
+                        <th className="p-3">BATHROOMS</th>
+                        <th className="p-3">FACING</th>
+                        <th className="p-3">SALE STATUS</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 font-semibold">
+                      <tr>
+                        <td colSpan={8} className="p-6 text-center text-slate-400 font-bold">
+                          No Property Listed Yet.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: Follow-up */}
+            {activeTab === "Follow-up" && (
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
+                <table className="w-full text-left text-xs min-w-[600px]">
+                  <thead className="bg-blue-600 text-white font-black uppercase text-[10px]">
+                    <tr>
+                      <th className="p-3">DATE</th>
+                      <th className="p-3">FOLLOW-UP DATE</th>
+                      <th className="p-3">NOTE</th>
+                      <th className="p-3">COMMENT</th>
+                      <th className="p-3">ASSIGN USER</th>
+                      <th className="p-3">STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                    <tr>
+                      <td className="p-3 font-mono font-bold">15-10-2026 4:23 PM</td>
+                      <td className="p-3 font-mono font-bold">15-10-2026 4:23 PM</td>
+                      <td className="p-3 text-slate-400">—</td>
+                      <td className="p-3 font-bold">hfjddddd</td>
+                      <td className="p-3 font-bold">{activeLead.srOfficer}</td>
+                      <td className="p-3 font-bold text-blue-600">Follow Up</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* TAB 6: Visits */}
+            {activeTab === "Visits" && (
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
+                <table className="w-full text-left text-xs min-w-[600px]">
+                  <thead className="bg-blue-600 text-white font-black uppercase text-[10px]">
+                    <tr>
+                      <th className="p-3">DATE</th>
+                      <th className="p-3">NOTE</th>
+                      <th className="p-3">COMMENT</th>
+                      <th className="p-3">ASSIGN USER</th>
+                      <th className="p-3">STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 font-semibold">
+                    <tr>
+                      <td colSpan={5} className="p-6 text-center text-slate-400 font-bold">
+                        No Visit Logs Recorded.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* TAB 7: Note */}
+            {activeTab === "Note" && (
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-xl flex items-center gap-3 text-xs font-bold">
+                  <span className="bg-white dark:bg-slate-900 px-3 py-2 border rounded-lg font-bold text-slate-500">Note</span>
+                  <input
+                    type="text"
+                    value={noteInput}
+                    onChange={(e) => setNoteInput(e.target.value)}
+                    placeholder="Enter new note..."
+                    className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg outline-none font-semibold"
+                  />
+                </div>
+
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-blue-600 text-white font-black uppercase text-[10px]">
+                      <tr>
+                        <th className="p-3 w-16">SL</th>
+                        <th className="p-3 w-48">DATE</th>
+                        <th className="p-3">NOTE</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 font-semibold">
+                      <tr>
+                        <td colSpan={3} className="p-6 text-center text-slate-400 font-bold">
+                          No Notes Available.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // MAIN LEAD DIRECTORY VIEW
   return (
     <div className="w-full space-y-6 px-4 md:px-8 py-6 text-foreground bg-slate-50/50 dark:bg-background min-h-screen">
       
@@ -448,61 +1278,69 @@ export default function LeadListPage() {
           </div>
         </div>
 
-        {/* Action Button Bar */}
-        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border/60">
+        {/* Action Buttons Toolbar */}
+        <div className="flex flex-wrap items-center gap-2.5 pt-3 border-t border-border/60">
           <button
+            type="button"
             onClick={handleOpenNewModal}
-            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl transition flex items-center gap-2 shadow-sm active:scale-95"
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl transition flex items-center gap-2 shadow-sm active:scale-95 cursor-pointer"
           >
             <Plus size={16} /> +New Lead
           </button>
 
           <button
-            onClick={() => setIsCallAssignOpen(true)}
-            className="px-4 py-2.5 bg-indigo-600/10 text-indigo-600 hover:bg-indigo-600 hover:text-white text-xs font-extrabold rounded-xl transition flex items-center gap-1.5 active:scale-95"
+            type="button"
+            onClick={() => verifySelection(() => setIsCallAssignOpen(true))}
+            className="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 hover:bg-indigo-600 hover:text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
           >
             <PhoneCall size={15} /> Call Assign
           </button>
 
           <button
+            type="button"
             onClick={() => setIsBulkImportOpen(true)}
-            className="px-4 py-2.5 bg-indigo-600/10 text-indigo-600 hover:bg-indigo-600 hover:text-white text-xs font-extrabold rounded-xl transition flex items-center gap-1.5 active:scale-95 border border-black/80"
+            className="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 hover:bg-indigo-600 hover:text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
           >
             <Upload size={15} /> Bulk Import
           </button>
 
           <button
+            type="button"
             onClick={() => verifySelection(() => setIsSmsOpen(true))}
-            className="px-4 py-2.5 bg-indigo-600/10 text-indigo-600 hover:bg-indigo-600 hover:text-white text-xs font-extrabold rounded-xl transition flex items-center gap-1.5 active:scale-95"
+            className="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 hover:bg-indigo-600 hover:text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
           >
             <MessageSquare size={15} /> Send SMS
           </button>
 
           <button
+            type="button"
             onClick={() => verifySelection(() => alert(`${selectedLeads.length} leads converted to customer!`))}
-            className="px-4 py-2.5 bg-indigo-600/10 text-indigo-600 hover:bg-indigo-600 hover:text-white text-xs font-extrabold rounded-xl transition flex items-center gap-1.5 active:scale-95"
+            className="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 hover:bg-indigo-600 hover:text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
           >
             <UserPlus size={15} /> Convert To Customer
           </button>
 
           <button
-            onClick={() => setIsTransferOpen(true)}
-            className="px-4 py-2.5 bg-indigo-600/10 text-indigo-600 hover:bg-indigo-600 hover:text-white text-xs font-extrabold rounded-xl transition flex items-center gap-1.5 active:scale-95"
+            type="button"
+            onClick={() => verifySelection(() => setIsTransferOpen(true))}
+            className="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 hover:bg-indigo-600 hover:text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
           >
             <ArrowRightLeft size={15} /> Transfer
           </button>
 
           <button
-            onClick={() => verifySelection(() => setIsSmsOpen(true))}
-            className="px-4 py-2.5 bg-indigo-600/10 text-indigo-600 hover:bg-indigo-600 hover:text-white text-xs font-extrabold rounded-xl transition flex items-center gap-1.5 active:scale-95 border border-indigo-600/30"
+            type="button"
+            onClick={() => verifySelection(() => setIsWishSmsOpen(true))}
+            className="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 hover:bg-indigo-600 hover:text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
           >
             <Gift size={15} /> Wish SMS
           </button>
 
           <button
+            type="button"
             onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
-            className={`px-4 py-2.5 text-xs font-extrabold rounded-xl transition flex items-center gap-1.5 active:scale-95 ${
-              isFilterPanelOpen ? "bg-indigo-600 text-white" : "bg-muted hover:bg-indigo-600 hover:text-white"
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition flex items-center gap-1.5 active:scale-95 cursor-pointer ${
+              isFilterPanelOpen ? "bg-indigo-600 text-white" : "bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-600 hover:text-white"
             }`}
           >
             <Filter size={15} /> Filter
@@ -530,7 +1368,7 @@ export default function LeadListPage() {
             >
               <option value="">Select Category</option>
               <option value="Ready Flat">Ready Flat</option>
-              <option value="On going">On going</option>
+              <option value="Ongoing">Ongoing</option>
               <option value="Upcoming">Upcoming</option>
               <option value="Junk">Junk</option>
             </select>
@@ -597,7 +1435,7 @@ export default function LeadListPage() {
         </div>
       </div>
 
-      {/* TABLE DISPLAY */}
+      {/* TABLE */}
       <div className="rounded-3xl border border-border/80 bg-card shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
@@ -605,7 +1443,7 @@ export default function LeadListPage() {
               <tr className="border-b border-border/80 text-white font-black uppercase text-[11px] tracking-wider bg-indigo-600">
                 <th className="p-4 w-12 text-center">SL</th>
                 <th className="p-4 w-12 text-center">
-                  <button onClick={handleSelectAll}>
+                  <button type="button" onClick={handleSelectAll}>
                     {selectedLeads.length === currentTableData.length && currentTableData.length > 0 ? (
                       <CheckSquare size={16} />
                     ) : (
@@ -631,7 +1469,7 @@ export default function LeadListPage() {
                     </td>
                     
                     <td className="p-4 text-center">
-                      <button onClick={() => handleSelectOne(item.id)}>
+                      <button type="button" onClick={() => handleSelectOne(item.id)}>
                         {selectedLeads.includes(item.id) ? (
                           <CheckSquare size={16} className="text-indigo-600" />
                         ) : (
@@ -676,24 +1514,27 @@ export default function LeadListPage() {
                     <td className="p-4 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <button
+                          type="button"
                           onClick={() => handleOpenEditModal(item)}
-                          className="p-1.5 rounded bg-cyan-400 text-white hover:bg-cyan-500 transition shadow-xs active:scale-95"
+                          className="p-1.5 rounded bg-cyan-400 text-white hover:bg-cyan-500 transition shadow-xs active:scale-95 cursor-pointer"
                           title="Edit Lead"
                         >
                           <Edit size={14} />
                         </button>
 
                         <button
-                          onClick={() => handleOpenCallModal(item)}
-                          className="p-1.5 rounded bg-indigo-500 text-white hover:bg-indigo-600 transition shadow-xs active:scale-95"
-                          title="Call Activity & Lead Log"
+                          type="button"
+                          onClick={() => handleOpenCallActivityPage(item)}
+                          className="p-1.5 rounded bg-indigo-500 text-white hover:bg-indigo-600 transition shadow-xs active:scale-95 cursor-pointer"
+                          title="Call Activity & Lead Log Page"
                         >
                           <Phone size={14} />
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => handleOpenDeleteModal(item)}
-                          className="p-1.5 rounded bg-rose-500 text-white hover:bg-rose-600 transition shadow-xs active:scale-95"
+                          className="p-1.5 rounded bg-rose-500 text-white hover:bg-rose-600 transition shadow-xs active:scale-95 cursor-pointer"
                           title="Delete Lead"
                         >
                           <Trash2 size={14} />
@@ -755,69 +1596,68 @@ export default function LeadListPage() {
         </div>
       </div>
 
-      {/* LEAD ACCOUNTS FORM MODAL (NEW LEAD & EDIT LEAD) */}
+      {/* ALL MODALS */}
       {isNewOrEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-5xl rounded-2xl bg-card border border-border shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            
-            <div className="flex items-center justify-between p-4 border-b border-border bg-slate-100 dark:bg-card">
-              <h2 className="text-base font-bold text-foreground">
+          <div className="w-full max-w-5xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col animate-in fade-in">
+            <div className="flex items-center justify-between px-5 py-3.5 bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">
                 {activeLead ? "Edit Lead Account" : "Lead Accounts"}
               </h2>
               <button
+                type="button"
                 onClick={() => setIsNewOrEditModalOpen(false)}
-                className="p-1 text-muted-foreground hover:text-foreground border border-border rounded-md bg-background"
+                className="p-1 text-slate-500 hover:text-slate-900 border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800"
               >
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="p-6 overflow-y-auto space-y-6 text-xs font-semibold">
-              
-              {/* BASIC INFO */}
-              <div className="space-y-3">
-                <div className="p-2.5 bg-blue-100 dark:bg-blue-950/40 text-blue-600 font-bold rounded-lg text-sm">
-                  Basic Info
-                </div>
+            <form onSubmit={handleFormSubmit} className="p-6 overflow-y-auto space-y-5 text-xs font-semibold">
+              <div className="p-2.5 bg-blue-100/80 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-extrabold rounded-lg text-xs">
+                Basic Info
+              </div>
 
-                <div className="p-4 bg-muted/20 border border-border/60 rounded-xl grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="p-4 bg-slate-50/50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-muted-foreground mb-1">Date</label>
+                    <label className="block text-slate-500 mb-1 font-bold">Date</label>
                     <input
-                      type="date"
+                      type="text"
                       value={formData.date}
                       onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                      className="w-full p-2 border rounded-lg bg-background border-border font-mono"
+                      className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-mono"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-muted-foreground mb-1">Lead Code</label>
+                    <label className="block text-slate-500 mb-1 font-bold">Lead Code</label>
                     <input
                       type="text"
                       readOnly
                       value={formData.leadCode}
-                      className="w-full p-2 border rounded-lg bg-muted border-border font-mono font-bold"
+                      className="w-full p-2 border rounded-lg bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-800 font-mono font-bold"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-muted-foreground mb-1">Name <span className="text-rose-500">*</span></label>
+                    <label className="block text-slate-500 mb-1 font-bold">Name <span className="text-rose-500">*</span></label>
                     <input
                       type="text"
                       required
                       placeholder="Name"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full p-2 border rounded-lg bg-background border-border"
+                      className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-muted-foreground mb-1">Phone/Mobile <span className="text-rose-500">*</span></label>
-                    <div className="flex border rounded-lg overflow-hidden bg-background border-border">
-                      <div className="flex items-center gap-1 bg-muted px-2 border-r text-[11px] font-bold">
+                    <label className="block text-slate-500 mb-1 font-bold">Phone/Mobile <span className="text-rose-500">*</span></label>
+                    <div className="flex border rounded-lg overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                      <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 border-r text-[11px] font-bold">
                         <span>🇧🇩 (+880)</span>
+                        <ChevronDown size={12} />
                       </div>
                       <input
                         type="text"
@@ -829,516 +1669,203 @@ export default function LeadListPage() {
                       />
                     </div>
                   </div>
+                </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-muted-foreground mb-1">Secondary Number</label>
+                    <label className="block text-slate-500 mb-1 font-bold">Secondary Number</label>
                     <input
                       type="text"
                       placeholder="Secondary Number"
                       value={formData.secondaryNumber}
                       onChange={(e) => setFormData({ ...formData, secondaryNumber: e.target.value })}
-                      className="w-full p-2 border rounded-lg bg-background border-border font-mono"
+                      className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-muted-foreground mb-1">Assign User/SR</label>
-                    <select
+                    <label className="block text-slate-500 mb-1 font-bold">Assign User/SR</label>
+                    <input
+                      type="text"
                       value={formData.assignUser}
                       onChange={(e) => setFormData({ ...formData, assignUser: e.target.value })}
-                      className="w-full p-2 border rounded-lg bg-background border-border"
-                    >
-                      <option value="Admin">Admin</option>
-                      <option value="Mohin">Mohin</option>
-                      <option value="Rafiq">Rafiq</option>
-                    </select>
+                      className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold"
+                    />
                   </div>
 
                   <div>
-                    <label className="block text-muted-foreground mb-1">If CR</label>
-                    <select
+                    <label className="block text-slate-500 mb-1 font-bold">If CR</label>
+                    <input
+                      type="text"
                       value={formData.ifCr}
                       onChange={(e) => setFormData({ ...formData, ifCr: e.target.value })}
-                      className="w-full p-2 border rounded-lg bg-background border-border"
-                    >
-                      <option value="">Select User</option>
-                      <option value="Tazmul Reza">Tazmul Reza</option>
-                      <option value="Rowza">Rowza</option>
-                    </select>
+                      className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                    />
                   </div>
 
                   <div>
-                    <label className="block text-muted-foreground mb-1">Lead Stages</label>
-                    <select
+                    <label className="block text-slate-500 mb-1 font-bold">Lead Stages</label>
+                    <input
+                      type="text"
                       value={formData.leadStages}
                       onChange={(e) => setFormData({ ...formData, leadStages: e.target.value })}
-                      className="w-full p-2 border rounded-lg bg-background border-border"
-                    >
-                      <option value="New Assignment">New Assignment</option>
-                      <option value="Priority">Priority</option>
-                      <option value="Prospect">Prospect</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* LEAD DETAILS */}
-              <div className="space-y-3">
-                <div className="p-2.5 bg-blue-100 dark:bg-blue-950/40 text-blue-600 font-bold rounded-lg text-sm flex items-center justify-between">
-                  <span>Lead Details</span>
-                </div>
-
-                <div className="p-4 bg-muted/20 border border-border/60 rounded-xl grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-muted-foreground mb-1">Lead Source</label>
-                    <select
-                      value={formData.leadSource}
-                      onChange={(e) => setFormData({ ...formData, leadSource: e.target.value })}
-                      className="w-full p-2 border rounded-lg bg-background border-border"
-                    >
-                      <option value="">Select Source</option>
-                      <option value="Google">Google</option>
-                      <option value="Linkedin">Linkedin</option>
-                      <option value="Youtube">Youtube</option>
-                      <option value="Facebook">Facebook</option>
-                      <option value="Reference">Reference</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-muted-foreground mb-1">Interested Project</label>
-                    <select
-                      value={formData.interestedProject}
-                      onChange={(e) => setFormData({ ...formData, interestedProject: e.target.value })}
-                      className="w-full p-2 border rounded-lg bg-background border-border"
-                    >
-                      <option value="">Select Interested Project</option>
-                      <option value="Mustain Villa">Mustain Villa</option>
-                      <option value="Royal City">Royal City</option>
-                      <option value="36 Haque Tower">36 Haque Tower</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-muted-foreground mb-1">Lead Category</label>
-                    <select
-                      value={formData.leadCategory}
-                      onChange={(e) => setFormData({ ...formData, leadCategory: e.target.value })}
-                      className="w-full p-2 border rounded-lg bg-background border-border"
-                    >
-                      <option value="">Select Category</option>
-                      <option value="Ready Flat">Ready Flat</option>
-                      <option value="On going">On going</option>
-                      <option value="Upcoming">Upcoming</option>
-                      <option value="Junk">Junk</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-muted-foreground mb-1">Campaign</label>
-                    <select
-                      value={formData.campaign}
-                      onChange={(e) => setFormData({ ...formData, campaign: e.target.value })}
-                      className="w-full p-2 border rounded-lg bg-background border-border"
-                    >
-                      <option value="">Select Lead Source</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* PERSONAL INFO */}
-              <div className="space-y-3">
-                <div className="p-2.5 bg-blue-100 dark:bg-blue-950/40 text-blue-600 font-bold rounded-lg text-sm">
-                  Personal Info
-                </div>
-
-                <div className="p-4 bg-muted/20 border border-border/60 rounded-xl grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-muted-foreground mb-1">Organization</label>
-                    <input
-                      type="text"
-                      placeholder="Organization"
-                      value={formData.organization}
-                      onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
-                      className="w-full p-2 border rounded-lg bg-background border-border"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-muted-foreground mb-1">Designation</label>
-                    <input
-                      type="text"
-                      placeholder="Designation"
-                      value={formData.designation}
-                      onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                      className="w-full p-2 border rounded-lg bg-background border-border"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-muted-foreground mb-1">Address</label>
-                    <input
-                      type="text"
-                      placeholder="Address"
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="w-full p-2 border rounded-lg bg-background border-border"
+                      className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* FOOTER BUTTONS */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              {/* Lead Details Accordion */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setIsLeadDetailsOpen(!isLeadDetailsOpen)}
+                  className="w-full p-3 bg-blue-100/80 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-extrabold flex items-center justify-between cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">Lead Details</span>
+                  <div className="p-1 rounded-lg border border-blue-400 bg-white dark:bg-slate-900 text-blue-600">
+                    <ChevronDown size={14} className={`transition duration-200 ${isLeadDetailsOpen ? "rotate-180" : ""}`} />
+                  </div>
+                </button>
+
+                {isLeadDetailsOpen && (
+                  <div className="p-4 bg-slate-50/50 dark:bg-slate-950/40 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 animate-in fade-in">
+                    <div>
+                      <label className="block text-slate-500 mb-1 font-bold">Lead Source</label>
+                      <select
+                        value={formData.leadSource}
+                        onChange={(e) => setFormData({ ...formData, leadSource: e.target.value })}
+                        className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                      >
+                        <option value="">Select Source</option>
+                        <option value="Linkedin">Linkedin</option>
+                        <option value="Facebook">Facebook</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-500 mb-1 font-bold">Interested Project</label>
+                      <select
+                        value={formData.interestedProject}
+                        onChange={(e) => setFormData({ ...formData, interestedProject: e.target.value })}
+                        className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                      >
+                        <option value="">Select Interested Project</option>
+                        <option value="Mustain Villa">Mustain Villa</option>
+                        <option value="Royal City">Royal City</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-500 mb-1 font-bold">Lead Category</label>
+                      <select
+                        value={formData.leadCategory}
+                        onChange={(e) => setFormData({ ...formData, leadCategory: e.target.value })}
+                        className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                      >
+                        <option value="">Select Category</option>
+                        <option value="Ready Flat">Ready Flat</option>
+                        <option value="Ongoing">Ongoing</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-500 mb-1 font-bold">Campaign</label>
+                      <select
+                        value={formData.campaign}
+                        onChange={(e) => setFormData({ ...formData, campaign: e.target.value })}
+                        className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                      >
+                        <option value="">Select Lead Source</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Personal Info Accordion */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setIsPersonalInfoOpen(!isPersonalInfoOpen)}
+                  className="w-full p-3 bg-blue-100/80 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-extrabold flex items-center justify-between cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">Personal Info</span>
+                  <div className="p-1 rounded-lg border border-blue-400 bg-white dark:bg-slate-900 text-blue-600">
+                    <ChevronDown size={14} className={`transition duration-200 ${isPersonalInfoOpen ? "rotate-180" : ""}`} />
+                  </div>
+                </button>
+
+                {isPersonalInfoOpen && (
+                  <div className="p-4 bg-slate-50/50 dark:bg-slate-950/40 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 animate-in fade-in">
+                    <div>
+                      <label className="block text-slate-500 mb-1 font-bold">Organization</label>
+                      <input
+                        type="text"
+                        value={formData.organization}
+                        onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                        className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-500 mb-1 font-bold">Designation</label>
+                      <input
+                        type="text"
+                        value={formData.designation}
+                        onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                        className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-500 mb-1 font-bold">Email</label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-500 mb-1 font-bold">Profession</label>
+                      <select
+                        value={formData.profession}
+                        onChange={(e) => setFormData({ ...formData, profession: e.target.value })}
+                        className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                      >
+                        <option value="">Select Profession</option>
+                        <option value="Engineer">Engineer</option>
+                        <option value="Doctor">Doctor</option>
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-slate-500 mb-1 font-bold">Address</label>
+                      <input
+                        type="text"
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        className="w-full p-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsNewOrEditModalOpen(false)}
-                  className="px-6 py-2 rounded-lg bg-slate-300 dark:bg-muted font-bold text-slate-700 dark:text-foreground"
+                  className="px-6 py-2 rounded-xl bg-slate-400 text-white font-bold hover:bg-slate-500 transition cursor-pointer"
                 >
                   Close
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md"
+                  className="px-6 py-2 rounded-xl bg-indigo-600 text-white font-black hover:bg-indigo-700 shadow-md transition cursor-pointer"
                 >
                   Submit
                 </button>
               </div>
-
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* CALL & LEAD ACTIVITY MODAL */}
-      {isCallModalOpen && activeLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-6xl rounded-2xl bg-card border border-border shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
-            
-            {/* MODAL HEADER */}
-            <div className="flex items-center justify-between p-4 border-b border-border bg-slate-50 dark:bg-card">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-black text-foreground">{activeLead.name}</h2>
-                <CheckCircle2 size={18} className="text-blue-500 fill-blue-500/20" />
-              </div>
-              <button 
-                onClick={() => setIsCallModalOpen(false)} 
-                className="p-1 rounded-md border border-border hover:bg-muted transition"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-6 text-xs font-bold">
-              
-              {/* LEFT PROFILE PANEL */}
-              <div className="lg:col-span-4 space-y-4">
-                <div className="p-5 border rounded-2xl bg-muted/20 border-border text-center space-y-3">
-                  <span className="px-3 py-1 rounded-md bg-black text-white font-mono text-[10px] font-black uppercase">
-                    {activeLead.badge}
-                  </span>
-
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleImageUpload} 
-                    accept="image/*" 
-                    className="hidden" 
-                  />
-
-                  <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="relative w-20 h-20 mx-auto rounded-full bg-amber-500 text-white font-black text-2xl flex items-center justify-center shadow-md cursor-pointer group overflow-hidden"
-                    title="Click to upload image"
-                  >
-                    {activeLead.avatarUrl ? (
-                      <img src={activeLead.avatarUrl} alt={activeLead.name} className="w-full h-full object-cover" />
-                    ) : (
-                      activeLead.name.substring(0, 2).toUpperCase()
-                    )}
-                    <div className="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                      <Camera size={18} />
-                    </div>
-                  </div>
-
-                  <button 
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-[11px] text-muted-foreground hover:text-indigo-600 transition"
-                  >
-                    Click to upload image
-                  </button>
-
-                  {/* QUICK COMMUNICATION BUTTONS */}
-                  <div className="grid grid-cols-4 gap-2 pt-2 border-t border-border/60 text-[10px]">
-                    <a 
-                      href={`https://wa.me/880${activeLead.phone}`} 
-                      target="_blank" 
-                      rel="noreferrer" 
-                      className="flex flex-col items-center gap-1 text-emerald-600 hover:scale-105 transition"
-                    >
-                      <div className="p-2 rounded-full border border-emerald-500/30 bg-emerald-500/10">
-                        <MessageCircle size={16} />
-                      </div>
-                      WhatsApp
-                    </a>
-
-                    <a 
-                      href={`tel:+880${activeLead.phone}`} 
-                      className="flex flex-col items-center gap-1 text-indigo-600 hover:scale-105 transition"
-                    >
-                      <div className="p-2 rounded-full border border-indigo-500/30 bg-indigo-500/10">
-                        <Phone size={16} />
-                      </div>
-                      Call
-                    </a>
-
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        setIsCallModalOpen(false);
-                        setIsSmsOpen(true);
-                      }} 
-                      className="flex flex-col items-center gap-1 text-purple-600 hover:scale-105 transition"
-                    >
-                      <div className="p-2 rounded-full border border-purple-500/30 bg-purple-500/10">
-                        <MessageSquare size={16} />
-                      </div>
-                      Message
-                    </button>
-
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        const input = document.createElement("input");
-                        input.type = "file";
-                        input.onchange = (e) => {
-                          const file = (e.target as HTMLInputElement).files?.[0];
-                          if (file) alert(`File Attached: ${file.name}`);
-                        };
-                        input.click();
-                      }}
-                      className="flex flex-col items-center gap-1 text-rose-600 hover:scale-105 transition"
-                    >
-                      <div className="p-2 rounded-full border border-rose-500/30 bg-rose-500/10">
-                        <Paperclip size={16} />
-                      </div>
-                      Attachment
-                    </button>
-                  </div>
-
-                  <div className="pt-2 font-mono text-muted-foreground text-[11px]">
-                    <div>ID: {activeLead.leadId}</div>
-                    <div>Added By: {activeLead.srOfficer}</div>
-                  </div>
-                </div>
-
-                <div className="border rounded-2xl bg-card border-border divide-y divide-border text-[11px]">
-                  <div className="grid grid-cols-2 p-2.5"><span className="text-muted-foreground">Category</span><span>{activeLead.leadCategory || "Select Category"}</span></div>
-                  <div className="grid grid-cols-2 p-2.5"><span className="text-muted-foreground">Phone</span><span className="font-mono">+880{activeLead.phone}</span></div>
-                  <div className="grid grid-cols-2 p-2.5"><span className="text-muted-foreground">Organization</span><span>{activeLead.organization || "—"}</span></div>
-                  <div className="grid grid-cols-2 p-2.5"><span className="text-muted-foreground">Designation</span><span>{activeLead.designation || "—"}</span></div>
-                  <div className="grid grid-cols-2 p-2.5"><span className="text-muted-foreground">SR</span><span>{activeLead.srOfficer}</span></div>
-                  <div className="grid grid-cols-2 p-2.5"><span className="text-muted-foreground">CR</span><span>{activeLead.cr}</span></div>
-                  <div className="grid grid-cols-2 p-2.5"><span className="text-muted-foreground">Created At</span><span className="font-mono">{activeLead.createdAt || "15-10-2026"}</span></div>
-                </div>
-              </div>
-
-              {/* RIGHT FOLLOWUP & ACTIVITY PANEL */}
-              <div className="lg:col-span-8 space-y-4">
-                
-                {/* TAB NAVIGATION */}
-                <div className="flex flex-wrap gap-2 border-b border-border pb-3">
-                  <button 
-                    onClick={() => setActiveTab("pending")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition ${
-                      activeTab === "pending" 
-                        ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" 
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    Upcoming/Pending
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab("requirements")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                      activeTab === "requirements" 
-                        ? "bg-indigo-500/10 text-indigo-600 border border-indigo-500/20" 
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    Requirements <span className="bg-rose-500 text-white rounded-full px-1.5 py-0.2 text-[9px]">0</span>
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab("followup")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                      activeTab === "followup" 
-                        ? "bg-indigo-500/10 text-indigo-600 border border-indigo-500/20" 
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    Follow-up <span className="bg-rose-500 text-white rounded-full px-1.5 py-0.2 text-[9px]">1</span>
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab("visits")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                      activeTab === "visits" 
-                        ? "bg-indigo-500/10 text-indigo-600 border border-indigo-500/20" 
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    Visits <span className="bg-rose-500 text-white rounded-full px-1.5 py-0.2 text-[9px]">0</span>
-                  </button>
-                </div>
-
-                {/* DYNAMIC TAB CONTENTS */}
-                {activeTab === "pending" && (
-                  <div className="p-3 bg-muted/20 border rounded-xl text-muted-foreground text-center font-normal">
-                    No pending activities scheduled right now.
-                  </div>
-                )}
-                {activeTab === "requirements" && (
-                  <div className="p-3 bg-muted/20 border rounded-xl text-muted-foreground text-center font-normal">
-                    No specific project requirements logged.
-                  </div>
-                )}
-                {activeTab === "followup" && (
-                  <div className="p-3 bg-muted/20 border rounded-xl text-muted-foreground font-normal space-y-1">
-                    <div className="font-bold text-foreground">Previous Follow-up Log:</div>
-                    <div>{activeLead.lastActivity || "Initial Assignment Logged"}</div>
-                  </div>
-                )}
-                {activeTab === "visits" && (
-                  <div className="p-3 bg-muted/20 border rounded-xl text-muted-foreground text-center font-normal">
-                    No physical visits recorded yet.
-                  </div>
-                )}
-
-                {/* STAGE & QUICK STATUS CHANGE */}
-                <div className="p-4 border rounded-2xl bg-muted/20 border-border space-y-3">
-                  <div className="font-bold text-muted-foreground">Stage</div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <select 
-                      value={activeLead.badge} 
-                      onChange={(e) => {
-                        const newBadge = e.target.value;
-                        setActiveLead({ ...activeLead, badge: newBadge });
-                        setIsJunk(newBadge === "Junk");
-                      }}
-                      className="p-2 border rounded-xl bg-background border-border font-bold outline-none"
-                    >
-                      <option value="New Assignment">New Assignment</option>
-                      <option value="Priority">Priority</option>
-                      <option value="Prospect">Prospect</option>
-                      <option value="Junk">Junk</option>
-                      <option value="Sold">Sold</option>
-                    </select>
-
-                    <label className="flex items-center gap-1.5 text-rose-600 bg-rose-500/10 px-3 py-2 rounded-xl border border-rose-500/20 cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={isJunk} 
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setIsJunk(checked);
-                          setActiveLead({ ...activeLead, badge: checked ? "Junk" : "New Assignment" });
-                        }} 
-                      />
-                      Move to junk
-                    </label>
-
-                    <button 
-                      type="button"
-                      onClick={handleMarkAsSold}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl font-black transition shadow-sm"
-                    >
-                      ✓ Mark as Sold
-                    </button>
-                  </div>
-                </div>
-
-                {/* ADD FOLLOWUP FORM */}
-                <div className="p-4 border rounded-2xl bg-muted/20 border-border space-y-3">
-                  <div className="font-bold text-muted-foreground">Add Followup</div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-muted-foreground mb-1">Status *</label>
-                      <select 
-                        value={followupStatus}
-                        onChange={(e) => setFollowupStatus(e.target.value)}
-                        className="w-full p-2 border rounded-xl bg-background border-border outline-none focus:ring-2 focus:ring-indigo-500/20"
-                      >
-                        <option value="">Select Communication</option>
-                        <option value="Call Connected">Call Connected</option>
-                        <option value="Follow Up">Follow Up</option>
-                        <option value="No Answer">No Answer</option>
-                        <option value="Busy">Busy</option>
-                        <option value="Switched Off">Switched Off</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-muted-foreground mb-1">Comment *</label>
-                      <textarea
-                        rows={2}
-                        value={followupComment}
-                        onChange={(e) => setFollowupComment(e.target.value)}
-                        placeholder="Enter followup comment..."
-                        className="w-full p-2 border rounded-xl bg-background border-border outline-none focus:ring-2 focus:ring-indigo-500/20"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* NEXT FOLLOWUP FORM */}
-                <div className="p-4 border rounded-2xl bg-muted/20 border-border space-y-3">
-                  <div className="font-bold text-muted-foreground">Next Followup</div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <input 
-                      type="datetime-local" 
-                      value={nextFollowupDate}
-                      onChange={(e) => setNextFollowupDate(e.target.value)}
-                      className="p-2 border rounded-xl bg-background border-border font-mono outline-none focus:ring-2 focus:ring-indigo-500/20" 
-                    />
-                    <input 
-                      type="text" 
-                      value={activeLead.srOfficer} 
-                      readOnly 
-                      className="p-2 border rounded-xl bg-muted border-border font-bold text-muted-foreground" 
-                    />
-                    <input 
-                      type="text" 
-                      value={nextFollowupNote}
-                      onChange={(e) => setNextFollowupNote(e.target.value)}
-                      placeholder="Note" 
-                      className="p-2 border rounded-xl bg-background border-border outline-none focus:ring-2 focus:ring-indigo-500/20" 
-                    />
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* FOOTER ACTIONS */}
-            <div className="flex justify-end gap-3 p-4 border-t border-border bg-slate-50 dark:bg-card">
-              <button 
-                type="button"
-                onClick={() => setIsCallModalOpen(false)} 
-                className="px-6 py-2 rounded-xl bg-slate-300 dark:bg-muted text-slate-700 dark:text-foreground font-bold hover:opacity-90 transition"
-              >
-                Close
-              </button>
-              <button 
-                type="button"
-                onClick={handleSaveCallModalChanges} 
-                className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold shadow-md transition"
-              >
-                Save changes
-              </button>
-            </div>
-
           </div>
         </div>
       )}
@@ -1346,33 +1873,68 @@ export default function LeadListPage() {
       {/* CALL ASSIGN MODAL */}
       {isCallAssignOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-2xl rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-5">
-            <div className="flex justify-between items-center border-b border-border pb-3">
-              <h3 className="font-extrabold text-base">Call Assign</h3>
-              <button onClick={() => setIsCallAssignOpen(false)}><X size={18} /></button>
+          <div className="w-full max-w-4xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl animate-in fade-in">
+            <div className="flex justify-between items-center border-b pb-3 border-slate-200 dark:border-slate-800">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                Call Assign
+              </h3>
+              <button type="button" onClick={() => setIsCallAssignOpen(false)} className="text-slate-400 text-lg">
+                ✕
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-bold">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-bold">
               <div>
-                <label className="block text-muted-foreground mb-1">Date</label>
-                <input type="datetime-local" className="w-full p-2 border rounded-lg bg-background border-border font-mono" />
+                <label className="block text-slate-500 mb-1">Date</label>
+                <input
+                  type="text"
+                  placeholder="mm/dd/yyyy --:-- --"
+                  value={callAssignDate}
+                  onChange={(e) => setCallAssignDate(e.target.value)}
+                  className="w-full p-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-mono"
+                />
               </div>
+
               <div>
-                <label className="block text-muted-foreground mb-1">Assign User Type</label>
-                <select className="w-full p-2 border rounded-lg bg-background border-border">
-                  <option value="Officer/SR">Officer/SR</option>
-                  <option value="Manager">Manager</option>
-                </select>
+                <label className="block text-slate-500 mb-1">Assign User Type</label>
+                <input
+                  type="text"
+                  value={callAssignUserType}
+                  onChange={(e) => setCallAssignUserType(e.target.value)}
+                  className="w-full p-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                />
               </div>
+
               <div>
-                <label className="block text-muted-foreground mb-1">Note</label>
-                <input type="text" placeholder="Write Descriptions" className="w-full p-2 border rounded-lg bg-background border-border" />
+                <label className="block text-slate-500 mb-1">Note</label>
+                <textarea
+                  rows={2}
+                  placeholder="Write Descriptions"
+                  value={callAssignNote}
+                  onChange={(e) => setCallAssignNote(e.target.value)}
+                  className="w-full p-2 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 resize-none font-semibold"
+                />
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-border">
-              <button onClick={() => setIsCallAssignOpen(false)} className="px-5 py-2 rounded-lg bg-muted font-bold text-xs">Close</button>
-              <button onClick={() => setIsCallAssignOpen(false)} className="px-5 py-2 rounded-lg bg-indigo-600 text-white font-bold text-xs">Submit</button>
+            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsCallAssignOpen(false)}
+                className="px-6 py-2 rounded-xl bg-slate-400 text-white font-bold"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  alert(`Assigned successfully!`);
+                  setIsCallAssignOpen(false);
+                }}
+                className="px-6 py-2 rounded-xl bg-indigo-600 text-white font-black shadow-md"
+              >
+                Submit
+              </button>
             </div>
           </div>
         </div>
@@ -1381,71 +1943,221 @@ export default function LeadListPage() {
       {/* BULK IMPORT MODAL */}
       {isBulkImportOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-3xl rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
-            <div className="flex justify-between items-center border-b border-border pb-3">
-              <h3 className="font-extrabold text-base">Bulk Import</h3>
-              <button onClick={() => setIsBulkImportOpen(false)}><X size={18} /></button>
-            </div>
-
-            <div className="flex justify-end">
-              <button className="text-xs font-bold text-indigo-600 flex items-center gap-1">
-                <Download size={14} /> Sample File Download
-              </button>
+          <div className="w-full max-w-4xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl animate-in fade-in">
+            <div className="flex justify-between items-center border-b pb-3 border-slate-200 dark:border-slate-800">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                Bulk Import
+              </h3>
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  alert("Sample Excel file download started.");
+                }}
+                className="text-xs font-bold text-indigo-600 flex items-center gap-1 hover:underline"
+              >
+                ↓ Sample File Download
+              </a>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-bold">
               <div>
-                <label className="block text-muted-foreground mb-1">File</label>
-                <input type="file" className="w-full p-1.5 border rounded-lg bg-background border-border" />
+                <label className="block text-slate-500 mb-1">File</label>
+                <input
+                  type="file"
+                  className="w-full p-1.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                />
               </div>
+
               <div>
-                <label className="block text-muted-foreground mb-1">Lead Stage</label>
-                <select className="w-full p-2 border rounded-lg bg-background border-border">
+                <label className="block text-slate-500 mb-1">Lead Stage</label>
+                <select className="w-full p-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                   <option value="New Assignment">New Assignment</option>
+                  <option value="Priority">Priority</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-500 mb-1">Lead Category</label>
+                <select className="w-full p-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                  <option value="">Select Category</option>
+                  <option value="Ready Flat">Ready Flat</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-500 mb-1">Lead Source</label>
+                <select className="w-full p-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                  <option value="">Select Source</option>
+                  <option value="Linkedin">Linkedin</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-500 mb-1">Campaign</label>
+                <select className="w-full p-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                  <option value="">Select Lead Source</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-500 mb-1">Interested Project</label>
+                <select className="w-full p-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                  <option value="">Select value</option>
+                  <option value="Mustain Villa">Mustain Villa</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-500 mb-1">User/SR</label>
+                <input
+                  type="text"
+                  defaultValue="Admin"
+                  className="w-full p-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-500 mb-1">If CR</label>
+                <input
+                  type="text"
+                  defaultValue="Admin"
+                  className="w-full p-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                />
               </div>
             </div>
 
-            <p className="text-[11px] text-rose-500 font-bold">
-              Note: If Lead Source or Campaign is not found in the Excel file, the values selected in this form will be used.
-            </p>
+            <div className="flex items-center gap-1.5 text-rose-500 font-bold text-[11px]">
+              <AlertCircle size={14} />
+              <span>Note: If Lead Source or Campaign is not found in the Excel file, the values selected in this form will be used.</span>
+            </div>
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-border">
-              <button onClick={() => setIsBulkImportOpen(false)} className="px-5 py-2 rounded-lg bg-muted font-bold text-xs">Close</button>
-              <button onClick={() => setIsBulkImportOpen(false)} className="px-5 py-2 rounded-lg bg-indigo-600 text-white font-bold text-xs">Submit</button>
+            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsBulkImportOpen(false)}
+                className="px-6 py-2 rounded-xl bg-slate-400 text-white font-bold"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  alert("Bulk Import successful!");
+                  setIsBulkImportOpen(false);
+                }}
+                className="px-6 py-2 rounded-xl bg-indigo-600 text-white font-black shadow-md"
+              >
+                Submit
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* SMS TEMPLATE MODAL */}
-      {isSmsOpen && (
+      {/* SEND SMS / WISH SMS MODAL */}
+      {(isSmsOpen || isWishSmsOpen) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
-            <div className="flex justify-between items-center border-b border-border pb-3">
-              <h3 className="font-extrabold text-base">SMS Template</h3>
-              <button onClick={() => setIsSmsOpen(false)}><X size={18} /></button>
+          <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl animate-in fade-in">
+            <div className="flex justify-between items-center border-b pb-3 border-slate-200 dark:border-slate-800">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                {isWishSmsOpen ? "Wish SMS Template" : "SMS Template"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSmsOpen(false);
+                  setIsWishSmsOpen(false);
+                }}
+                className="px-2 py-0.5 text-xs text-slate-600 bg-slate-100 rounded border border-slate-300"
+              >
+                ✕
+              </button>
             </div>
 
-            <div className="space-y-3 text-xs font-bold">
+            <div className="space-y-4 text-xs font-bold">
               <div>
-                <label className="block text-muted-foreground mb-1">SMS Template</label>
-                <select className="w-full p-2 border rounded-lg bg-background border-border">
+                <label className="block text-slate-500 mb-1">SMS Template</label>
+                <select
+                  value={smsTemplate}
+                  onChange={(e) => setSmsTemplate(e.target.value)}
+                  className="w-full p-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                >
                   <option value="">Select Template</option>
-                  <option value="Welcome">Welcome Template</option>
+                  <option value="Greeting">Greeting Template</option>
                   <option value="Followup">Followup Template</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-muted-foreground mb-1">SMS</label>
-                <textarea rows={4} placeholder="Write SMS" className="w-full p-2 border rounded-lg bg-background border-border outline-none" />
+                <label className="block text-slate-500 mb-1">SMS</label>
+                <textarea
+                  rows={4}
+                  value={smsText}
+                  onChange={(e) => setSmsText(e.target.value)}
+                  placeholder="Write SMS"
+                  className="w-full p-3 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 resize-none font-semibold outline-none"
+                />
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-border">
-              <button onClick={() => setIsSmsOpen(false)} className="px-5 py-2 rounded-lg bg-muted font-bold text-xs">Close</button>
-              <button onClick={() => setIsSmsOpen(false)} className="px-5 py-2 rounded-lg bg-indigo-600 text-white font-bold text-xs">Submit</button>
+            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSmsOpen(false);
+                  setIsWishSmsOpen(false);
+                }}
+                className="px-6 py-2 rounded-xl bg-slate-400 text-white font-bold"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSmsOpen(false);
+                  setIsWishSmsOpen(false);
+                  setIsSmsConfirmOpen(true);
+                }}
+                className="px-6 py-2 rounded-xl bg-indigo-600 text-white font-black shadow-md"
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SMS CONFIRMATION POPUP */}
+      {isSmsConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 space-y-6 shadow-2xl text-center animate-in fade-in">
+            <div className="w-24 h-24 mx-auto rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center border-4 border-amber-400/40">
+              <AlertCircle size={52} />
+            </div>
+
+            <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">
+              Are you sure Send SMS?
+            </h3>
+
+            <div className="flex justify-center gap-4 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsSmsConfirmOpen(false)}
+                className="px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold text-slate-700 dark:text-slate-300 border border-slate-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  alert("SMS sent successfully!");
+                  setIsSmsConfirmOpen(false);
+                }}
+                className="px-8 py-2.5 rounded-xl bg-rose-500 text-white font-black shadow-md hover:bg-rose-600 transition"
+              >
+                OK
+              </button>
             </div>
           </div>
         </div>
@@ -1454,31 +2166,103 @@ export default function LeadListPage() {
       {/* TRANSFER LEAD MODAL */}
       {isTransferOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-2xl rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
-            <div className="flex justify-between items-center border-b border-border pb-3">
-              <h3 className="font-extrabold text-base">Transfer Lead</h3>
-              <div className="text-xs font-bold">Selected Lead: <span className="text-indigo-600 font-mono text-sm">{selectedLeads.length}</span></div>
+          <div className="w-full max-w-3xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl animate-in fade-in">
+            <div className="flex justify-between items-center border-b pb-3 border-slate-200 dark:border-slate-800">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                Transfer Lead
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-500">Selected Lead:</span>
+                <span className="px-4 py-1.5 border rounded-lg bg-slate-50 dark:bg-slate-950 font-bold text-rose-600 text-sm">
+                  {selectedLeads.length}
+                </span>
+                <button type="button" onClick={() => setIsTransferOpen(false)} className="text-slate-400 text-lg ml-2">
+                  ✕
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-bold">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-bold">
               <div>
-                <label className="block text-muted-foreground mb-1">Assign User</label>
-                <select className="w-full p-2 border rounded-lg bg-background border-border">
+                <label className="block text-slate-500 mb-1">Assign User</label>
+                <select
+                  value={transferUser}
+                  onChange={(e) => setTransferUser(e.target.value)}
+                  className="w-full p-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                >
                   <option value="">Select User</option>
-                  <option value="Mohin">Mohin</option>
                   <option value="Admin">Admin</option>
+                  <option value="Mohin">Mohin</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-muted-foreground mb-1">Assign Type</label>
-                <input type="text" defaultValue="Officer/SR" className="w-full p-2 border rounded-lg bg-muted border-border" />
+                <label className="block text-slate-500 mb-1">Assign Type</label>
+                <div className="flex items-center gap-4 pt-1">
+                  <input
+                    type="text"
+                    value={transferType}
+                    onChange={(e) => setTransferType(e.target.value)}
+                    className="w-full p-2 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                  />
+                  <label className="flex items-center gap-1 cursor-pointer whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={transferFollowup}
+                      onChange={(e) => setTransferFollowup(e.target.checked)}
+                      className="rounded"
+                    />
+                    Followup
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={transferManualSet}
+                      onChange={(e) => setTransferManualSet(e.target.checked)}
+                      className="rounded"
+                    />
+                    Manual Set
+                  </label>
+                </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-border">
-              <button onClick={() => setIsTransferOpen(false)} className="px-5 py-2 rounded-lg bg-muted font-bold text-xs">Close</button>
-              <button onClick={() => setIsTransferOpen(false)} className="px-5 py-2 rounded-lg bg-indigo-600 text-white font-bold text-xs">Transfer</button>
+            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+              <div className="grid grid-cols-12 bg-indigo-500 text-white font-black text-xs p-2.5 text-center uppercase tracking-wider">
+                <div className="col-span-6">USER NAME</div>
+                <div className="col-span-3">QUANTITY</div>
+                <div className="col-span-3 flex justify-center items-center">
+                  <span>ACTION</span>
+                  <button type="button" className="ml-2 bg-blue-500 text-white rounded p-0.5"><Plus size={14} /></button>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center font-bold text-xs text-slate-500 space-y-1">
+              <div>Assign Total Transfer</div>
+              <div className="w-48 mx-auto p-2 border rounded-xl font-mono text-blue-600 font-extrabold text-lg bg-slate-50 dark:bg-slate-950">
+                {selectedLeads.length}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsTransferOpen(false)}
+                className="px-6 py-2 rounded-xl bg-slate-400 text-white font-bold"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  alert(`Transferred ${selectedLeads.length} leads successfully!`);
+                  setIsTransferOpen(false);
+                }}
+                className="px-6 py-2 rounded-xl bg-indigo-600 text-white font-black shadow-md"
+              >
+                Transfer
+              </button>
             </div>
           </div>
         </div>
