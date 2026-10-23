@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 /**
  * Sidebar menu structures for every module / role.
  * Trees are authored as indented text (2 spaces per level) and parsed once.
@@ -11,7 +12,15 @@ export type MenuNode = {
 };
 
 export type ModuleKey =
-  "project" | "inventory" | "accounts" | "hrm" | "crm" | "cr" | "lams" | "procurement" | "all";
+  | "project"
+  | "inventory"
+  | "accounts"
+  | "hrm"
+  | "crm"
+  | "cr"
+  | "lams"
+  | "procurement"
+  | "all";
 
 export const MODULES: { key: ModuleKey; label: string }[] = [
   { key: "project", label: "Project" },
@@ -54,7 +63,8 @@ function parseTree(text: string): MenuNode[] {
   for (const raw of lines) {
     const depth = (raw.match(/^ */)?.[0].length ?? 0) / 2;
     const slug = raw.trim();
-    while (stack.length && (stack[stack.length - 1]?.depth ?? -1) >= depth) stack.pop();
+    while (stack.length && (stack[stack.length - 1]?.depth ?? -1) >= depth)
+      stack.pop();
     const parent = stack[stack.length - 1]?.node;
     const path = parent ? `${parent.path}/${slug}` : slug;
     const node: MenuNode = { label: slugToLabel(slug), slug, path };
@@ -273,6 +283,8 @@ employee
   unit
   employee-list
   employee-hierarchy
+  Increment 
+  ID-Card-Generate
 configuration
   month-configuration
   deduction-rules
@@ -280,8 +292,9 @@ configuration
   salary-grade
   leave-type
   holiday
-attendance
   zkteco-device-configuration
+attendance
+  attendance
   attendance-log
   pending-attendance
   attendance-reconciliations
@@ -311,6 +324,9 @@ kpi
 
 const cr = `
 dashboard
+agreements
+setups
+recovery
 receipt-voucher
 overdue-list
 reports
@@ -335,25 +351,32 @@ configuration
   communication-status
   teams
   lead-category
+  categories
   campaign
   profession
   lead-source
+  sources
   offers
   area
   lead-stage
+  stages
   project
   price-range
 lead
   lead-list
+  pipeline
+  parties
   junk-lead
   transfer-history
 call-center
   follow-up
+  followups
   call-report
   call-report-details
   call-assign-history
 task-visit
   task-visit-list
+  visits
   deal-negotiation-activity
   task-visit-summary-report
   task-visit-details-report
@@ -362,6 +385,8 @@ property
   land
   booking
   sale-offer
+  offers
+  quotations
 reports
   user-wise-report
   user-active-report
@@ -372,28 +397,81 @@ reports
   flat-land-sale-report
   missed-followup-visit-summary
   deal-negotiation-reports
+  perf
 kpi
   employee-kpi-setting
   reports
+   employee-call-report
+   team-call-report
 `;
 
 const procurement = `
 dashboard
+
+configuration
+  products
+    category
+    sub-category
+    brand
+    unit
+    item-entry
+  asset
+    asset-category
+    asset-item-entry
+
 requisition
   material-requisition
   asset-requisition
+  
 rfq
   request-for-quotation
   asset-request-for-quotation
+  supplier-quote-list
+  supplier-comparison-report
+  
 purchase-order
   purchase-order-list
   asset-purchase-order-list
+  
 grn
   goods-receipt-note
   asset-goods-receipt-note
+  
 purchase-bill
   purchase-bill-invoice
   asset-purchase-bill-invoice
+  
+approvals
+  procurement-approvals
+  
+vendors
+  vendor-list
+  
+boq
+  all-boq
+  
+equipment-hire
+  hire-orders
+  equipment-bills
+  equipment-on-site
+  
+work-orders
+  work-orders-list
+  work-measurements
+  work-bills
+  
+material-issue
+  material-issue-list
+  
+parties
+  all-party
+  
+labor-type
+  labor-type-list
+  
+subcontract-pack
+  subcontract-pack-list
+  
 reports
   grn-vs-invoice-report
 `;
@@ -545,7 +623,10 @@ export function moduleLabel(key: ModuleKey) {
 }
 
 /** Find a node by its path within a module. */
-export function findNode(module: ModuleKey, path: string): MenuNode | undefined {
+export function findNode(
+  module: ModuleKey,
+  path: string,
+): MenuNode | undefined {
   const walk = (nodes: MenuNode[]): MenuNode | undefined => {
     for (const n of nodes) {
       if (n.path === path) return n;

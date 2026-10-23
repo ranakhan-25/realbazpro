@@ -1,6 +1,11 @@
-import { CrmPageTemplate } from "@/components/crm/CrmPageTemplate";
-import { crmPageData } from "@/lib/crm-dummy-data";
+import { Metadata } from "next";
+import CrmLeadDirectory from "@/components/crm/crm-lead-directory";
 
-export default function Page() {
-  return <CrmPageTemplate {...crmPageData["lead/lead-list"]} />;
+export const metadata: Metadata = {
+  title: "Lead Directory - CRM",
+  description: "Manage and track all CRM leads",
+};
+
+export default function LeadListPage() {
+  return <CrmLeadDirectory />;
 }

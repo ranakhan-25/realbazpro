@@ -642,42 +642,9 @@ export default function MenuManagementPage() {
         {/* CONTENT */}
         <Row gutter={[16, 16]}>
           {/* LEFT SIDE */}
-          <Col xs={24} lg={10} xl={9}>
-            <Card
-              title={
-                <div className="flex items-center justify-between">
-                  <span>Menu Structure</span>
-                  <Text type="secondary">
-                    {flattenTree(treeNodes).length} items
-                  </Text>
-                </div>
-              }
-              styles={{ body: { padding: 12 } }}
-              style={{ borderColor: BORDER_COLOR }}
-            >
-              {treeNodes.length > 0 ? (
-                <Tree
-                  blockNode
-                  draggable
-                  showLine
-                  switcherIcon={<DownOutlined />}
-                  selectedKeys={selectedMenuId ? [selectedMenuId] : []}
-                  expandedKeys={expandedKeys}
-                  treeData={treeData}
-                  onSelect={handleSelect}
-                  onExpand={(keys) => setExpandedKeys(keys)}
-                  onDragStart={() => setIsDragging(true)}
-                  onDragEnd={() => setIsDragging(false)}
-                  onDrop={handleDrop}
-                  className={isDragging ? "opacity-70" : ""}
-                />
-              ) : (
-                <Empty description="No menus found" />
-              )}
-            </Card>
-          </Col>
 
-          {/* RIGHT SIDE */}
+
+         
           <Col xs={24} lg={14} xl={15}>
             <Card
               title={
@@ -847,6 +814,41 @@ export default function MenuManagementPage() {
                   </Button>
                 </div>
               </Form>
+            </Card>
+          </Col>
+ {/* RIGHT SIDE */}
+          <Col xs={24} lg={10} xl={9}>
+            <Card
+              title={
+                <div className="flex items-center justify-between">
+                  <span>Menu Structure</span>
+                  <Text type="secondary">
+                    {flattenTree(treeNodes).length} items
+                  </Text>
+                </div>
+              }
+              styles={{ body: { padding: 12 } }}
+              style={{ borderColor: BORDER_COLOR }}
+            >
+              {treeNodes.length > 0 ? (
+                <Tree
+                  blockNode
+                  draggable
+                  showLine
+                  switcherIcon={<DownOutlined />}
+                  selectedKeys={selectedMenuId ? [selectedMenuId] : []}
+                  expandedKeys={expandedKeys}
+                  treeData={treeData}
+                  onSelect={handleSelect}
+                  onExpand={(keys) => setExpandedKeys(keys)}
+                  onDragStart={() => setIsDragging(true)}
+                  onDragEnd={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  className={isDragging ? "opacity-70" : ""}
+                />
+              ) : (
+                <Empty description="No menus found" />
+              )}
             </Card>
           </Col>
         </Row>
