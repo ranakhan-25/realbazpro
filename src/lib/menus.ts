@@ -71,7 +71,7 @@ projects
   project-type
   project
   site 
-  project-master
+ 
   building
   floor
   unit-plot
