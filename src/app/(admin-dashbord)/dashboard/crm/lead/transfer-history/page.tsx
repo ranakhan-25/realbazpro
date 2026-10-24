@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Phone } from "lucide-react";
+import {
+  Sparkles,
+  Phone,
+  Search,
+  ChevronLeft,
+  ChevronRight
+} from "lucide-react";
 
 interface TransferLeadRecord {
   id: string;
@@ -17,46 +23,45 @@ interface TransferLeadRecord {
 const mockTransferLeads: TransferLeadRecord[] = [
   { id: "1", leadCode: "L261008-117", name: "Gazi Nasir", mobile: "1711921550", from: "Admin", to: "Rowza", date: "14-10-2026", lastActivity: "" },
   { id: "2", leadCode: "L261008-116", name: "Mostakim", mobile: "1722519606", from: "Admin", to: "Rowza", date: "14-10-2026", lastActivity: "" },
-  { id: "3", leadCode: "L261008-115", name: "Md Habibur Rahman", mobile: "1797474790", from: "Admin", to: "Rowza", date: "14-10-2026", lastActivity: "" },
-  { id: "4", leadCode: "L261008-114", name: "Md Shakil", mobile: "1715326093", from: "Admin", to: "Sarna11", date: "14-10-2026", lastActivity: "" },
-  { id: "5", leadCode: "L261008-113", name: "Md Anwar Hossain", mobile: "1812154559", from: "Admin", to: "Sarna11", date: "14-10-2026", lastActivity: "" },
-  { id: "6", leadCode: "L261008-112", name: "Sulaiman Ahmed", mobile: "1727795533", from: "Admin", to: "Sarna11", date: "14-10-2026", lastActivity: "" },
-  { id: "7", leadCode: "L261008-111", name: "Poly", mobile: "1777194879", from: "Admin", to: "Sarna11", date: "14-10-2026", lastActivity: "" },
-  { id: "8", leadCode: "L261008-110", name: "S Mahmud Intl", mobile: "1685809115", from: "Admin", to: "Sarna11", date: "14-10-2026", lastActivity: "" },
-  { id: "9", leadCode: "L261008-109", name: "Md Badrul", mobile: "1913470936", from: "Admin", to: "Sarna11", date: "14-10-2026", lastActivity: "" },
-  { id: "10", leadCode: "L261008-108", name: "Ahraf Peal", mobile: "1980862327", from: "Admin", to: "Sarna11", date: "14-10-2026", lastActivity: "" },
-  { id: "11", leadCode: "L261008-107", name: "Tanvir Ahmed", mobile: "1812345678", from: "Mohin", to: "Rowza", date: "13-10-2026", lastActivity: "" },
-  { id: "12", leadCode: "L261008-106", name: "Kamrul Islam", mobile: "1712345679", from: "Mohin", to: "Sarna11", date: "13-10-2026", lastActivity: "" },
 ];
 
 export default function TransferLeadListPage() {
-  const [transferLeads, setTransferLeads] = useState<TransferLeadRecord[]>(() => {
+  const [transferLeads, setTransferLeads] = useState<TransferLeadRecord[]>([]);
+
+  // LocalStorage theke data load korar function
+  const loadTransfers = () => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("crm_transfer_leads_data");
+      const saved = localStorage.getItem("transfer_history_data");
       if (saved) {
         try {
-          return JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setTransferLeads(parsed);
+            return;
+          }
         } catch (e) {
-          // fallback
+          // JSON parse error handle
         }
       }
+      setTransferLeads(mockTransferLeads);
     }
-    return mockTransferLeads;
-  });
+  };
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("crm_transfer_leads_data", JSON.stringify(transferLeads));
-    }
-  }, [transferLeads]);
+    loadTransfers();
 
-  // Filter States
+    // Onno tab ba page theke update hole sync korar jonno
+    window.addEventListener("storage", loadTransfers);
+    return () => {
+      window.removeEventListener("storage", loadTransfers);
+    };
+  }, []);
+
   const [selectedDateRange, setSelectedDateRange] = useState("September 23, 2026 - October 22, 2026");
   const [selectedFrom, setSelectedFrom] = useState("");
   const [selectedTo, setSelectedTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Pagination States
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -75,7 +80,6 @@ export default function TransferLeadListPage() {
     return matchesSearch && matchesFrom && matchesTo;
   });
 
-  // Pagination Calculations
   const totalEntries = filteredData.length;
   const totalPages = Math.ceil(totalEntries / entriesPerPage) || 1;
   const indexOfLastItem = currentPage * entriesPerPage;
@@ -88,39 +92,61 @@ export default function TransferLeadListPage() {
     }
   };
 
+  const renderPaginationButtons = () => {
+    const pages = [];
+    for (let page = 1; page <= totalPages; page++) {
+      const isActive = currentPage === page;
+      pages.push(
+        <button
+          key={page}
+          onClick={() => handlePageChange(page)}
+          className={`w-9 h-9 rounded-xl font-extrabold text-xs transition cursor-pointer ${
+            isActive
+              ? "bg-indigo-600 text-white shadow-md"
+              : "bg-background border border-border hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground"
+          }`}
+        >
+          {page}
+        </button>
+      );
+    }
+    return pages;
+  };
+
   return (
-    <div className="w-full space-y-5 p-4 md:p-6 bg-slate-50/50 dark:bg-background min-h-screen text-foreground text-xs font-sans">
+    <div className="w-full space-y-6 p-4 md:p-6 bg-slate-50/50 dark:bg-background min-h-screen text-foreground font-sans animate-in fade-in">
       
-      {/* BREADCRUMB HEADER */}
-      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-        <a href="/dashboard" className="hover:text-indigo-600 transition">Home</a>
-        <span>›</span>
-        <a href="#" className="hover:text-indigo-600 transition">Call Center</a>
-        <span>›</span>
-        <span className="text-foreground font-extrabold">Transfer Lead List</span>
+      {/* HEADER */}
+      <div className="flex flex-col gap-5 rounded-3xl border border-border bg-card p-6 md:p-8 shadow-sm">
+        <div className="flex items-center gap-2 text-xs md:text-sm font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+          <Sparkles size={18} className="animate-pulse" /> Call Center Management
+        </div>
+        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">
+          Transfer Lead List
+        </h1>
       </div>
 
-      {/* TOP FILTERS SECTION */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+      {/* FILTERS */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 md:p-5 rounded-2xl border border-border bg-card shadow-xs">
         <div>
-          <label className="block font-bold text-muted-foreground mb-1 text-[11px]">Select Date</label>
+          <label className="block font-bold text-muted-foreground mb-1.5 text-xs">Select Date</label>
           <input
             type="text"
             value={selectedDateRange}
             onChange={(e) => setSelectedDateRange(e.target.value)}
-            className="w-full p-2.5 border rounded-lg bg-background border-border text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="w-full px-3.5 py-2.5 border rounded-xl bg-background border-border text-sm font-semibold"
           />
         </div>
 
         <div>
-          <label className="block font-bold text-muted-foreground mb-1 text-[11px]">From</label>
+          <label className="block font-bold text-muted-foreground mb-1.5 text-xs">From</label>
           <select
             value={selectedFrom}
             onChange={(e) => {
               setSelectedFrom(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full p-2.5 border rounded-lg bg-background border-border text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="w-full px-3.5 py-2.5 border rounded-xl bg-background border-border text-sm font-extrabold cursor-pointer"
           >
             <option value="">Select One Option</option>
             <option value="Admin">Admin</option>
@@ -129,14 +155,14 @@ export default function TransferLeadListPage() {
         </div>
 
         <div>
-          <label className="block font-bold text-muted-foreground mb-1 text-[11px]">To</label>
+          <label className="block font-bold text-muted-foreground mb-1.5 text-xs">To</label>
           <select
             value={selectedTo}
             onChange={(e) => {
               setSelectedTo(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full p-2.5 border rounded-lg bg-background border-border text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="w-full px-3.5 py-2.5 border rounded-xl bg-background border-border text-sm font-extrabold cursor-pointer"
           >
             <option value="">Select One Option</option>
             <option value="Rowza">Rowza</option>
@@ -145,9 +171,9 @@ export default function TransferLeadListPage() {
         </div>
       </div>
 
-      {/* SHOW ENTRIES & SEARCH BAR */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-        <div className="flex items-center gap-1.5 font-bold text-muted-foreground">
+      {/* SEARCH */}
+      <div className="p-4 md:p-5 rounded-2xl border border-border bg-card shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-2 text-sm font-extrabold text-muted-foreground">
           <span>Show</span>
           <select
             value={entriesPerPage}
@@ -155,7 +181,7 @@ export default function TransferLeadListPage() {
               setEntriesPerPage(Number(e.target.value));
               setCurrentPage(1);
             }}
-            className="p-1.5 border rounded-md bg-background border-border font-bold text-foreground outline-none"
+            className="px-3 py-2 border rounded-xl bg-background border-border text-foreground font-black text-sm cursor-pointer"
           >
             <option value={10}>10</option>
             <option value={25}>25</option>
@@ -164,68 +190,75 @@ export default function TransferLeadListPage() {
           <span>entries</span>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <span className="font-bold text-muted-foreground">Search:</span>
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
           <input
             type="text"
+            placeholder="Search name, phone, lead ID..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full sm:w-48 p-1.5 border rounded-md bg-background border-border font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="w-full pl-10 pr-4 py-2.5 border rounded-xl outline-none bg-background border-border text-sm font-bold"
           />
         </div>
       </div>
 
-      {/* TABLE SECTION */}
-      <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden">
+      {/* TABLE */}
+      <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="border-b border-border bg-indigo-500 text-white font-extrabold uppercase text-[11px]">
-                <th className="p-3 w-12 text-center">SL</th>
-                <th className="p-3 min-w-[120px]">ID</th>
-                <th className="p-3 min-w-[180px]">NAME</th>
-                <th className="p-3 min-w-[130px]">MOBILE</th>
-                <th className="p-3 min-w-[110px]">FROM</th>
-                <th className="p-3 min-w-[110px]">TO</th>
-                <th className="p-3 min-w-[120px]">DATE</th>
-                <th className="p-3 min-w-[150px]">LAST ACTIVITY</th>
-                <th className="p-3 text-center min-w-[90px]">ACTION</th>
+              <tr className="border-b border-border text-white font-black uppercase text-xs tracking-wider bg-gradient-to-r from-indigo-600 to-violet-600">
+                <th className="py-5 px-4 w-12 text-center">SL</th>
+                <th className="py-5 px-4 min-w-[140px]">ID</th>
+                <th className="py-5 px-4 min-w-[200px]">NAME</th>
+                <th className="py-5 px-4 min-w-[140px]">MOBILE</th>
+                <th className="py-5 px-4 min-w-[120px]">FROM</th>
+                <th className="py-5 px-4 min-w-[120px]">TO</th>
+                <th className="py-5 px-4 min-w-[130px]">DATE</th>
+                <th className="py-5 px-4 min-w-[160px]">LAST ACTIVITY</th>
+                <th className="py-5 px-4 text-center min-w-[120px]">ACTION</th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-border font-medium text-foreground">
+            <tbody className="divide-y divide-border font-semibold text-foreground text-sm">
               {currentTableData.length > 0 ? (
                 currentTableData.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-muted/20 transition">
-                    <td className="p-3 font-mono font-bold text-center text-muted-foreground">
+                  <tr key={item.id} className="hover:bg-muted/40 transition-colors">
+                    <td className="py-5 px-4 font-mono font-bold text-center text-muted-foreground">
                       {indexOfFirstItem + index + 1}
                     </td>
-                    <td className="p-3 font-mono font-semibold text-foreground">{item.leadCode}</td>
-                    <td className="p-3 font-semibold text-foreground">{item.name}</td>
-                    <td className="p-3 font-mono font-semibold text-foreground">+880{item.mobile}</td>
-                    <td className="p-3 font-semibold text-muted-foreground">{item.from}</td>
-                    <td className="p-3 font-semibold text-muted-foreground">{item.to}</td>
-                    <td className="p-3 font-mono font-semibold text-muted-foreground">{item.date}</td>
-                    <td className="p-3 font-medium text-muted-foreground">{item.lastActivity || "—"}</td>
-                    
-                    {/* CALL ACTION BUTTON */}
-                    <td className="p-3 text-center">
+                    <td className="py-5 px-4 font-mono font-black text-indigo-600 dark:text-indigo-400">{item.leadCode}</td>
+                    <td className="py-5 px-4 font-extrabold text-base">{item.name}</td>
+                    <td className="py-5 px-4 font-mono font-black">+880{item.mobile}</td>
+                    <td className="py-5 px-4">
+                      <span className="px-3 py-1.5 rounded-full text-xs font-black uppercase border bg-amber-500/10 text-amber-600 border-amber-500/20">
+                        {item.from}
+                      </span>
+                    </td>
+                    <td className="py-5 px-4">
+                      <span className="px-3 py-1.5 rounded-full text-xs font-black uppercase border bg-indigo-500/10 text-indigo-600 border-indigo-500/20">
+                        {item.to}
+                      </span>
+                    </td>
+                    <td className="py-5 px-4 font-mono font-bold text-muted-foreground">{item.date}</td>
+                    <td className="py-5 px-4 font-medium text-muted-foreground">{item.lastActivity || "—"}</td>
+                    <td className="py-5 px-4 text-center">
                       <a
                         href={`tel:+880${item.mobile}`}
-                        className="inline-flex items-center justify-center p-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white transition active:scale-95 shadow-xs"
+                        className="inline-flex items-center justify-center p-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition cursor-pointer shadow-md"
                         title="Call Direct"
                       >
-                        <Phone size={13} />
+                        <Phone size={16} />
                       </a>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-muted-foreground font-bold">
+                  <td colSpan={9} className="p-8 text-center text-muted-foreground font-bold text-sm">
                     No transfer leads found.
                   </td>
                 </tr>
@@ -234,46 +267,39 @@ export default function TransferLeadListPage() {
           </table>
         </div>
 
-        {/* PAGINATION FOOTER */}
-        <div className="p-3 border-t border-border bg-card flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold text-muted-foreground">
+        {/* FOOTER */}
+        <div className="p-4 md:p-5 border-t border-border bg-card/50 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm font-bold text-muted-foreground">
           <div>
-            Showing {totalEntries > 0 ? indexOfFirstItem + 1 : 0} to {Math.min(indexOfLastItem, totalEntries)} of {totalEntries} entries
+            Showing <span className="text-foreground font-black">{totalEntries > 0 ? indexOfFirstItem + 1 : 0}</span> to{" "}
+            <span className="text-foreground font-black">{Math.min(indexOfLastItem, totalEntries)}</span> of{" "}
+            <span className="text-foreground font-black">{totalEntries}</span> entries
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="px-2.5 py-1.5 rounded-md border border-border bg-background hover:bg-muted disabled:opacity-40 font-bold transition"
+              className="px-3.5 py-2 rounded-xl border border-border bg-background hover:bg-indigo-50 dark:hover:bg-slate-800 disabled:opacity-40 transition flex items-center gap-1.5 text-foreground cursor-pointer"
             >
-              Previous
+              <ChevronLeft size={18} />
+              <span>Previous</span>
             </button>
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => handlePageChange(page)}
-                className={`px-3 py-1.5 rounded-md font-bold transition ${
-                  currentPage === page
-                    ? "bg-indigo-600 text-white"
-                    : "bg-background border border-border hover:bg-muted text-foreground"
-                }`}
-              >
-                {page}
-              </button>
-            ))}
+            <div className="flex items-center gap-1">
+              {renderPaginationButtons()}
+            </div>
 
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages || totalPages === 0}
-              className="px-2.5 py-1.5 rounded-md border border-border hover:bg-muted disabled:opacity-40 font-bold transition"
+              className="px-3.5 py-2 rounded-xl border border-border bg-background hover:bg-indigo-50 dark:hover:bg-slate-800 disabled:opacity-40 transition flex items-center gap-1.5 text-foreground cursor-pointer"
             >
-              Next
+              <span>Next</span>
+              <ChevronRight size={18} />
             </button>
           </div>
         </div>
       </div>
-
     </div>
   );
 }
