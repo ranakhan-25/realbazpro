@@ -195,20 +195,9 @@ export default function OrgListPage() {
   };
 
   const handleUpdate = async (uuid: string, payload: any) => {
-    try {
-      const res = await fetch(`/api/orgs/${uuid}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Update failed");
-      const updated = await res.json();
-      setOrgs((prev) => prev.map((o) => (o.uuid === uuid ? updated : o)));
-    } catch (error) {
-      setOrgs((prev) =>
-        prev.map((o) => (o.uuid === uuid ? { ...o, ...payload } : o)),
-      );
-    }
+    setOrgs((prev) =>
+      prev.map((o) => (o.uuid === uuid || String(o.id) === uuid ? { ...o, ...payload } : o)),
+    );
   };
 
   const handleDelete = async (uuid: string) => {
@@ -573,6 +562,10 @@ export default function OrgListPage() {
         isOpen={isViewOpen}
         onClose={() => setIsViewOpen(false)}
         orgData={selectedOrg}
+        onEdit={(org) => {
+          setSelectedOrg(org);
+          setIsEditOpen(true);
+        }}
       />
     </div>
   );
