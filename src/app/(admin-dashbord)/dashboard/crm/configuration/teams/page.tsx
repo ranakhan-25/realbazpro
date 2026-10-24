@@ -32,10 +32,7 @@ const leaderOptions = [
   "Kuldip International",
 ];
 
-export const metadata: Metadata = {
-  title: "Sales Teams - CRM",
-  description: "Organize sales forces into specialized regional and project squads",
-};
+
 
 export default function TeamsPage() {
   const [teams, setTeams] = useState<TeamRecord[]>(initialTeams);
