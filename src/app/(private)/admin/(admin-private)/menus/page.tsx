@@ -308,7 +308,7 @@ export default function MenuManagementPage() {
   const parentOptions = useMemo(() => {
     const allNodes = flattenTree(treeNodes);
     return [
-      { label: "Root", value: null },
+      { label: "Root (Top Level)", value: 0 },
       ...allNodes
         .filter((node) => Number(node.id) !== Number(selectedMenuId))
         .map((node) => ({
@@ -369,7 +369,7 @@ export default function MenuManagementPage() {
       elementId: node.elementId ?? "",
       icon: node.icon ?? "",
       description: node.description ?? "",
-      parentId: node.parentId ?? null,
+      parentId: node.parentId ? Number(node.parentId) : 0,
       moduleId: node.moduleId ?? STATIC_MODULE_ID,
       isVisible: node.isVisible ?? true,
       isPublic: node.isPublic ?? false,
@@ -388,7 +388,7 @@ export default function MenuManagementPage() {
       elementId: "",
       icon: "",
       description: "",
-      parentId: null,
+      parentId: 0,
       moduleId: STATIC_MODULE_ID,
       isVisible: true,
       isPublic: false,
@@ -407,7 +407,7 @@ export default function MenuManagementPage() {
         elementId: node.elementId ?? "",
         icon: node.icon ?? "",
         description: node.description ?? "",
-        parentId: node.parentId ?? null,
+        parentId: node.parentId ? Number(node.parentId) : 0,
         moduleId: node.moduleId ?? STATIC_MODULE_ID,
         isVisible: node.isVisible ?? true,
         isPublic: node.isPublic ?? false,
@@ -469,7 +469,10 @@ export default function MenuManagementPage() {
         message.success("Menu updated successfully.");
       } else {
         const newId = getNextMenuId(treeNodes);
-        const parentId = values.parentId ? Number(values.parentId) : null;
+        const parentId =
+          values.parentId && Number(values.parentId) > 0
+            ? Number(values.parentId)
+            : null;
 
         const newMenu: MenuTreeNode = {
           id: newId,
@@ -569,7 +572,7 @@ export default function MenuManagementPage() {
         if (dropIndex !== -1) {
           nextTree.splice(dropIndex + 1, 0, {
             ...draggedNode,
-            parentId: null,
+            parentId: 0,
           });
         }
       } else {
@@ -678,7 +681,7 @@ export default function MenuManagementPage() {
                 initialValues={{
                   target: "_self",
                   moduleId: STATIC_MODULE_ID,
-                  parentId: null,
+                  parentId: 0,
                   isVisible: true,
                   isPublic: false,
                 }}
