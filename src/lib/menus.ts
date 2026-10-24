@@ -81,7 +81,6 @@ projects
   project-type
   project
   site 
-  project-master
   building
   floor
   unit-plot
@@ -94,6 +93,7 @@ projects
   project-progress
 
   project-control
+
   report
 
     project-details 

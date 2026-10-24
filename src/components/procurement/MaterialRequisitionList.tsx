@@ -39,6 +39,9 @@ export interface RequisitionRow {
   projectType: string;
   project: string;
   titleOfWork: string;
+  address?: string;
+  siteEngineer?: string;
+  phone?: string;
   code: string;
   ref: string;
   date: string;
@@ -56,11 +59,13 @@ export interface RequisitionItem {
   itemName: string;
   details: string;
   unit: string;
+  brand?: string;
   budgetQty: number;
   alreadyPurchaseQty: number;
   availableQty: number;
   demandQty: number;
   stock: number;
+  approvedQty?: number;
 }
 
 // ==========================================
