@@ -1,32 +1,16 @@
-
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  Home,
-  ChevronRight,
-  Plus,
-  Search,
-  Users,
-  Phone,
-  Mail,
-  PieChart,
-  X,
-  Building2,
-  RefreshCw,
-  Edit,
-  Trash2,
-  Eye,
-  Loader2,
-  FileText,
+  Home, ChevronRight, Plus, Search, Users, Phone, Mail, PieChart, X,
+  Building2, RefreshCw, Edit, Trash2, Eye, Loader2, FileText,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
 const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:5002/realbizpro/api/v1"
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002/realbizpro/api/v1"
 ).replace(/\/+$/, "");
 
 interface ProjectOption {
@@ -34,14 +18,12 @@ interface ProjectOption {
   name: string;
   code?: string;
 }
-
 const PARTY_TYPES = [
-  "Owner",
   "Investor",
-  "Consultant",
+  "Owner",
+  "Developer",
   "Contractor",
-  "Buyer",
-  "Supplier",
+  "Other",
 ] as const;
 
 type PartyType = (typeof PARTY_TYPES)[number];
@@ -81,14 +63,9 @@ const emptyForm = (): PartyForm => ({
 
 /* ---------------- API HELPERS ---------------- */
 
-async function apiRequest(
-  endpoint: string,
-  options: RequestInit = {},
-) {
+async function apiRequest(endpoint: string, options: RequestInit = {}) {
   const token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("token")
-      : null;
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
@@ -133,7 +110,6 @@ function unwrapList(response: any): any[] {
 
 function unwrapOne(response: any): any {
   let value = response;
-
   for (let i = 0; i < 3; i++) {
     if (
       value?.data &&
@@ -145,16 +121,14 @@ function unwrapOne(response: any): any {
       break;
     }
   }
-
   return value;
 }
 
 function normalizeParty(raw: any): ProjectParty {
   const rawType = String(raw.partyType ?? raw.party_type ?? "Owner");
   const partyType =
-    PARTY_TYPES.find(
-      (type) => type.toLowerCase() === rawType.toLowerCase(),
-    ) ?? "Owner";
+    PARTY_TYPES.find((type) => type.toLowerCase() === rawType.toLowerCase()) ??
+    "Owner";
 
   return {
     id: String(raw.partyCode ?? raw.id ?? raw.uuid ?? ""),
@@ -175,47 +149,41 @@ const partyApi = {
     const params = new URLSearchParams({
       page: "1",
       limit: "100",
-      sortBy: "createdAt",
-      sortOrder: "DESC",
-      withDeleted: "false",
       projectUuid,
     });
 
     const response = await apiRequest(
-      `/project-party?${params.toString()}`,
+      `/project-parties?${params.toString()}`,
     );
 
     return unwrapList(response).map(normalizeParty);
   },
 
   get: async (uuid: string) => {
-    const response = await apiRequest(
-      `/project-party/${encodeURIComponent(uuid)}`,
-    );
-
+    const response = await apiRequest(`/project-parties/${encodeURIComponent(uuid)}`);
     return normalizeParty(unwrapOne(response));
   },
 
   create: (payload: object) =>
-    apiRequest("/project-party", {
+    apiRequest("/project-parties", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
   update: (uuid: string, payload: object) =>
-    apiRequest(`/project-party/${encodeURIComponent(uuid)}`, {
-      method: "PUT",
+    apiRequest(`/project-parties/${encodeURIComponent(uuid)}`, {
+      method: "PATCH",
       body: JSON.stringify(payload),
     }),
 
   remove: (uuid: string) =>
-    apiRequest(`/project-party/${encodeURIComponent(uuid)}`, {
+    apiRequest(`/project-parties/${encodeURIComponent(uuid)}`, {
       method: "DELETE",
     }),
 
   restore: (uuid: string) =>
-    apiRequest(`/project-party/${encodeURIComponent(uuid)}/restore`, {
-      method: "POST",
+    apiRequest(`/project-parties/${encodeURIComponent(uuid)}/restore`, {
+      method: "PATCH",
     }),
 };
 
@@ -226,14 +194,12 @@ function ProjectPartiesContent() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // projectUuid from URL takes priority; user can also pick from dropdown.
   const urlProjectUuid = searchParams.get("projectUuid")?.trim() || "";
 
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [selectedProjectUuid, setSelectedProjectUuid] = useState(urlProjectUuid);
 
-  // Derived: whichever is set
   const projectUuid = selectedProjectUuid;
 
   const [parties, setParties] = useState<ProjectParty[]>([]);
@@ -249,12 +215,12 @@ function ProjectPartiesContent() {
   const [viewParty, setViewParty] = useState<ProjectParty | null>(null);
   const [deleteParty, setDeleteParty] = useState<ProjectParty | null>(null);
 
-  // Load projects for the dropdown
+  // Load projects for dropdown — sortBy/sortOrder বাদ
   useEffect(() => {
     let cancelled = false;
     setProjectsLoading(true);
 
-    apiRequest("/project?page=1&limit=100&sortBy=createdAt&sortOrder=DESC")
+    apiRequest("/project?page=1&limit=100")
       .then((res: any) => {
         if (cancelled) return;
         const mapped: ProjectOption[] = unwrapList(res)
@@ -272,7 +238,6 @@ function ProjectPartiesContent() {
 
         setProjects(mapped);
 
-        // If URL had a projectUuid keep it, otherwise auto-select first project
         setSelectedProjectUuid((prev) => {
           if (prev && mapped.some((p) => p.uuid === prev)) return prev;
           return mapped[0]?.uuid ?? "";
@@ -289,9 +254,12 @@ function ProjectPartiesContent() {
         if (!cancelled) setProjectsLoading(false);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  // Sync URL with selected project
   useEffect(() => {
     if (
       projectsLoading ||
@@ -366,13 +334,8 @@ function ProjectPartiesContent() {
       toast.error("Please wait for the project list to finish loading.");
       return;
     }
-
     if (!projectUuid.trim()) {
-      toast.error(
-        projects.length
-          ? "Please select a project from the dropdown first."
-          : "No projects are available. Create a project before adding parties.",
-      );
+      toast.error("Please select a project from the dropdown first.");
       return;
     }
 
@@ -383,7 +346,6 @@ function ProjectPartiesContent() {
 
   const openEdit = (party: ProjectParty) => {
     setEditingUuid(party.uuid);
-
     setFormData({
       partyCode: party.id,
       party_type: party.party_type,
@@ -393,21 +355,12 @@ function ProjectPartiesContent() {
       share_pct: String(party.share_pct),
       agreement_ref: party.agreement_ref,
     });
-
     setIsModalOpen(true);
   };
 
-  const handleFormSubmit = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
+  // ✅ PATCH-এ projectUuid এবং partyCode বাদ দেওয়া হয়েছে
+  const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    if (!projectUuid.trim()) {
-      toast.error(
-        "Please select a project from the dropdown first.",
-      );
-      return;
-    }
 
     if (!formData.name.trim()) {
       toast.error("Party/business name is required.");
@@ -420,26 +373,10 @@ function ProjectPartiesContent() {
     }
 
     const share = Number(formData.share_pct);
-
     if (!Number.isFinite(share) || share < 0 || share > 100) {
       toast.error("Equity share must be between 0 and 100.");
       return;
     }
-
-    const payload = {
-      projectUuid,
-      ...(formData.partyCode.trim()
-        ? { partyCode: formData.partyCode.trim() }
-        : {}),
-      partyType: formData.party_type,
-      partyBusinessName: formData.name.trim(),
-      phoneNumber: formData.phone.trim(),
-      email: formData.email.trim(),
-      equityShare: share,
-      ...(formData.agreement_ref.trim()
-        ? { agreementRef: formData.agreement_ref.trim() }
-        : {}),
-    };
 
     setSaving(true);
     const loadingToast = toast.loading(
@@ -448,15 +385,41 @@ function ProjectPartiesContent() {
 
     try {
       if (editingUuid) {
-        await partyApi.update(editingUuid, payload);
+        // ✅ Update এর সময় শুধু editable ফিল্ডগুলো পাঠান
+        const updatePayload = {
+          partyType: formData.party_type,
+          partyBusinessName: formData.name.trim(),
+          phoneNumber: formData.phone.trim(),
+          email: formData.email.trim(),
+          equityShare: share,
+          agreementRef: formData.agreement_ref.trim(),
+        };
+        await partyApi.update(editingUuid, updatePayload);
       } else {
-        await partyApi.create(payload);
+        // ✅ Create এর সময় সব ফিল্ড পাঠান
+        if (!projectUuid.trim()) {
+          toast.error("Please select a project from the dropdown first.");
+          setSaving(false);
+          toast.dismiss(loadingToast);
+          return;
+        }
+        const createPayload = {
+          projectUuid,
+          ...(formData.partyCode.trim() ? { partyCode: formData.partyCode.trim() } : {}),
+          partyType: formData.party_type,
+          partyBusinessName: formData.name.trim(),
+          phoneNumber: formData.phone.trim(),
+          email: formData.email.trim(),
+          equityShare: share,
+          ...(formData.agreement_ref.trim()
+            ? { agreementRef: formData.agreement_ref.trim() }
+            : {}),
+        };
+        await partyApi.create(createPayload);
       }
 
       toast.success(
-        editingUuid
-          ? "Party updated successfully!"
-          : "Party created successfully!",
+        editingUuid ? "Party updated successfully!" : "Party created successfully!",
         { id: loadingToast },
       );
 
@@ -477,7 +440,6 @@ function ProjectPartiesContent() {
 
   const handleView = async (party: ProjectParty) => {
     setViewParty(party);
-
     try {
       const latest = await partyApi.get(party.uuid);
       setViewParty(latest);
@@ -493,24 +455,16 @@ function ProjectPartiesContent() {
 
     const target = deleteParty;
     setSaving(true);
-
     const loadingToast = toast.loading("Deleting party...");
 
     try {
       await partyApi.remove(target.uuid);
-
-      setParties((current) =>
-        current.filter((party) => party.uuid !== target.uuid),
-      );
-
+      setParties((current) => current.filter((party) => party.uuid !== target.uuid));
       setDeleteParty(null);
-
       toast.success("Party deleted successfully!", {
         id: loadingToast,
         duration: 6000,
       });
-
-      // Restore is available as a separate action if needed.
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to delete party",
@@ -518,25 +472,6 @@ function ProjectPartiesContent() {
       );
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleRestore = async (party: ProjectParty) => {
-    const loadingToast = toast.loading("Restoring party...");
-
-    try {
-      await partyApi.restore(party.uuid);
-
-      toast.success("Party restored successfully!", {
-        id: loadingToast,
-      });
-
-      await loadParties();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to restore party",
-        { id: loadingToast },
-      );
     }
   };
 
@@ -548,12 +483,8 @@ function ProjectPartiesContent() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <nav className="mb-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-            <Link
-              href="/projects"
-              className="flex items-center transition-colors hover:text-blue-600"
-            >
-              <Home className="mr-1 h-4 w-4" />
-              Projects
+            <Link href="/projects" className="flex items-center transition-colors hover:text-blue-600">
+              <Home className="mr-1 h-4 w-4" /> Projects
             </Link>
             <ChevronRight className="h-4 w-4" />
             <span className="max-w-64 truncate">
@@ -562,7 +493,6 @@ function ProjectPartiesContent() {
             <ChevronRight className="h-4 w-4" />
             <span className="font-semibold text-slate-900">Parties</span>
           </nav>
-
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Project Parties &amp; Stakeholders
           </h1>
@@ -578,9 +508,7 @@ function ProjectPartiesContent() {
             disabled={loading}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
           >
-            <RefreshCw
-              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-            />
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
 
@@ -596,7 +524,7 @@ function ProjectPartiesContent() {
         </div>
       </div>
 
-      {/* PROJECT SELECTOR */}
+      {/* Project Selector */}
       <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
@@ -647,7 +575,7 @@ function ProjectPartiesContent() {
         </div>
       </div>
 
-      {/* KPI cards */}
+      {/* KPI Cards */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Kpi
           label="Total Project Parties"
@@ -655,50 +583,33 @@ function ProjectPartiesContent() {
           icon={<Users className="h-5 w-5" />}
           tone="bg-blue-50 text-blue-600"
         />
-
         <Kpi
           label="Equity Share Allocated"
           value={loading ? "..." : `${totalSharePct.toFixed(2)}%`}
           icon={<PieChart className="h-5 w-5" />}
           tone="bg-emerald-50 text-emerald-600"
         />
-
         <Kpi
           label="Owners & Investors"
-          value={
-            loading
-              ? "..."
-              : String(
-                  parties.filter(
-                    (party) =>
-                      party.party_type === "Owner" ||
-                      party.party_type === "Investor",
-                  ).length,
-                )
-          }
+          value={loading ? "..." : String(parties.filter((p) => p.party_type === "Owner" || p.party_type === "Investor").length)}
           icon={<Building2 className="h-5 w-5" />}
           tone="bg-indigo-50 text-indigo-600"
         />
       </div>
 
-      {/* Main table */}
+      {/* Table */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col items-center justify-between gap-4 border-b border-slate-200 bg-slate-50/50 p-5 sm:flex-row">
           <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-            <label className="text-xs font-semibold uppercase text-slate-500">
-              Party Type:
-            </label>
-
+            <label className="text-xs font-semibold uppercase text-slate-500">Party Type:</label>
             <select
               value={selectedType}
-              onChange={(event) => setSelectedType(event.target.value)}
+              onChange={(e) => setSelectedType(e.target.value)}
               className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm capitalize shadow-sm outline-none focus:border-blue-600"
             >
               <option value="All">All Types</option>
               {PARTY_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
+                <option key={type} value={type}>{type}</option>
               ))}
             </select>
           </div>
@@ -709,7 +620,7 @@ function ProjectPartiesContent() {
               type="text"
               placeholder="Search name, phone, email..."
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-600"
             />
           </div>
@@ -729,7 +640,6 @@ function ProjectPartiesContent() {
                 <th className="px-4 py-3.5 text-center">Actions</th>
               </tr>
             </thead>
-
             <tbody className="divide-y divide-slate-100 text-sm">
               {loading ? (
                 <tr>
@@ -740,72 +650,43 @@ function ProjectPartiesContent() {
                 </tr>
               ) : filteredParties.length ? (
                 filteredParties.map((party) => (
-                  <tr
-                    key={party.uuid}
-                    className="transition-colors hover:bg-slate-50"
-                  >
+                  <tr key={party.uuid} className="transition-colors hover:bg-slate-50">
                     <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs font-semibold text-blue-600">
                       {party.id || "—"}
                     </td>
-
                     <td className="px-4 py-3.5">
                       <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold">
                         {party.party_type}
                       </span>
                     </td>
-
-                    <td className="px-4 py-3.5 font-bold text-slate-900">
-                      {party.name || "—"}
-                    </td>
-
+                    <td className="px-4 py-3.5 font-bold text-slate-900">{party.name || "—"}</td>
                     <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs text-slate-700">
                       <span className="flex items-center gap-1.5">
                         <Phone className="h-3.5 w-3.5 text-slate-400" />
                         {party.phone || "N/A"}
                       </span>
                     </td>
-
                     <td className="px-4 py-3.5 font-mono text-xs text-slate-700">
                       <span className="flex items-center gap-1.5">
                         <Mail className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                         {party.email || "N/A"}
                       </span>
                     </td>
-
                     <td className="px-4 py-3.5 font-bold text-slate-900">
                       {party.share_pct.toFixed(2)}%
                     </td>
-
                     <td className="px-4 py-3.5 font-mono text-xs text-blue-600">
                       {party.agreement_ref || "—"}
                     </td>
-
                     <td className="px-4 py-3.5">
                       <div className="flex items-center justify-center gap-1">
-                        <button
-                          type="button"
-                          title="View"
-                          onClick={() => void handleView(party)}
-                          className="rounded-lg p-2 text-blue-600 hover:bg-blue-50"
-                        >
+                        <button type="button" title="View" onClick={() => void handleView(party)} className="rounded-lg p-2 text-blue-600 hover:bg-blue-50">
                           <Eye className="h-4 w-4" />
                         </button>
-
-                        <button
-                          type="button"
-                          title="Edit"
-                          onClick={() => openEdit(party)}
-                          className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
-                        >
+                        <button type="button" title="Edit" onClick={() => openEdit(party)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100">
                           <Edit className="h-4 w-4" />
                         </button>
-
-                        <button
-                          type="button"
-                          title="Delete"
-                          onClick={() => setDeleteParty(party)}
-                          className="rounded-lg p-2 text-rose-600 hover:bg-rose-50"
-                        >
+                        <button type="button" title="Delete" onClick={() => setDeleteParty(party)} className="rounded-lg p-2 text-rose-600 hover:bg-rose-50">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
@@ -816,9 +697,7 @@ function ProjectPartiesContent() {
                 <tr>
                   <td colSpan={8} className="py-14 text-center">
                     <FileText className="mx-auto h-8 w-8 text-slate-300" />
-                    <p className="mt-2 text-slate-500">
-                      No party records found.
-                    </p>
+                    <p className="mt-2 text-slate-500">No party records found.</p>
                   </td>
                 </tr>
               )}
@@ -827,14 +706,12 @@ function ProjectPartiesContent() {
         </div>
 
         <div className="flex flex-col justify-between gap-2 border-t border-slate-200 bg-slate-50 p-4 text-xs text-slate-500 sm:flex-row">
-          <span>
-            Showing {filteredParties.length} of {parties.length} parties
-          </span>
+          <span>Showing {filteredParties.length} of {parties.length} parties</span>
           <span>Feature 03.03 · Parties Engine</span>
         </div>
       </div>
 
-      {/* Create / Edit modal */}
+      {/* Create / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-sm">
           <div className="my-auto w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
@@ -847,12 +724,10 @@ function ProjectPartiesContent() {
                   {editingUuid ? "Update stakeholder details" : "Add a project stakeholder"}
                 </p>
               </div>
-
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
                 disabled={saving}
-                aria-label="Close modal"
                 className="rounded-full p-2 text-slate-500 hover:bg-slate-200"
               >
                 <X className="h-5 w-5" />
@@ -861,52 +736,36 @@ function ProjectPartiesContent() {
 
             <form onSubmit={handleFormSubmit} className="space-y-4 p-6">
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
-                  Party Code
-                </label>
+                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Party Code</label>
                 <input
                   value={formData.partyCode}
-                  onChange={(event) =>
-                    setFormData({ ...formData, partyCode: event.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, partyCode: e.target.value })}
                   placeholder="PTY-003 (optional)"
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-600"
+                  disabled={!!editingUuid}
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-600 disabled:bg-slate-50 disabled:text-slate-400"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
-                  Party Type *
-                </label>
+                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Party Type *</label>
                 <select
                   required
                   value={formData.party_type}
-                  onChange={(event) =>
-                    setFormData({
-                      ...formData,
-                      party_type: event.target.value as PartyType,
-                    })
-                  }
+                  onChange={(e) => setFormData({ ...formData, party_type: e.target.value as PartyType })}
                   className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-blue-600"
                 >
                   {PARTY_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
+                    <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
-                  Business Name *
-                </label>
+                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Business Name *</label>
                 <input
                   required
                   value={formData.name}
-                  onChange={(event) =>
-                    setFormData({ ...formData, name: event.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="ABC Developers Ltd."
                   className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-600"
                 />
@@ -914,30 +773,21 @@ function ProjectPartiesContent() {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
-                    Phone *
-                  </label>
+                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Phone *</label>
                   <input
                     required
                     value={formData.phone}
-                    onChange={(event) =>
-                      setFormData({ ...formData, phone: event.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="+8801712345678"
                     className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-600"
                   />
                 </div>
-
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
-                    Email
-                  </label>
+                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Email</label>
                   <input
                     type="email"
                     value={formData.email}
-                    onChange={(event) =>
-                      setFormData({ ...formData, email: event.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="investor@example.com"
                     className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-600"
                   />
@@ -945,9 +795,7 @@ function ProjectPartiesContent() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
-                  Equity Share (0–100%) *
-                </label>
+                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Equity Share (0–100%) *</label>
                 <input
                   type="number"
                   required
@@ -955,28 +803,16 @@ function ProjectPartiesContent() {
                   max="100"
                   step="0.01"
                   value={formData.share_pct}
-                  onChange={(event) =>
-                    setFormData({
-                      ...formData,
-                      share_pct: event.target.value,
-                    })
-                  }
+                  onChange={(e) => setFormData({ ...formData, share_pct: e.target.value })}
                   className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-600"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
-                  Agreement Reference
-                </label>
+                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Agreement Reference</label>
                 <input
                   value={formData.agreement_ref}
-                  onChange={(event) =>
-                    setFormData({
-                      ...formData,
-                      agreement_ref: event.target.value,
-                    })
-                  }
+                  onChange={(e) => setFormData({ ...formData, agreement_ref: e.target.value })}
                   placeholder="AGR-2026-003"
                   className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-600"
                 />
@@ -991,7 +827,6 @@ function ProjectPartiesContent() {
                 >
                   Cancel
                 </button>
-
                 <button
                   type="submit"
                   disabled={saving}
@@ -1006,22 +841,16 @@ function ProjectPartiesContent() {
         </div>
       )}
 
-      {/* View modal */}
+      {/* View Modal */}
       {viewParty && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <h2 className="font-bold text-slate-900">Party Details</h2>
-              <button
-                type="button"
-                onClick={() => setViewParty(null)}
-                aria-label="Close details"
-                className="rounded-full p-2 hover:bg-slate-100"
-              >
+              <button type="button" onClick={() => setViewParty(null)} className="rounded-full p-2 hover:bg-slate-100">
                 <X className="h-5 w-5" />
               </button>
             </div>
-
             <div className="space-y-3 p-5 text-sm">
               {[
                 ["Party Code", viewParty.id],
@@ -1034,16 +863,9 @@ function ProjectPartiesContent() {
                 ["Project UUID", viewParty.projectUuid],
                 ["Created At", viewParty.createdAt || "—"],
               ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="flex flex-col gap-1 rounded-xl bg-slate-50 p-3 sm:flex-row sm:justify-between"
-                >
-                  <span className="text-xs font-semibold uppercase text-slate-500">
-                    {label}
-                  </span>
-                  <span className="break-all font-medium text-slate-800 sm:text-right">
-                    {value || "—"}
-                  </span>
+                <div key={label} className="flex flex-col gap-1 rounded-xl bg-slate-50 p-3 sm:flex-row sm:justify-between">
+                  <span className="text-xs font-semibold uppercase text-slate-500">{label}</span>
+                  <span className="break-all font-medium text-slate-800 sm:text-right">{value || "—"}</span>
                 </div>
               ))}
             </div>
@@ -1051,22 +873,17 @@ function ProjectPartiesContent() {
         </div>
       )}
 
-      {/* Delete confirmation */}
+      {/* Delete Modal */}
       {deleteParty && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
               <Trash2 className="h-6 w-6" />
             </div>
-
-            <h2 className="text-lg font-bold text-slate-900">
-              Delete this party?
-            </h2>
+            <h2 className="text-lg font-bold text-slate-900">Delete this party?</h2>
             <p className="mt-2 text-sm text-slate-500">
-              Are you sure you want to delete{" "}
-              <b className="text-slate-800">{deleteParty.name}</b>?
+              Are you sure you want to delete <b className="text-slate-800">{deleteParty.name}</b>?
             </p>
-
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
@@ -1092,23 +909,11 @@ function ProjectPartiesContent() {
   );
 }
 
-function Kpi({
-  label,
-  value,
-  icon,
-  tone,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  tone: string;
-}) {
+function Kpi({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: string; }) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-          {label}
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
         <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
       </div>
       <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}>
@@ -1119,7 +924,5 @@ function Kpi({
 }
 
 export default function ProjectPartiesPage() {
-  return (
-    <ProjectPartiesContent />
-  );
+  return <ProjectPartiesContent />;
 }

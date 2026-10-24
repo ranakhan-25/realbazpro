@@ -21,6 +21,7 @@ import {
   ArrowUpRight,
   MapPin,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 // ======================================================
 // API CONFIGURATION
@@ -367,7 +368,7 @@ export default function BuildingsListPage() {
 
     try {
       await apiRequest(`${API_URL}/building/${encodeURIComponent(editBuilding.uuid)}`, {
-        method: 'PUT',
+        method: 'PATCH',
         body: JSON.stringify({
           buildingName: name,
           siteUuid: editBuilding.siteUuid,
@@ -389,9 +390,47 @@ export default function BuildingsListPage() {
   // ── DELETE ────────────────────────────────────────
 
   const handleDelete = async (building: Building) => {
-    const confirmed = window.confirm(
-      `Delete "${building.buildingName}"?\n\nThis action cannot be undone.`
-    );
+    const confirmed = await new Promise<boolean>((resolve) => {
+      toast.custom(
+        (t) => (
+          <div
+            role="alertdialog"
+            aria-label={`Delete ${building.buildingName}`}
+            className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
+          >
+            <p className="text-sm font-semibold text-slate-900">
+              Delete &quot;{building.buildingName}&quot;?
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              This action cannot be undone.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  resolve(false);
+                }}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  resolve(true);
+                }}
+                className="rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ),
+        { duration: Infinity }
+      );
+    });
     if (!confirmed) return;
 
     setDeletingUuid(building.uuid);
@@ -402,10 +441,10 @@ export default function BuildingsListPage() {
       await apiRequest(`${API_URL}/building/${encodeURIComponent(building.uuid)}`, {
         method: 'DELETE',
       });
+      toast.success('Building deleted successfully.');
       await loadBuildings(false);
-      setSuccess('Building deleted successfully.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete building.');
+      toast.error(err instanceof Error ? err.message : 'Failed to delete building.');
     } finally {
       setDeletingUuid(null);
     }
