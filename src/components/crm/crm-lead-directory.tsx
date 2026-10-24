@@ -82,6 +82,7 @@ interface CrmLead {
   activities?: CrmActivity[];
   property_interests?: CrmPropertyInterest[];
   requirements?: CrmRequirement[];
+  attachments?: any[];
 }
 
 interface LeadForm {

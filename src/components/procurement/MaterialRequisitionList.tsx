@@ -48,6 +48,9 @@ export interface RequisitionRow {
   approvalSteps: ApprovalStep[];
   attachment?: string;
   items?: RequisitionItem[];
+  address?: string;
+  siteEngineer?: string;
+  phone?: string;
 }
 
 export interface RequisitionItem {
@@ -61,6 +64,8 @@ export interface RequisitionItem {
   availableQty: number;
   demandQty: number;
   stock: number;
+  brand?: string;
+  approvedQty?: number;
 }
 
 // ==========================================

@@ -38,24 +38,15 @@ const mockJunkData: JunkLeadRecord[] = [
 ];
 
 export default function JunkLeadPage() {
-  return (
-    <CrmPageTemplate
-      breadcrumb="CRM / Leads / Junk Leads"
-      title="Junk & Inactive Leads"
-      description="Review discarded, uncontactable, or low-intent client inquiries."
-      apiEndpoint="/crm/leads/junk"
-      restoreEndpoint="/crm/leads"
-      transformData={(leads: any[]) =>
-        leads
-          .map((l) => ({
-            id: l.uuid || l.id,
-            code: l.lead_code || `#${l.id}`,
-            name: l.client_name,
-            phone: l.phone,
-            reason: l.notes || "No reason provided",
-            score: l.lead_score ?? 0,
-            status: "Junk",
-          }))
+  const [junkLeads, setJunkLeads] = useState<JunkLeadRecord[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("crm_junk_leads_data");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          // ignore
+        }
       }
     }
     return mockJunkData;

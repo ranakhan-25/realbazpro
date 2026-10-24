@@ -1,4 +1,5 @@
-import { Metadata } from "next";
+"use client";
+
 import CrmLeadDirectory from "@/components/crm/crm-lead-directory";
 
 import React, { useState, useRef, useEffect } from "react";
