@@ -426,8 +426,6 @@ requisition
 rfq
   request-for-quotation
   asset-request-for-quotation
-  supplier-quote-list
-  supplier-comparison-report
   
 purchase-order
   purchase-order-list
