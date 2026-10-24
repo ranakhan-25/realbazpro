@@ -21,7 +21,6 @@ interface QuotationItem {
   amount: number;
 }
 
-// ✅ এখানে Quotation ইন্টারফেসে code, customerId, projectId যোগ করা হলো
 interface Quotation {
   id: string;
   uuid: string;
@@ -41,6 +40,13 @@ interface Quotation {
   deletedAt?: string;
 }
 
+interface SubCategory {
+  id: string;
+  uuid: string;
+  name: string;
+  categoryId: string;
+}
+
 export default function QuotationPage() {
   const { uuid } = useParams();
   const [showForm, setShowForm] = useState(false);
@@ -58,7 +64,9 @@ export default function QuotationPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [subCategories, setSubCategories] = useState<any[]>([]);
+  
+  // ✅ সব সাব-ক্যাটাগরি রাখার স্টেট
+  const [allSubCategories, setAllSubCategories] = useState<SubCategory[]>([]);
 
   // Form State
   const [form, setForm] = useState({
@@ -123,30 +131,15 @@ export default function QuotationPage() {
       const jsonCat = await resCat.json();
       if (jsonCat.success) setCategories(jsonCat.data.data || []);
 
+      // ✅ ৬. সব সাব-ক্যাটাগরি (limit=100 ফিক্স)
+      const resSubCat = await fetch(`${API_BASE}/realbizpro/api/v1/billing-sub-category?page=1&limit=100`);
+      const jsonSubCat = await resSubCat.json();
+      if (jsonSubCat.success) {
+        setAllSubCategories(jsonSubCat.data.data || []);
+      }
+
     } catch (err) {
       console.error(err);
-    }
-  };
-
-  // ====================== HANDLE CATEGORY CHANGE ======================
-  const handleCategoryChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const catId = e.target.value;
-    setForm({ ...form, categoryId: catId, subCategoryId: "" }); 
-    setSubCategories([]);
-
-    if (!catId) return;
-
-    try {
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/billing-sub-category?categoryId=${catId}`);
-      const json = await res.json();
-      
-      if (json.success) {
-        setSubCategories(json.data.data || []);
-      } else {
-        setSubCategories(json.data || []);
-      }
-    } catch (err) {
-      toast.error("Failed to load sub categories");
     }
   };
 
@@ -170,7 +163,6 @@ export default function QuotationPage() {
       categoryId: "",
       subCategoryId: "",
     });
-    setSubCategories([]);
     setLineItems([]);
     setShowForm(true);
   };
@@ -258,6 +250,11 @@ export default function QuotationPage() {
     }
   };
 
+  // ✅ ক্যাটাগরি পরিবর্তন হলে ফিল্টার করা সাব-ক্যাটাগরি বের করা
+  const filteredSubCategories = allSubCategories.filter(
+    (subCat) => subCat.categoryId === form.categoryId
+  );
+
   // ====================== RENDER ======================
   if (showForm) {
     return (
@@ -333,20 +330,32 @@ export default function QuotationPage() {
             <textarea value={form.contentBody} onChange={(e) => setForm({ ...form, contentBody: e.target.value })} className="w-full h-32 p-4 focus:outline-none resize-none" placeholder="Content Body..."></textarea>
           </div>
 
-          {/* Category Select */}
+          {/* Category & Sub Category Select */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
               <label className="block text-xs text-gray-600 mb-1">Category</label>
-              <select value={form.categoryId} onChange={handleCategoryChange} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+              <select 
+                value={form.categoryId} 
+                onChange={(e) => setForm({ ...form, categoryId: e.target.value, subCategoryId: "" })} 
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+              >
                 <option value="">Select Category</option>
                 {categories.map(c => <option key={c.uuid || c.id} value={c.uuid || c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">Sub Category</label>
-              <select value={form.subCategoryId} onChange={(e) => setForm({ ...form, subCategoryId: e.target.value })} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" disabled={!form.categoryId}>
+              <select 
+                value={form.subCategoryId} 
+                onChange={(e) => setForm({ ...form, subCategoryId: e.target.value })} 
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" 
+                disabled={!form.categoryId}
+              >
                 <option value="">Select Sub Category</option>
-                {subCategories.map(sc => <option key={sc.uuid || sc.id} value={sc.uuid || sc.id}>{sc.name}</option>)}
+                {/* ✅ ফিল্টার করা সাব-ক্যাটাগরি লিস্ট */}
+                {filteredSubCategories.map(sc => (
+                  <option key={sc.uuid || sc.id} value={sc.uuid || sc.id}>{sc.name}</option>
+                ))}
               </select>
             </div>
             <div>
