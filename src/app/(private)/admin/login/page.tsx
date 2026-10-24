@@ -69,8 +69,9 @@ export default function LoginPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email.includes("@") || password.length < 4) {
-      setError("Enter a valid email and a password of at least 4 characters.");
+    const identifier = email.trim();
+    if (!identifier || password.length < 4) {
+      setError("Enter a valid email or username, and a password of at least 4 characters.");
       return;
     }
 
@@ -78,11 +79,12 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const session = await loginAdminSession(email, password);
+      const session = await loginAdminSession(identifier, password);
 
       setStoredTokens(
-        session.accessToken ?? session.token,
+        session.accessToken,
         session.refreshToken,
+        session.user,
       );
 
       router.replace("/admin/dashboard");
@@ -95,6 +97,12 @@ export default function LoginPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleUseSuperAdmin = () => {
+    setEmail("admin@admin.com");
+    setPassword("12345678");
+    setError("");
   };
 
   const slide = slides[currentSlide];
@@ -258,23 +266,32 @@ export default function LoginPage() {
 
               {/* Login Form */}
               <form onSubmit={submit} className="mt-8 space-y-4">
-                {/* Email */}
+                {/* Email or Username */}
                 <div className="space-y-1.5">
-                  <label
-                    htmlFor="email"
-                    className="text-xs font-medium uppercase tracking-wider text-zinc-500"
-                  >
-                    Work Email
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label
+                      htmlFor="email"
+                      className="text-xs font-medium uppercase tracking-wider text-zinc-500"
+                    >
+                      Email or Username
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleUseSuperAdmin}
+                      className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800"
+                    >
+                      Fill Super Admin
+                    </button>
+                  </div>
 
                   <input
                     id="email"
-                    type="email"
+                    type="text"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={isSubmitting}
                     className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-50"
-                    placeholder="you@realbiz.com"
+                    placeholder="admin@admin.com"
                   />
                 </div>
 
