@@ -49,7 +49,9 @@ export default function OrgViewModal({ isOpen, onClose, orgData }: Props) {
           </div>
           <div>
             <p className="text-sm text-gray-500">Plan</p>
-            <p className="font-medium text-gray-900">{orgData.plan || "N/A"}</p>
+            <p className="font-medium text-gray-900">
+              {orgData.plan?.name || orgData.planName || (typeof orgData.plan === "string" ? orgData.plan : "N/A")}
+            </p>
           </div>
           <div>
             <p className="text-sm text-gray-500">Status</p>

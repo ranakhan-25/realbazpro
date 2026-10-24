@@ -113,7 +113,7 @@ export default function OrgEditModal({
                 </label>
                 <select
                   name="plan"
-                  defaultValue={orgData.plan || ""}
+                  defaultValue={typeof orgData.plan === "object" ? orgData.plan?.name : orgData.plan || ""}
                   className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
                 >
                   <option value="Basic">Basic</option>
