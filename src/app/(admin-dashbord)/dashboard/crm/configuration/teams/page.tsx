@@ -1,6 +1,4 @@
-"use client";
-
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import { CrmPageTemplate } from "@/components/crm/CrmPageTemplate";
 
 export const metadata: Metadata = {
