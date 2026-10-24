@@ -1,1017 +1,832 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable prettier/prettier */
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
-const BASE_URL = (
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002"
-).replace(/\/+$/, "");
-
-const API_URL = `${BASE_URL}/realbizpro/api/v1/project`;
-
-type Project = {
-  id?: string | number;
-  uuid?: string;
-  code?: string;
-  name?: string;
-  projectType?: string | null;
-  areaCategory?: string | null;
-  location?: string | null;
-  description?: string | null;
-  startDate?: string | null;
-  endDate?: string | null;
-  contactPersonName?: string | null;
-  contactPhone?: string | null;
-  clientEmail?: string | null;
-  contractorCompany?: string | null;
-  projectManager?: string | null;
-  totalBudget?: number | null;
-  numberOfStoreys?: number | null;
-  progressPercentage?: number;
-  status?: string;
-  deletedAt?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-};
-
-type ProjectForm = {
+// ====================== TYPES ======================
+interface Project {
+  id: string;
+  uuid: string;
   code: string;
   name: string;
   projectType: string;
-  areaCategory: string;
-  location: string;
-  description: string;
-  startDate: string;
-  endDate: string;
-  contactPersonName: string;
-  contactPhone: string;
-  clientEmail: string;
-  contractorCompany: string;
-  projectManager: string;
-  totalBudget: string;
-  numberOfStoreys: string;
-  progressPercentage: string;
+  projectManager: string | null;
+  customer?: string | null;
+  budget?: number | string | null;
+  numberOfStoreys?: number | null;
+  description?: string | null;
+  location?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   status: string;
-};
-
-// ==================== AUTO CODE GENERATOR ====================
-function generateProjectCode(): string {
-  const year = new Date().getFullYear();
-  const rand = Math.floor(1 + Math.random() * 999);
-  return `PRJ-${year}-${String(rand).padStart(3, "0")}`;
+  areaCategory?: string | null;
+  duration?: string;
 }
 
-const EMPTY_FORM: ProjectForm = {
-  code: generateProjectCode(),
-  name: "",
-  projectType: "",
-  areaCategory: "",
-  location: "",
-  description: "",
-  startDate: "",
-  endDate: "",
-  contactPersonName: "",
-  contactPhone: "",
-  clientEmail: "",
-  contractorCompany: "",
-  projectManager: "",
-  totalBudget: "",
-  numberOfStoreys: "",
-  progressPercentage: "",
-  status: "ACTIVE",
-};
+interface ProjectType {
+  id: string;
+  uuid: string;
+  code: string;
+  name: string;
+}
 
-async function apiRequest<T>(
-  url: string,
-  options: RequestInit = {},
-): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers,
-    },
+// ====================== STATIC DATA ======================
+const STATUSES = [
+  { label: "Active", value: "ACTIVE" },
+  { label: "Inactive", value: "INACTIVE" },
+  { label: "Complete", value: "COMPLETE" },
+  { label: "On Proposed", value: "ON_PROPOSED" },
+];
+
+const PROJECT_MANAGERS = [
+  "support sm",
+  "Ujjal Howlader",
+  "Md.Nayon",
+  "Md.Yeamin Sarder",
+  "Sheikh Moseddek Ahmed",
+  "Md.Arizul",
+  "Md.Delwar Hossain",
+  "Md.Humayun Kabir",
+  "Md.Rubel Hossain",
+  "Md.Selim Molla",
+  "Saimum Zami",
+  "Md. Afsar Mahmud Dewan",
+  "Md.Moniruzzaman",
+  "A.N.M Abdullah",
+  "Akash Bepari",
+  "Jeawl Haque Thitas",
+  "Md.Kawsar",
+  "Md. Abid Hasan",
+  "Riad Hossen",
+];
+
+const AREAS = [
+  "Aftab Nagor",
+  "Mirpur",
+  "Basundhara R/A",
+  "Jolshiri Abashon",
+  "Mirpur DOHS",
+  "Bashundhara R/A",
+  "Rayerbagh",
+  "Jolshiri",
+];
+
+const USERS = [
+  "Admin",
+  "Tazmul Reza",
+  "Rasel Hosain",
+  "Mohin",
+  "Sarna",
+  "Rowza",
+  "Sarna11",
+  "Metro Engineering",
+];
+
+// ====================== MAIN PAGE ======================
+export default function ProjectPage() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectTypes, setProjectTypes] = useState<ProjectType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Filters
+  const [filters, setFilters] = useState({
+    projectType: "",
+    status: "",
+    area: "",
+    numberOfStoreys: "",
+    search: "",
   });
 
-  const text = await response.text();
-  let result: unknown;
+  // Form state
+  const [form, setForm] = useState({
+    projectType: "",
+    projectManager: "",
+    code: "",
+    name: "",
+    description: "",
+    budget: "",
+    location: "",
+    status: "",
+    area: "",
+    numberOfStoreys: "",
+    assignUser: "",
+    startDate: "",
+    endDate: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
 
-  if (text) {
+  // ====================== FETCH PROJECT TYPES ======================
+  const fetchProjectTypes = async () => {
     try {
-      result = JSON.parse(text);
-    } catch {
-      result = text;
-    }
-  }
-
-  if (!response.ok) {
-    let message = `Request failed (${response.status})`;
-
-    if (typeof result === "string" && result.trim()) {
-      message = result;
-    } else if (result && typeof result === "object") {
-      const body = result as Record<string, unknown>;
-      const serverMessage = body.message ?? body.error;
-
-      message = Array.isArray(serverMessage)
-        ? serverMessage.join(", ")
-        : typeof serverMessage === "string"
-          ? serverMessage
-          : message;
-    }
-
-    throw new Error(message);
-  }
-
-  return result as T;
-}
-
-function normalizeProjects(response: unknown): Project[] {
-  if (Array.isArray(response)) {
-    return response as Project[];
-  }
-
-  if (!response || typeof response !== "object") {
-    return [];
-  }
-
-  const object = response as Record<string, unknown>;
-
-  for (const key of ["data", "projects", "items", "rows", "results"]) {
-    const value = object[key];
-
-    if (Array.isArray(value)) {
-      return value as Project[];
-    }
-
-    if (value && typeof value === "object") {
-      const nested = normalizeProjects(value);
-
-      if (nested.length > 0) {
-        return nested;
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project-type`
+      );
+      const json = await res.json();
+      if (json.success) {
+        setProjectTypes(json.data.data || []);
       }
-    }
-  }
-
-  return [];
-}
-
-function getProjectUuid(project: Project): string | undefined {
-  return typeof project.uuid === "string" && project.uuid.trim()
-    ? project.uuid.trim()
-    : undefined;
-}
-
-function dateForInput(value?: string | null): string {
-  return value ? value.slice(0, 10) : "";
-}
-
-function statusClass(status?: string): string {
-  switch ((status ?? "").toUpperCase()) {
-    case "ACTIVE":
-      return "bg-green-100 text-green-700";
-    case "INACTIVE":
-      return "bg-gray-100 text-gray-700";
-    case "PENDING":
-      return "bg-yellow-100 text-yellow-800";
-    case "COMPLETED":
-      return "bg-blue-100 text-blue-700";
-    case "CANCELLED":
-      return "bg-red-100 text-red-700";
-    default:
-      return "bg-gray-100 text-gray-700";
-  }
-}
-
-function escapeCsv(value: unknown): string {
-  return `"${String(value ?? "").replace(/"/g, '""')}"`;
-}
-
-export default function ProjectsPage({
-  initialStatusFilter = "ALL",
-  heading = "Projects",
-}: {
-  initialStatusFilter?: string;
-  heading?: string;
-}) {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
-  const [form, setForm] = useState<ProjectForm>(EMPTY_FORM);
-
-  // Load projects and exclude soft-deleted records.
-  const loadProjects = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await apiRequest<unknown>(
-        `${API_URL}?page=1&limit=100`,
-        { method: "GET" },
-      );
-
-      const loadedProjects = normalizeProjects(response);
-
-      setProjects(loadedProjects.filter((project) => !project.deletedAt));
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Projects load করতে সমস্যা হয়েছে।",
+      console.error("Failed to fetch project types:", err);
+    }
+  };
+
+  // ====================== FETCH PROJECTS ======================
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project`
       );
+      const json = await res.json();
+      if (json.success) {
+        const mapped = json.data.data.map((p: any) => ({
+          ...p,
+          duration:
+            p.startDate || p.endDate
+              ? `From: ${p.startDate ? formatDate(p.startDate) : "N/A"} To: ${
+                  p.endDate ? formatDate(p.endDate) : "N/A"
+                }`
+              : "From: N/A To: N/A",
+          budget: p.totalBudget,
+        }));
+        setProjects(mapped);
+      }
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchProjects();
+    fetchProjectTypes();
   }, []);
 
-  useEffect(() => {
-    void loadProjects();
-  }, [loadProjects]);
-
-  const filteredProjects = useMemo(() => {
-    const query = search.trim().toLowerCase();
-
-    return projects.filter((project) => {
-      const values = [
-        project.code,
-        project.name,
-        project.projectType,
-        project.areaCategory,
-        project.location,
-        project.contactPersonName,
-        project.contactPhone,
-        project.clientEmail,
-        project.contractorCompany,
-        project.projectManager,
-        project.status,
-      ];
-
-      const matchesSearch =
-        !query ||
-        values.some((value) =>
-          String(value ?? "")
-            .toLowerCase()
-            .includes(query),
-        );
-
-      const matchesStatus =
-        statusFilter === "ALL" ||
-        (project.status ?? "").toUpperCase() === statusFilter;
-
-      return matchesSearch && matchesStatus;
+  // ====================== HELPERS ======================
+  function formatDate(dateStr: string) {
+    if (!dateStr) return "N/A";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
     });
-  }, [projects, search, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredProjects.length / pageSize));
-
-  const currentPage = Math.min(page, totalPages);
-
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
-
-  const paginatedProjects = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-
-    return filteredProjects.slice(start, start + pageSize);
-  }, [filteredProjects, currentPage, pageSize]);
-
-  function updateForm<K extends keyof ProjectForm>(
-    key: K,
-    value: ProjectForm[K],
-  ) {
-    setForm((previous) => ({
-      ...previous,
-      [key]: value,
-    }));
   }
 
-  function openCreateModal() {
+  // ====================== OPEN CREATE ======================
+  const handleCreate = () => {
     setEditingProject(null);
-    // ✅ Modal open e notun auto code generate
+    const random = Math.floor(100000 + Math.random() * 900000);
     setForm({
-      ...EMPTY_FORM,
-      code: generateProjectCode(),
+      projectType: "",
+      projectManager: "",
+      code: `P${random}`,
+      name: "",
+      description: "",
+      budget: "",
+      location: "",
+      status: "",
+      area: "",
+      numberOfStoreys: "",
+      assignUser: "",
+      startDate: "",
+      endDate: "",
     });
-    setError("");
-    setSuccess("");
-    setModalOpen(true);
-  }
+    setIsModalOpen(true);
+  };
 
-  function openEditModal(project: Project) {
+  // ====================== OPEN EDIT ======================
+  const handleEdit = (project: Project) => {
     setEditingProject(project);
-
     setForm({
-      code: project.code ?? "",
-      name: project.name ?? "",
-      projectType: project.projectType ?? "",
-      areaCategory: project.areaCategory ?? "",
-      location: project.location ?? "",
-      description: project.description ?? "",
-      startDate: dateForInput(project.startDate),
-      endDate: dateForInput(project.endDate),
-      contactPersonName: project.contactPersonName ?? "",
-      contactPhone: project.contactPhone ?? "",
-      clientEmail: project.clientEmail ?? "",
-      contractorCompany: project.contractorCompany ?? "",
-      projectManager: project.projectManager ?? "",
-      totalBudget:
-        project.totalBudget == null ? "" : String(project.totalBudget),
-      numberOfStoreys:
-        project.numberOfStoreys == null ? "" : String(project.numberOfStoreys),
-      progressPercentage:
-        project.progressPercentage == null
-          ? ""
-          : String(project.progressPercentage),
-      status: (project.status ?? "ACTIVE").toUpperCase(),
+      projectType: project.projectType || "",
+      projectManager: project.projectManager || "",
+      code: project.code || "",
+      name: project.name || "",
+      description: project.description || "",
+      budget: project.budget ? String(project.budget) : "",
+      location: project.location || "",
+      status: project.status || "",
+      area: project.areaCategory || "",
+      numberOfStoreys: project.numberOfStoreys
+        ? String(project.numberOfStoreys)
+        : "",
+      assignUser: "",
+      startDate: project.startDate || "",
+      endDate: project.endDate || "",
     });
+    setIsModalOpen(true);
+  };
 
-    setError("");
-    setSuccess("");
-    setModalOpen(true);
-  }
+  // ====================== DELETE ======================
+  const handleDelete = async (project: Project) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete "${project.name}"?`
+    );
+    if (!confirmDelete) return;
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+    try {
+      setDeletingId(project.uuid);
 
-    const code = form.code.trim();
-    const name = form.name.trim();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project/${project.uuid}`,
+        {
+          method: "DELETE",
+        }
+      );
 
-    if (!code) {
-      setError("Project code is required.");
-      return;
+      const json = await res.json();
+
+      if (json.success || res.ok) {
+        // list থেকে সরিয়ে দাও
+        setProjects((prev) => prev.filter((p) => p.uuid !== project.uuid));
+      } else {
+        alert(json.message || "Failed to delete project");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete project");
+    } finally {
+      setDeletingId(null);
     }
+  };
 
-    if (!name) {
-      setError("Project name is required.");
-      return;
-    }
+  // ====================== FORM CHANGE ======================
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
 
-    setSaving(true);
-    setError("");
-    setSuccess("");
+  // ====================== SUBMIT (Create / Update) ======================
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
 
     const payload = {
-      code,
-      name,
-      projectType: form.projectType.trim() || null,
-      areaCategory: form.areaCategory.trim(),
-      location: form.location.trim(),
-      description: form.description.trim(),
+      code: form.code,
+      name: form.name,
+      projectType: form.projectType,
+      areaCategory: form.area,
+      location: form.location,
+      description: form.description,
       startDate: form.startDate || null,
       endDate: form.endDate || null,
-      contactPersonName: form.contactPersonName.trim(),
-      contactPhone: form.contactPhone.trim(),
-      clientEmail: form.clientEmail.trim(),
-      contractorCompany: form.contractorCompany.trim(),
-      projectManager: form.projectManager.trim(),
-      totalBudget: form.totalBudget.trim() ? Number(form.totalBudget) : null,
-      numberOfStoreys: form.numberOfStoreys.trim()
-        ? Number(form.numberOfStoreys)
-        : null,
-      progressPercentage: form.progressPercentage.trim()
-        ? Number(form.progressPercentage)
-        : null,
-      status: form.status,
+      projectManager: form.projectManager,
+      totalBudget: form.budget ? Number(form.budget) : null,
+      numberOfStoreys: form.numberOfStoreys ? Number(form.numberOfStoreys) : null,
+      status: form.status || "ACTIVE",
     };
 
     try {
-      let url = API_URL;
-      let method = "POST";
+      const url = editingProject
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project/${editingProject.uuid}`
+        : `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project`;
 
-      if (editingProject) {
-        const uuid = getProjectUuid(editingProject);
+      const method = editingProject ? "PUT" : "POST";
 
-        if (!uuid) {
-          throw new Error("Project UUID পাওয়া যায়নি।");
-        }
-
-        url = `${API_URL}/${encodeURIComponent(uuid)}`;
-        method = "PATCH";
-      }
-
-      await apiRequest(url, {
+      const res = await fetch(url, {
         method,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      setModalOpen(false);
-      setEditingProject(null);
-      setForm(EMPTY_FORM);
-
-      setSuccess(
-        editingProject
-          ? "Project successfully updated."
-          : "Project successfully created.",
-      );
-
-      await loadProjects();
+      const json = await res.json();
+      if (json.success || res.ok) {
+        setIsModalOpen(false);
+        fetchProjects();
+      } else {
+        alert(json.message || "Something went wrong");
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Project save করা যায়নি।");
+      console.error(err);
+      alert("Failed to save project");
     } finally {
-      setSaving(false);
+      setSubmitting(false);
     }
-  }
+  };
 
-  // Delete by UUID and update UI immediately.
-  async function handleDelete() {
-    if (!deleteTarget || deleting) return;
-
-    const uuid = getProjectUuid(deleteTarget);
-
-    if (!uuid) {
-      setError("এই project-এর UUID response-এ পাওয়া যায়নি।");
-      return;
-    }
-
-    setDeleting(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      await apiRequest(`${API_URL}/${encodeURIComponent(uuid)}`, {
-        method: "DELETE",
-      });
-
-      setProjects((previous) =>
-        previous.filter((project) => getProjectUuid(project) !== uuid),
+  // ====================== FILTERED DATA ======================
+  const filtered = projects.filter((p) => {
+    if (filters.projectType && p.projectType !== filters.projectType)
+      return false;
+    if (filters.status && p.status !== filters.status) return false;
+    if (filters.area && p.areaCategory !== filters.area) return false;
+    if (
+      filters.numberOfStoreys &&
+      String(p.numberOfStoreys) !== filters.numberOfStoreys
+    )
+      return false;
+    if (filters.search) {
+      const s = filters.search.toLowerCase();
+      return (
+        p.name?.toLowerCase().includes(s) ||
+        p.code?.toLowerCase().includes(s) ||
+        p.projectManager?.toLowerCase().includes(s)
       );
-
-      setDeleteTarget(null);
-      setSuccess("Project successfully deleted.");
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Project delete করা যায়নি।",
-      );
-    } finally {
-      setDeleting(false);
     }
-  }
+    return true;
+  });
 
-  function exportCsv() {
-    const columns: (keyof Project)[] = [
-      "code",
-      "name",
-      "projectType",
-      "areaCategory",
-      "location",
-      "description",
-      "startDate",
-      "endDate",
-      "contactPersonName",
-      "contactPhone",
-      "clientEmail",
-      "contractorCompany",
-      "projectManager",
-      "totalBudget",
-      "numberOfStoreys",
-      "progressPercentage",
-      "status",
-    ];
-
-    const rows = [
-      columns.map(escapeCsv).join(","),
-      ...filteredProjects.map((project) =>
-        columns.map((column) => escapeCsv(project[column])).join(","),
-      ),
-    ];
-
-    const blob = new Blob(["\uFEFF" + rows.join("\r\n")], {
-      type: "text/csv;charset=utf-8;",
-    });
-
-    const objectUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-
-    anchor.href = objectUrl;
-    anchor.download = "projects.csv";
-    anchor.click();
-
-    URL.revokeObjectURL(objectUrl);
-  }
-
+  // ====================== RENDER ======================
   return (
-    <main className="min-h-screen bg-gray-50 p-4 text-gray-900 sm:p-6">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <h1 className="text-2xl font-bold">{heading}</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Manage all your projects.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={exportCsv}
-              disabled={!filteredProjects.length}
-              className="rounded-lg border bg-white px-4 py-2 text-sm disabled:opacity-50"
-            >
-              Export CSV
-            </button>
-
-            <button
-              type="button"
-              onClick={() => void loadProjects()}
-              disabled={loading}
-              className="rounded-lg border bg-white px-4 py-2 text-sm disabled:opacity-50"
-            >
-              Refresh
-            </button>
-
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-            >
-              + Create Project
-            </button>
-          </div>
-        </header>
-
-        {success && (
-          <div className="mb-4 flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-            <span>{success}</span>
-            <button
-              type="button"
-              onClick={() => setSuccess("")}
-              aria-label="Dismiss success message"
-            >
-              ×
-            </button>
-          </div>
-        )}
-
-        {error && !modalOpen && !deleteTarget && (
-          <div className="mb-4 flex items-start justify-between rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            <span>{error}</span>
-            <button
-              type="button"
-              onClick={() => setError("")}
-              aria-label="Dismiss error"
-            >
-              ×
-            </button>
-          </div>
-        )}
-
-        <section className="rounded-xl border bg-white p-4 shadow-sm">
-          <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
-              placeholder="Search projects..."
-              className="rounded-lg border px-3 py-2 text-sm"
-            />
-
-            <select
-              value={statusFilter}
-              onChange={(event) => {
-                setStatusFilter(event.target.value);
-                setPage(1);
-              }}
-              className="rounded-lg border px-3 py-2 text-sm"
-            >
-              <option value="ALL">All statuses</option>
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-              <option value="PENDING">Pending</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="ON_HOLD">On Hold</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
-
-            <select
-              value={pageSize}
-              onChange={(event) => {
-                setPageSize(Number(event.target.value));
-                setPage(1);
-              }}
-              className="rounded-lg border px-3 py-2 text-sm"
-            >
-              <option value={10}>10 per page</option>
-              <option value={25}>25 per page</option>
-              <option value={50}>50 per page</option>
-              <option value={100}>100 per page</option>
-            </select>
-          </div>
-
-          <p className="mb-3 text-sm text-gray-500">
-            {loading ? "Loading..." : `${filteredProjects.length} project(s)`}
-          </p>
-
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1200px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50 text-gray-600">
-                  <th className="px-4 py-3">Code</th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Area Category</th>
-                  <th className="px-4 py-3">Location</th>
-                  <th className="px-4 py-3">Contact Person</th>
-                  <th className="px-4 py-3">Start Date</th>
-                  <th className="px-4 py-3">Budget</th>
-                  <th className="px-4 py-3">Storeys</th>
-                  <th className="px-4 py-3">Progress</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={11} className="px-4 py-10 text-center">
-                      Loading projects...
-                    </td>
-                  </tr>
-                ) : paginatedProjects.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={11}
-                      className="px-4 py-10 text-center text-gray-500"
-                    >
-                      No projects found.
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedProjects.map((project, index) => (
-                    <tr
-                      key={project.uuid ?? String(project.id ?? index)}
-                      className="border-b hover:bg-gray-50"
-                    >
-                      <td className="px-4 py-3 font-medium">
-                        {project.code ?? "—"}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <div className="font-medium">{project.name ?? "—"}</div>
-                        <div className="max-w-xs truncate text-xs text-gray-500">
-                          {project.description ?? ""}
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3">
-                        {project.areaCategory ?? "—"}
-                      </td>
-
-                      <td className="px-4 py-3">{project.location ?? "—"}</td>
-
-                      <td className="px-4 py-3">
-                        {project.contactPersonName ?? "—"}
-                      </td>
-
-                      <td className="px-4 py-3">{project.startDate ?? "—"}</td>
-
-                      <td className="px-4 py-3">
-                        {project.totalBudget ?? "—"}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        {project.numberOfStoreys ?? "—"}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        {project.progressPercentage == null
-                          ? "—"
-                          : `${project.progressPercentage}%`}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(project.status)}`}
-                        >
-                          {project.status ?? "N/A"}
-                        </span>
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(project)}
-                            className="rounded-md border px-3 py-1.5 text-xs hover:bg-gray-100"
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setError("");
-                              setSuccess("");
-                              setDeleteTarget(project);
-                            }}
-                            className="rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="mt-4 flex flex-col justify-between gap-3 border-t pt-4 sm:flex-row sm:items-center">
-            <p className="text-sm text-gray-500">
-              Page {currentPage} of {totalPages}
-            </p>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={currentPage <= 1}
-                onClick={() => setPage((previous) => Math.max(1, previous - 1))}
-                className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
-              >
-                Previous
-              </button>
-
-              <button
-                type="button"
-                disabled={currentPage >= totalPages}
-                onClick={() =>
-                  setPage((previous) => Math.min(totalPages, previous + 1))
-                }
-                className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        </section>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <div className="text-sm text-gray-500">
+          Home &gt; Project &gt; Project
+        </div>
+        <button
+          onClick={handleCreate}
+          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+        >
+          + Create Project
+        </button>
       </div>
 
-      {/* Create / Edit Modal */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4">
-          <div className="my-8 w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-xl font-bold">
-                {editingProject ? "Edit Project" : "Create Project"}
-              </h2>
+      {/* ====================== FILTERS ====================== */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-4 rounded-lg border mb-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Project Type
+          </label>
+          <select
+            className="w-full border rounded-md px-3 py-2 text-sm"
+            value={filters.projectType}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, projectType: e.target.value }))
+            }
+          >
+            <option value="">All Types</option>
+            {projectTypes.map((t) => (
+              <option key={t.uuid} value={t.name}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Status
+          </label>
+          <select
+            className="w-full border rounded-md px-3 py-2 text-sm"
+            value={filters.status}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, status: e.target.value }))
+            }
+          >
+            <option value="">All Status</option>
+            {STATUSES.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Area
+          </label>
+          <select
+            className="w-full border rounded-md px-3 py-2 text-sm"
+            value={filters.area}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, area: e.target.value }))
+            }
+          >
+            <option value="">Select Area</option>
+            {AREAS.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Number Of Storeys
+          </label>
+          <select
+            className="w-full border rounded-md px-3 py-2 text-sm"
+            value={filters.numberOfStoreys}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                numberOfStoreys: e.target.value,
+              }))
+            }
+          >
+            <option value="">All Storeys</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="59">59</option>
+            <option value="70">70</option>
+          </select>
+        </div>
+      </div>
+
+      {/* ====================== TABLE CONTROLS ====================== */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          <button className="bg-blue-500 text-white px-3 py-1.5 rounded text-sm">
+            Copy
+          </button>
+          <button className="bg-orange-500 text-white px-3 py-1.5 rounded text-sm">
+            CSV
+          </button>
+          <span className="text-sm text-gray-600 ml-2">
+            Show{" "}
+            <select className="border rounded px-2 py-1 mx-1">
+              <option>10</option>
+              <option>25</option>
+              <option>50</option>
+            </select>{" "}
+            entries
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button className="border px-3 py-1.5 rounded text-sm">
+            Select Columns ▾
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">Search:</span>
+            <input
+              type="text"
+              className="border rounded px-3 py-1.5 text-sm w-48"
+              value={filters.search}
+              onChange={(e) =>
+                setFilters((prev) => ({ ...prev, search: e.target.value }))
+              }
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ====================== TABLE ====================== */}
+      <div className="bg-white rounded-lg border overflow-x-auto">
+        {loading ? (
+          <div className="text-center py-10">Loading...</div>
+        ) : (
+          <>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-purple-600 text-white">
+                  <th className="px-4 py-3 text-left">ID</th>
+                  <th className="px-4 py-3 text-left">DURATION</th>
+                  <th className="px-4 py-3 text-left">PROJECT TYPE</th>
+                  <th className="px-4 py-3 text-left">PROJECT MANAGER</th>
+                  <th className="px-4 py-3 text-left">CUSTOMER</th>
+                  <th className="px-4 py-3 text-left">CODE</th>
+                  <th className="px-4 py-3 text-left">NAME</th>
+                  <th className="px-4 py-3 text-left">BUDGET</th>
+                  <th className="px-4 py-3 text-left">NUMBER OF STOREYS</th>
+                  <th className="px-4 py-3 text-left">DESCRIPTION</th>
+                  <th className="px-4 py-3 text-left">LOCATION</th>
+                  <th className="px-4 py-3 text-left">ACTION</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((p) => (
+                  <tr key={p.uuid} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-3">{p.id}</td>
+                    <td className="px-4 py-3">{p.duration}</td>
+                    <td className="px-4 py-3">{p.projectType}</td>
+                    <td className="px-4 py-3">{p.projectManager || "-"}</td>
+                    <td className="px-4 py-3">{p.customer || "-"}</td>
+                    <td className="px-4 py-3">{p.code}</td>
+                 <td className="px-4 py-3 text-blue-600 font-medium">
+  <Link
+    href={`/dashboard/project/projects/project/project-details/${p.uuid}`}
+    className="hover:underline"
+  >
+    {p.name}
+  </Link>
+</td>
+                    <td className="px-4 py-3">{p.budget || "-"}</td>
+                    <td className="px-4 py-3">{p.numberOfStoreys || "-"}</td>
+                    <td className="px-4 py-3">{p.description || "-"}</td>
+                    <td className="px-4 py-3">{p.location || "-"}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {/* Edit Button */}
+                        <button
+                          onClick={() => handleEdit(p)}
+                          className="bg-blue-500 hover:bg-blue-600 text-white p-1.5 rounded"
+                          title="Edit"
+                        >
+                          ✎
+                        </button>
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => handleDelete(p)}
+                          disabled={deletingId === p.uuid}
+                          className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded disabled:opacity-50"
+                          title="Delete"
+                        >
+                          {deletingId === p.uuid ? "..." : "🗑"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="flex justify-between items-center px-4 py-3 text-sm text-gray-600">
+              <span>
+                Showing 1 to {filtered.length} of {filtered.length} entries
+              </span>
+              <div className="flex gap-2">
+                <button
+                  className="border px-3 py-1 rounded disabled:opacity-50"
+                  disabled
+                >
+                  Previous
+                </button>
+                <button className="bg-purple-600 text-white px-3 py-1 rounded">
+                  1
+                </button>
+                <button
+                  className="border px-3 py-1 rounded disabled:opacity-50"
+                  disabled
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ====================== MODAL ====================== */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center px-6 py-4 border-b">
+              <h2 className="text-lg font-semibold">
+                {editingProject ? "Edit Project" : "Project Add"}
+              </h2>
               <button
-                type="button"
-                onClick={() => {
-                  if (!saving) {
-                    setModalOpen(false);
-                    setEditingProject(null);
-                    setError("");
-                  }
-                }}
-                disabled={saving}
-                className="text-2xl text-gray-500"
-                aria-label="Close"
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
               >
                 ×
               </button>
             </div>
 
-            {error && (
-              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {/* ✅ Project Code — auto-generated, read-only */}
+            {/* Modal Form */}
+            <form onSubmit={handleSubmit} className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {/* Project Type */}
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Project Code *
+                  <label className="block text-sm font-medium mb-1">
+                    Project Type
                   </label>
+                  <select
+                    name="projectType"
+                    value={form.projectType}
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    required
+                  >
+                    <option value="">Select Project Type</option>
+                    {projectTypes.map((t) => (
+                      <option key={t.uuid} value={t.name}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Project Manager */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Project Manager
+                  </label>
+                  <select
+                    name="projectManager"
+                    value={form.projectManager}
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                  >
+                    <option value="">Select Project Manager</option>
+                    {PROJECT_MANAGERS.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Code */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Code</label>
                   <input
-                    type="text"
+                    name="code"
                     value={form.code}
-                    readOnly
-                    className="w-full cursor-not-allowed rounded-lg border bg-gray-50 px-3 py-2 text-gray-700"
-                    title="Auto-generated code"
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 text-sm bg-gray-50"
+                    readOnly={!editingProject}
                   />
                 </div>
 
-                {(
-                  [
-                    ["name", "Project Name *", true],
-                    ["projectType", "Project Type", false],
-                    ["areaCategory", "Area Category", false],
-                    ["location", "Location", false],
-                    ["startDate", "Start Date", false],
-                    ["endDate", "End Date", false],
-                    ["contactPersonName", "Contact Person", false],
-                    ["contactPhone", "Contact Phone", false],
-                    ["clientEmail", "Client Email", false],
-                    ["contractorCompany", "Contractor Company", false],
-                    ["projectManager", "Project Manager", false],
-                  ] as [keyof ProjectForm, string, boolean][]
-                ).map(([key, label, required]) => (
-                  <div key={key}>
-                    <label className="mb-1 block text-sm font-medium">
-                      {label}
-                    </label>
-
-                    <input
-                      type={
-                        key === "startDate" || key === "endDate"
-                          ? "date"
-                          : key === "clientEmail"
-                            ? "email"
-                            : "text"
-                      }
-                      value={form[key]}
-                      onChange={(event) => updateForm(key, event.target.value)}
-                      required={required}
-                      className="w-full rounded-lg border px-3 py-2 outline-none focus:border-blue-500"
-                    />
-                  </div>
-                ))}
-
+                {/* Project Name */}
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Total Budget
+                  <label className="block text-sm font-medium mb-1">
+                    Project Name
                   </label>
                   <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.totalBudget}
-                    onChange={(event) =>
-                      updateForm("totalBudget", event.target.value)
-                    }
-                    className="w-full rounded-lg border px-3 py-2 outline-none focus:border-blue-500"
+                    name="name"
+                    value={form.name}
+                    onChange={handleChange}
+                    placeholder="Name"
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    required
                   />
                 </div>
 
+                {/* Description */}
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
+                  <label className="block text-sm font-medium mb-1">
+                    Description
+                  </label>
+                  <input
+                    name="description"
+                    value={form.description}
+                    onChange={handleChange}
+                    placeholder="Description"
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
+
+                {/* Budget */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Budget
+                  </label>
+                  <input
+                    name="budget"
+                    type="number"
+                    value={form.budget}
+                    onChange={handleChange}
+                    placeholder="Budget"
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
+
+                {/* Location */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Location
+                  </label>
+                  <input
+                    name="location"
+                    value={form.location}
+                    onChange={handleChange}
+                    placeholder="Location"
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    value={form.status}
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                  >
+                    <option value="">Select Status</option>
+                    {STATUSES.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Area */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Area</label>
+                  <select
+                    name="area"
+                    value={form.area}
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                  >
+                    <option value="">Select Area</option>
+                    {AREAS.map((a) => (
+                      <option key={a} value={a}>
+                        {a}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Number of Storeys */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
                     Number of Storeys
                   </label>
                   <input
+                    name="numberOfStoreys"
                     type="number"
-                    min="0"
-                    step="1"
                     value={form.numberOfStoreys}
-                    onChange={(event) =>
-                      updateForm("numberOfStoreys", event.target.value)
-                    }
-                    className="w-full rounded-lg border px-3 py-2 outline-none focus:border-blue-500"
+                    onChange={handleChange}
+                    placeholder="Number of Storeys"
+                    className="w-full border rounded-md px-3 py-2 text-sm"
                   />
                 </div>
 
+                {/* Assign User */}
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Progress Percentage
+                  <label className="block text-sm font-medium mb-1">
+                    Assign User
                   </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={form.progressPercentage}
-                    onChange={(event) =>
-                      updateForm("progressPercentage", event.target.value)
-                    }
-                    className="w-full rounded-lg border px-3 py-2 outline-none focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Status
-                  </label>
-
                   <select
-                    value={form.status}
-                    onChange={(event) =>
-                      updateForm("status", event.target.value)
-                    }
-                    className="w-full rounded-lg border px-3 py-2"
+                    name="assignUser"
+                    value={form.assignUser}
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 text-sm"
                   >
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                    <option value="PENDING">Pending</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="ON_HOLD">On Hold</option>
-                    <option value="CANCELLED">Cancelled</option>
+                    <option value="">Select User</option>
+                    {USERS.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
                   </select>
                 </div>
+
+                {/* Start Date */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    name="startDate"
+                    type="date"
+                    value={form.startDate}
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
+
+                {/* End Date */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    End Date
+                  </label>
+                  <input
+                    name="endDate"
+                    type="date"
+                    value={form.endDate}
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Description
-                </label>
-                <textarea
-                  value={form.description}
-                  onChange={(event) =>
-                    updateForm("description", event.target.value)
-                  }
-                  rows={3}
-                  className="w-full rounded-lg border px-3 py-2"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 border-t pt-4">
+              {/* Footer Buttons */}
+              <div className="flex justify-end gap-3 mt-8">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!saving) {
-                      setModalOpen(false);
-                      setEditingProject(null);
-                      setError("");
-                    }
-                  }}
-                  disabled={saving}
-                  className="rounded-lg border px-4 py-2 text-sm"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-5 py-2 border rounded-md text-gray-700 hover:bg-gray-50"
                 >
-                  Cancel
+                  Close
                 </button>
-
                 <button
                   type="submit"
-                  disabled={saving}
-                  className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  disabled={submitting}
+                  className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md disabled:opacity-60"
                 >
-                  {saving
-                    ? "Saving..."
-                    : editingProject
-                      ? "Update Project"
-                      : "Create Project"}
+                  {submitting ? "Saving..." : "Submit"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
-      {/* Delete Confirmation Modal */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold">Delete Project</h2>
-
-            <p className="mt-3 text-sm text-gray-600">
-              Delete <strong>{deleteTarget.name ?? "this project"}</strong>?
-            </p>
-
-            <p className="mt-2 break-all text-xs text-gray-500">
-              UUID: {deleteTarget.uuid ?? "Missing"}
-            </p>
-
-            {error && (
-              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {error}
-              </div>
-            )}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!deleting) {
-                    setDeleteTarget(null);
-                    setError("");
-                  }
-                }}
-                disabled={deleting}
-                className="rounded-lg border px-4 py-2 text-sm"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={() => void handleDelete()}
-                disabled={deleting}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                {deleting ? "Deleting..." : "Confirm Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </main>
+    </div>
   );
 }

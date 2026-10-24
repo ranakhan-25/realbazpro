@@ -21,41 +21,38 @@ export default function CrmModulePage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-canvas">
+    <div className="px-4 md:px-6 py-5 space-y-5 max-w-7xl mx-auto">
+      {/* Header Overview */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+      >
+        <h1 className="font-display text-[19px] font-semibold text-ink">
+          CRM Overview
+        </h1>
+        <p className="text-[13px] text-ink-muted mt-0.5">
+          Lead activity and pipeline status across all agents.
+        </p>
+      </motion.div>
 
-        <main className="flex-1 px-4 md:px-6 py-5 space-y-5 max-w-350 w-full mx-auto">
-          {/* Header Overview */}
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-          >
-            <h1 className="font-display text-[19px] font-semibold text-ink">
-              Overview
-            </h1>
-            <p className="text-[13px] text-ink-muted mt-0.5">
-              Lead activity and pipeline status across all agents.
-            </p>
-          </motion.div>
+      {/* 1. Stat Cards */}
+      <StatGrid stats={stats} />
 
-          {/* 1. Stat Cards */}
-          <StatGrid stats={stats} />
+      {/* 2. Side-by-Side Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <ActivityChart range={range} />
+        <PropertyStatusChart />
+      </div>
 
-          {/* 2. Side-by-Side Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <ActivityChart range={range} />
-            <PropertyStatusChart />
-          </div>
+      {/* 3. Lead Followups & Todos */}
+      <div className="space-y-5">
+        <TodoStrip items={todo} />
+        <LiveFeed />
+      </div>
 
-          {/* 3. Lead Followups & Todos */}
-          <div className="space-y-5">
-            <TodoStrip items={todo} />
-            <LiveFeed />
-          </div>
-
-          {/* 4. Calendar Panel */}
-          <CalendarPanel range={range} onRangeChange={setRange} />
-        </main>
+      {/* 4. Calendar Panel */}
+      <CalendarPanel range={range} onRangeChange={setRange} />
     </div>
   );
 }

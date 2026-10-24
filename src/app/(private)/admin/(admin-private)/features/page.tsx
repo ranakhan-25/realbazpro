@@ -705,12 +705,27 @@ export default function FeaturesPage() {
 
 /* ================= FORM ================= */
 
+/* ================= DUMMY MODULES ================= */
+
+const DUMMY_MODULES: { id: number; name: string }[] = [
+  { id: 1, name: "HRM" },
+  { id: 2, name: "Inventory" },
+  { id: 3, name: "Procurement" },
+  { id: 4, name: "Accounts" },
+  { id: 5, name: "CRM" },
+  { id: 6, name: "Real Estate" },
+];
+
+/* ================= FORM ================= */
+
 function FeatureForm({
   feature,
+  modules = DUMMY_MODULES,
   onCancel,
   onSuccess,
 }: {
   feature: Feature | null;
+  modules?: { id: number; name: string }[];
   onCancel: () => void;
   onSuccess: () => void;
 }) {
@@ -721,13 +736,61 @@ function FeatureForm({
   const [moduleId, setModuleId] = useState(
     feature?.moduleId !== undefined ? String(feature.moduleId) : "",
   );
+
+  const [moduleSearch, setModuleSearch] = useState("");
+  const [moduleDropdownOpen, setModuleDropdownOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const handleSubmit = async (event: FormEvent) => {
+  const moduleRef = useRef<HTMLDivElement | null>(null);
+  const moduleSearchRef = useRef<HTMLInputElement | null>(null);
+
+  const selectedModule = modules.find(
+    (module) => String(module.id) === moduleId,
+  );
+
+  const filteredModules = modules.filter((module) =>
+    module.name.toLowerCase().includes(moduleSearch.trim().toLowerCase()),
+  );
+
+  useEffect(() => {
+    if (!moduleDropdownOpen) return;
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!moduleRef.current?.contains(event.target as Node)) {
+        setModuleDropdownOpen(false);
+        setModuleSearch("");
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setModuleDropdownOpen(false);
+        setModuleSearch("");
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [moduleDropdownOpen]);
+
+  useEffect(() => {
+    if (moduleDropdownOpen) {
+      requestAnimationFrame(() => moduleSearchRef.current?.focus());
+    }
+  }, [moduleDropdownOpen]);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!name.trim() || !moduleId.trim()) {
+    const trimmedName = name.trim();
+
+    if (!trimmedName || !moduleId) {
       setFormError("Name and module are required.");
       return;
     }
@@ -737,7 +800,7 @@ function FeatureForm({
 
     try {
       const payload = {
-        name: name.trim(),
+        name: trimmedName,
         description: description.trim() || undefined,
         moduleId: Number(moduleId),
       };
@@ -758,103 +821,266 @@ function FeatureForm({
     }
   };
 
+  const fieldClass =
+    "h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:bg-white";
+
   const focusHandlers = {
-    onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      e.currentTarget.style.borderColor = primaryColor;
-      e.currentTarget.style.boxShadow = `0 0 0 4px ${primaryColor}1A`;
+    onFocus: (
+      event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>,
+    ) => {
+      event.currentTarget.style.borderColor = primaryColor;
+      event.currentTarget.style.boxShadow = `0 0 0 4px ${primaryColor}1A`;
     },
-    onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      e.currentTarget.style.borderColor = "";
-      e.currentTarget.style.boxShadow = "";
+    onBlur: (
+      event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>,
+    ) => {
+      event.currentTarget.style.borderColor = "";
+      event.currentTarget.style.boxShadow = "";
     },
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {formError && (
-        <p
+        <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
         >
           {formError}
-        </p>
+        </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        {/* FEATURE NAME */}
         <div>
           <label
             htmlFor="feature-name"
-            className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500"
+            className="mb-2 block text-sm font-semibold text-slate-700"
           >
-            Name
+            Feature Name <span className="text-red-500">*</span>
           </label>
+
           <input
             id="feature-name"
+            type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(event) => setName(event.target.value)}
+            onFocus={focusHandlers.onFocus}
+            onBlur={focusHandlers.onBlur}
+            placeholder="Search or enter feature name..."
             required
-            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none"
-            {...focusHandlers}
+            maxLength={150}
+            disabled={saving}
+            className={fieldClass}
           />
+
+          <p className="mt-1.5 text-xs text-slate-400">
+            Enter a descriptive name for this feature.
+          </p>
         </div>
 
-        <div>
+        {/* SEARCHABLE MODULE DROPDOWN */}
+        <div ref={moduleRef} className="relative">
           <label
-            htmlFor="feature-module"
-            className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500"
+            className="mb-2 block text-sm font-semibold text-slate-700"
+            htmlFor="module-search"
           >
-            Module ID
+            Module <span className="text-red-500">*</span>
           </label>
-          <input
-            id="feature-module"
-            type="number"
-            value={moduleId}
-            onChange={(e) => setModuleId(e.target.value)}
-            required
-            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none"
-            {...focusHandlers}
-          />
-          <p className="mt-1 text-xs text-slate-400">
-            Placeholder until a real module picker is wired up.
+
+          <button
+            type="button"
+            disabled={saving}
+            aria-haspopup="listbox"
+            aria-expanded={moduleDropdownOpen}
+            onClick={() => {
+              setModuleDropdownOpen((open) => !open);
+              setModuleSearch("");
+            }}
+            className={`${fieldClass} flex items-center justify-between gap-3 text-left disabled:cursor-not-allowed disabled:opacity-60`}
+            style={
+              moduleDropdownOpen
+                ? {
+                    borderColor: primaryColor,
+                    boxShadow: `0 0 0 4px ${primaryColor}1A`,
+                    backgroundColor: "#ffffff",
+                  }
+                : undefined
+            }
+          >
+            <span
+              className={
+                selectedModule ? "truncate text-slate-700" : "text-slate-400"
+              }
+            >
+              {selectedModule?.name ?? "Search and select a module"}
+            </span>
+
+            <Search className="h-4 w-4 shrink-0 text-slate-400" />
+          </button>
+
+          {moduleDropdownOpen && (
+            <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+              <div className="border-b border-slate-100 p-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+                  <input
+                    ref={moduleSearchRef}
+                    id="module-search"
+                    type="text"
+                    value={moduleSearch}
+                    onChange={(event) => setModuleSearch(event.target.value)}
+                    placeholder="Search modules..."
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:bg-white"
+                    onFocus={(event) => {
+                      event.currentTarget.style.borderColor = primaryColor;
+                      event.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}1A`;
+                    }}
+                    onBlur={(event) => {
+                      event.currentTarget.style.borderColor = "";
+                      event.currentTarget.style.boxShadow = "";
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div
+                role="listbox"
+                aria-label="Available modules"
+                className="max-h-52 overflow-y-auto p-1"
+              >
+                {filteredModules.length > 0 ? (
+                  filteredModules.map((module) => {
+                    const isSelected = String(module.id) === moduleId;
+
+                    return (
+                      <button
+                        key={module.id}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        onClick={() => {
+                          setModuleId(String(module.id));
+                          setModuleDropdownOpen(false);
+                          setModuleSearch("");
+                          setFormError("");
+                        }}
+                        className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition"
+                        style={
+                          isSelected
+                            ? {
+                                backgroundColor: `${primaryColor}15`,
+                                color: primaryColor,
+                              }
+                            : undefined
+                        }
+                        onMouseEnter={(event) => {
+                          if (!isSelected) {
+                            event.currentTarget.style.backgroundColor =
+                              "#f8fafc";
+                          }
+                        }}
+                        onMouseLeave={(event) => {
+                          if (!isSelected) {
+                            event.currentTarget.style.backgroundColor = "";
+                          }
+                        }}
+                      >
+                        <span>{module.name}</span>
+
+                        {isSelected && (
+                          <span
+                            className="text-xs font-semibold"
+                            style={{ color: primaryColor }}
+                          >
+                            Selected
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p className="px-3 py-6 text-center text-sm text-slate-400">
+                    No modules found.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <p className="mt-1.5 text-xs text-slate-400">
+            Search and select the module for this feature.
           </p>
         </div>
       </div>
 
+      {/* DESCRIPTION */}
       <div>
         <label
           htmlFor="feature-description"
-          className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500"
+          className="mb-2 block text-sm font-semibold text-slate-700"
         >
           Description
         </label>
+
         <textarea
           id="feature-description"
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={3}
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none"
-          {...focusHandlers}
+          onChange={(event) => setDescription(event.target.value)}
+          onFocus={focusHandlers.onFocus}
+          onBlur={focusHandlers.onBlur}
+          placeholder="Describe what this feature does..."
+          rows={4}
+          maxLength={1000}
+          disabled={saving}
+          className={`${fieldClass} h-auto resize-y py-3`}
         />
+
+        <div className="mt-1.5 flex justify-between gap-3">
+          <p className="text-xs text-slate-400">
+            Briefly explain the purpose of this feature.
+          </p>
+
+          <p className="shrink-0 text-xs text-slate-400">
+            {description.length}/1000
+          </p>
+        </div>
       </div>
 
-      <div className="flex justify-end gap-2 pt-2">
+      {/* ACTION BUTTONS */}
+      <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
         <button
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Cancel
         </button>
 
         <button
           type="submit"
-          disabled={saving}
-          className="flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={saving || modules.length === 0}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           style={{ backgroundColor: primaryColor }}
         >
-          {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-          {feature ? "Save Changes" : "Create Feature"}
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              {feature ? (
+                <Edit3 className="h-4 w-4" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+
+              {feature ? "Save Changes" : "Create Feature"}
+            </>
+          )}
         </button>
       </div>
     </form>

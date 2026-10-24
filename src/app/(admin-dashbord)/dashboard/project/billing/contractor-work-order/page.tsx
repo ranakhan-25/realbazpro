@@ -2,840 +2,519 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { Plus, Search, ArrowLeft, X, Loader2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, X, Loader2, Edit3, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 
-// ==================== API CONFIG ====================
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
-const API_PREFIX = "/realbizpro/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
+const API_PATH = `${API_BASE}/realbizpro/api/v1`;
+
+// ====================== TYPES ======================
+interface WorkOrder {
+  id: string;
+  uuid: string;
+  code: string;
+  title: string;
+  recordDate: string;
+  amount: string;
+  status: string;
+  description: string;
+  project?: { name: string; uuid: string };
+  details?: {
+    supplierName?: string;
+    projectType?: string;
+    site?: string;
+    categoryId?: string;
+    brand?: string;
+    under?: string;
+    itemName?: string;
+    vat?: number;
+    ait?: number;
+  };
+  deletedAt?: string;
+}
 
 export default function ContractorWorkOrderPage() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [dataList, setDataList] = useState<WorkOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<WorkOrder | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState("");
 
-  // Modals
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
-  const [isLabourModalOpen, setIsLabourModalOpen] = useState(false);
-
-  // Dropdown Data (API theke asbe)
+  // ড্রপডাউন ডাটা
   const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
   const [projectTypes, setProjectTypes] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [sites, setSites] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [subCategories, setSubCategories] = useState<any[]>([]);
-  const [items, setItems] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
+  const [unders, setUnders] = useState<any[]>([]);
 
-  // Form State
+  // ফর্ম ডাটা
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().slice(0, 10),
-    code: `CW0000${Math.floor(10 + Math.random() * 90)}`,
+    date: new Date().toISOString().split("T")[0],
     supplierId: "",
+    supplierName: "",
+    code: `CWO${Math.floor(1000 + Math.random() * 9000)}`,
+    projectType: "",
     projectId: "",
-    projectTypeId: "",
-    categoryId: "",
-    subCategoryId: "",
-    itemId: "",
     site: "",
+    categoryId: "",
+    brand: "",
+    under: "",
+    itemName: "",
+    quantity: 1,
+    rate: 0,
+    description: "",
     attachment: "",
     contentBody: "",
-    vatPercent: 0,
-    vatInclude: false,
-    aitPercent: 0,
-    aitInclude: false,
+    vat: 0,
+    ait: 0,
   });
 
-  const [orderItems, setOrderItems] = useState<any[]>([]);
-
-  // Calculations
-  const subtotal = orderItems.reduce(
-    (acc, item) => acc + Number(item.quantity) * Number(item.rate),
-    0,
-  );
-  const vatAmount = formData.vatInclude
-    ? (subtotal * formData.vatPercent) / 100
-    : 0;
-  const aitAmount = formData.aitInclude
-    ? (subtotal * formData.aitPercent) / 100
-    : 0;
-  const grandTotal = subtotal + vatAmount + aitAmount;
-
-  // ==================== API FETCHERS ====================
-  const fetchOptions = async (endpoint: string) => {
-    try {
-      const res = await fetch(
-        `${API_BASE}${API_PREFIX}${endpoint}?page=1&limit=100`,
-      );
-      if (!res.ok) return [];
-      const json = await res.json();
-      const rows = json?.data?.data || json?.data || [];
-      return rows.map((r: any) => ({
-        uuid: r.uuid,
-        name:
-          r.name ||
-          r.projectName ||
-          r.title ||
-          r.itemName ||
-          r.code ||
-          "Unnamed",
-      }));
-    } catch (err) {
-      return [];
-    }
-  };
-
-  const loadDropdowns = useCallback(async () => {
-    const [sup, proj, types, cats, subCats, itms] = await Promise.all([
-      fetchOptions("/customer"), // Using customer API as supplier for now
-      fetchOptions("/project"),
-      fetchOptions("/project-type"),
-      fetchOptions("/category"),
-      fetchOptions("/billing-sub-category"),
-      fetchOptions("/item"),
-    ]);
-    setSuppliers(sup);
-    setProjects(proj);
-    setProjectTypes(types);
-    setCategories(cats);
-    setSubCategories(subCats);
-    setItems(itms);
-  }, []);
-
-  const loadOrders = useCallback(async () => {
+  // ====================== FETCH LISTS ======================
+  const fetchWorkOrders = async () => {
     try {
       setLoading(true);
-      setError(null);
-      // ⚠️ API endpoint ta apnar backend onujayi change korun
-      const res = await fetch(
-        `${API_BASE}${API_PREFIX}/contractor-work-order?page=1&limit=100`,
-      );
-      if (!res.ok) throw new Error("Failed to load work orders");
+      const res = await fetch(`${API_PATH}/project-billing/contractor-work-orders`);
       const json = await res.json();
-      setOrders(json?.data?.data || []);
-    } catch (err: any) {
-      setError(err.message);
+      if (json.success) {
+        setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
+      }
+    } catch (err) {
+      toast.error("Failed to load work orders");
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
+
+  // ====================== FETCH DROPDOWNS ======================
+  const fetchDropdowns = async () => {
+    try {
+      // ১. সাপ্লায়ার (ফিক্স করা হয়েছে)
+      const resSup = await fetch(`${API_PATH}/inventory/suppliers?page=1&limit=100`);
+      const jsonSup = await resSup.json();
+      
+      const supplierData = jsonSup.data?.data || jsonSup.data || jsonSup;
+      if (Array.isArray(supplierData)) {
+        setSuppliers(supplierData);
+      } else {
+        console.warn("Supplier data is not an array:", supplierData);
+      }
+
+      // ২. প্রজেক্ট টাইপ
+      const resType = await fetch(`${API_PATH}/project-type`);
+      const jsonType = await resType.json();
+      if (jsonType.success) setProjectTypes(jsonType.data.data || jsonType.data || []);
+
+      // ৩. প্রজেক্ট
+      const resProj = await fetch(`${API_PATH}/project`);
+      const jsonProj = await resProj.json();
+      if (jsonProj.success) setProjects(jsonProj.data.data || jsonProj.data || []);
+
+      // ৪. সাইট
+      const resSite = await fetch(`${API_PATH}/project-sites`);
+      const jsonSite = await resSite.json();
+      if (jsonSite.success) setSites(jsonSite.data.data || jsonSite.data || []);
+
+      // ৫. ক্যাটাগরি
+      const resCat = await fetch(`${API_PATH}/category?page=1&limit=100`);
+      const jsonCat = await resCat.json();
+      if (jsonCat.success) setCategories(jsonCat.data.data || jsonCat.data || []);
+
+      // ৬. ব্র্যান্ড
+      const resBrand = await fetch(`${API_PATH}/procurement/brand?page=1&limit=100`);
+      const jsonBrand = await resBrand.json();
+      if (jsonBrand.success) setBrands(jsonBrand.data.data || jsonBrand.data || []);
+
+      // ৭. আন্ডার (Under)
+      const resUnder = await fetch(`${API_PATH}/under?page=1&limit=100`);
+      const jsonUnder = await resUnder.json();
+      if (jsonUnder.success) setUnders(jsonUnder.data.data || jsonUnder.data || []);
+
+    } catch (err) {
+      console.error("Error fetching dropdowns:", err);
+    }
+  };
 
   useEffect(() => {
-    loadOrders();
-    loadDropdowns();
-  }, [loadOrders, loadDropdowns]);
+    fetchWorkOrders();
+    fetchDropdowns();
+  }, []);
 
-  // ==================== HANDLERS ====================
-  const handleAddItem = () => {
-    setOrderItems([
-      ...orderItems,
-      {
-        id: String(Date.now()),
-        itemName: "New Item",
-        description: "",
-        unit: "Nos",
-        quantity: 1,
-        rate: 0,
-        amount: 0,
+  // ====================== SUBMIT (POST / PATCH) ======================
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    const payload = {
+      projectId: formData.projectId,
+      title: formData.contentBody || "Work Order Title",
+      code: formData.code,
+      recordDate: formData.date,
+      amount: Number(formData.quantity) * Number(formData.rate),
+      status: "active",
+      description: formData.description,
+      details: {
+        supplierName: formData.supplierName,
+        projectType: formData.projectType,
+        site: formData.site,
+        categoryId: formData.categoryId,
+        brand: formData.brand,
+        under: formData.under,
+        itemName: formData.itemName,
+        vat: formData.vat,
+        ait: formData.ait,
       },
-    ]);
-    setIsItemModalOpen(false);
-  };
+    };
 
-  const handleCreateOrder = async () => {
     try {
-      setLoading(true);
-      const payload = {
-        ...formData,
-        subtotal,
-        vatAmount,
-        aitAmount,
-        grandTotal,
-        items: orderItems,
-      };
+      const isEdit = !!editingItem;
+      const url = isEdit
+        ? `${API_PATH}/project-billing/contractor-work-orders/${editingItem!.uuid}`
+        : `${API_PATH}/project-billing/contractor-work-orders`;
+      const method = isEdit ? "PATCH" : "POST";
 
-      console.log("📤 Sending Work Order Payload:", payload);
-      const res = await fetch(
-        `${API_BASE}${API_PREFIX}/contractor-work-order`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-      );
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-      if (!res.ok) throw new Error("Failed to create work order");
-      alert("Work Order created successfully!");
-      setIsAddOpen(false);
-      loadOrders();
+      const json = await res.json();
+      if (res.ok || json.success) {
+        toast.success(isEdit ? "Updated successfully!" : "Created successfully!");
+        setIsModalOpen(false);
+        setEditingItem(null);
+        fetchWorkOrders();
+      } else {
+        toast.error(json.message || "Failed to save");
+      }
     } catch (err: any) {
-      alert(err.message);
+      toast.error("Network Error");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  // ==================== RENDER ====================
+  // ====================== DELETE ======================
+  const handleDelete = async (item: WorkOrder) => {
+    if (!window.confirm(`Delete "${item.title}"?`)) return;
+    try {
+      const res = await fetch(`${API_PATH}/project-billing/contractor-work-orders/${item.uuid}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Deleted successfully!");
+        setDataList((prev) => prev.filter((row) => row.uuid !== item.uuid));
+      } else {
+        toast.error("Failed to delete");
+      }
+    } catch (err) {
+      toast.error("Error deleting");
+    }
+  };
+
+  // ====================== OPEN MODAL ======================
+  const handleCreate = () => {
+    setFormData({
+      date: new Date().toISOString().split("T")[0],
+      supplierId: "",
+      supplierName: "",
+      code: `CWO${Math.floor(1000 + Math.random() * 9000)}`,
+      projectType: "",
+      projectId: "",
+      site: "",
+      categoryId: "",
+      brand: "",
+      under: "",
+      itemName: "",
+      quantity: 1,
+      rate: 0,
+      description: "",
+      attachment: "",
+      contentBody: "",
+      vat: 0,
+      ait: 0,
+    });
+    setEditingItem(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (item: WorkOrder) => {
+    setEditingItem(item);
+    setFormData({
+      date: item.recordDate,
+      supplierId: "",
+      supplierName: item.details?.supplierName || "",
+      code: item.code,
+      projectType: item.details?.projectType || "",
+      projectId: item.project?.uuid || "",
+      site: item.details?.site || "",
+      categoryId: item.details?.categoryId || "",
+      brand: item.details?.brand || "",
+      under: item.details?.under || "",
+      itemName: item.details?.itemName || "",
+      quantity: 1,
+      rate: Number(item.amount),
+      description: item.description,
+      attachment: "",
+      contentBody: item.title,
+      vat: item.details?.vat || 0,
+      ait: item.details?.ait || 0,
+    });
+    setIsModalOpen(true);
+  };
+
+  // সাব-টোটাল ক্যালকুলেশন
+  const subTotal = Number(formData.quantity) * Number(formData.rate);
+  const vatAmount = (subTotal * formData.vat) / 100;
+  const aitAmount = (subTotal * formData.ait) / 100;
+  const grandTotal = subTotal + vatAmount + aitAmount;
+
+  const filteredData = dataList.filter((item) =>
+    item.title?.toLowerCase().includes(search.toLowerCase()) ||
+    item.code?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // ====================== RENDER ======================
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-6 font-sans text-slate-900">
-      {/* ==================== LIST VIEW ==================== */}
-      {!isAddOpen && (
-        <div className="max-w-[1600px] mx-auto space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs text-slate-500 mb-1">
-                Home / Billing / Contractor Work Order List
-              </div>
-              <h1 className="text-xl font-bold">Contractor Work Order List</h1>
-            </div>
-            <button
-              onClick={() => setIsAddOpen(true)}
-              className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm"
-            >
-              <Plus className="w-4 h-4" /> +Contractor Work Order
-            </button>
+    <div className="min-h-screen bg-gray-50 p-6 font-sans text-gray-800">
+      
+      {/* Top Header */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="text-sm text-gray-500">Home &gt; Billing &gt; Contractor Work Order</div>
+        <button onClick={handleCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm flex items-center gap-1">
+          <Plus className="w-4 h-4" /> Contractor Work Order
+        </button>
+      </div>
+
+      {/* List Table */}
+      <div className="bg-white p-4 border rounded shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex gap-2">
+            <button className="bg-green-600 text-white px-3 py-1 rounded text-xs">Excel</button>
+            <button className="bg-red-600 text-white px-3 py-1 rounded text-xs">PDF</button>
           </div>
-
-          {loading && (
-            <div className="text-center py-10">
-              <Loader2 className="animate-spin inline mr-2" />
-              Loading...
-            </div>
-          )}
-          {error && (
-            <div className="bg-rose-50 text-rose-600 p-3 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          <div className="bg-white border rounded-xl shadow-sm overflow-visible">
-            <div className="p-3 bg-slate-50 border-b flex justify-between items-center">
-              <div className="flex gap-2">
-                <button className="bg-emerald-600 text-white px-3 py-1.5 rounded text-xs font-semibold">
-                  Excel
-                </button>
-                <button className="bg-rose-600 text-white px-3 py-1.5 rounded text-xs font-semibold">
-                  PDF
-                </button>
-              </div>
-              <div className="relative w-64">
-                <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  className="border pl-9 pr-3 py-1.5 rounded-lg text-sm w-full"
-                />
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-indigo-600 text-white uppercase tracking-wider">
-                  <tr>
-                    <th className="py-2 px-3">ID</th>
-                    <th className="py-2 px-3">Contractor Name</th>
-                    <th className="py-2 px-3">WO No</th>
-                    <th className="py-2 px-3">Ref. Invoice No</th>
-                    <th className="py-2 px-3">Date</th>
-                    <th className="py-2 px-3 text-right">Sub Total</th>
-                    <th className="py-2 px-3 text-right">VAT</th>
-                    <th className="py-2 px-3 text-right">Discount</th>
-                    <th className="py-2 px-3 text-right">Grand Total</th>
-                    <th className="py-2 px-3">Added By</th>
-                    <th className="py-2 px-3 text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {orders.map((order, index) => (
-                    <tr key={order.uuid || index}>
-                      <td className="py-2 px-3">{index + 1}</td>
-                      <td className="py-2 px-3">
-                        {order.supplier?.name || "-"}
-                      </td>
-                      <td className="py-2 px-3">{order.code}</td>
-                      <td className="py-2 px-3">{order.refInvoiceNo || "-"}</td>
-                      <td className="py-2 px-3">{order.date}</td>
-                      <td className="py-2 px-3 text-right">
-                        {Number(order.subtotal || 0).toFixed(2)}
-                      </td>
-                      <td className="py-2 px-3 text-right">
-                        {Number(order.vatAmount || 0).toFixed(2)}
-                      </td>
-                      <td className="py-2 px-3 text-right">0.00</td>
-                      <td className="py-2 px-3 text-right font-semibold">
-                        {Number(order.grandTotal || 0).toFixed(2)}
-                      </td>
-                      <td className="py-2 px-3">
-                        {order.createdBy || "Admin"}
-                      </td>
-                      <td className="py-2 px-3 text-center">
-                        <button className="bg-indigo-600 text-white text-[11px] px-3 py-1.5 rounded">
-                          Action
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {orders.length === 0 && !loading && (
-                    <tr>
-                      <td
-                        colSpan={11}
-                        className="text-center py-10 text-slate-400"
-                      >
-                        No data available in table
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          <div className="flex gap-2 items-center text-sm">
+            <span>Search:</span>
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="border rounded px-2 py-1" />
           </div>
         </div>
-      )}
 
-      {/* ==================== ADD VIEW ==================== */}
-      {isAddOpen && (
-        <div className="max-w-[1600px] mx-auto bg-white border border-slate-200 rounded-xl shadow-lg p-6 space-y-6">
-          <div className="flex justify-between items-center border-b pb-4">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setIsAddOpen(false)}
-                className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"
-              >
-                <ArrowLeft className="w-5 h-5 text-slate-700" />
-              </button>
-              <h2 className="text-lg font-bold text-slate-800">
-                Contractor Work Order Add
-              </h2>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setIsItemModalOpen(true)}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-semibold"
-              >
-                Item Add
-              </button>
-              <button
-                onClick={() => setIsLabourModalOpen(true)}
-                className="bg-cyan-500 text-white px-4 py-2 rounded-lg text-xs font-semibold"
-              >
-                Labour/Worker Add
-              </button>
-              <button
-                onClick={() => setIsAddOpen(false)}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-semibold"
-              >
-                Work Order List
-              </button>
-            </div>
-          </div>
-
-          {/* Form Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
-            <div>
-              <label className="block font-semibold text-slate-600 mb-1">
-                Date
-              </label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) =>
-                  setFormData({ ...formData, date: e.target.value })
-                }
-                className="w-full border rounded-lg px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-600 mb-1">
-                Supplier
-              </label>
-              <select
-                value={formData.supplierId}
-                onChange={(e) =>
-                  setFormData({ ...formData, supplierId: e.target.value })
-                }
-                className="w-full border rounded-lg px-3 py-2"
-              >
-                <option value="">Select One Option</option>
-                {suppliers.map((s) => (
-                  <option key={s.uuid} value={s.uuid}>
-                    {s.name}
-                  </option>
+        {loading ? (
+          <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>
+        ) : (
+          <table className="w-full text-sm text-left whitespace-nowrap">
+            <thead className="bg-indigo-600 text-white">
+              <tr>
+                {["ID", "CONTRACTOR NAME", "WO NO", "REF INVOICE NO", "DATE", "SUB TOTAL", "VAT", "DISCOUNT", "GRAND TOTAL", "ADDED BY", "APPROVE", "ATTACHMENT", "ACTION"].map(h => (
+                  <th key={h} className="px-3 py-2 font-medium">{h}</th>
                 ))}
-              </select>
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-600 mb-1">
-                Code
-              </label>
-              <input
-                type="text"
-                value={formData.code}
-                readOnly
-                className="w-full border rounded-lg px-3 py-2 bg-slate-50"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-600 mb-1">
-                Project Type
-              </label>
-              <select
-                value={formData.projectTypeId}
-                onChange={(e) =>
-                  setFormData({ ...formData, projectTypeId: e.target.value })
-                }
-                className="w-full border rounded-lg px-3 py-2"
-              >
-                <option value="">Select value</option>
-                {projectTypes.map((t) => (
-                  <option key={t.uuid} value={t.uuid}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-600 mb-1">
-                Project
-              </label>
-              <select
-                value={formData.projectId}
-                onChange={(e) =>
-                  setFormData({ ...formData, projectId: e.target.value })
-                }
-                className="w-full border rounded-lg px-3 py-2"
-              >
-                <option value="">Select Project</option>
-                {projects.map((p) => (
-                  <option key={p.uuid} value={p.uuid}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-600 mb-1">
-                Site
-              </label>
-              <select className="w-full border rounded-lg px-3 py-2">
-                <option>Select Site</option>
-              </select>
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-600 mb-1">
-                Attachment
-              </label>
-              <input
-                type="file"
-                className="w-full border rounded-lg px-3 py-1.5 text-slate-500"
-              />
-            </div>
-          </div>
-
-          {/* Item Selection Bar */}
-          <div className="bg-slate-100 p-3 rounded-xl grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div>
-              <label className="block font-semibold text-slate-600 mb-1">
-                Category
-              </label>
-              <select className="w-full border rounded-lg px-3 py-2">
-                <option>Select Category</option>
-                {categories.map((c) => (
-                  <option key={c.uuid} value={c.uuid}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-600 mb-1">
-                Sub Category
-              </label>
-              <select className="w-full border rounded-lg px-3 py-2">
-                <option>Select Sub Category</option>
-                {subCategories.map((sc) => (
-                  <option key={sc.uuid} value={sc.uuid}>
-                    {sc.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-600 mb-1">
-                Select Item (Product / Material)
-              </label>
-              <select className="w-full border rounded-lg px-3 py-2">
-                <option value="">Select Item</option>
-                {items.map((i) => (
-                  <option key={i.uuid} value={i.uuid}>
-                    {i.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Rich Text Editor Placeholder */}
-          <div className="border rounded-xl overflow-hidden">
-            <div className="bg-slate-50 border-b p-2 flex gap-2 text-xs">
-              <span className="font-semibold text-slate-600 mr-2 py-1">
-                Content Body
-              </span>
-              <button className="p-1 hover:bg-slate-200 rounded">B</button>
-              <button className="p-1 hover:bg-slate-200 rounded italic">
-                I
-              </button>
-              <button className="p-1 hover:bg-slate-200 rounded underline">
-                U
-              </button>
-            </div>
-            <textarea
-              rows={4}
-              placeholder="Write your work order content here..."
-              className="w-full p-3 text-sm focus:outline-none resize-none"
-            />
-          </div>
-
-          {/* Work Order Items Table */}
-          <div className="overflow-x-auto border rounded-xl">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-indigo-600 text-white">
-                <tr>
-                  <th className="py-3 px-3">Labour/Worker</th>
-                  <th className="py-3 px-3">Description</th>
-                  <th className="py-3 px-3">Unit</th>
-                  <th className="py-3 px-3">Quantity</th>
-                  <th className="py-3 px-3 text-right">Rate</th>
-                  <th className="py-3 px-3 text-right">Amount</th>
-                  <th className="py-3 px-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {orderItems.map((item, index) => (
-                  <tr key={item.id}>
-                    <td className="py-2 px-3">
-                      <input
-                        type="text"
-                        className="w-full border rounded px-2 py-1"
-                        placeholder="Name"
-                      />
-                    </td>
-                    <td className="py-2 px-3">
-                      <input
-                        type="text"
-                        className="w-full border rounded px-2 py-1"
-                      />
-                    </td>
-                    <td className="py-2 px-3">
-                      <select className="w-full border rounded px-2 py-1">
-                        <option>Nos</option>
-                      </select>
-                    </td>
-                    <td className="py-2 px-3">
-                      <input
-                        type="number"
-                        className="w-full border rounded px-2 py-1"
-                      />
-                    </td>
-                    <td className="py-2 px-3">
-                      <input
-                        type="number"
-                        className="w-full border rounded px-2 py-1"
-                      />
-                    </td>
-                    <td className="py-2 px-3 text-right font-semibold">0.00</td>
-                    <td className="py-2 px-3 text-center">
-                      <button
-                        onClick={() =>
-                          setOrderItems(
-                            orderItems.filter((_, i) => i !== index),
-                          )
-                        }
-                        className="text-rose-600"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {orderItems.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="text-center py-6 text-slate-400">
-                      No items added yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Totals & Payment */}
-          <div className="flex justify-end mt-4">
-            <div className="w-full md:w-1/2 space-y-2 text-xs">
-              <div className="flex justify-between items-center bg-slate-50 p-2 rounded border">
-                <span className="font-semibold text-slate-700">Subtotal:</span>
-                <span className="w-32 bg-white border rounded px-2 py-1 text-right">
-                  {subtotal.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center bg-slate-50 p-2 rounded border">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-700">Vat(%):</span>
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.vatInclude}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          vatInclude: e.target.checked,
-                        })
-                      }
-                    />{" "}
-                    If Include
-                  </label>
-                </div>
-                <input
-                  type="number"
-                  value={formData.vatPercent}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      vatPercent: Number(e.target.value),
-                    })
-                  }
-                  className="w-32 bg-white border rounded px-2 py-1"
-                />
-              </div>
-              <div className="flex justify-between items-center bg-slate-50 p-2 rounded border">
-                <span className="font-semibold text-slate-700">
-                  Vat(Amount):
-                </span>
-                <span className="w-32 bg-slate-100 border rounded px-2 py-1 text-right">
-                  {vatAmount.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center bg-slate-50 p-2 rounded border">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-700">AIT(%):</span>
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.aitInclude}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          aitInclude: e.target.checked,
-                        })
-                      }
-                    />{" "}
-                    If Include
-                  </label>
-                </div>
-                <input
-                  type="number"
-                  value={formData.aitPercent}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      aitPercent: Number(e.target.value),
-                    })
-                  }
-                  className="w-32 bg-white border rounded px-2 py-1"
-                />
-              </div>
-              <div className="flex justify-between items-center bg-slate-50 p-2 rounded border">
-                <span className="font-semibold text-slate-700">
-                  AIT(Amount):
-                </span>
-                <span className="w-32 bg-slate-100 border rounded px-2 py-1 text-right">
-                  {aitAmount.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center bg-emerald-600 p-2 rounded border border-emerald-700 text-white font-bold">
-                <span>Grand Total:</span>
-                <span className="w-32 text-right">{grandTotal.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <button
-              onClick={handleCreateOrder}
-              disabled={loading}
-              className="px-8 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold shadow-sm flex items-center gap-2"
-            >
-              {loading ? (
-                <Loader2 className="animate-spin w-4 h-4" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {filteredData.length === 0 ? (
+                <tr><td colSpan={13} className="text-center py-8 text-gray-500">No data available in table</td></tr>
               ) : (
-                "Submit"
+                filteredData.map((item) => (
+                  <tr key={item.uuid} className="hover:bg-gray-50">
+                    <td className="px-3 py-2">{item.id}</td>
+                    <td className="px-3 py-2 font-medium">{item.project?.name || "Unknown"}</td>
+                    <td className="px-3 py-2">{item.code}</td>
+                    <td className="px-3 py-2">-</td>
+                    <td className="px-3 py-2">{item.recordDate}</td>
+                    <td className="px-3 py-2">{item.amount}</td>
+                    <td className="px-3 py-2">0</td>
+                    <td className="px-3 py-2">0</td>
+                    <td className="px-3 py-2 font-bold">{item.amount}</td>
+                    <td className="px-3 py-2">Admin</td>
+                    <td className="px-3 py-2 text-center"><input type="checkbox" /></td>
+                    <td className="px-3 py-2">-</td>
+                    <td className="px-3 py-2 flex gap-1">
+                      <button onClick={() => handleEdit(item)} className="bg-teal-500 text-white p-1.5 rounded hover:bg-teal-600"><Edit3 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => handleDelete(item)} className="bg-red-500 text-white p-1.5 rounded hover:bg-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </td>
+                  </tr>
+                ))
               )}
-            </button>
-          </div>
-        </div>
-      )}
+            </tbody>
+          </table>
+        )}
+      </div>
 
-      {/* ==================== MODAL: NEW ITEM ==================== */}
-      {isItemModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
-            <div className="flex justify-between items-center bg-slate-50 px-5 py-3 border-b">
-              <h3 className="font-bold text-slate-800">New Item</h3>
-              <button
-                onClick={() => setIsItemModalOpen(false)}
-                className="text-slate-500 hover:text-slate-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      {/* ====================== ADD/EDIT MODAL ====================== */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-6xl max-h-[95vh] overflow-y-auto">
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-lg font-bold">{editingItem ? "Edit Work Order" : "Contractor Work Order"}</h2>
+              <button onClick={() => setIsModalOpen(false)}><X className="w-5 h-5 text-gray-500" /></button>
             </div>
-            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div>
-                <label className="block font-semibold mb-1">Category</label>
-                <select className="w-full border rounded px-2 py-1.5">
-                  <option>Select Category</option>
-                </select>
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Brand</label>
-                <select className="w-full border rounded px-2 py-1.5">
-                  <option>Select Brand</option>
-                </select>
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block font-semibold mb-1">Item Name</label>
-                <input
-                  type="text"
-                  className="w-full border rounded px-2 py-1.5"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Unit</label>
-                <select className="w-full border rounded px-2 py-1.5">
-                  <option>Select Unit</option>
-                </select>
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">
-                  Purchase Price
-                </label>
-                <input
-                  type="number"
-                  className="w-full border rounded px-2 py-1.5"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Sale Price</label>
-                <input
-                  type="number"
-                  className="w-full border rounded px-2 py-1.5"
-                />
-              </div>
-            </div>
-            <div className="bg-slate-50 px-5 py-3 border-t flex justify-end gap-2">
-              <button
-                onClick={() => setIsItemModalOpen(false)}
-                className="px-4 py-2 border rounded-lg text-xs font-semibold"
-              >
-                Close
-              </button>
-              <button
-                onClick={handleAddItem}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold"
-              >
-                Submit
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* ==================== MODAL: LABOUR/WORKER ADD ==================== */}
-      {isLabourModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
-            <div className="flex justify-between items-center bg-slate-50 px-5 py-3 border-b">
-              <h3 className="font-bold text-slate-800">
-                Labour/Worker/Contractor
-              </h3>
-              <button
-                onClick={() => setIsLabourModalOpen(false)}
-                className="text-slate-500 hover:text-slate-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div>
-                <label className="block font-semibold mb-1">Code</label>
-                <input
-                  type="text"
-                  className="w-full border rounded px-2 py-1.5 bg-slate-50"
-                  readOnly
-                  value={`CUS${Math.floor(100000 + Math.random() * 900000)}`}
-                />
+            {/* Modal Body */}
+            <form onSubmit={handleSubmit} className="p-4 space-y-4">
+              
+              {/* Top Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Date</label>
+                  <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Supplier</label>
+                  <select value={formData.supplierId} onChange={(e) => {
+                    const sup = suppliers.find(s => s.uuid === e.target.value);
+                    // ✅ supplierName বা name যেটাই থাকুক সেটা ধরবে
+                    setFormData({ ...formData, supplierId: e.target.value, supplierName: sup?.supplierName || sup?.name || "" });
+                  }} className="w-full border rounded px-3 py-1.5 text-sm">
+                    <option value="">Select One Option</option>
+                    {suppliers.map(s => (
+                      <option key={s.uuid} value={s.uuid}>{s.supplierName || s.name || "Unknown"}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Code</label>
+                  <input type="text" value={formData.code} readOnly className="w-full border rounded px-3 py-1.5 text-sm bg-gray-50" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Project Type</label>
+                  <select value={formData.projectType} onChange={(e) => setFormData({ ...formData, projectType: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
+                    <option value="">Select value</option>
+                    {projectTypes.map(p => <option key={p.uuid} value={p.name}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Project</label>
+                  <select value={formData.projectId} onChange={(e) => setFormData({ ...formData, projectId: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
+                    <option value="">Select Project</option>
+                    {projects.map(p => <option key={p.uuid} value={p.uuid}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Site</label>
+                  <select value={formData.site} onChange={(e) => setFormData({ ...formData, site: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
+                    <option value="">Select Site</option>
+                    {sites.map(s => <option key={s.uuid} value={s.name}>{s.name}</option>)}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block font-semibold mb-1">Name</label>
-                <input
-                  type="text"
-                  className="w-full border rounded px-2 py-1.5"
-                />
+
+              {/* Second Row Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Category</label>
+                  <select value={formData.categoryId} onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
+                    <option value="">Select Category</option>
+                    {categories.map(c => <option key={c.uuid} value={c.uuid}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Brand</label>
+                  <select value={formData.brand} onChange={(e) => setFormData({ ...formData, brand: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
+                    <option value="">Select Brand</option>
+                    {brands.map(b => <option key={b.uuid} value={b.name}>{b.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Select Item</label>
+                  <input type="text" value={formData.itemName} onChange={(e) => setFormData({ ...formData, itemName: e.target.value })} placeholder="Search Item..." className="w-full border rounded px-3 py-1.5 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Under</label>
+                  <select value={formData.under} onChange={(e) => setFormData({ ...formData, under: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
+                    <option value="">Select Under</option>
+                    {unders.map(u => <option key={u.uuid} value={u.name}>{u.name}</option>)}
+                  </select>
+                </div>
               </div>
+
+              {/* Attachment & Content Body */}
               <div>
-                <label className="block font-semibold mb-1">Phone/Mobile</label>
-                <input
-                  type="text"
-                  className="w-full border rounded px-2 py-1.5"
-                />
+                <label className="block text-xs text-gray-600 mb-1">Attachment</label>
+                <input type="file" onChange={(e) => setFormData({ ...formData, attachment: e.target.files?.[0]?.name || "" })} className="w-full border rounded px-3 py-1 text-sm file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:bg-indigo-50 file:text-indigo-700" />
               </div>
-              <div>
-                <label className="block font-semibold mb-1">Address</label>
-                <input
-                  type="text"
-                  className="w-full border rounded px-2 py-1.5"
-                />
+
+              {/* Content Body Mock Editor */}
+              <div className="border rounded">
+                <div className="p-2 border-b flex gap-3 text-sm text-gray-700 bg-gray-50"><span>File</span><span>Edit</span><span>View</span><span>Insert</span><span>Format</span><span>Tools</span><span>Table</span></div>
+                <div className="p-2 border-b flex gap-3 text-gray-600"><span>↶</span><span>↷</span><span>Paragraph ▾</span><span className="font-bold">B</span><span className="italic">I</span><span>U</span><span>≡</span></div>
+                <textarea value={formData.contentBody} onChange={(e) => setFormData({ ...formData, contentBody: e.target.value })} className="w-full h-24 p-3 text-sm focus:outline-none resize-none" placeholder="Content Body..."></textarea>
               </div>
-              <div>
-                <label className="block font-semibold mb-1">
-                  Opening Balance
-                </label>
-                <input
-                  type="number"
-                  className="w-full border rounded px-2 py-1.5"
-                />
+
+              {/* Line Items Table */}
+              <div className="border rounded overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-indigo-500 text-white">
+                    <tr>
+                      {["ITEM NAME", "DESCRIPTION", "UNIT", "QUANTITY", "RATE", "IMAGE", "AMOUNT", "ACTION"].map(h => (
+                        <th key={h} className="px-3 py-2 font-medium">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b">
+                      <td className="px-2 py-2"><input type="text" value={formData.itemName} onChange={(e) => setFormData({ ...formData, itemName: e.target.value })} className="w-full border rounded px-2 py-1 text-sm" /></td>
+                      <td className="px-2 py-2"><input type="text" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full border rounded px-2 py-1 text-sm" /></td>
+                      <td className="px-2 py-2"><input type="text" placeholder="Unit" className="w-16 border rounded px-2 py-1 text-sm" /></td>
+                      <td className="px-2 py-2"><input type="number" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })} className="w-20 border rounded px-2 py-1 text-sm" /></td>
+                      <td className="px-2 py-2"><input type="number" value={formData.rate} onChange={(e) => setFormData({ ...formData, rate: Number(e.target.value) })} className="w-24 border rounded px-2 py-1 text-sm" /></td>
+                      <td className="px-2 py-2"><input type="text" placeholder="Image URL" className="w-20 border rounded px-2 py-1 text-sm" /></td>
+                      <td className="px-2 py-2 font-medium">{subTotal.toFixed(2)}</td>
+                      <td className="px-2 py-2 text-center">
+                        <button type="button" className="bg-green-500 text-white w-6 h-6 rounded text-xs">+</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <div>
-                <label className="block font-semibold mb-1">Credit Limit</label>
-                <input
-                  type="number"
-                  className="w-full border rounded px-2 py-1.5"
-                />
+
+              {/* Footer Calculations */}
+              <div className="flex flex-col md:flex-row gap-6 border-t pt-4">
+                <div className="flex-1 border rounded">
+                  <div className="p-2 border-b bg-gray-50 text-xs font-medium">Content Footer</div>
+                  <textarea className="w-full h-20 p-2 text-sm focus:outline-none resize-none" placeholder="Notes..."></textarea>
+                </div>
+                <div className="flex-1 space-y-1 text-sm">
+                  <div className="flex justify-between items-center border rounded overflow-hidden">
+                    <span className="bg-gray-50 px-3 py-1 w-1/2 border-r">Subtotal :</span>
+                    <input type="text" value={subTotal.toFixed(2)} readOnly className="px-3 py-1 w-1/2 text-right bg-white outline-none" />
+                  </div>
+                  <div className="flex justify-between items-center border rounded overflow-hidden">
+                    <span className="bg-gray-50 px-3 py-1 w-1/2 border-r">Vat(%) :</span>
+                    <input type="number" value={formData.vat} onChange={(e) => setFormData({ ...formData, vat: Number(e.target.value) })} className="px-3 py-1 w-1/2 text-right bg-white outline-none" />
+                  </div>
+                  <div className="flex justify-between items-center border rounded overflow-hidden">
+                    <span className="bg-gray-50 px-3 py-1 w-1/2 border-r">Vat(Amount) :</span>
+                    <input type="text" value={vatAmount.toFixed(2)} readOnly className="px-3 py-1 w-1/2 text-right bg-white outline-none" />
+                  </div>
+                  <div className="flex justify-between items-center border rounded overflow-hidden">
+                    <span className="bg-gray-50 px-3 py-1 w-1/2 border-r">AIT(%) :</span>
+                    <input type="number" value={formData.ait} onChange={(e) => setFormData({ ...formData, ait: Number(e.target.value) })} className="px-3 py-1 w-1/2 text-right bg-white outline-none" />
+                  </div>
+                  <div className="flex justify-between items-center border rounded overflow-hidden">
+                    <span className="bg-gray-50 px-3 py-1 w-1/2 border-r">AIT(Amount) :</span>
+                    <input type="text" value={aitAmount.toFixed(2)} readOnly className="px-3 py-1 w-1/2 text-right bg-white outline-none" />
+                  </div>
+                  <div className="flex justify-between items-center border rounded overflow-hidden bg-green-50">
+                    <span className="bg-green-100 px-3 py-1 w-1/2 border-r font-bold text-green-800">Grand Total :</span>
+                    <input type="text" value={grandTotal.toFixed(2)} readOnly className="px-3 py-1 w-1/2 text-right bg-green-50 font-bold text-green-800 outline-none" />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block font-semibold mb-1">Due Date</label>
-                <input
-                  type="date"
-                  className="w-full border rounded px-2 py-1.5"
-                />
+
+              {/* Modal Footer Buttons */}
+              <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="bg-gray-400 text-white px-4 py-2 rounded text-sm">Close</button>
+                <button type="submit" disabled={submitting} className="bg-indigo-600 text-white px-6 py-2 rounded text-sm flex items-center gap-2">
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />} Submit
+                </button>
               </div>
-              <div>
-                <label className="block font-semibold mb-1">Under</label>
-                <select className="w-full border rounded px-2 py-1.5">
-                  <option>Select One Option</option>
-                </select>
-              </div>
-            </div>
-            <div className="bg-slate-50 px-5 py-3 border-t flex justify-end gap-2">
-              <button
-                onClick={() => setIsLabourModalOpen(false)}
-                className="px-4 py-2 border rounded-lg text-xs font-semibold"
-              >
-                Close
-              </button>
-              <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold">
-                Submit
-              </button>
-            </div>
+            </form>
           </div>
         </div>
       )}

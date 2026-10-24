@@ -30,6 +30,7 @@ export interface CrmPageData {
   columns: CrmColumn[];
   rows?: Record<string, string | number>[];
   apiEndpoint?: string;
+  restoreEndpoint?: string;
   transformData?: (rawData: any[]) => Record<string, string | number>[];
   createFields?: CreateFieldDef[];
 }
@@ -41,6 +42,8 @@ export function extractApiItems(resData: any): any[] {
   if (Array.isArray(resData?.data?.rows)) return resData.data.rows;
   if (Array.isArray(resData?.rows)) return resData.rows;
   if (Array.isArray(resData?.items)) return resData.items;
+  if (resData?.data && typeof resData.data === "object") return [resData.data];
+  if (resData && typeof resData === "object") return [resData];
   return [];
 }
 
@@ -118,12 +121,14 @@ export function CrmPageTemplate({
   columns,
   rows = [],
   apiEndpoint,
+  restoreEndpoint,
   transformData,
   createFields,
 }: CrmPageData) {
   const [query, setQuery] = useState("");
   const [dataRows, setDataRows] = useState<Record<string, string | number>[]>(rows);
   const [loading, setLoading] = useState(Boolean(apiEndpoint));
+  const [loadError, setLoadError] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -158,12 +163,13 @@ export function CrmPageTemplate({
     }
 
     setLoading(true);
+    setLoadError("");
     try {
       const res = await api.get(apiEndpoint);
       const items = extractApiItems(res.data);
       if (transformRef.current) {
         const transformed = transformRef.current(items);
-        setDataRows(transformed.length > 0 ? transformed : (rowsRef.current?.length ? rowsRef.current : []));
+        setDataRows(transformed);
       } else if (items.length > 0) {
         // Fallback generic mapping
         setDataRows(
@@ -188,14 +194,15 @@ export function CrmPageTemplate({
           }))
         );
       } else if (rowsRef.current && rowsRef.current.length > 0) {
-        setDataRows(rowsRef.current);
+        setDataRows([]);
       } else {
         setDataRows([]);
       }
     } catch (err: any) {
       console.error(`Error loading data for ${apiEndpoint}:`, err);
-      // Fallback to static rows on initial load if provided
-      if (rowsRef.current && rowsRef.current.length > 0) setDataRows(rowsRef.current);
+      const message = err.response?.data?.message || err.message || "Failed to load CRM records.";
+      setLoadError(Array.isArray(message) ? message.join(", ") : message);
+      setDataRows([]);
     } finally {
       setLoading(false);
     }
@@ -282,6 +289,19 @@ export function CrmPageTemplate({
     }
   };
 
+  const handleRestore = async (row: any) => {
+    const targetId = row.id || row.uuid;
+    if (!restoreEndpoint || !targetId) return;
+    try {
+      await api.post(`${restoreEndpoint}/${targetId}/restore`);
+      showAlert.success("Restored", "Lead is back in the active directory.");
+      await loadData();
+    } catch (err: any) {
+      const message = err.response?.data?.message || err.message || "Failed to restore lead.";
+      showAlert.error("Restore Failed", Array.isArray(message) ? message.join(", ") : message);
+    }
+  };
+
   const handleExportCSV = () => {
     if (filtered.length === 0) {
       showAlert.warning("No Data", "There are no records to export.");
@@ -328,11 +348,7 @@ export function CrmPageTemplate({
       if (apiEndpoint) {
         if (editingItem && (editingItem.id || editingItem.uuid)) {
           const targetId = editingItem.id || editingItem.uuid;
-          try {
-            await api.put(`${apiEndpoint}/${targetId}`, formData);
-          } catch {
-            await api.patch(`${apiEndpoint}/${targetId}`, formData);
-          }
+          await api.put(`${apiEndpoint}/${targetId}`, formData);
           showAlert.success("Updated Successfully", `${title} has been updated.`);
         } else {
           await api.post(apiEndpoint, formData);
@@ -400,6 +416,13 @@ export function CrmPageTemplate({
         </div>
       </motion.div>
 
+      {loadError && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          <span>{loadError}</span>
+          <button type="button" onClick={() => void loadData()} className="font-semibold underline">Retry</button>
+        </div>
+      )}
+
       {/* Main Table Card */}
       <motion.div
         initial={{ opacity: 0, y: 12, scale: 0.995 }}
@@ -456,7 +479,7 @@ export function CrmPageTemplate({
                     {col.label}
                   </th>
                 ))}
-                {activeFields.length > 0 && (
+                {(activeFields.length > 0 || restoreEndpoint) && (
                   <th className="whitespace-nowrap px-4 py-2.5 text-[11.5px] font-semibold text-ink-muted text-right">
                     Actions
                   </th>
@@ -512,25 +535,17 @@ export function CrmPageTemplate({
                             )}
                           </td>
                         ))}
-                        {activeFields.length > 0 && (
+                        {(activeFields.length > 0 || restoreEndpoint) && (
                           <td className="whitespace-nowrap px-4 py-2.5 text-[13px] text-right">
                             <div className="inline-flex items-center gap-1.5 justify-end">
-                              <button
-                                type="button"
-                                onClick={() => openEditModal(row)}
-                                className="p-1 rounded text-ink-muted hover:text-[#0000F2] hover:bg-canvas transition-colors cursor-pointer"
-                                title="Edit Record"
-                              >
-                                <Edit2 size={13} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(row)}
-                                className="p-1 rounded text-ink-muted hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                title="Delete Record"
-                              >
-                                <Trash2 size={13} />
-                              </button>
+                              {restoreEndpoint ? (
+                                <button type="button" onClick={() => void handleRestore(row)} className="rounded px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50" title="Restore lead">Restore</button>
+                              ) : (
+                                <>
+                                  <button type="button" onClick={() => openEditModal(row)} className="p-1 rounded text-ink-muted hover:text-[#0000F2] hover:bg-canvas transition-colors cursor-pointer" title="Edit Record"><Edit2 size={13} /></button>
+                                  <button type="button" onClick={() => handleDelete(row)} className="p-1 rounded text-ink-muted hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer" title="Delete Record"><Trash2 size={13} /></button>
+                                </>
+                              )}
                             </div>
                           </td>
                         )}
@@ -544,7 +559,7 @@ export function CrmPageTemplate({
                       transition={{ duration: 0.2 }}
                     >
                       <td
-                        colSpan={columns.length + (activeFields.length > 0 ? 1 : 0)}
+                        colSpan={columns.length + (activeFields.length > 0 || restoreEndpoint ? 1 : 0)}
                         className="px-4 py-10 text-center text-[13px] text-ink-faint"
                       >
                         No live records found. Click &quot;{addLabel || "Add"}&quot; to create one.
