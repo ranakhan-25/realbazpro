@@ -54,8 +54,9 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     try {
       const session = await loginAdminSession(identifier, password);
       setStoredTokens(
-        session.accessToken ?? session.token,
+        session.accessToken,
         session.refreshToken,
+        session.user,
       );
       setIsAuthenticated(true);
     } finally {
@@ -70,8 +71,17 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
   const refreshToken = useCallback(async () => {
     const session = await refreshAdminSession();
-    setStoredTokens(session.accessToken ?? session.token, session.refreshToken);
-    setIsAuthenticated(true);
+    if (session) {
+      setStoredTokens(
+        session.accessToken,
+        session.refreshToken,
+        session.user,
+      );
+      setIsAuthenticated(true);
+    } else {
+      clearStoredTokens();
+      setIsAuthenticated(false);
+    }
   }, []);
 
   return (
