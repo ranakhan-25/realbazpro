@@ -50,7 +50,7 @@ export default function TenantPortalPage({
     );
   }
 
-  if (error || !data) {
+  if (error || !data || !data.site) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
         <div className="p-4 rounded-full bg-red-950/50 border border-red-800 text-red-400 mb-4">
@@ -70,8 +70,8 @@ export default function TenantPortalPage({
     );
   }
 
-  const { site, menus, pages } = data;
-  const theme = site.themeConfig || {
+  const { site, menus = [], pages = [] } = data;
+  const theme = site?.themeConfig || {
     primaryColor: "#0000F2",
     secondaryColor: "#3B82F6",
     accentColor: "#00D2FF",
@@ -100,7 +100,7 @@ export default function TenantPortalPage({
                 className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white shadow-lg"
                 style={{ backgroundColor: theme.primaryColor }}
               >
-                {site.siteTitle.charAt(0)}
+                {site.siteTitle ? site.siteTitle.charAt(0) : "T"}
               </div>
             )}
             <div>
@@ -137,7 +137,7 @@ export default function TenantPortalPage({
         </div>
       </header>
 
-      {/* 2. Hero Block */}
+      {/* 2. Hero & Dynamic Blocks */}
       {blocks.map((block) => {
         if (block.blockType === "HERO") {
           const content = block.contentJson || {};
@@ -146,7 +146,6 @@ export default function TenantPortalPage({
               key={block.id}
               className="relative py-28 px-6 overflow-hidden border-b border-white/5"
             >
-              {/* Radial gradient background based on primary color */}
               <div
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[140px] opacity-20 pointer-events-none"
                 style={{ backgroundColor: theme.primaryColor }}
