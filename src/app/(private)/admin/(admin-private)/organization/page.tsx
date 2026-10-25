@@ -49,7 +49,10 @@ export default function UserOrganizationPage() {
       const profile = getStoredUserProfile();
       setCurrentUserProfile(profile);
 
-      const allOrgs = await getOrganizations();
+      const allOrgs = await getOrganizations().catch((err) => {
+        console.warn("Unable to fetch organizations list:", err);
+        return [];
+      });
       setOrgs(allOrgs || []);
 
       if (allOrgs && allOrgs.length > 0) {
