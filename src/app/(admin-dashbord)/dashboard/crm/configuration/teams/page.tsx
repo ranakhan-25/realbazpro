@@ -1,12 +1,6 @@
 "use client";
 
-import { Metadata } from "next";
 import { CrmPageTemplate } from "@/components/crm/CrmPageTemplate";
-
-export const metadata: Metadata = {
-  title: "Sales Teams - CRM",
-  description: "Organize sales forces into specialized regional and project squads",
-};
 
 export default function TeamsPage() {
   return (

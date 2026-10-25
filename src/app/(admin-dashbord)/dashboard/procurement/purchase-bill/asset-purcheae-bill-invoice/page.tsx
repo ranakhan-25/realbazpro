@@ -369,8 +369,8 @@ const PurchaseBillInvoiceList = () => {
 
       {/* Footer */}
       <footer className="flex flex-wrap items-center justify-between gap-2 px-6 py-4 bg-white border-t border-slate-100 text-[12px] text-slate-500">
-        <span>2026 © Somikoron IT LTD</span>
-        <span>Design &amp; Developed by Somikoron IT LTD</span>
+        <span>2026 © RealBiz Pro</span>
+        <span>Design &amp; Developed by RealBiz Pro</span>
       </footer>
     </div>
   );

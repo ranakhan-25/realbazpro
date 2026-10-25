@@ -543,11 +543,15 @@ export default function PurchaseOrderList({
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
   // Invoice / PDF View Modal State (Screenshot 2)
-  const [invoiceOrder, setInvoiceOrder] = useState<PurchaseOrderRow | null>(null);
+  const [invoiceOrder, setInvoiceOrder] = useState<PurchaseOrderRow | null>(
+    null,
+  );
 
   // Listing Filters State (matching Screenshot 1)
-  const [dateRange, setDateRange] = useState("1 October, 2026 - 31 October, 2026");
-  const [companyFilter, setCompanyFilter] = useState("Somikoron IT Ltd");
+  const [dateRange, setDateRange] = useState(
+    "1 October, 2026 - 31 October, 2026",
+  );
+  const [companyFilter, setCompanyFilter] = useState("RealBiz Pro");
   const [supplierFilter, setSupplierFilter] = useState("");
   const [projectFilter, setProjectFilter] = useState("");
   const [titleFilter, setTitleFilter] = useState("");
@@ -576,7 +580,8 @@ export default function PurchaseOrderList({
   const [formBoqItems, setFormBoqItems] = useState<BoqItem[]>([]);
 
   // GRN Form State (Matching Screenshot 3)
-  const [selectedPoForGrn, setSelectedPoForGrn] = useState<PurchaseOrderRow | null>(null);
+  const [selectedPoForGrn, setSelectedPoForGrn] =
+    useState<PurchaseOrderRow | null>(null);
   const [grnDate, setGrnDate] = useState("25/10/2026");
   const [grnSupplier, setGrnSupplier] = useState("");
   const [grnCode, setGrnCode] = useState("PO00006");
@@ -599,7 +604,10 @@ export default function PurchaseOrderList({
     type: "success" | "info" | "error";
   } | null>(null);
 
-  const showToast = (message: string, type: "success" | "info" | "error" = "success") => {
+  const showToast = (
+    message: string,
+    type: "success" | "info" | "error" = "success",
+  ) => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
@@ -607,7 +615,10 @@ export default function PurchaseOrderList({
   // Close action dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
+      if (
+        actionMenuRef.current &&
+        !actionMenuRef.current.contains(e.target as Node)
+      ) {
         setActiveActionId(null);
       }
     };
@@ -618,19 +629,19 @@ export default function PurchaseOrderList({
   // Filter options derived from data
   const suppliers = useMemo(
     () => Array.from(new Set(rows.map((r) => r.supplierName).filter(Boolean))),
-    [rows]
+    [rows],
   );
   const projects = useMemo(
     () => Array.from(new Set(rows.map((r) => r.project).filter(Boolean))),
-    [rows]
+    [rows],
   );
   const titlesOfWork = useMemo(
     () => Array.from(new Set(rows.map((r) => r.titleOfWork).filter(Boolean))),
-    [rows]
+    [rows],
   );
   const tasks = useMemo(
     () => Array.from(new Set(rows.map((r) => r.task).filter(Boolean))),
-    [rows]
+    [rows],
   );
 
   // Filtered & Sorted Rows
@@ -651,12 +662,19 @@ export default function PurchaseOrderList({
           r.note,
         ].some((field) => field?.toLowerCase().includes(q));
 
-      const matchesSupplier = !supplierFilter || r.supplierName === supplierFilter;
+      const matchesSupplier =
+        !supplierFilter || r.supplierName === supplierFilter;
       const matchesProject = !projectFilter || r.project === projectFilter;
       const matchesTitle = !titleFilter || r.titleOfWork === titleFilter;
       const matchesTask = !taskFilter || r.task === taskFilter;
 
-      return matchesSearch && matchesSupplier && matchesProject && matchesTitle && matchesTask;
+      return (
+        matchesSearch &&
+        matchesSupplier &&
+        matchesProject &&
+        matchesTitle &&
+        matchesTask
+      );
     });
   }, [search, supplierFilter, projectFilter, titleFilter, taskFilter, rows]);
 
@@ -743,7 +761,7 @@ export default function PurchaseOrderList({
           quantity: it.quantity,
           receiveQty: 2, // Default as in user's Image 3
           alreadyReceiveQty: Math.max(0, it.quantity - 2), // 8 as in user's Image 3
-        }))
+        })),
       );
     } else {
       setGrnItems([
@@ -766,7 +784,7 @@ export default function PurchaseOrderList({
   // Update GRN receive quantity
   const handleUpdateGrnReceiveQty = (id: string, qty: number) => {
     setGrnItems((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, receiveQty: qty } : it))
+      prev.map((it) => (it.id === id ? { ...it, receiveQty: qty } : it)),
     );
   };
 
@@ -780,7 +798,7 @@ export default function PurchaseOrderList({
     e.preventDefault();
     showToast(
       `Goods Receipt Note (${grnCode}) submitted successfully for ${selectedPoForGrn?.code || "PO"}`,
-      "success"
+      "success",
     );
     setViewMode("list");
   };
@@ -828,8 +846,8 @@ export default function PurchaseOrderList({
               toast.type === "success"
                 ? "bg-slate-900 text-white border-slate-700/80 dark:bg-white dark:text-slate-900"
                 : toast.type === "error"
-                ? "bg-rose-900 text-white border-rose-700"
-                : "bg-indigo-900 text-white border-indigo-700"
+                  ? "bg-rose-900 text-white border-rose-700"
+                  : "bg-indigo-900 text-white border-indigo-700"
             }`}
           >
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -904,7 +922,7 @@ export default function PurchaseOrderList({
                         onChange={(e) => setCompanyFilter(e.target.value)}
                         className="w-full h-9 pl-3 pr-12 text-xs bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none transition-colors"
                       >
-                        <option value="Somikoron IT Ltd">Somikoron IT Ltd</option>
+                        <option value="RealBiz Pro">RealBiz Pro</option>
                         <option value="Realbiz Group">Realbiz Group</option>
                         <option value="Eastern Housing">Eastern Housing</option>
                       </select>
@@ -1079,7 +1097,9 @@ export default function PurchaseOrderList({
 
                   {/* Right: Search Input */}
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Search:</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      Search:
+                    </span>
                     <div className="relative">
                       <input
                         type="text"
@@ -1123,10 +1143,12 @@ export default function PurchaseOrderList({
                               h.align === "right"
                                 ? "text-right"
                                 : h.align === "center"
-                                ? "text-center"
-                                : "text-left"
+                                  ? "text-center"
+                                  : "text-left"
                             } ${
-                              h.key !== "action" && h.key !== "attachment" && h.key !== "approvalSteps"
+                              h.key !== "action" &&
+                              h.key !== "attachment" &&
+                              h.key !== "approvalSteps"
                                 ? "cursor-pointer hover:bg-indigo-700 transition-colors"
                                 : ""
                             }`}
@@ -1136,8 +1158,8 @@ export default function PurchaseOrderList({
                                 h.align === "right"
                                   ? "justify-end"
                                   : h.align === "center"
-                                  ? "justify-center"
-                                  : "justify-start"
+                                    ? "justify-center"
+                                    : "justify-start"
                               }`}
                             >
                               <span>{h.label}</span>
@@ -1228,7 +1250,10 @@ export default function PurchaseOrderList({
                           </td>
 
                           {/* NOTE */}
-                          <td className="px-3.5 py-3 max-w-[150px] truncate text-slate-500 dark:text-slate-400" title={row.note}>
+                          <td
+                            className="px-3.5 py-3 max-w-[150px] truncate text-slate-500 dark:text-slate-400"
+                            title={row.note}
+                          >
                             {row.note || "—"}
                           </td>
 
@@ -1237,14 +1262,18 @@ export default function PurchaseOrderList({
                             {row.attachment ? (
                               <button
                                 type="button"
-                                onClick={() => showToast(`Opening ${row.attachment}`, "info")}
+                                onClick={() =>
+                                  showToast(`Opening ${row.attachment}`, "info")
+                                }
                                 title={row.attachment}
                                 className="inline-flex items-center justify-center p-1.5 rounded-md text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors"
                               >
                                 <Paperclip className="w-3.5 h-3.5" />
                               </button>
                             ) : (
-                              <span className="text-slate-300 dark:text-slate-600">—</span>
+                              <span className="text-slate-300 dark:text-slate-600">
+                                —
+                              </span>
                             )}
                           </td>
 
@@ -1255,7 +1284,9 @@ export default function PurchaseOrderList({
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setActiveActionId(activeActionId === row.id ? null : row.id);
+                                  setActiveActionId(
+                                    activeActionId === row.id ? null : row.id,
+                                  );
                                 }}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-[#5D5FEF] hover:bg-[#4E50E0] text-white shadow-sm transition-all cursor-pointer"
                               >
@@ -1306,7 +1337,9 @@ export default function PurchaseOrderList({
                           >
                             <div className="flex flex-col items-center justify-center gap-2">
                               <ShoppingBag className="w-8 h-8 text-slate-300 dark:text-slate-600 stroke-[1.5]" />
-                              <span>No purchase orders match your filter criteria.</span>
+                              <span>
+                                No purchase orders match your filter criteria.
+                              </span>
                               <button
                                 type="button"
                                 onClick={handleResetFilters}
@@ -1326,7 +1359,8 @@ export default function PurchaseOrderList({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                   <span>
                     Showing {sortedRows.length === 0 ? 0 : startIdx + 1} to{" "}
-                    {Math.min(startIdx + entriesPerPage, sortedRows.length)} of {sortedRows.length} entries
+                    {Math.min(startIdx + entriesPerPage, sortedRows.length)} of{" "}
+                    {sortedRows.length} entries
                   </span>
 
                   <div className="flex items-center gap-1.5 self-center sm:self-auto">
@@ -1338,24 +1372,28 @@ export default function PurchaseOrderList({
                     >
                       Previous
                     </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <button
-                        key={page}
-                        type="button"
-                        onClick={() => setCurrentPage(page)}
-                        className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                          page === safePage
-                            ? "bg-[#5D5FEF] text-white font-semibold shadow-2xs"
-                            : "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                      (page) => (
+                        <button
+                          key={page}
+                          type="button"
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                            page === safePage
+                              ? "bg-[#5D5FEF] text-white font-semibold shadow-2xs"
+                              : "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ),
+                    )}
                     <button
                       type="button"
                       disabled={safePage === totalPages}
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }
                       className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium cursor-pointer"
                     >
                       Next
@@ -1410,7 +1448,9 @@ export default function PurchaseOrderList({
 
               {/* Reference Header Banner matching Screenshot 3 */}
               <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 py-1">
-                Ref:- PO No:- {selectedPoForGrn.code}, PO Date:-{selectedPoForGrn.date} , RFQ:- {selectedPoForGrn.rfqCode || "R-046"}
+                Ref:- PO No:- {selectedPoForGrn.code}, PO Date:-
+                {selectedPoForGrn.date} , RFQ:-{" "}
+                {selectedPoForGrn.rfqCode || "R-046"}
               </div>
 
               {/* Form Card Grid */}
@@ -1509,7 +1549,9 @@ export default function PurchaseOrderList({
                           <option value="Design Cost">Design Cost</option>
                           <option value="Bricks Works">Bricks Works</option>
                           <option value="Civil Work">Civil Work</option>
-                          <option value="Electrical Work">Electrical Work</option>
+                          <option value="Electrical Work">
+                            Electrical Work
+                          </option>
                         </select>
                         {grnTitleOfWork && (
                           <button
@@ -1556,8 +1598,12 @@ export default function PurchaseOrderList({
                           className="w-full h-9 pl-3 pr-8 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none"
                         >
                           <option value="">Select Site</option>
-                          <option value="Site 01 - Hena Heights">Site 01 - Hena Heights</option>
-                          <option value="Site 02 - Lake Garden">Site 02 - Lake Garden</option>
+                          <option value="Site 01 - Hena Heights">
+                            Site 01 - Hena Heights
+                          </option>
+                          <option value="Site 02 - Lake Garden">
+                            Site 02 - Lake Garden
+                          </option>
                         </select>
                         <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
@@ -1614,7 +1660,10 @@ export default function PurchaseOrderList({
                                 max={item.quantity}
                                 value={item.receiveQty}
                                 onChange={(e) =>
-                                  handleUpdateGrnReceiveQty(item.id, Number(e.target.value))
+                                  handleUpdateGrnReceiveQty(
+                                    item.id,
+                                    Number(e.target.value),
+                                  )
                                 }
                                 className="w-24 h-8 px-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                               />
@@ -1691,7 +1740,10 @@ export default function PurchaseOrderList({
                               const file = e.target.files?.[0];
                               if (file) {
                                 setGrnAttachmentName(file.name);
-                                showToast(`Attached file: ${file.name}`, "info");
+                                showToast(
+                                  `Attached file: ${file.name}`,
+                                  "info",
+                                );
                               }
                             }}
                           />
@@ -1893,7 +1945,9 @@ export default function PurchaseOrderList({
                         className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
                       >
                         <option value="">Select Site</option>
-                        <option value="Site 01 - Hena Heights">Site 01 - Hena Heights</option>
+                        <option value="Site 01 - Hena Heights">
+                          Site 01 - Hena Heights
+                        </option>
                       </select>
                     </div>
                   </div>
@@ -2018,21 +2072,21 @@ export default function PurchaseOrderList({
                 id="realbiz-po-invoice-print"
                 className="w-full bg-white text-slate-900 shadow-2xl rounded-b-xl p-8 sm:p-12 font-sans border border-slate-200 text-xs print:border-none print:shadow-none print:p-0 print:m-0"
               >
-                {/* Header: Logo (Left) | Purchase Order #PO-023 (Center) | Somikoron IT Ltd (Right) */}
+                {/* Header: Logo (Left) | Purchase Order #{invoiceOrder.code} (Center) | RealBiz Pro (Right) */}
                 <div className="flex items-start justify-between pb-4">
                   {/* Left: Tree Logo & Brand */}
                   <div className="flex items-center gap-2.5">
                     <div className="w-12 h-12 rounded-full border border-emerald-600/40 p-1 flex items-center justify-center bg-white shadow-2xs">
                       <Image
                         src="/logo.svg"
-                        alt="Somikoron IT Ltd"
+                        alt="RealBiz Pro"
                         width={40}
                         height={40}
                         className="object-contain"
                       />
                     </div>
                     <div className="text-[10px] leading-tight font-medium text-slate-600">
-                      Somikoron IT Ltd
+                      RealBiz Pro
                     </div>
                   </div>
 
@@ -2043,7 +2097,7 @@ export default function PurchaseOrderList({
 
                   {/* Right: Company Name */}
                   <div className="text-right text-xs font-semibold text-slate-800">
-                    Somikoron IT Ltd
+                    RealBiz Pro
                   </div>
                 </div>
 
@@ -2054,15 +2108,21 @@ export default function PurchaseOrderList({
                     <div className="p-2.5 space-y-1">
                       <div>
                         <span className="font-bold">Vendor Name: </span>
-                        <span>{invoiceOrder.supplierName.replace(/_+$/, "")}</span>
+                        <span>
+                          {invoiceOrder.supplierName.replace(/_+$/, "")}
+                        </span>
                       </div>
                       <div>
                         <span className="font-bold">Address: </span>
-                        <span>{invoiceOrder.supplierAddress || "Motijheel"}</span>
+                        <span>
+                          {invoiceOrder.supplierAddress || "Motijheel"}
+                        </span>
                       </div>
                       <div>
                         <span className="font-bold">Mobile: </span>
-                        <span>{invoiceOrder.supplierMobile || "01312345695"}</span>
+                        <span>
+                          {invoiceOrder.supplierMobile || "01312345695"}
+                        </span>
                       </div>
                       <div>
                         <span className="font-bold">Email: </span>
@@ -2074,7 +2134,9 @@ export default function PurchaseOrderList({
                     <div className="p-2.5">
                       <div>
                         <span className="font-bold">Shipping Address: </span>
-                        <span>{invoiceOrder.shippingAddress || "Motijheel"}</span>
+                        <span>
+                          {invoiceOrder.shippingAddress || "Motijheel"}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -2105,11 +2167,19 @@ export default function PurchaseOrderList({
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="border-b border-slate-800 font-bold bg-slate-50/50">
-                        <th className="p-2 border-r border-slate-800 w-12 text-center">SL</th>
+                        <th className="p-2 border-r border-slate-800 w-12 text-center">
+                          SL
+                        </th>
                         <th className="p-2 border-r border-slate-800">NAME</th>
-                        <th className="p-2 border-r border-slate-800">DESCRIPTION</th>
-                        <th className="p-2 border-r border-slate-800 text-center w-24">QTY</th>
-                        <th className="p-2 border-r border-slate-800 text-right w-24">UNIT PRICE</th>
+                        <th className="p-2 border-r border-slate-800">
+                          DESCRIPTION
+                        </th>
+                        <th className="p-2 border-r border-slate-800 text-center w-24">
+                          QTY
+                        </th>
+                        <th className="p-2 border-r border-slate-800 text-right w-24">
+                          UNIT PRICE
+                        </th>
                         <th className="p-2 text-right w-28">NET TOTAL</th>
                       </tr>
                     </thead>
@@ -2117,9 +2187,15 @@ export default function PurchaseOrderList({
                       {invoiceOrder.items && invoiceOrder.items.length > 0 ? (
                         invoiceOrder.items.map((it, idx) => (
                           <tr key={it.id}>
-                            <td className="p-2 border-r border-slate-800 text-center">{idx + 1}</td>
-                            <td className="p-2 border-r border-slate-800 font-medium">{it.itemName}</td>
-                            <td className="p-2 border-r border-slate-800 text-slate-600">{it.details}</td>
+                            <td className="p-2 border-r border-slate-800 text-center">
+                              {idx + 1}
+                            </td>
+                            <td className="p-2 border-r border-slate-800 font-medium">
+                              {it.itemName}
+                            </td>
+                            <td className="p-2 border-r border-slate-800 text-slate-600">
+                              {it.details}
+                            </td>
                             <td className="p-2 border-r border-slate-800 text-center">
                               {it.quantity} {it.unit}
                             </td>
@@ -2133,21 +2209,37 @@ export default function PurchaseOrderList({
                         ))
                       ) : (
                         <tr>
-                          <td className="p-2 border-r border-slate-800 text-center">1</td>
-                          <td className="p-2 border-r border-slate-800 font-medium">Cylinder Set</td>
+                          <td className="p-2 border-r border-slate-800 text-center">
+                            1
+                          </td>
+                          <td className="p-2 border-r border-slate-800 font-medium">
+                            Cylinder Set
+                          </td>
                           <td className="p-2 border-r border-slate-800 text-slate-600"></td>
-                          <td className="p-2 border-r border-slate-800 text-center">10 Set</td>
-                          <td className="p-2 border-r border-slate-800 text-right tabular-nums">400.00</td>
-                          <td className="p-2 text-right font-medium tabular-nums">4,000.00</td>
+                          <td className="p-2 border-r border-slate-800 text-center">
+                            10 Set
+                          </td>
+                          <td className="p-2 border-r border-slate-800 text-right tabular-nums">
+                            400.00
+                          </td>
+                          <td className="p-2 text-right font-medium tabular-nums">
+                            4,000.00
+                          </td>
                         </tr>
                       )}
                     </tbody>
                     <tfoot>
                       {/* QTY Subtotal beneath QTY column */}
                       <tr className="border-t border-slate-800 font-medium">
-                        <td colSpan={3} className="p-2 border-r border-slate-800 text-right"></td>
+                        <td
+                          colSpan={3}
+                          className="p-2 border-r border-slate-800 text-right"
+                        ></td>
                         <td className="p-2 border-r border-slate-800 text-center font-bold">
-                          {invoiceOrder.items?.reduce((sum, i) => sum + i.quantity, 0) || 10}
+                          {invoiceOrder.items?.reduce(
+                            (sum, i) => sum + i.quantity,
+                            0,
+                          ) || 10}
                         </td>
                         <td colSpan={2} className="p-2"></td>
                       </tr>
@@ -2160,11 +2252,15 @@ export default function PurchaseOrderList({
                   <div className="w-64 border border-slate-800 text-xs">
                     <div className="flex justify-between p-2 border-b border-slate-800">
                       <span className="font-bold">Subtotal</span>
-                      <span className="tabular-nums">{formatCurrency(invoiceOrder.subTotal)}</span>
+                      <span className="tabular-nums">
+                        {formatCurrency(invoiceOrder.subTotal)}
+                      </span>
                     </div>
                     <div className="flex justify-between p-2 font-bold bg-slate-50/50">
                       <span>Grand Total</span>
-                      <span className="tabular-nums">{formatCurrency(invoiceOrder.grandTotal)}</span>
+                      <span className="tabular-nums">
+                        {formatCurrency(invoiceOrder.grandTotal)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2178,14 +2274,37 @@ export default function PurchaseOrderList({
                 {/* Terms and Conditions Exactly Matching Screenshot 2 */}
                 <div className="mt-5 space-y-1.5 text-[11px] text-slate-800 leading-relaxed border-t border-slate-200 pt-3">
                   <div className="font-bold text-xs">Terms and Conditions:</div>
-                  <p>1. Price: The price is including VAT, AIT 2% and carrying up to the delivery point (mentioned below) with loading.</p>
-                  <p>2. AIT will be deducted as per applicable government law.</p>
-                  <p>3. Supplier will provide VAT Challan as per applicable government law.</p>
-                  <p>4. Payment will be made through Current Dated Account payee cheque / RTGS in favor of Premier Cement Mills PLC.</p>
-                  <p>5. Delivery Location: Chanpara, Barati Bazar, Kalapara, Patuakhali. Contact Person Mr. Nitai Basak 01948-734 619 and Mr Mehedi 01719-45 76 91</p>
-                  <p>6. Delivery schedule: On 06 September, 2026. 7. Delivery challan has to be sent at the delivery time & Bill have to send within 7 working days.</p>
+                  <p>
+                    1. Price: The price is including VAT, AIT 2% and carrying up
+                    to the delivery point (mentioned below) with loading.
+                  </p>
+                  <p>
+                    2. AIT will be deducted as per applicable government law.
+                  </p>
+                  <p>
+                    3. Supplier will provide VAT Challan as per applicable
+                    government law.
+                  </p>
+                  <p>
+                    4. Payment will be made through Current Dated Account payee
+                    cheque / RTGS in favor of Premier Cement Mills PLC.
+                  </p>
+                  <p>
+                    5. Delivery Location: Chanpara, Barati Bazar, Kalapara,
+                    Patuakhali. Contact Person Mr. Nitai Basak 01948-734 619 and
+                    Mr Mehedi 01719-45 76 91
+                  </p>
+                  <p>
+                    6. Delivery schedule: On 06 September, 2026. 7. Delivery
+                    challan has to be sent at the delivery time & Bill have to
+                    send within 7 working days.
+                  </p>
                   <p className="font-medium text-slate-700 mt-2">
-                    N.B: The materials would be taken to BUET for the required tests as per standard from site. In any case of disqualification of the same your company have to replace the materials at your own cost or take back the material by reimbursing the payment in cash.
+                    N.B: The materials would be taken to BUET for the required
+                    tests as per standard from site. In any case of
+                    disqualification of the same your company have to replace
+                    the materials at your own cost or take back the material by
+                    reimbursing the payment in cash.
                   </p>
                 </div>
 
@@ -2261,7 +2380,10 @@ export default function PurchaseOrderList({
                     }
                     setIsAddSupplierModalOpen(false);
                     setNewSupplierName("");
-                    showToast(`Supplier "${newSupplierName.trim()}" selected`, "success");
+                    showToast(
+                      `Supplier "${newSupplierName.trim()}" selected`,
+                      "success",
+                    );
                   }}
                   className="px-4 py-1.5 rounded-lg text-xs font-medium text-white bg-[#5D5FEF] hover:bg-[#4E50E0] transition-colors"
                 >
