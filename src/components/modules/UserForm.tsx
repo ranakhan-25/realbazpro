@@ -140,6 +140,7 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
     { label: "One uppercase letter (A-Z)", valid: /[A-Z]/.test(form.password) },
     { label: "One lowercase letter (a-z)", valid: /[a-z]/.test(form.password) },
     { label: "One number (0-9)", valid: /\d/.test(form.password) },
+    { label: "One special character (!@#$%^&*)", valid: /[^A-Za-z0-9]/.test(form.password) },
   ];
 
   const passwordStrong = passwordChecks.every((check) => check.valid);
@@ -196,6 +197,20 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
       return;
     }
 
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!EMAIL_REGEX.test(form.email.trim())) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    const BD_PHONE_REGEX = /^(\+8801|8801|01)[3-9]\d{8}$/;
+    if (form.phone.trim() && !BD_PHONE_REGEX.test(form.phone.trim())) {
+      toast.error(
+        "Please enter a valid Bangladesh phone number (e.g. 01711000000) or leave it blank",
+      );
+      return;
+    }
+
     if (!isEdit && !form.password) {
       toast.error("Password is required");
       return;
@@ -215,6 +230,7 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
       setLoading(true);
 
       const basePayload = {
+        name: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         username: form.username.trim(),
@@ -222,7 +238,7 @@ export default function UserForm({ user, onSuccess, onCancel }: UserFormProps) {
         phone: form.phone.trim() || undefined,
         isActive: form.isActive,
         roleIds: [Number(form.roleId)],
-        userType: "system" as const,
+        userType: "Office" as const,
       };
 
       let saved: User;

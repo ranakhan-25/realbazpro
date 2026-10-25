@@ -84,6 +84,7 @@ export interface GetUsersParams {
 ========================================================= */
 
 export interface BaseUserPayload {
+  name?: string;
   email: string;
   firstName: string;
   lastName: string;
