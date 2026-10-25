@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import { Printer, X, Download } from "lucide-react";
 import { RequisitionRow } from "./MaterialRequisitionList";
 
@@ -41,32 +42,33 @@ export default function MaterialRequisitionPrintModal({
   if (!isOpen || !requisition) return null;
 
   // Compute totals
-  const items = requisition.items && requisition.items.length > 0
-    ? requisition.items
-    : [
-        {
-          id: "default-1",
-          itemCode: "ITM-501",
-          itemName: "Land Survey",
-          details: "",
-          unit: "Khata",
-          brand: "",
-          demandQty: 2,
-          approvedQty: 0,
-          budgetQty: 0,
-          alreadyPurchaseQty: 0,
-          availableQty: 0,
-          stock: 0,
-        },
-      ];
+  const items =
+    requisition.items && requisition.items.length > 0
+      ? requisition.items
+      : [
+          {
+            id: "default-1",
+            itemCode: "ITM-501",
+            itemName: "Land Survey",
+            details: "",
+            unit: "Khata",
+            brand: "",
+            demandQty: 2,
+            approvedQty: 0,
+            budgetQty: 0,
+            alreadyPurchaseQty: 0,
+            availableQty: 0,
+            stock: 0,
+          },
+        ];
 
   const totalDemandQty = items.reduce(
     (sum, it) => sum + (Number(it.demandQty) || 0),
-    0
+    0,
   );
   const totalApprovedQty = items.reduce(
     (sum, it) => sum + (Number(it.approvedQty) || 0),
-    0
+    0,
   );
 
   const handlePrint = () => {
@@ -77,7 +79,6 @@ export default function MaterialRequisitionPrintModal({
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-3 sm:p-6 overflow-y-auto">
       {/* Top Modal Container */}
       <div className="flex flex-col items-center w-full max-w-[880px] my-auto">
-        
         {/* Floating Top Control Bar (Hidden during actual print) */}
         <div className="w-full flex items-center justify-between bg-slate-900/90 text-white px-5 py-3 rounded-t-lg shadow-lg border border-slate-700/60 print:hidden">
           <div className="flex items-center gap-2">
@@ -127,57 +128,38 @@ export default function MaterialRequisitionPrintModal({
           {/* HEADER: LOGO (Left) | COMPANY (Center) | TITLE (Right) */}
           {/* ==================================================== */}
           <div className="grid grid-cols-12 items-start gap-4 pb-6">
-            
-            {/* Left: Somikoron IT Ltd Logo */}
+            {/* Left: RealBiz Logo */}
             <div className="col-span-3 flex flex-col items-start justify-center">
-              <div className="w-20 h-20 rounded-full border border-slate-400 p-1 flex flex-col items-center justify-center relative shadow-2xs">
-                <svg
-                  viewBox="0 0 100 100"
-                  className="w-12 h-12"
-                  fill="none"
-                  stroke="currentColor"
-                >
-                  {/* Circular border */}
-                  <circle cx="50" cy="50" r="45" stroke="#334155" strokeWidth="2.5" />
-                  {/* Circuit tree stem */}
-                  <path d="M50 78 V46" stroke="#10B981" strokeWidth="3" strokeLinecap="round" />
-                  <path d="M50 56 L32 40" stroke="#475569" strokeWidth="2.2" strokeLinecap="round" />
-                  <path d="M50 56 L68 40" stroke="#475569" strokeWidth="2.2" strokeLinecap="round" />
-                  <path d="M50 44 L36 28" stroke="#475569" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M50 44 L64 28" stroke="#475569" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M50 34 V22" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" />
-                  {/* Circuit Nodes */}
-                  <circle cx="50" cy="20" r="3.5" fill="#10B981" />
-                  <circle cx="32" cy="40" r="3" fill="#475569" />
-                  <circle cx="68" cy="40" r="3" fill="#475569" />
-                  <circle cx="36" cy="28" r="3" fill="#10B981" />
-                  <circle cx="64" cy="28" r="3" fill="#10B981" />
-                  <circle cx="24" cy="48" r="2.8" fill="#475569" />
-                  <circle cx="76" cy="48" r="2.8" fill="#475569" />
-                  <circle cx="50" cy="48" r="3.2" fill="#475569" />
-                </svg>
-                <span className="text-[8px] font-bold text-slate-800 tracking-tight mt-0.5">
-                  Somikoron IT Ltd
-                </span>
-              </div>
+              <Image
+                src="/logo.svg"
+                alt="RealBiz Pro"
+                width={140}
+                height={45}
+                priority
+                className="h-12 w-auto object-contain"
+              />
+              <span className="text-[9px] font-bold text-[#133C4E] tracking-tight mt-1">
+                RealBiz Pro ERP
+              </span>
             </div>
 
-            {/* Center: Company Name & Contact Info */}
+            {/* Center: RealBiz Company Name & Contact Info */}
             <div className="col-span-6 text-center space-y-1">
-              <h1 className="text-xl sm:text-2xl font-black text-[#D32F2F] tracking-wide uppercase">
-                SOMIKORON IT LTD
+              <h1 className="text-xl sm:text-2xl font-black text-[#133C4E] tracking-wide uppercase">
+                REALBIZ PRO
               </h1>
               <div className="text-[11px] sm:text-[12px] text-slate-800 leading-tight space-y-0.5">
                 <p>
-                  <span className="font-semibold">Address:</span> Hasan Holdings, New
-                  Eskaton Road, Banglamotor, Dhaka
+                  <span className="font-semibold">Address:</span> House-417,
+                  Road-7, Baridhara DOHS, Dhaka-1206, Bangladesh
                 </p>
                 <p>
-                  <span className="font-semibold">Email:</span> info@somikoronitld.com
+                  <span className="font-semibold">Email:</span>{" "}
+                  info@realbizpro.com
                 </p>
                 <p>
-                  <span className="font-semibold">Phone:</span> 01711656808,
-                  01757575715
+                  <span className="font-semibold">Phone:</span> +880
+                  1711-656808, +880 1757-575715
                 </p>
               </div>
             </div>
@@ -185,7 +167,9 @@ export default function MaterialRequisitionPrintModal({
             {/* Right: MATERIAL REQUISITION Heading */}
             <div className="col-span-3 text-right">
               <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight uppercase leading-tight">
-                MATERIAL<br />REQUISITION
+                MATERIAL
+                <br />
+                REQUISITION
               </h2>
             </div>
           </div>
@@ -194,7 +178,6 @@ export default function MaterialRequisitionPrintModal({
           {/* METADATA BLOCK (2 Columns matching Screenshot) */}
           {/* ==================================================== */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[12px] sm:text-[13px] text-slate-900 pt-4 pb-6">
-            
             {/* Left Column: Project, Title, Address, Site Engineer, Phone */}
             <div className="space-y-1">
               <p>
@@ -211,7 +194,9 @@ export default function MaterialRequisitionPrintModal({
               </p>
               <p>
                 <span className="font-bold">Site Engineer: </span>
-                <span>{requisition.siteEngineer || requisition.addedBy || "Mohin"}</span>
+                <span>
+                  {requisition.siteEngineer || requisition.addedBy || "Mohin"}
+                </span>
               </p>
               <p>
                 <span className="font-bold">Phone: </span>
@@ -263,10 +248,13 @@ export default function MaterialRequisitionPrintModal({
                     Brand
                   </th>
                   <th className="border border-black px-2 py-1 text-center font-bold w-20 leading-tight">
-                    Demand<br />Qty
+                    Demand
+                    <br />
+                    Qty
                   </th>
                   <th className="border border-black px-2 py-1 text-center font-bold w-20 leading-tight">
-                    Approve<br />d Qty
+                    Approve
+                    <br />d Qty
                   </th>
                 </tr>
               </thead>
@@ -301,7 +289,10 @@ export default function MaterialRequisitionPrintModal({
 
               <tfoot>
                 <tr>
-                  <td className="border border-black px-2 py-2" colSpan={4}></td>
+                  <td
+                    className="border border-black px-2 py-2"
+                    colSpan={4}
+                  ></td>
                   <td className="border border-black px-3 py-2 font-bold text-right">
                     Total
                   </td>
@@ -331,7 +322,7 @@ export default function MaterialRequisitionPrintModal({
           {/* ==================================================== */}
           <div className="flex flex-col items-end text-[11px] sm:text-[12px] text-slate-900 space-y-0.5 pt-4">
             <p>
-              <span className="font-bold">Powered by:</span> Somikoron IT Ltd
+              <span className="font-bold">Powered by:</span> RealBiz Pro
             </p>
             <p>
               <span className="font-bold">Printing Time:</span> {printTime}

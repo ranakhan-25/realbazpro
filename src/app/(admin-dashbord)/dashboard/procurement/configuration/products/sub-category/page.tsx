@@ -25,11 +25,11 @@ import {
   CreateSubCategoryPayload,
   UpdateSubCategoryPayload,
   getAuthenticatedUserId,
-} from "@/lib/procurementSubCategoryApi";
+} from "@/lib/procurement/procurementSubCategoryApi";
 import {
   procurementCategoryApi,
   BackendCategory,
-} from "@/lib/procurementCategoryApi";
+} from "@/lib/procurement/procurementCategoryApi";
 
 function parseApiError(err: unknown, defaultMessage: string): string {
   if (err && typeof err === "object") {

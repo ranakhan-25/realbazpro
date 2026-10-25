@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -25,6 +31,7 @@ import {
   Handshake,
   Paperclip,
 } from "lucide-react";
+import MaterialRequisitionPrintModal from "./MaterialRequisitionPrintModal";
 
 // ==========================================
 // Types & Interfaces
@@ -48,6 +55,9 @@ export interface RequisitionRow {
   approvalSteps: ApprovalStep[];
   attachment?: string;
   items?: RequisitionItem[];
+  address?: string;
+  siteEngineer?: string;
+  phone?: string;
 }
 
 export interface RequisitionItem {
@@ -61,6 +71,8 @@ export interface RequisitionItem {
   availableQty: number;
   demandQty: number;
   stock: number;
+  brand?: string;
+  approvedQty?: number;
 }
 
 // ==========================================
@@ -78,6 +90,9 @@ const INITIAL_REQUISITIONS: RequisitionRow[] = [
     demandDate: "20 Oct 2026",
     note: "",
     addedBy: "Mohin",
+    address: "Jolshiri",
+    siteEngineer: "Mohin",
+    phone: "01543667788",
     approvalSteps: [
       { label: "Rasel Hosain", type: "rejected" },
       { label: "Admin", type: "handshake" },
@@ -86,13 +101,15 @@ const INITIAL_REQUISITIONS: RequisitionRow[] = [
       {
         id: "itm-1",
         itemCode: "ITM-501",
-        itemName: "Soil Test Boring Sample",
-        details: "Substructure Testing",
-        unit: "p/Boring",
+        itemName: "Land Survey",
+        details: "",
+        unit: "Khata",
+        brand: "",
         budgetQty: 10,
         alreadyPurchaseQty: 0,
         availableQty: 10,
-        demandQty: 4,
+        demandQty: 2,
+        approvedQty: 0,
         stock: 0,
       },
     ],
@@ -108,6 +125,9 @@ const INITIAL_REQUISITIONS: RequisitionRow[] = [
     demandDate: "21 Oct 2026",
     note: "This is urgent.",
     addedBy: "Admin",
+    address: "Mirpur DOHS, Dhaka",
+    siteEngineer: "Engr. Tanvir",
+    phone: "01722334455",
     approvalSteps: [{ label: "All Approvals Completed", type: "approved" }],
     items: [
       {
@@ -116,10 +136,12 @@ const INITIAL_REQUISITIONS: RequisitionRow[] = [
         itemName: "Architectural Layout Blueprint",
         details: "Revised 3D Elevation",
         unit: "Set",
+        brand: "AutoCAD Pro",
         budgetQty: 5,
         alreadyPurchaseQty: 1,
         availableQty: 4,
         demandQty: 2,
+        approvedQty: 2,
         stock: 2,
       },
     ],
@@ -135,6 +157,9 @@ const INITIAL_REQUISITIONS: RequisitionRow[] = [
     demandDate: "",
     note: "",
     addedBy: "Admin",
+    address: "Mirpur DOHS, Dhaka",
+    siteEngineer: "Engr. Tanvir",
+    phone: "01722334455",
     approvalSteps: [
       { label: "All Approvals Completed", type: "approved" },
       { label: "All Approvals Completed", type: "approved" },
@@ -146,10 +171,12 @@ const INITIAL_REQUISITIONS: RequisitionRow[] = [
         itemName: "Auto First Class Red Bricks",
         details: "10-inch exterior walls",
         unit: "Pcs",
+        brand: "Seven Rings",
         budgetQty: 25000,
         alreadyPurchaseQty: 10000,
         availableQty: 15000,
         demandQty: 5000,
+        approvedQty: 5000,
         stock: 1200,
       },
     ],
@@ -222,7 +249,7 @@ const SAMPLE_BOQ_ITEMS: RequisitionItem[] = [
 
 export default function MaterialRequisitionList() {
   const router = useRouter();
-  const STORAGE_KEY = "realbiz_material_requisitions_v1";
+  const STORAGE_KEY = "realbiz_material_requisitions_v2";
 
   // View Mode: "list" (Screenshot 1) vs "create" (Screenshot 2)
   const [viewMode, setViewMode] = useState<"list" | "create">("list");
@@ -232,8 +259,10 @@ export default function MaterialRequisitionList() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   // Filter State (Screenshot 1)
-  const [filterDate, setFilterDate] = useState("1 October, 2026 - 31 October, 2026");
-  const [filterCompany, setFilterCompany] = useState("Somikoron IT Ltd");
+  const [filterDate, setFilterDate] = useState(
+    "1 October, 2026 - 31 October, 2026",
+  );
+  const [filterCompany, setFilterCompany] = useState("RealBiz Pro");
   const [filterSupplier, setFilterSupplier] = useState("");
   const [filterProject, setFilterProject] = useState("");
   const [filterTitleOfWork, setFilterTitleOfWork] = useState("");
@@ -251,6 +280,17 @@ export default function MaterialRequisitionList() {
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
+  // PDF / Print Modal State
+  const [printModalRow, setPrintModalRow] = useState<RequisitionRow | null>(
+    null,
+  );
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  const handleOpenPdf = (row: RequisitionRow) => {
+    setPrintModalRow(row);
+    setIsPrintModalOpen(true);
+  };
+
   // Note Modal State
   const [noteModalContent, setNoteModalContent] = useState<string | null>(null);
 
@@ -258,7 +298,10 @@ export default function MaterialRequisitionList() {
   const [deleteTarget, setDeleteTarget] = useState<RequisitionRow | null>(null);
 
   // Toast State
-  const [toast, setToast] = useState<{ message: string; type: "success" | "info" | "error" } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "info" | "error";
+  } | null>(null);
 
   // ==========================================
   // Form State for "Create / Edit Requisition" (Screenshot 2)
@@ -309,7 +352,10 @@ export default function MaterialRequisitionList() {
   // Click outside to close action dropdown
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
+      if (
+        actionMenuRef.current &&
+        !actionMenuRef.current.contains(e.target as Node)
+      ) {
         setActiveMenuId(null);
       }
     };
@@ -318,7 +364,10 @@ export default function MaterialRequisitionList() {
   }, []);
 
   // Show Toast
-  const showToast = (message: string, type: "success" | "info" | "error" = "success") => {
+  const showToast = (
+    message: string,
+    type: "success" | "info" | "error" = "success",
+  ) => {
     setToast({ message, type });
     setTimeout(() => {
       setToast(null);
@@ -354,12 +403,20 @@ export default function MaterialRequisitionList() {
   const handleAddItemToForm = () => {
     if (!formSelectedItem) {
       // Default to next available BOQ item
-      const nextItem = SAMPLE_BOQ_ITEMS.find((it) => !formItems.some((f) => f.itemCode === it.itemCode)) || SAMPLE_BOQ_ITEMS[0];
-      setFormItems((prev) => [...prev, { ...nextItem, id: `item-${Date.now()}` }]);
+      const nextItem =
+        SAMPLE_BOQ_ITEMS.find(
+          (it) => !formItems.some((f) => f.itemCode === it.itemCode),
+        ) || SAMPLE_BOQ_ITEMS[0];
+      setFormItems((prev) => [
+        ...prev,
+        { ...nextItem, id: `item-${Date.now()}` },
+      ]);
       showToast(`Added ${nextItem.itemName} to table`, "info");
       return;
     }
-    const found = SAMPLE_BOQ_ITEMS.find((it) => it.itemName === formSelectedItem);
+    const found = SAMPLE_BOQ_ITEMS.find(
+      (it) => it.itemName === formSelectedItem,
+    );
     if (found) {
       setFormItems((prev) => [...prev, { ...found, id: `item-${Date.now()}` }]);
       setFormSelectedItem("");
@@ -375,7 +432,9 @@ export default function MaterialRequisitionList() {
   // Update Item Demand Qty in Form
   const handleUpdateItemDemand = (id: string, qty: number) => {
     setFormItems((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, demandQty: Math.max(0, qty) } : it))
+      prev.map((it) =>
+        it.id === id ? { ...it, demandQty: Math.max(0, qty) } : it,
+      ),
     );
   };
 
@@ -392,7 +451,10 @@ export default function MaterialRequisitionList() {
       return;
     }
 
-    const nextId = requisitions.length > 0 ? Math.max(...requisitions.map((r) => r.id)) + 1 : 1;
+    const nextId =
+      requisitions.length > 0
+        ? Math.max(...requisitions.map((r) => r.id)) + 1
+        : 1;
     const newRequisition: RequisitionRow = {
       id: nextId,
       projectType: formProjectType || "Real Estate",
@@ -411,7 +473,10 @@ export default function MaterialRequisitionList() {
 
     const updated = [newRequisition, ...requisitions];
     saveRequisitions(updated);
-    showToast(`Requisition ${newRequisition.code} created successfully!`, "success");
+    showToast(
+      `Requisition ${newRequisition.code} created successfully!`,
+      "success",
+    );
     setViewMode("list");
   };
 
@@ -427,10 +492,16 @@ export default function MaterialRequisitionList() {
   // Multiple Convert Handlers
   const handleMultipleConvert = (target: "PO" | "RFQ" | "Purchase") => {
     if (selectedIds.length === 0) {
-      showToast(`Please select at least one requisition to convert to ${target}`, "error");
+      showToast(
+        `Please select at least one requisition to convert to ${target}`,
+        "error",
+      );
       return;
     }
-    showToast(`Converting ${selectedIds.length} requisitions to ${target}...`, "success");
+    showToast(
+      `Converting ${selectedIds.length} requisitions to ${target}...`,
+      "success",
+    );
     setSelectedIds([]);
   };
 
@@ -445,7 +516,7 @@ export default function MaterialRequisitionList() {
 
   const handleToggleSelectRow = (id: number) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
   };
 
@@ -470,12 +541,16 @@ export default function MaterialRequisitionList() {
 
     // Filter by Project
     if (filterProject) {
-      result = result.filter((r) => r.project.toLowerCase().includes(filterProject.toLowerCase()));
+      result = result.filter((r) =>
+        r.project.toLowerCase().includes(filterProject.toLowerCase()),
+      );
     }
 
     // Filter by Title of Work
     if (filterTitleOfWork) {
-      result = result.filter((r) => r.titleOfWork.toLowerCase().includes(filterTitleOfWork.toLowerCase()));
+      result = result.filter((r) =>
+        r.titleOfWork.toLowerCase().includes(filterTitleOfWork.toLowerCase()),
+      );
     }
 
     // Search query
@@ -488,7 +563,7 @@ export default function MaterialRequisitionList() {
           r.titleOfWork.toLowerCase().includes(q) ||
           r.addedBy.toLowerCase().includes(q) ||
           r.projectType.toLowerCase().includes(q) ||
-          String(r.id).includes(q)
+          String(r.id).includes(q),
       );
     }
 
@@ -512,14 +587,25 @@ export default function MaterialRequisitionList() {
     }
 
     return result;
-  }, [requisitions, filterCompany, filterProject, filterTitleOfWork, search, sortField, sortDirection]);
+  }, [
+    requisitions,
+    filterCompany,
+    filterProject,
+    filterTitleOfWork,
+    search,
+    sortField,
+    sortDirection,
+  ]);
 
   // Pagination Logic
   const totalEntries = filteredAndSorted.length;
   const totalPages = Math.max(1, Math.ceil(totalEntries / entriesPerPage));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIdx = (safeCurrentPage - 1) * entriesPerPage;
-  const currentEntries = filteredAndSorted.slice(startIdx, startIdx + entriesPerPage);
+  const currentEntries = filteredAndSorted.slice(
+    startIdx,
+    startIdx + entriesPerPage,
+  );
 
   const displayFrom = totalEntries === 0 ? 0 : startIdx + 1;
   const displayTo = Math.min(startIdx + entriesPerPage, totalEntries);
@@ -542,7 +628,10 @@ export default function MaterialRequisitionList() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             {/* Breadcrumb Navigation */}
             <nav className="flex items-center gap-2 text-[13px] font-normal">
-              <Link href="/dashboard" className="text-[#5D5FEF] hover:text-[#4A4CE0] dark:text-indigo-400">
+              <Link
+                href="/dashboard"
+                className="text-[#5D5FEF] hover:text-[#4A4CE0] dark:text-indigo-400"
+              >
                 Home
               </Link>
               <span className="text-slate-400 dark:text-slate-600">›</span>
@@ -551,7 +640,9 @@ export default function MaterialRequisitionList() {
                 <ChevronDown className="w-3.5 h-3.5 stroke-[2]" />
               </div>
               <span className="text-slate-400 dark:text-slate-600">›</span>
-              <span className="text-slate-600 dark:text-slate-300 font-medium">Material Requisition</span>
+              <span className="text-slate-600 dark:text-slate-300 font-medium">
+                Material Requisition
+              </span>
             </nav>
 
             {/* Back to List Button */}
@@ -653,7 +744,9 @@ export default function MaterialRequisitionList() {
                       <option value="">Select Project</option>
                       <option value="Mustain Villa">Mustain Villa</option>
                       <option value="Hena Heights">Hena Heights</option>
-                      <option value="Rifat Eyecon City">Rifat Eyecon City</option>
+                      <option value="Rifat Eyecon City">
+                        Rifat Eyecon City
+                      </option>
                       <option value="Lake Garden">Lake Garden</option>
                     </select>
                     <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
@@ -671,10 +764,14 @@ export default function MaterialRequisitionList() {
                       className="w-full appearance-none bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md pl-3.5 pr-8 py-2 text-xs sm:text-[13px] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-2xs cursor-pointer font-normal"
                     >
                       <option value="">Select Title/Name of Work</option>
-                      <option value="Direct Common Cost">Direct Common Cost</option>
+                      <option value="Direct Common Cost">
+                        Direct Common Cost
+                      </option>
                       <option value="Design Cost">Design Cost</option>
                       <option value="Bricks Works">Bricks Works</option>
-                      <option value="Foundation & Casting">Foundation & Casting</option>
+                      <option value="Foundation & Casting">
+                        Foundation & Casting
+                      </option>
                     </select>
                     <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
                   </div>
@@ -713,7 +810,9 @@ export default function MaterialRequisitionList() {
                       className="w-full appearance-none bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md pl-3.5 pr-8 py-2 text-xs sm:text-[13px] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-2xs cursor-pointer font-normal"
                     >
                       <option value="">Select Site</option>
-                      <option value="Site-1 North Yard">Site-1 North Yard</option>
+                      <option value="Site-1 North Yard">
+                        Site-1 North Yard
+                      </option>
                       <option value="Tower-A Block">Tower-A Block</option>
                       <option value="Foundation Site">Foundation Site</option>
                     </select>
@@ -733,9 +832,15 @@ export default function MaterialRequisitionList() {
                     >
                       <option value="">Select Category</option>
                       <option value="Miscellaneous">Miscellaneous</option>
-                      <option value="Raw Construction Materials">Raw Construction Materials</option>
-                      <option value="Deformed Rebar & Steels">Deformed Rebar & Steels</option>
-                      <option value="Cement & Aggregates">Cement & Aggregates</option>
+                      <option value="Raw Construction Materials">
+                        Raw Construction Materials
+                      </option>
+                      <option value="Deformed Rebar & Steels">
+                        Deformed Rebar & Steels
+                      </option>
+                      <option value="Cement & Aggregates">
+                        Cement & Aggregates
+                      </option>
                     </select>
                     <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
                   </div>
@@ -781,7 +886,9 @@ export default function MaterialRequisitionList() {
                     <span className="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-[11px] font-medium text-slate-700 dark:text-slate-200 mr-2">
                       Choose File
                     </span>
-                    <span className="truncate">{formAttachment || "No file chosen"}</span>
+                    <span className="truncate">
+                      {formAttachment || "No file chosen"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -810,19 +917,26 @@ export default function MaterialRequisitionList() {
                 {/* Quick Add List from BOQ */}
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-2 space-y-1 max-h-60 overflow-y-auto">
                   {SAMPLE_BOQ_ITEMS.filter((it) =>
-                    it.itemName.toLowerCase().includes(boqSearch.toLowerCase())
+                    it.itemName.toLowerCase().includes(boqSearch.toLowerCase()),
                   ).map((it) => (
                     <div
                       key={it.id}
                       onClick={() => {
-                        if (!formItems.some((f) => f.itemCode === it.itemCode)) {
-                          setFormItems((prev) => [...prev, { ...it, id: `item-${Date.now()}` }]);
+                        if (
+                          !formItems.some((f) => f.itemCode === it.itemCode)
+                        ) {
+                          setFormItems((prev) => [
+                            ...prev,
+                            { ...it, id: `item-${Date.now()}` },
+                          ]);
                           showToast(`Added ${it.itemName}`, "info");
                         }
                       }}
                       className="p-2 hover:bg-indigo-50/70 dark:hover:bg-slate-800 rounded text-xs cursor-pointer flex items-center justify-between text-slate-700 dark:text-slate-200 transition-colors"
                     >
-                      <span className="truncate font-medium">{it.itemName}</span>
+                      <span className="truncate font-medium">
+                        {it.itemName}
+                      </span>
                       <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">
                         {it.unit}
                       </span>
@@ -843,9 +957,15 @@ export default function MaterialRequisitionList() {
                           <th className="py-2.5 px-3">DETAILS</th>
                           <th className="py-2.5 px-3">UNIT</th>
                           <th className="py-2.5 px-3 text-right">BUDGET QTY</th>
-                          <th className="py-2.5 px-3 text-right">ALREADY PURCHASE QTY</th>
-                          <th className="py-2.5 px-3 text-right">AVAILABLE QTY</th>
-                          <th className="py-2.5 px-3 text-right w-24">DEMAND QTY</th>
+                          <th className="py-2.5 px-3 text-right">
+                            ALREADY PURCHASE QTY
+                          </th>
+                          <th className="py-2.5 px-3 text-right">
+                            AVAILABLE QTY
+                          </th>
+                          <th className="py-2.5 px-3 text-right w-24">
+                            DEMAND QTY
+                          </th>
                           <th className="py-2.5 px-3 text-right">STOCK</th>
                           <th className="py-2.5 px-3 text-center">ACTION</th>
                         </tr>
@@ -853,17 +973,28 @@ export default function MaterialRequisitionList() {
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
                         {formItems.length > 0 ? (
                           formItems.map((item) => (
-                            <tr key={item.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                            <tr
+                              key={item.id}
+                              className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
+                            >
                               <td className="py-2.5 px-3 font-mono text-slate-600 dark:text-slate-400">
                                 {item.itemCode}
                               </td>
                               <td className="py-2.5 px-3 font-medium text-slate-800 dark:text-slate-100">
                                 {item.itemName}
                               </td>
-                              <td className="py-2.5 px-3 text-slate-500">{item.details}</td>
-                              <td className="py-2.5 px-3 text-slate-600">{item.unit}</td>
-                              <td className="py-2.5 px-3 text-right">{item.budgetQty}</td>
-                              <td className="py-2.5 px-3 text-right">{item.alreadyPurchaseQty}</td>
+                              <td className="py-2.5 px-3 text-slate-500">
+                                {item.details}
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-600">
+                                {item.unit}
+                              </td>
+                              <td className="py-2.5 px-3 text-right">
+                                {item.budgetQty}
+                              </td>
+                              <td className="py-2.5 px-3 text-right">
+                                {item.alreadyPurchaseQty}
+                              </td>
                               <td className="py-2.5 px-3 text-right font-medium text-indigo-600 dark:text-indigo-400">
                                 {item.availableQty}
                               </td>
@@ -872,11 +1003,18 @@ export default function MaterialRequisitionList() {
                                   type="number"
                                   min="1"
                                   value={item.demandQty}
-                                  onChange={(e) => handleUpdateItemDemand(item.id, Number(e.target.value))}
+                                  onChange={(e) =>
+                                    handleUpdateItemDemand(
+                                      item.id,
+                                      Number(e.target.value),
+                                    )
+                                  }
                                   className="w-20 text-right bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                 />
                               </td>
-                              <td className="py-2.5 px-3 text-right">{item.stock}</td>
+                              <td className="py-2.5 px-3 text-right">
+                                {item.stock}
+                              </td>
                               <td className="py-2.5 px-3 text-center">
                                 <button
                                   type="button"
@@ -890,8 +1028,12 @@ export default function MaterialRequisitionList() {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={10} className="text-center py-8 text-slate-400 text-xs">
-                              No items selected yet. Click + next to Select Item or pick from the BOQ list.
+                            <td
+                              colSpan={10}
+                              className="text-center py-8 text-slate-400 text-xs"
+                            >
+                              No items selected yet. Click + next to Select Item
+                              or pick from the BOQ list.
                             </td>
                           </tr>
                         )}
@@ -956,7 +1098,10 @@ export default function MaterialRequisitionList() {
       {toast && (
         <div className="fixed top-5 right-5 z-[999] flex items-center gap-3 bg-slate-900/95 dark:bg-white text-white dark:text-slate-900 px-4 py-3 rounded-lg shadow-xl backdrop-blur-md animate-in slide-in-from-top-3 fade-in duration-200 text-xs font-medium border border-slate-700/50">
           <span>{toast.message}</span>
-          <button onClick={() => setToast(null)} className="text-slate-400 hover:text-white ml-2">
+          <button
+            onClick={() => setToast(null)}
+            className="text-slate-400 hover:text-white ml-2"
+          >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -964,23 +1109,34 @@ export default function MaterialRequisitionList() {
 
       {/* Main Container */}
       <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 space-y-5">
-        
         {/* ========================================================= */}
         {/* TOP BAR: Breadcrumbs + Conversion & Add Action Buttons */}
         {/* ========================================================= */}
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           {/* Breadcrumb Navigation */}
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[13px] font-normal">
-            <Link href="/dashboard" className="text-[#5D5FEF] hover:text-[#4A4CE0] dark:text-indigo-400">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex items-center gap-2 text-[13px] font-normal"
+          >
+            <Link
+              href="/dashboard"
+              className="text-[#5D5FEF] hover:text-[#4A4CE0] dark:text-indigo-400"
+            >
               Home
             </Link>
-            <span className="text-slate-400 dark:text-slate-600 font-light">›</span>
+            <span className="text-slate-400 dark:text-slate-600 font-light">
+              ›
+            </span>
             <div className="inline-flex items-center gap-1 text-[#5D5FEF] dark:text-indigo-400 cursor-pointer hover:underline">
               <span>Requisition</span>
               <ChevronDown className="w-3.5 h-3.5 stroke-[2] text-[#5D5FEF] dark:text-indigo-400" />
             </div>
-            <span className="text-slate-400 dark:text-slate-600 font-light">›</span>
-            <span className="text-slate-600 dark:text-slate-300 font-medium">Material Requisition List</span>
+            <span className="text-slate-400 dark:text-slate-600 font-light">
+              ›
+            </span>
+            <span className="text-slate-600 dark:text-slate-300 font-medium">
+              Material Requisition List
+            </span>
           </nav>
 
           {/* Action Buttons (Screenshot 1: Multiple PO, Multiple RFQ, Multiple Purchase, +New Material Requisition) */}
@@ -1051,7 +1207,9 @@ export default function MaterialRequisitionList() {
                 Company
               </label>
               <div className="relative flex items-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3.5 py-2 text-xs sm:text-[13px] text-slate-800 dark:text-slate-100 shadow-2xs">
-                <span className="flex-1 truncate">{filterCompany || "Select Company"}</span>
+                <span className="flex-1 truncate">
+                  {filterCompany || "Select Company"}
+                </span>
                 {filterCompany && (
                   <button
                     type="button"
@@ -1077,9 +1235,15 @@ export default function MaterialRequisitionList() {
                   className="w-full appearance-none bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md pl-3.5 pr-8 py-2 text-xs sm:text-[13px] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-2xs cursor-pointer font-normal"
                 >
                   <option value="">Select an option</option>
-                  <option value="Safety First Suppliers">Safety First Suppliers</option>
-                  <option value="Delta Glass & Aluminium">Delta Glass & Aluminium</option>
-                  <option value="Mohin Business Solution">Mohin Business Solution</option>
+                  <option value="Safety First Suppliers">
+                    Safety First Suppliers
+                  </option>
+                  <option value="Delta Glass & Aluminium">
+                    Delta Glass & Aluminium
+                  </option>
+                  <option value="Mohin Business Solution">
+                    Mohin Business Solution
+                  </option>
                 </select>
                 <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
               </div>
@@ -1122,7 +1286,9 @@ export default function MaterialRequisitionList() {
                 <option value="Direct Common Cost">Direct Common Cost</option>
                 <option value="Design Cost">Design Cost</option>
                 <option value="Bricks Works">Bricks Works</option>
-                <option value="Foundation & Casting">Foundation & Casting</option>
+                <option value="Foundation & Casting">
+                  Foundation & Casting
+                </option>
               </select>
               <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
             </div>
@@ -1133,7 +1299,6 @@ export default function MaterialRequisitionList() {
         {/* CARD CONTAINER: Controls + Table + Pagination */}
         {/* ========================================================= */}
         <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-          
           {/* Table Controls: Show entries & Search */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-slate-100 dark:border-slate-800 text-sm">
             <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 text-xs sm:text-[13px]">
@@ -1187,7 +1352,10 @@ export default function MaterialRequisitionList() {
               <thead>
                 <tr className="bg-[#6366F1] dark:bg-[#5558E6] text-white text-[11px] font-bold uppercase tracking-wider select-none">
                   {/* ID */}
-                  <th onClick={() => handleSort("id")} className="py-3 px-3 cursor-pointer hover:bg-white/10">
+                  <th
+                    onClick={() => handleSort("id")}
+                    className="py-3 px-3 cursor-pointer hover:bg-white/10"
+                  >
                     <div className="flex items-center gap-1">
                       <span>ID</span>
                       <ChevronsUpDown className="w-3 h-3 opacity-60" />
@@ -1200,7 +1368,10 @@ export default function MaterialRequisitionList() {
                       <span className="text-[9px]">SELECT</span>
                       <input
                         type="checkbox"
-                        checked={selectedIds.length === filteredAndSorted.length && filteredAndSorted.length > 0}
+                        checked={
+                          selectedIds.length === filteredAndSorted.length &&
+                          filteredAndSorted.length > 0
+                        }
                         onChange={(e) => handleSelectAll(e.target.checked)}
                         className="w-3.5 h-3.5 rounded text-indigo-600 border-white/60 focus:ring-0 cursor-pointer"
                       />
@@ -1208,7 +1379,10 @@ export default function MaterialRequisitionList() {
                   </th>
 
                   {/* PROJECT TYPE */}
-                  <th onClick={() => handleSort("projectType")} className="py-3 px-3 cursor-pointer hover:bg-white/10">
+                  <th
+                    onClick={() => handleSort("projectType")}
+                    className="py-3 px-3 cursor-pointer hover:bg-white/10"
+                  >
                     <div className="flex items-center gap-1">
                       <span>PROJECT TYPE</span>
                       <ChevronsUpDown className="w-3 h-3 opacity-60" />
@@ -1216,7 +1390,10 @@ export default function MaterialRequisitionList() {
                   </th>
 
                   {/* PROJECT */}
-                  <th onClick={() => handleSort("project")} className="py-3 px-3 cursor-pointer hover:bg-white/10">
+                  <th
+                    onClick={() => handleSort("project")}
+                    className="py-3 px-3 cursor-pointer hover:bg-white/10"
+                  >
                     <div className="flex items-center gap-1">
                       <span>PROJECT</span>
                       <ChevronsUpDown className="w-3 h-3 opacity-60" />
@@ -1224,7 +1401,10 @@ export default function MaterialRequisitionList() {
                   </th>
 
                   {/* TITLE/NAME OF WORK */}
-                  <th onClick={() => handleSort("titleOfWork")} className="py-3 px-3 cursor-pointer hover:bg-white/10">
+                  <th
+                    onClick={() => handleSort("titleOfWork")}
+                    className="py-3 px-3 cursor-pointer hover:bg-white/10"
+                  >
                     <div className="flex items-center gap-1">
                       <span>TITLE/NAME OF WORK</span>
                       <ChevronsUpDown className="w-3 h-3 opacity-60" />
@@ -1232,7 +1412,10 @@ export default function MaterialRequisitionList() {
                   </th>
 
                   {/* CODE */}
-                  <th onClick={() => handleSort("code")} className="py-3 px-3 cursor-pointer hover:bg-white/10">
+                  <th
+                    onClick={() => handleSort("code")}
+                    className="py-3 px-3 cursor-pointer hover:bg-white/10"
+                  >
                     <div className="flex items-center gap-1">
                       <span>CODE</span>
                       <ChevronsUpDown className="w-3 h-3 opacity-60" />
@@ -1248,7 +1431,10 @@ export default function MaterialRequisitionList() {
                   </th>
 
                   {/* DATE */}
-                  <th onClick={() => handleSort("date")} className="py-3 px-3 cursor-pointer hover:bg-white/10">
+                  <th
+                    onClick={() => handleSort("date")}
+                    className="py-3 px-3 cursor-pointer hover:bg-white/10"
+                  >
                     <div className="flex items-center gap-1">
                       <span>DATE</span>
                       <ChevronsUpDown className="w-3 h-3 opacity-60" />
@@ -1256,7 +1442,10 @@ export default function MaterialRequisitionList() {
                   </th>
 
                   {/* DEMAND DATE */}
-                  <th onClick={() => handleSort("demandDate")} className="py-3 px-3 cursor-pointer hover:bg-white/10">
+                  <th
+                    onClick={() => handleSort("demandDate")}
+                    className="py-3 px-3 cursor-pointer hover:bg-white/10"
+                  >
                     <div className="flex items-center gap-1">
                       <span>DEMAND DATE</span>
                       <ChevronsUpDown className="w-3 h-3 opacity-60" />
@@ -1272,7 +1461,10 @@ export default function MaterialRequisitionList() {
                   </th>
 
                   {/* ADDED BY */}
-                  <th onClick={() => handleSort("addedBy")} className="py-3 px-3 cursor-pointer hover:bg-white/10">
+                  <th
+                    onClick={() => handleSort("addedBy")}
+                    className="py-3 px-3 cursor-pointer hover:bg-white/10"
+                  >
                     <div className="flex items-center gap-1">
                       <span>ADDED BY</span>
                       <ChevronsUpDown className="w-3 h-3 opacity-60" />
@@ -1313,7 +1505,9 @@ export default function MaterialRequisitionList() {
                       <tr
                         key={row.id}
                         className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors ${
-                          isSelected ? "bg-indigo-50/40 dark:bg-indigo-950/20" : ""
+                          isSelected
+                            ? "bg-indigo-50/40 dark:bg-indigo-950/20"
+                            : ""
                         }`}
                       >
                         {/* ID */}
@@ -1330,33 +1524,55 @@ export default function MaterialRequisitionList() {
                         </td>
 
                         {/* PROJECT TYPE */}
-                        <td className="py-3 px-3 font-normal">{row.projectType}</td>
+                        <td className="py-3 px-3 font-normal">
+                          {row.projectType}
+                        </td>
 
                         {/* PROJECT */}
-                        <td className="py-3 px-3 font-medium text-slate-900 dark:text-slate-100">{row.project}</td>
+                        <td className="py-3 px-3 font-medium text-slate-900 dark:text-slate-100">
+                          {row.project}
+                        </td>
 
                         {/* TITLE/NAME OF WORK */}
-                        <td className="py-3 px-3 font-normal">{row.titleOfWork || "-"}</td>
+                        <td className="py-3 px-3 font-normal">
+                          {row.titleOfWork || "-"}
+                        </td>
 
-                        {/* CODE */}
-                        <td className="py-3 px-3 font-mono font-normal text-slate-800 dark:text-slate-200">{row.code}</td>
+                        {/* CODE (Clickable to preview PDF) */}
+                        <td
+                          className="py-3 px-3 font-mono font-medium text-[#6366F1] dark:text-indigo-400 hover:underline cursor-pointer"
+                          onClick={() => handleOpenPdf(row)}
+                          title="Click to view Material Requisition PDF"
+                        >
+                          {row.code}
+                        </td>
 
                         {/* REF */}
-                        <td className="py-3 px-3 text-slate-400">{row.ref || ""}</td>
+                        <td className="py-3 px-3 text-slate-400">
+                          {row.ref || ""}
+                        </td>
 
                         {/* DATE */}
-                        <td className="py-3 px-3 whitespace-nowrap">{row.date}</td>
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          {row.date}
+                        </td>
 
                         {/* DEMAND DATE */}
-                        <td className="py-3 px-3 whitespace-nowrap">{row.demandDate || ""}</td>
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          {row.demandDate || ""}
+                        </td>
 
                         {/* NOTE */}
                         <td className="py-3 px-3">
                           {row.note ? (
                             <div className="text-xs">
-                              <span className="text-slate-700 dark:text-slate-300">{row.note} </span>
+                              <span className="text-slate-700 dark:text-slate-300">
+                                {row.note}{" "}
+                              </span>
                               <button
-                                onClick={() => setNoteModalContent(row.note || "")}
+                                onClick={() =>
+                                  setNoteModalContent(row.note || "")
+                                }
                                 className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                               >
                                 See more
@@ -1376,7 +1592,10 @@ export default function MaterialRequisitionList() {
                             {row.approvalSteps.map((step, idx) => {
                               if (step.type === "rejected") {
                                 return (
-                                  <span key={idx} className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-medium">
+                                  <span
+                                    key={idx}
+                                    className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-medium"
+                                  >
                                     <X className="w-3.5 h-3.5 stroke-[2.5]" />
                                     <span>{step.label}</span>
                                   </span>
@@ -1384,14 +1603,20 @@ export default function MaterialRequisitionList() {
                               }
                               if (step.type === "handshake") {
                                 return (
-                                  <span key={idx} className="inline-flex items-center gap-1 bg-[#10B981] text-white px-2 py-0.5 rounded text-[11px] font-semibold shadow-xs">
+                                  <span
+                                    key={idx}
+                                    className="inline-flex items-center gap-1 bg-[#10B981] text-white px-2 py-0.5 rounded text-[11px] font-semibold shadow-xs"
+                                  >
                                     <Handshake className="w-3.5 h-3.5" />
                                     <span>{step.label}</span>
                                   </span>
                                 );
                               }
                               return (
-                                <span key={idx} className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                                <span
+                                  key={idx}
+                                  className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium"
+                                >
                                   <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                                   <span>{step.label}</span>
                                 </span>
@@ -1412,94 +1637,68 @@ export default function MaterialRequisitionList() {
                           )}
                         </td>
 
-                        {/* ACTION Dropdown Button (Purple `#6366F1`) */}
-                        <td className="py-3 px-3 text-center relative">
+                        {/* ACTION Dropdown Button (Purple `#5D5FEF`) */}
+                        <td className="py-3 px-3 text-center relative whitespace-nowrap">
                           <div className="relative inline-block text-left">
                             <button
-                              onClick={() => setActiveMenuId(activeMenuId === row.id ? null : row.id)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-[#6366F1] hover:bg-[#5254d8] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                              onClick={() =>
+                                setActiveMenuId(
+                                  activeMenuId === row.id ? null : row.id,
+                                )
+                              }
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#5D5FEF] hover:bg-[#4d4ee0] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                             >
                               <span>Action</span>
-                              <ChevronDown className="w-3 h-3 stroke-[2.5]" />
+                              <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
                             </button>
 
-                            {/* Dropdown Menu */}
+                            {/* Dropdown Menu (Matches Screenshot: View, Edit, Delete) */}
                             {activeMenuId === row.id && (
                               <div
                                 ref={actionMenuRef}
-                                className="absolute right-0 mt-1 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl z-50 py-1 text-xs divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in zoom-in-95 duration-100"
+                                className="absolute right-0 mt-1.5 w-36 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xl z-50 p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-100"
                               >
-                                <div className="py-1">
-                                  <button
-                                    onClick={() => {
-                                      setActiveMenuId(null);
-                                      showToast(`Viewing details for ${row.code}`, "info");
-                                    }}
-                                    className="w-full text-left px-3.5 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200"
-                                  >
-                                    <Eye className="w-3.5 h-3.5 text-indigo-500" />
-                                    <span>View</span>
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setActiveMenuId(null);
-                                      setFormProject(row.project);
-                                      setFormCode(row.code);
-                                      setFormTitleOfWork(row.titleOfWork);
-                                      setViewMode("create");
-                                    }}
-                                    className="w-full text-left px-3.5 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200"
-                                  >
-                                    <SquarePen className="w-3.5 h-3.5 text-teal-500" />
-                                    <span>Edit</span>
-                                  </button>
-                                </div>
+                                {/* 1. View Button (Purple) - Opens PDF Modal */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuId(null);
+                                    handleOpenPdf(row);
+                                  }}
+                                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#5D5FEF] hover:bg-[#4d4ee0] text-white text-xs font-semibold transition-all shadow-xs active:scale-95 cursor-pointer"
+                                >
+                                  <FileText className="w-4 h-4 fill-white text-white" />
+                                  <span>View</span>
+                                </button>
 
-                                <div className="py-1">
-                                  <button
-                                    onClick={() => {
-                                      setActiveMenuId(null);
-                                      showToast(`Converted ${row.code} to Purchase`, "success");
-                                    }}
-                                    className="w-full text-left px-3.5 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200"
-                                  >
-                                    <ShoppingCart className="w-3.5 h-3.5 text-cyan-500" />
-                                    <span>Convert To Purchase</span>
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setActiveMenuId(null);
-                                      showToast(`Converted ${row.code} to Purchase Order`, "success");
-                                    }}
-                                    className="w-full text-left px-3.5 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200"
-                                  >
-                                    <ClipboardList className="w-3.5 h-3.5 text-violet-500" />
-                                    <span>Convert To Purchase Order</span>
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setActiveMenuId(null);
-                                      showToast(`Converted ${row.code} to RFQ`, "success");
-                                    }}
-                                    className="w-full text-left px-3.5 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200"
-                                  >
-                                    <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
-                                    <span>Convert To RFQ</span>
-                                  </button>
-                                </div>
+                                {/* 2. Edit Button (Cyan) */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuId(null);
+                                    setFormProject(row.project);
+                                    setFormCode(row.code);
+                                    setFormTitleOfWork(row.titleOfWork);
+                                    setViewMode("create");
+                                  }}
+                                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#00BCD4] hover:bg-[#00acc1] text-white text-xs font-semibold transition-all shadow-xs active:scale-95 cursor-pointer"
+                                >
+                                  <SquarePen className="w-4 h-4" />
+                                  <span>Edit</span>
+                                </button>
 
-                                <div className="py-1">
-                                  <button
-                                    onClick={() => {
-                                      setActiveMenuId(null);
-                                      setDeleteTarget(row);
-                                    }}
-                                    className="w-full text-left px-3.5 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 text-rose-600 dark:text-rose-400"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    <span>Delete</span>
-                                  </button>
-                                </div>
+                                {/* 3. Delete Button (Red) */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuId(null);
+                                    setDeleteTarget(row);
+                                  }}
+                                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#EF4444] hover:bg-[#dc2626] text-white text-xs font-semibold transition-all shadow-xs active:scale-95 cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4 fill-white text-white" />
+                                  <span>Delete</span>
+                                </button>
                               </div>
                             )}
                           </div>
@@ -1509,7 +1708,10 @@ export default function MaterialRequisitionList() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={14} className="text-center py-10 text-slate-400 text-xs">
+                    <td
+                      colSpan={14}
+                      className="text-center py-10 text-slate-400 text-xs"
+                    >
                       No requisitions match your criteria.
                     </td>
                   </tr>
@@ -1533,26 +1735,30 @@ export default function MaterialRequisitionList() {
                 Previous
               </button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-                const isActive = pageNum === safeCurrentPage;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`min-w-[32px] h-8 flex items-center justify-center rounded font-medium cursor-pointer ${
-                      isActive
-                        ? "bg-[#6366F1] text-white shadow-xs"
-                        : "text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (pageNum) => {
+                  const isActive = pageNum === safeCurrentPage;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`min-w-[32px] h-8 flex items-center justify-center rounded font-medium cursor-pointer ${
+                        isActive
+                          ? "bg-[#6366F1] text-white shadow-xs"
+                          : "text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                },
+              )}
 
               <button
                 disabled={safeCurrentPage === totalPages}
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
                 className="px-3 py-1.5 rounded text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-800/80 disabled:opacity-40 font-medium cursor-pointer disabled:cursor-not-allowed"
               >
                 Next
@@ -1569,8 +1775,13 @@ export default function MaterialRequisitionList() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-100">
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-5 max-w-sm w-full space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Requisition Note</h3>
-              <button onClick={() => setNoteModalContent(null)} className="text-slate-400 hover:text-slate-600">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                Requisition Note
+              </h3>
+              <button
+                onClick={() => setNoteModalContent(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1595,10 +1806,15 @@ export default function MaterialRequisitionList() {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 max-w-sm w-full space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Confirm Deletion</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              Confirm Deletion
+            </h3>
             <p className="text-xs text-slate-600 dark:text-slate-300">
               Are you sure you want to remove requisition{" "}
-              <strong className="text-slate-900 dark:text-white">{deleteTarget.code}</strong>?
+              <strong className="text-slate-900 dark:text-white">
+                {deleteTarget.code}
+              </strong>
+              ?
             </p>
             <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
@@ -1619,6 +1835,15 @@ export default function MaterialRequisitionList() {
           </div>
         </div>
       )}
+
+      {/* ========================================================= */}
+      {/* MATERIAL REQUISITION PRINT / PDF MODAL */}
+      {/* ========================================================= */}
+      <MaterialRequisitionPrintModal
+        requisition={printModalRow}
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+      />
     </div>
   );
 }

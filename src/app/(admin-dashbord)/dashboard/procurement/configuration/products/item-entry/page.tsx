@@ -29,8 +29,8 @@ import {
   ItemEntryDropdownBrand,
   ItemEntryDropdownUnit,
   getAuthenticatedUserId,
-} from "@/lib/procurementItemEntryApi";
-import { procurementBrandApi } from "@/lib/procurementBrandApi";
+} from "@/lib/procurement/procurementItemEntryApi";
+import { procurementBrandApi } from "@/lib/procurement/procurementBrandApi";
 
 function parseApiError(err: unknown, defaultMessage: string): string {
   if (err && typeof err === "object") {

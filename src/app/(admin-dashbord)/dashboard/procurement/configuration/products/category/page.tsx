@@ -24,7 +24,7 @@ import {
   RealAccountOption,
   CreateCategoryPayload,
   UpdateCategoryPayload,
-} from "@/lib/procurementCategoryApi";
+} from "@/lib/procurement/procurementCategoryApi";
 
 // Standard Account Groups matching the original UI dropdown options
 const INVENTORY_GROUPS = [

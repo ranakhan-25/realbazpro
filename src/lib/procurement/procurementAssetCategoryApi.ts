@@ -1,12 +1,11 @@
-import api from "./api";
+import api from "../api";
 
-export interface BackendUnit {
+export interface BackendAssetCategory {
   id: string | number;
   uuid: string;
+  type: string;
   code: string;
   name: string;
-  conversionUnit?: string | null;
-  rate?: number | string | null;
   createdBy?: string | null;
   updatedBy?: string | null;
   deletedBy?: string | null;
@@ -15,7 +14,7 @@ export interface BackendUnit {
   deletedAt?: string | null;
 }
 
-export interface UnitPaginationMeta {
+export interface AssetCategoryPaginationMeta {
   page: number;
   pageNo?: number;
   nextPage?: number | null;
@@ -26,40 +25,38 @@ export interface UnitPaginationMeta {
   totalPages: number;
 }
 
-export interface UnitListResult {
-  data: BackendUnit[];
-  meta: UnitPaginationMeta;
+export interface AssetCategoryListResult {
+  data: BackendAssetCategory[];
+  meta: AssetCategoryPaginationMeta;
 }
 
-export interface CreateUnitPayload {
+export interface CreateAssetCategoryPayload {
+  type?: string;
   code: string;
   name: string;
-  conversionUnit?: string;
-  rate?: number;
   createdBy?: string;
 }
 
-export interface UpdateUnitPayload {
+export interface UpdateAssetCategoryPayload {
+  type?: string;
   code?: string;
   name?: string;
-  conversionUnit?: string;
-  rate?: number;
-  updatedBy?: string;
+  createdBy?: string;
 }
 
-export interface QueryUnitParams {
+export interface QueryAssetCategoryParams {
   page?: number;
   limit?: number;
   skip?: number;
   search?: string;
-  sortBy?: "createdAt" | "updatedAt" | "name" | "code" | "rate";
+  sortBy?: "createdAt" | "updatedAt" | "type" | "code" | "name";
   sortOrder?: "ASC" | "DESC";
   withDeleted?: boolean;
 }
 
 /**
  * Helper to retrieve currently authenticated user ID/UUID from localStorage / session / token.
- * Defaults to "user-uuid" if no session exists, following the backend contract.
+ * Defaults to "user-uuid" if no session exists, following the existing backend contract.
  */
 export function getAuthenticatedUserId(): string {
   if (typeof window === "undefined") return "user-uuid";
@@ -137,19 +134,22 @@ export function getAuthenticatedUserId(): string {
 }
 
 /**
- * Procurement Unit API Service
- * Interacts with /realbizpro/api/v1/procurement/unit
+ * Procurement Asset Category API Service
+ * Interacts with /realbizpro/api/v1/procurement/asset-category
  */
-export const procurementUnitApi = {
+export const procurementAssetCategoryApi = {
   /**
-   * Fetch paginated units with search, sorting, and withDeleted filters
+   * Fetch paginated asset categories with search, sorting, and withDeleted filters
    */
-  async getUnits(params?: QueryUnitParams): Promise<UnitListResult> {
+  async getAssetCategories(
+    params?: QueryAssetCategoryParams,
+  ): Promise<AssetCategoryListResult> {
     const cleanParams: Record<string, unknown> = { ...(params || {}) };
     if (!params?.withDeleted) {
       delete cleanParams.withDeleted;
     }
-    const res = await api.get("/procurement/unit", {
+
+    const res = await api.get("/procurement/asset-category", {
       params: cleanParams,
     });
     const rootData = res.data?.data || res.data;
@@ -176,45 +176,52 @@ export const procurementUnitApi = {
   },
 
   /**
-   * Fetch a single unit's details by uuid
+   * Fetch a single asset category's details by uuid
    */
-  async getUnit(uuid: string): Promise<BackendUnit> {
-    const res = await api.get(`/procurement/unit/${uuid}`);
+  async getAssetCategory(uuid: string): Promise<BackendAssetCategory> {
+    const res = await api.get(`/procurement/asset-category/${uuid}`);
     return res.data?.data || res.data;
   },
 
   /**
-   * Create a new unit
+   * Create a new asset category
    */
-  async createUnit(payload: CreateUnitPayload): Promise<BackendUnit> {
-    const res = await api.post("/procurement/unit", payload);
+  async createAssetCategory(
+    payload: CreateAssetCategoryPayload,
+  ): Promise<BackendAssetCategory> {
+    const res = await api.post("/procurement/asset-category", payload);
     return res.data?.data || res.data;
   },
 
   /**
-   * Update an existing unit by uuid
+   * Update an existing asset category by uuid
    */
-  async updateUnit(
+  async updateAssetCategory(
     uuid: string,
-    payload: UpdateUnitPayload,
-  ): Promise<BackendUnit> {
-    const res = await api.patch(`/procurement/unit/${uuid}`, payload);
+    payload: UpdateAssetCategoryPayload,
+  ): Promise<BackendAssetCategory> {
+    const res = await api.patch(
+      `/procurement/asset-category/${uuid}`,
+      payload,
+    );
     return res.data?.data || res.data;
   },
 
   /**
-   * Soft-delete a unit by uuid
+   * Soft-delete an asset category by uuid
    */
-  async deleteUnit(uuid: string): Promise<{ message: string }> {
-    const res = await api.delete(`/procurement/unit/${uuid}`);
+  async deleteAssetCategory(uuid: string): Promise<{ message: string }> {
+    const res = await api.delete(`/procurement/asset-category/${uuid}`);
     return res.data?.data || res.data;
   },
 
   /**
-   * Restore a soft-deleted unit by uuid
+   * Restore a soft-deleted asset category by uuid
    */
-  async restoreUnit(uuid: string): Promise<BackendUnit> {
-    const res = await api.patch(`/procurement/unit/${uuid}/restore`);
+  async restoreAssetCategory(uuid: string): Promise<BackendAssetCategory> {
+    const res = await api.patch(
+      `/procurement/asset-category/${uuid}/restore`,
+    );
     return res.data?.data || res.data;
   },
 };

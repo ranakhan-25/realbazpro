@@ -30,7 +30,10 @@ import {
   TrendingDown,
   ShieldCheck,
   Percent,
+  Copy,
+  Link as LinkIcon,
 } from "lucide-react";
+import RfqInvoicePrintModal from "./RfqInvoicePrintModal";
 
 // ==========================================
 // Types & Interfaces
@@ -68,6 +71,10 @@ export interface RfqRecord {
   site?: string;
   category?: string;
   items: RfqItemRow[];
+  phone?: string;
+  address?: string;
+  paid?: number;
+  due?: number;
 }
 
 interface CatalogItem {
@@ -83,7 +90,7 @@ interface CatalogItem {
 const SAMPLE_CATALOG_ITEMS: CatalogItem[] = [
   {
     itemCode: "GLS-001",
-    itemName: '5mm Tinted Clear Belgian Glass',
+    itemName: "5mm Tinted Clear Belgian Glass",
     details: "UV resistant float glass for exterior facade",
     unit: "Sft",
     category: "Glass & Thai Aluminium",
@@ -92,7 +99,7 @@ const SAMPLE_CATALOG_ITEMS: CatalogItem[] = [
   },
   {
     itemCode: "ALM-002",
-    itemName: 'Thai Aluminium Section 1.5mm (Silver / Bronze)',
+    itemName: "Thai Aluminium Section 1.5mm (Silver / Bronze)",
     details: "Powder coated heavy gauge sliding profile",
     unit: "Rft",
     category: "Glass & Thai Aluminium",
@@ -152,13 +159,17 @@ const INITIAL_RFQ_RECORDS: RfqRecord[] = [
     id: 1,
     projectType: "Real Estate",
     project: "Hena Heights",
-    supplierName: "Delta Glass & Aluminium__",
+    supplierName: "Delta Glass & Aluminium",
     code: "R-043",
     reference: "REC00102",
-    date: "19 Oct 2026",
+    date: "19-Oct-2026",
     subTotal: 39000,
     grandTotal: 39000,
+    paid: 0,
+    due: 39000,
     addedBy: "Admin",
+    phone: "01312345694",
+    address: "Mirpur",
     attachmentCount: 0,
     titleOfWork: "Glass & Aluminium Fitting",
     requisition: "REQ-2026-102",
@@ -168,16 +179,29 @@ const INITIAL_RFQ_RECORDS: RfqRecord[] = [
     items: [
       {
         id: "rfq-it-1",
-        itemCode: "GLS-001",
-        itemName: '5mm Tinted Clear Belgian Glass',
-        details: "Belgian tint for exterior facade",
-        unit: "Sft",
-        quantity: 500,
-        rate: 78,
-        requiredQty: 500,
+        itemCode: "ITM-501",
+        itemName: "Cylinder Set",
+        details: "Cylinder Lock Set",
+        unit: "Set",
+        quantity: 10,
+        rate: 500,
+        requiredQty: 10,
         purchaseQty: 0,
-        stockQty: 120,
-        amount: 39000,
+        stockQty: 2,
+        amount: 5000,
+      },
+      {
+        id: "rfq-it-2",
+        itemCode: "ITM-502",
+        itemName: "Land Survey",
+        details: "Boundary verification",
+        unit: "Khata",
+        quantity: 10,
+        rate: 3400,
+        requiredQty: 10,
+        purchaseQty: 0,
+        stockQty: 0,
+        amount: 34000,
       },
     ],
   },
@@ -202,7 +226,7 @@ const INITIAL_RFQ_RECORDS: RfqRecord[] = [
       {
         id: "rfq-it-2",
         itemCode: "GLS-001",
-        itemName: '5mm Tinted Clear Belgian Glass',
+        itemName: "5mm Tinted Clear Belgian Glass",
         details: "Standard clear facade glass",
         unit: "Sft",
         quantity: 500,
@@ -235,7 +259,7 @@ const INITIAL_RFQ_RECORDS: RfqRecord[] = [
       {
         id: "rfq-it-3",
         itemCode: "GLS-001",
-        itemName: '5mm Tinted Clear Belgian Glass',
+        itemName: "5mm Tinted Clear Belgian Glass",
         details: "Grade A float glass",
         unit: "Sft",
         quantity: 500,
@@ -268,7 +292,7 @@ const INITIAL_RFQ_RECORDS: RfqRecord[] = [
       {
         id: "rfq-it-4",
         itemCode: "ALM-002",
-        itemName: 'Thai Aluminium Section 1.5mm (Silver / Bronze)',
+        itemName: "Thai Aluminium Section 1.5mm (Silver / Bronze)",
         details: "Window section frames",
         unit: "Rft",
         quantity: 165,
@@ -301,7 +325,7 @@ const INITIAL_RFQ_RECORDS: RfqRecord[] = [
       {
         id: "rfq-it-5",
         itemCode: "ALM-002",
-        itemName: 'Thai Aluminium Section 1.5mm (Silver / Bronze)',
+        itemName: "Thai Aluminium Section 1.5mm (Silver / Bronze)",
         details: "Section bronze finish",
         unit: "Rft",
         quantity: 165,
@@ -334,7 +358,7 @@ const INITIAL_RFQ_RECORDS: RfqRecord[] = [
       {
         id: "rfq-it-6",
         itemCode: "ALM-002",
-        itemName: 'Thai Aluminium Section 1.5mm (Silver / Bronze)',
+        itemName: "Thai Aluminium Section 1.5mm (Silver / Bronze)",
         details: "Heavy sliding profile",
         unit: "Rft",
         quantity: 165,
@@ -367,7 +391,7 @@ const INITIAL_RFQ_RECORDS: RfqRecord[] = [
       {
         id: "rfq-it-7",
         itemCode: "ALM-002",
-        itemName: 'Thai Aluminium Section 1.5mm (Silver / Bronze)',
+        itemName: "Thai Aluminium Section 1.5mm (Silver / Bronze)",
         details: "Silver anodized finish",
         unit: "Rft",
         quantity: 165,
@@ -400,7 +424,7 @@ const INITIAL_RFQ_RECORDS: RfqRecord[] = [
       {
         id: "rfq-it-8",
         itemCode: "ALM-002",
-        itemName: 'Thai Aluminium Section 1.5mm (Silver / Bronze)',
+        itemName: "Thai Aluminium Section 1.5mm (Silver / Bronze)",
         details: "Standard aluminium profile",
         unit: "Rft",
         quantity: 165,
@@ -433,7 +457,7 @@ const INITIAL_RFQ_RECORDS: RfqRecord[] = [
       {
         id: "rfq-it-9",
         itemCode: "ALM-002",
-        itemName: 'Thai Aluminium Section 1.5mm (Silver / Bronze)',
+        itemName: "Thai Aluminium Section 1.5mm (Silver / Bronze)",
         details: "Door and window frames",
         unit: "Rft",
         quantity: 165,
@@ -548,7 +572,7 @@ const INITIAL_RFQ_RECORDS: RfqRecord[] = [
   {
     id: 13,
     projectType: "Real Estate",
-    project: "Somikoron Tower",
+    project: "RealBiz Tower",
     supplierName: "BSRM Steel Ltd",
     code: "R-030",
     reference: "REC00092",
@@ -633,7 +657,7 @@ const INITIAL_RFQ_RECORDS: RfqRecord[] = [
       {
         id: "rfq-it-15",
         itemCode: "GLS-001",
-        itemName: '5mm Tinted Clear Belgian Glass',
+        itemName: "5mm Tinted Clear Belgian Glass",
         details: "Partition glass panels",
         unit: "Sft",
         quantity: 538,
@@ -683,7 +707,7 @@ const INITIAL_RFQ_RECORDS: RfqRecord[] = [
 
 export default function RequestForQuotationView() {
   const router = useRouter();
-  const STORAGE_KEY = "realbiz_rfq_v1";
+  const STORAGE_KEY = "realbiz_rfq_v5";
 
   // View Mode: "list" (Screenshot 2) vs "create" (Screenshot 1)
   const [viewMode, setViewMode] = useState<"list" | "create">("list");
@@ -693,9 +717,11 @@ export default function RequestForQuotationView() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   // Filter State (Screenshot 2)
-  const [filterDate, setFilterDate] = useState("1 October, 2026 - 31 October, 2026");
+  const [filterDate, setFilterDate] = useState(
+    "1 October, 2026 - 31 October, 2026",
+  );
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [filterCompany, setFilterCompany] = useState("Somikoron IT Ltd");
+  const [filterCompany, setFilterCompany] = useState("RealBiz Pro");
   const [filterSupplier, setFilterSupplier] = useState("");
   const [filterProject, setFilterProject] = useState("");
   const [filterTitleOfWork, setFilterTitleOfWork] = useState("");
@@ -718,9 +744,20 @@ export default function RequestForQuotationView() {
 
   // Modals State
   const [viewingRfq, setViewingRfq] = useState<RfqRecord | null>(null);
+  const [invoicePrintRfq, setInvoicePrintRfq] = useState<RfqRecord | null>(
+    null,
+  );
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+
+  const handleOpenInvoice = (rfq: RfqRecord) => {
+    setInvoicePrintRfq(rfq);
+    setIsInvoiceModalOpen(true);
+  };
+
   const [deleteTarget, setDeleteTarget] = useState<RfqRecord | null>(null);
   const [showRfqCompareModal, setShowRfqCompareModal] = useState(false);
-  const [showSupplierCompareModal, setShowSupplierCompareModal] = useState(false);
+  const [showSupplierCompareModal, setShowSupplierCompareModal] =
+    useState(false);
   const [showAddSupplierModal, setShowAddSupplierModal] = useState(false);
 
   // New Supplier Quick Form State
@@ -729,7 +766,10 @@ export default function RequestForQuotationView() {
   const [newSupplierAddress, setNewSupplierAddress] = useState("");
 
   // Toast State
-  const [toast, setToast] = useState<{ message: string; type: "success" | "info" | "error" } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "info" | "error";
+  } | null>(null);
 
   // -------------------------------------------------------------
   // Form View State (Screenshot 1)
@@ -764,7 +804,10 @@ export default function RequestForQuotationView() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const showToast = (message: string, type: "success" | "info" | "error" = "success") => {
+  const showToast = (
+    message: string,
+    type: "success" | "info" | "error" = "success",
+  ) => {
     setToast({ message, type });
     setTimeout(() => {
       setToast(null);
@@ -774,10 +817,16 @@ export default function RequestForQuotationView() {
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
+      if (
+        actionMenuRef.current &&
+        !actionMenuRef.current.contains(event.target as Node)
+      ) {
         setActiveMenuId(null);
       }
-      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+      if (
+        datePickerRef.current &&
+        !datePickerRef.current.contains(event.target as Node)
+      ) {
         setShowDatePicker(false);
       }
     };
@@ -797,7 +846,10 @@ export default function RequestForQuotationView() {
         }
       }
     } catch (e) {
-      console.warn("Could not read from localStorage, using initial mock data", e);
+      console.warn(
+        "Could not read from localStorage, using initial mock data",
+        e,
+      );
     }
     setRfqList(INITIAL_RFQ_RECORDS);
     try {
@@ -818,7 +870,7 @@ export default function RequestForQuotationView() {
   // Reset all filters
   const handleResetFilters = () => {
     setFilterDate("1 October, 2026 - 31 October, 2026");
-    setFilterCompany("Somikoron IT Ltd");
+    setFilterCompany("RealBiz Pro");
     setFilterSupplier("");
     setFilterProject("");
     setFilterTitleOfWork("");
@@ -845,7 +897,7 @@ export default function RequestForQuotationView() {
     setEditingId(null);
     const today = new Date();
     const formattedToday = `${String(today.getDate()).padStart(2, "0")}/${String(
-      today.getMonth() + 1
+      today.getMonth() + 1,
     ).padStart(2, "0")}/${today.getFullYear()}`;
 
     setFormDate(formattedToday);
@@ -903,10 +955,14 @@ export default function RequestForQuotationView() {
       return;
     }
 
-    const found = SAMPLE_CATALOG_ITEMS.find((a) => a.itemCode === selectedCatalogItem);
+    const found = SAMPLE_CATALOG_ITEMS.find(
+      (a) => a.itemCode === selectedCatalogItem,
+    );
     if (!found) return;
 
-    const existingIndex = formItems.findIndex((it) => it.itemCode === found.itemCode);
+    const existingIndex = formItems.findIndex(
+      (it) => it.itemCode === found.itemCode,
+    );
     if (existingIndex >= 0) {
       setFormItems((prev) =>
         prev.map((it, idx) => {
@@ -919,7 +975,7 @@ export default function RequestForQuotationView() {
             };
           }
           return it;
-        })
+        }),
       );
       showToast(`Increased quantity for ${found.itemCode}`, "info");
     } else {
@@ -943,21 +999,32 @@ export default function RequestForQuotationView() {
   };
 
   // Update item field dynamically and recalculate amount
-  const handleUpdateItemField = (id: string, field: keyof RfqItemRow, value: string | number) => {
+  const handleUpdateItemField = (
+    id: string,
+    field: keyof RfqItemRow,
+    value: string | number,
+  ) => {
     setFormItems((prev) =>
       prev.map((item) => {
         if (item.id === id) {
           const updated = { ...item };
           if (field === "quantity") {
-            const num = typeof value === "string" ? parseFloat(value) || 0 : value;
+            const num =
+              typeof value === "string" ? parseFloat(value) || 0 : value;
             updated.quantity = Math.max(0, num);
             updated.amount = updated.quantity * updated.rate;
           } else if (field === "rate") {
-            const num = typeof value === "string" ? parseFloat(value) || 0 : value;
+            const num =
+              typeof value === "string" ? parseFloat(value) || 0 : value;
             updated.rate = Math.max(0, num);
             updated.amount = updated.quantity * updated.rate;
-          } else if (field === "requiredQty" || field === "purchaseQty" || field === "stockQty") {
-            const num = typeof value === "string" ? parseFloat(value) || 0 : value;
+          } else if (
+            field === "requiredQty" ||
+            field === "purchaseQty" ||
+            field === "stockQty"
+          ) {
+            const num =
+              typeof value === "string" ? parseFloat(value) || 0 : value;
             updated[field] = num;
           } else {
             (updated as any)[field] = value;
@@ -965,7 +1032,7 @@ export default function RequestForQuotationView() {
           return updated;
         }
         return item;
-      })
+      }),
     );
   };
 
@@ -1026,7 +1093,10 @@ export default function RequestForQuotationView() {
             date: formDate,
             supplierName: formSupplier,
             code: formCode,
-            projectType: formProjectType === "Select Project Type" ? "Real Estate" : formProjectType,
+            projectType:
+              formProjectType === "Select Project Type"
+                ? "Real Estate"
+                : formProjectType,
             project: formProject || "Hena Heights",
             titleOfWork: formTitleOfWork || "Material Procurement",
             task: formTask,
@@ -1044,10 +1114,14 @@ export default function RequestForQuotationView() {
       saveRfqList(updatedList);
       showToast(`RFQ ${formCode} updated successfully`, "success");
     } else {
-      const newId = rfqList.length > 0 ? Math.max(...rfqList.map((r) => r.id)) + 1 : 1;
+      const newId =
+        rfqList.length > 0 ? Math.max(...rfqList.map((r) => r.id)) + 1 : 1;
       const newRecord: RfqRecord = {
         id: newId,
-        projectType: formProjectType === "Select Project Type" ? "Real Estate" : formProjectType,
+        projectType:
+          formProjectType === "Select Project Type"
+            ? "Real Estate"
+            : formProjectType,
         project: formProject || "Hena Heights",
         supplierName: formSupplier,
         code: formCode,
@@ -1066,7 +1140,10 @@ export default function RequestForQuotationView() {
       };
 
       saveRfqList([newRecord, ...rfqList]);
-      showToast(`Request for Quotation ${formCode} created successfully!`, "success");
+      showToast(
+        `Request for Quotation ${formCode} created successfully!`,
+        "success",
+      );
     }
 
     setViewMode("list");
@@ -1093,7 +1170,7 @@ export default function RequestForQuotationView() {
 
   const handleToggleSelectRow = (id: number) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
   };
 
@@ -1112,30 +1189,32 @@ export default function RequestForQuotationView() {
     let result = [...rfqList];
 
     if (filterProject) {
-      result = result.filter((r) => r.project.toLowerCase().includes(filterProject.toLowerCase()));
+      result = result.filter((r) =>
+        r.project.toLowerCase().includes(filterProject.toLowerCase()),
+      );
     }
 
     if (filterSupplier) {
       result = result.filter((r) =>
-        r.supplierName.toLowerCase().includes(filterSupplier.toLowerCase())
+        r.supplierName.toLowerCase().includes(filterSupplier.toLowerCase()),
       );
     }
 
     if (filterTitleOfWork) {
       result = result.filter((r) =>
-        r.titleOfWork?.toLowerCase().includes(filterTitleOfWork.toLowerCase())
+        r.titleOfWork?.toLowerCase().includes(filterTitleOfWork.toLowerCase()),
       );
     }
 
     if (filterRequisition) {
       result = result.filter((r) =>
-        r.requisition?.toLowerCase().includes(filterRequisition.toLowerCase())
+        r.requisition?.toLowerCase().includes(filterRequisition.toLowerCase()),
       );
     }
 
     if (filterAddedBy) {
       result = result.filter((r) =>
-        r.addedBy.toLowerCase().includes(filterAddedBy.toLowerCase())
+        r.addedBy.toLowerCase().includes(filterAddedBy.toLowerCase()),
       );
     }
 
@@ -1148,7 +1227,7 @@ export default function RequestForQuotationView() {
           r.supplierName.toLowerCase().includes(q) ||
           r.reference.toLowerCase().includes(q) ||
           r.projectType.toLowerCase().includes(q) ||
-          r.addedBy.toLowerCase().includes(q)
+          r.addedBy.toLowerCase().includes(q),
       );
     }
 
@@ -1190,14 +1269,19 @@ export default function RequestForQuotationView() {
   const totalPages = Math.max(1, Math.ceil(totalEntries / entriesPerPage));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIdx = (safeCurrentPage - 1) * entriesPerPage;
-  const currentEntries = filteredAndSorted.slice(startIdx, startIdx + entriesPerPage);
+  const currentEntries = filteredAndSorted.slice(
+    startIdx,
+    startIdx + entriesPerPage,
+  );
 
   const displayFrom = totalEntries === 0 ? 0 : startIdx + 1;
   const displayTo = Math.min(startIdx + entriesPerPage, totalEntries);
 
   const filteredCatalogOptions = useMemo(() => {
     if (!formCategory) return SAMPLE_CATALOG_ITEMS;
-    return SAMPLE_CATALOG_ITEMS.filter((item) => item.category === formCategory);
+    return SAMPLE_CATALOG_ITEMS.filter(
+      (item) => item.category === formCategory,
+    );
   }, [formCategory]);
 
   // =========================================================================
@@ -1216,7 +1300,10 @@ export default function RequestForQuotationView() {
           {/* Header & Back Button */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <nav className="flex items-center gap-1.5 text-xs sm:text-[13px] font-normal text-slate-500 dark:text-slate-400 whitespace-nowrap">
-              <Link href="/dashboard" className="text-[#5D5FEF] hover:text-[#4A4CE0] dark:text-indigo-400">
+              <Link
+                href="/dashboard"
+                className="text-[#5D5FEF] hover:text-[#4A4CE0] dark:text-indigo-400"
+              >
                 Home
               </Link>
               <span className="text-slate-400">›</span>
@@ -1225,7 +1312,9 @@ export default function RequestForQuotationView() {
                 <ChevronDown className="w-3.5 h-3.5 stroke-[2]" />
               </div>
               <span className="text-slate-400">›</span>
-              <span className="text-slate-600 dark:text-slate-300 font-medium">Request for Quotation(RFQ)</span>
+              <span className="text-slate-600 dark:text-slate-300 font-medium">
+                Request for Quotation(RFQ)
+              </span>
             </nav>
 
             <button
@@ -1308,7 +1397,9 @@ export default function RequestForQuotationView() {
                       onChange={(e) => setFormProjectType(e.target.value)}
                       className="w-full h-[38px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3 pr-8 text-xs sm:text-[13px] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none shadow-2xs cursor-pointer"
                     >
-                      <option value="Select Project Type">Select Project Type</option>
+                      <option value="Select Project Type">
+                        Select Project Type
+                      </option>
                       <option value="Real Estate">Real Estate</option>
                       <option value="Commercial">Commercial</option>
                       <option value="Corporate">Corporate</option>
@@ -1334,7 +1425,7 @@ export default function RequestForQuotationView() {
                       <option value="">Select Project</option>
                       <option value="Hena Heights">Hena Heights</option>
                       <option value="Lake Garden">Lake Garden</option>
-                      <option value="Somikoron Tower">Somikoron Tower</option>
+                      <option value="RealBiz Tower">RealBiz Tower</option>
                       <option value="Banani Hub">Banani Hub</option>
                       <option value="Uttara Heights">Uttara Heights</option>
                     </select>
@@ -1353,11 +1444,21 @@ export default function RequestForQuotationView() {
                       className="w-full h-[38px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3 pr-8 text-xs sm:text-[13px] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none shadow-2xs cursor-pointer"
                     >
                       <option value="">Select Title/Name of Work</option>
-                      <option value="Glass & Aluminium Fitting">Glass & Aluminium Fitting</option>
-                      <option value="Thai Aluminium Windows">Thai Aluminium Windows</option>
-                      <option value="Civil Construction">Civil Construction</option>
-                      <option value="Structural Framework">Structural Framework</option>
-                      <option value="Hardware & Lock Fittings">Hardware & Lock Fittings</option>
+                      <option value="Glass & Aluminium Fitting">
+                        Glass & Aluminium Fitting
+                      </option>
+                      <option value="Thai Aluminium Windows">
+                        Thai Aluminium Windows
+                      </option>
+                      <option value="Civil Construction">
+                        Civil Construction
+                      </option>
+                      <option value="Structural Framework">
+                        Structural Framework
+                      </option>
+                      <option value="Hardware & Lock Fittings">
+                        Hardware & Lock Fittings
+                      </option>
                     </select>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3 pointer-events-none" />
                   </div>
@@ -1374,10 +1475,16 @@ export default function RequestForQuotationView() {
                       className="w-full h-[38px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3 pr-8 text-xs sm:text-[13px] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none shadow-2xs cursor-pointer"
                     >
                       <option value="">Select Task</option>
-                      <option value="Floor 4-8 Fittings">Floor 4-8 Fittings</option>
+                      <option value="Floor 4-8 Fittings">
+                        Floor 4-8 Fittings
+                      </option>
                       <option value="Exterior Facade">Exterior Facade</option>
-                      <option value="Procurement Phase 1">Procurement Phase 1</option>
-                      <option value="Basement Concreting">Basement Concreting</option>
+                      <option value="Procurement Phase 1">
+                        Procurement Phase 1
+                      </option>
+                      <option value="Basement Concreting">
+                        Basement Concreting
+                      </option>
                     </select>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3 pointer-events-none" />
                   </div>
@@ -1394,10 +1501,16 @@ export default function RequestForQuotationView() {
                       className="w-full h-[38px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3 pr-8 text-xs sm:text-[13px] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none shadow-2xs cursor-pointer"
                     >
                       <option value="">Select Site</option>
-                      <option value="Site 01 - Hena Heights">Site 01 - Hena Heights</option>
-                      <option value="Site 02 - Lake Garden">Site 02 - Lake Garden</option>
+                      <option value="Site 01 - Hena Heights">
+                        Site 01 - Hena Heights
+                      </option>
+                      <option value="Site 02 - Lake Garden">
+                        Site 02 - Lake Garden
+                      </option>
                       <option value="Dhaka Main Site">Dhaka Main Site</option>
-                      <option value="Banani Corporate Hub">Banani Corporate Hub</option>
+                      <option value="Banani Corporate Hub">
+                        Banani Corporate Hub
+                      </option>
                     </select>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3 pointer-events-none" />
                   </div>
@@ -1420,10 +1533,14 @@ export default function RequestForQuotationView() {
                       className="w-full h-[38px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3 pr-8 text-xs sm:text-[13px] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none shadow-2xs cursor-pointer"
                     >
                       <option value="">Select Category</option>
-                      <option value="Glass & Thai Aluminium">Glass & Thai Aluminium</option>
+                      <option value="Glass & Thai Aluminium">
+                        Glass & Thai Aluminium
+                      </option>
                       <option value="Civil Materials">Civil Materials</option>
                       <option value="Steel & Rebar">Steel & Rebar</option>
-                      <option value="Hardware & Sanitary">Hardware & Sanitary</option>
+                      <option value="Hardware & Sanitary">
+                        Hardware & Sanitary
+                      </option>
                     </select>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3 pointer-events-none" />
                   </div>
@@ -1442,7 +1559,10 @@ export default function RequestForQuotationView() {
                       >
                         <option value="">Select Item</option>
                         {filteredCatalogOptions.map((catItem) => (
-                          <option key={catItem.itemCode} value={catItem.itemCode}>
+                          <option
+                            key={catItem.itemCode}
+                            value={catItem.itemCode}
+                          >
                             {catItem.itemCode} - {catItem.itemName}
                           </option>
                         ))}
@@ -1469,28 +1589,57 @@ export default function RequestForQuotationView() {
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-[#6366F1] text-white font-semibold tracking-wide">
-                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap">ITEM CODE</th>
-                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap">ITEM NAME</th>
-                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap">DETAILS</th>
-                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap">UNIT</th>
-                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap text-right">QUANTITY</th>
-                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap text-right">RATE</th>
-                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap text-right">REQUIRED QTY</th>
-                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap text-right">PURCHASE QTY</th>
-                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap text-right">STOCK QTY</th>
-                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap text-right">AMOUNT</th>
-                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap text-center">ACTION</th>
+                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap">
+                        ITEM CODE
+                      </th>
+                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap">
+                        ITEM NAME
+                      </th>
+                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap">
+                        DETAILS
+                      </th>
+                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap">
+                        UNIT
+                      </th>
+                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap text-right">
+                        QUANTITY
+                      </th>
+                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap text-right">
+                        RATE
+                      </th>
+                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap text-right">
+                        REQUIRED QTY
+                      </th>
+                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap text-right">
+                        PURCHASE QTY
+                      </th>
+                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap text-right">
+                        STOCK QTY
+                      </th>
+                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap text-right">
+                        AMOUNT
+                      </th>
+                      <th className="py-2.5 px-3 uppercase text-[11px] whitespace-nowrap text-center">
+                        ACTION
+                      </th>
                     </tr>
                   </thead>
 
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {formItems.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="py-12 text-center text-slate-400 dark:text-slate-500">
+                        <td
+                          colSpan={11}
+                          className="py-12 text-center text-slate-400 dark:text-slate-500"
+                        >
                           <FileSearch className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-2 stroke-[1.5]" />
-                          <p className="text-xs font-medium">No items added to this quotation.</p>
+                          <p className="text-xs font-medium">
+                            No items added to this quotation.
+                          </p>
                           <p className="text-[11px] text-slate-400 mt-1">
-                            Choose an item from the &ldquo;Select Item&rdquo; dropdown above and click the purple &ldquo;+&rdquo; button.
+                            Choose an item from the &ldquo;Select Item&rdquo;
+                            dropdown above and click the purple &ldquo;+&rdquo;
+                            button.
                           </p>
                         </td>
                       </tr>
@@ -1504,7 +1653,13 @@ export default function RequestForQuotationView() {
                             <input
                               type="text"
                               value={item.itemCode}
-                              onChange={(e) => handleUpdateItemField(item.id, "itemCode", e.target.value)}
+                              onChange={(e) =>
+                                handleUpdateItemField(
+                                  item.id,
+                                  "itemCode",
+                                  e.target.value,
+                                )
+                              }
                               className="w-24 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs font-mono font-medium text-indigo-600 dark:text-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                             />
                           </td>
@@ -1513,7 +1668,13 @@ export default function RequestForQuotationView() {
                             <input
                               type="text"
                               value={item.itemName}
-                              onChange={(e) => handleUpdateItemField(item.id, "itemName", e.target.value)}
+                              onChange={(e) =>
+                                handleUpdateItemField(
+                                  item.id,
+                                  "itemName",
+                                  e.target.value,
+                                )
+                              }
                               className="w-full bg-transparent border-0 border-b border-transparent focus:border-indigo-400 px-1 py-1 text-xs text-slate-800 dark:text-slate-100 font-medium focus:outline-none"
                             />
                           </td>
@@ -1522,7 +1683,13 @@ export default function RequestForQuotationView() {
                             <input
                               type="text"
                               value={item.details}
-                              onChange={(e) => handleUpdateItemField(item.id, "details", e.target.value)}
+                              onChange={(e) =>
+                                handleUpdateItemField(
+                                  item.id,
+                                  "details",
+                                  e.target.value,
+                                )
+                              }
                               placeholder="Specifications"
                               className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                             />
@@ -1532,7 +1699,13 @@ export default function RequestForQuotationView() {
                             <input
                               type="text"
                               value={item.unit}
-                              onChange={(e) => handleUpdateItemField(item.id, "unit", e.target.value)}
+                              onChange={(e) =>
+                                handleUpdateItemField(
+                                  item.id,
+                                  "unit",
+                                  e.target.value,
+                                )
+                              }
                               className="w-16 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs text-center text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                             />
                           </td>
@@ -1542,7 +1715,13 @@ export default function RequestForQuotationView() {
                               type="number"
                               min="0"
                               value={item.quantity}
-                              onChange={(e) => handleUpdateItemField(item.id, "quantity", e.target.value)}
+                              onChange={(e) =>
+                                handleUpdateItemField(
+                                  item.id,
+                                  "quantity",
+                                  e.target.value,
+                                )
+                              }
                               className="w-20 bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 rounded px-2 py-1 text-xs font-semibold text-right text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-2xs"
                             />
                           </td>
@@ -1553,7 +1732,13 @@ export default function RequestForQuotationView() {
                               min="0"
                               step="any"
                               value={item.rate}
-                              onChange={(e) => handleUpdateItemField(item.id, "rate", e.target.value)}
+                              onChange={(e) =>
+                                handleUpdateItemField(
+                                  item.id,
+                                  "rate",
+                                  e.target.value,
+                                )
+                              }
                               className="w-20 bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 rounded px-2 py-1 text-xs font-semibold text-right text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-2xs"
                             />
                           </td>
@@ -1563,7 +1748,13 @@ export default function RequestForQuotationView() {
                               type="number"
                               min="0"
                               value={item.requiredQty}
-                              onChange={(e) => handleUpdateItemField(item.id, "requiredQty", e.target.value)}
+                              onChange={(e) =>
+                                handleUpdateItemField(
+                                  item.id,
+                                  "requiredQty",
+                                  e.target.value,
+                                )
+                              }
                               className="w-20 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs text-right text-slate-600 dark:text-slate-300 focus:outline-none"
                             />
                           </td>
@@ -1573,7 +1764,13 @@ export default function RequestForQuotationView() {
                               type="number"
                               min="0"
                               value={item.purchaseQty}
-                              onChange={(e) => handleUpdateItemField(item.id, "purchaseQty", e.target.value)}
+                              onChange={(e) =>
+                                handleUpdateItemField(
+                                  item.id,
+                                  "purchaseQty",
+                                  e.target.value,
+                                )
+                              }
                               className="w-18 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs text-right text-slate-600 dark:text-slate-300 focus:outline-none"
                             />
                           </td>
@@ -1583,13 +1780,22 @@ export default function RequestForQuotationView() {
                               type="number"
                               min="0"
                               value={item.stockQty}
-                              onChange={(e) => handleUpdateItemField(item.id, "stockQty", e.target.value)}
+                              onChange={(e) =>
+                                handleUpdateItemField(
+                                  item.id,
+                                  "stockQty",
+                                  e.target.value,
+                                )
+                              }
                               className="w-18 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-xs text-right text-slate-600 dark:text-slate-300 focus:outline-none"
                             />
                           </td>
 
                           <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                            {Number(item.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                            {Number(item.amount || 0).toLocaleString("en-US", {
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 2,
+                            })}
                           </td>
 
                           <td className="py-2 px-3 text-center">
@@ -1621,7 +1827,10 @@ export default function RequestForQuotationView() {
                     <input
                       type="text"
                       readOnly
-                      value={formSubtotal.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      value={formSubtotal.toLocaleString("en-US", {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2,
+                      })}
                       className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-xs sm:text-[13px] font-bold text-slate-900 dark:text-slate-100 focus:outline-none shadow-2xs cursor-default"
                     />
                   </div>
@@ -1635,7 +1844,10 @@ export default function RequestForQuotationView() {
                     <input
                       type="text"
                       readOnly
-                      value={formGrandTotal.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      value={formGrandTotal.toLocaleString("en-US", {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2,
+                      })}
                       className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-3 py-1.5 text-xs sm:text-[13px] font-bold text-slate-900 dark:text-slate-100 focus:outline-none shadow-2xs cursor-default"
                     />
                   </div>
@@ -1674,7 +1886,8 @@ export default function RequestForQuotationView() {
                           type="button"
                           onClick={() => {
                             setFormAttachmentName("");
-                            if (fileInputRef.current) fileInputRef.current.value = "";
+                            if (fileInputRef.current)
+                              fileInputRef.current.value = "";
                           }}
                           className="text-slate-400 hover:text-rose-500 p-0.5 cursor-pointer ml-1"
                         >
@@ -1717,7 +1930,10 @@ export default function RequestForQuotationView() {
                 </button>
               </div>
 
-              <form onSubmit={handleAddNewSupplier} className="space-y-3 text-xs">
+              <form
+                onSubmit={handleAddNewSupplier}
+                className="space-y-3 text-xs"
+              >
                 <div>
                   <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">
                     Supplier Name *
@@ -1798,7 +2014,10 @@ export default function RequestForQuotationView() {
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 pb-0.5">
           {/* Breadcrumb Navigation - Never wraps into 2 lines */}
           <nav className="flex items-center gap-1.5 text-xs sm:text-[13px] font-normal text-slate-500 dark:text-slate-400 whitespace-nowrap overflow-x-auto py-1">
-            <Link href="/dashboard" className="text-[#5D5FEF] hover:text-[#4A4CE0] dark:text-indigo-400 shrink-0 font-medium">
+            <Link
+              href="/dashboard"
+              className="text-[#5D5FEF] hover:text-[#4A4CE0] dark:text-indigo-400 shrink-0 font-medium"
+            >
               Home
             </Link>
             <span className="text-slate-400 shrink-0">›</span>
@@ -1967,7 +2186,7 @@ export default function RequestForQuotationView() {
                   <option value="">Select value</option>
                   <option value="Hena Heights">Hena Heights</option>
                   <option value="Lake Garden">Lake Garden</option>
-                  <option value="Somikoron Tower">Somikoron Tower</option>
+                  <option value="RealBiz Tower">RealBiz Tower</option>
                   <option value="Banani Hub">Banani Hub</option>
                 </select>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3 pointer-events-none" />
@@ -1992,10 +2211,16 @@ export default function RequestForQuotationView() {
                   className="w-full h-[38px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3 pr-8 text-xs sm:text-[13px] text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none shadow-2xs cursor-pointer"
                 >
                   <option value="">Select Title/Name of Work</option>
-                  <option value="Glass & Aluminium Fitting">Glass & Aluminium Fitting</option>
-                  <option value="Thai Aluminium Windows">Thai Aluminium Windows</option>
+                  <option value="Glass & Aluminium Fitting">
+                    Glass & Aluminium Fitting
+                  </option>
+                  <option value="Thai Aluminium Windows">
+                    Thai Aluminium Windows
+                  </option>
                   <option value="Civil Construction">Civil Construction</option>
-                  <option value="Structural Framework">Structural Framework</option>
+                  <option value="Structural Framework">
+                    Structural Framework
+                  </option>
                 </select>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3 pointer-events-none" />
               </div>
@@ -2016,10 +2241,18 @@ export default function RequestForQuotationView() {
                   className="w-full h-[38px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md px-3 pr-8 text-xs sm:text-[13px] text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none shadow-2xs cursor-pointer"
                 >
                   <option value="">Select Requisition</option>
-                  <option value="REQ-2026-102">REQ-2026-102 (Hena Heights)</option>
-                  <option value="REQ-2026-100">REQ-2026-100 (Hena Heights)</option>
-                  <option value="REQ-2026-096">REQ-2026-096 (Lake Garden)</option>
-                  <option value="REQ-2026-092">REQ-2026-092 (Somikoron Tower)</option>
+                  <option value="REQ-2026-102">
+                    REQ-2026-102 (Hena Heights)
+                  </option>
+                  <option value="REQ-2026-100">
+                    REQ-2026-100 (Hena Heights)
+                  </option>
+                  <option value="REQ-2026-096">
+                    REQ-2026-096 (Lake Garden)
+                  </option>
+                  <option value="REQ-2026-092">
+                    REQ-2026-092 (RealBiz Tower)
+                  </option>
                 </select>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3 pointer-events-none" />
               </div>
@@ -2041,7 +2274,9 @@ export default function RequestForQuotationView() {
                 >
                   <option value="">Select User</option>
                   <option value="Admin">Admin</option>
-                  <option value="Procurement Manager">Procurement Manager</option>
+                  <option value="Procurement Manager">
+                    Procurement Manager
+                  </option>
                 </select>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3 pointer-events-none" />
               </div>
@@ -2049,7 +2284,12 @@ export default function RequestForQuotationView() {
 
             {/* Quick Reset Button in 4th slot */}
             <div className="flex items-center justify-between h-[38px] px-1">
-              {(filterSupplier || filterProject || filterTitleOfWork || filterRequisition || filterAddedBy || search) ? (
+              {filterSupplier ||
+              filterProject ||
+              filterTitleOfWork ||
+              filterRequisition ||
+              filterAddedBy ||
+              search ? (
                 <button
                   type="button"
                   onClick={handleResetFilters}
@@ -2060,7 +2300,10 @@ export default function RequestForQuotationView() {
                 </button>
               ) : (
                 <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                  Filters Active: <strong className="text-slate-600 dark:text-slate-300">Somikoron IT Ltd</strong>
+                  Filters Active:{" "}
+                  <strong className="text-slate-600 dark:text-slate-300">
+                    RealBiz Pro
+                  </strong>
                 </span>
               )}
             </div>
@@ -2082,7 +2325,10 @@ export default function RequestForQuotationView() {
               </button>
               <button
                 onClick={() => {
-                  showToast(`Converting ${selectedIds.length} RFQ(s) to Purchase Orders...`, "info");
+                  showToast(
+                    `Converting ${selectedIds.length} RFQ(s) to Purchase Orders...`,
+                    "info",
+                  );
                   setSelectedIds([]);
                 }}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3 py-1.5 rounded shadow-xs transition-colors cursor-pointer"
@@ -2091,7 +2337,9 @@ export default function RequestForQuotationView() {
               </button>
               <button
                 onClick={() => {
-                  const filtered = rfqList.filter((r) => !selectedIds.includes(r.id));
+                  const filtered = rfqList.filter(
+                    (r) => !selectedIds.includes(r.id),
+                  );
                   saveRfqList(filtered);
                   setSelectedIds([]);
                   showToast("Selected RFQs deleted", "info");
@@ -2178,7 +2426,9 @@ export default function RequestForQuotationView() {
                         type="checkbox"
                         checked={
                           currentEntries.length > 0 &&
-                          currentEntries.every((r) => selectedIds.includes(r.id))
+                          currentEntries.every((r) =>
+                            selectedIds.includes(r.id),
+                          )
                         }
                         onChange={(e) => handleSelectAll(e.target.checked)}
                         className="w-3.5 h-3.5 accent-indigo-400 rounded cursor-pointer"
@@ -2295,7 +2545,10 @@ export default function RequestForQuotationView() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200">
                 {currentEntries.length === 0 ? (
                   <tr>
-                    <td colSpan={13} className="py-10 text-center text-slate-500 dark:text-slate-400 text-xs font-normal">
+                    <td
+                      colSpan={13}
+                      className="py-10 text-center text-slate-500 dark:text-slate-400 text-xs font-normal"
+                    >
                       No data available in table
                     </td>
                   </tr>
@@ -2306,7 +2559,9 @@ export default function RequestForQuotationView() {
                       <tr
                         key={row.id}
                         className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors ${
-                          isSelected ? "bg-indigo-50/50 dark:bg-indigo-950/20" : ""
+                          isSelected
+                            ? "bg-indigo-50/50 dark:bg-indigo-950/20"
+                            : ""
                         }`}
                       >
                         <td className="py-3 px-3.5 font-medium text-slate-800 dark:text-slate-100 whitespace-nowrap">
@@ -2334,7 +2589,11 @@ export default function RequestForQuotationView() {
                           {row.supplierName}
                         </td>
 
-                        <td className="py-3 px-3.5 font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <td
+                          className="py-3 px-3.5 font-mono text-indigo-600 dark:text-indigo-400 whitespace-nowrap font-medium hover:underline cursor-pointer"
+                          onClick={() => handleOpenInvoice(row)}
+                          title="Click to view RFQ Invoice"
+                        >
                           {row.code}
                         </td>
 
@@ -2347,7 +2606,9 @@ export default function RequestForQuotationView() {
                         </td>
 
                         <td className="py-3 px-3.5 text-right font-mono font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                          {row.subTotal !== null ? row.subTotal.toLocaleString() : "—"}
+                          {row.subTotal !== null
+                            ? row.subTotal.toLocaleString()
+                            : "—"}
                         </td>
 
                         <td className="py-3 px-3.5 text-right font-mono font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
@@ -2369,82 +2630,111 @@ export default function RequestForQuotationView() {
                           )}
                         </td>
 
+                        {/* ACTION Dropdown Button (Purple `#5D5FEF`) */}
                         <td className="py-3 px-3.5 text-center whitespace-nowrap relative">
-                          <div className="inline-block text-left">
+                          <div className="relative inline-block text-left">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setActiveMenuId(activeMenuId === row.id ? null : row.id);
+                                setActiveMenuId(
+                                  activeMenuId === row.id ? null : row.id,
+                                );
                               }}
-                              className="bg-[#6366F1] hover:bg-[#5254d8] text-white text-[11px] font-semibold px-3 py-1 rounded inline-flex items-center gap-1 transition-all active:scale-95 shadow-2xs cursor-pointer"
+                              className="bg-[#5D5FEF] hover:bg-[#4d4ee0] text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-all active:scale-95 shadow-xs cursor-pointer"
                             >
                               <span>Action</span>
-                              <ChevronDown className="w-3 h-3 stroke-[2.5]" />
+                              <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
                             </button>
 
+                            {/* Dropdown Menu (Matches Screenshot 1: 4 Cyan Buttons) */}
                             {activeMenuId === row.id && (
                               <div
                                 ref={actionMenuRef}
-                                className="absolute right-2 top-9 z-40 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl py-1 text-xs animate-in fade-in zoom-in-95 duration-100"
+                                className="absolute right-0 mt-1.5 w-44 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xl z-50 p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-100"
                               >
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setViewingRfq(row);
-                                    setActiveMenuId(null);
-                                  }}
-                                  className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-left cursor-pointer"
-                                >
-                                  <Eye className="w-3.5 h-3.5 text-indigo-500" />
-                                  <span>View Details</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEdit(row)}
-                                  className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-left cursor-pointer"
-                                >
-                                  <SquarePen className="w-3.5 h-3.5 text-amber-500" />
-                                  <span>Edit RFQ</span>
-                                </button>
-
+                                {/* 1. View Invoice Button (Cyan) */}
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setActiveMenuId(null);
-                                    showToast(`Converted RFQ ${row.code} to Purchase Order`, "success");
+                                    handleOpenInvoice(row);
                                   }}
-                                  className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-left cursor-pointer"
+                                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#00BCD4] hover:bg-[#00acc1] text-white text-xs font-semibold transition-all shadow-xs active:scale-95 cursor-pointer"
                                 >
-                                  <CheckSquare className="w-3.5 h-3.5 text-emerald-500" />
-                                  <span>Convert to PO</span>
+                                  <Eye className="w-4 h-4" />
+                                  <span>View Invoice</span>
                                 </button>
 
+                                {/* 2. Copy Link Button (Cyan) */}
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setActiveMenuId(null);
-                                    window.print();
+                                    if (typeof window !== "undefined") {
+                                      navigator.clipboard?.writeText(
+                                        `${window.location.origin}/dashboard/procurement/rfq/request-for-quotation?code=${row.code}`,
+                                      );
+                                      showToast(
+                                        `Invoice link for ${row.code} copied!`,
+                                        "success",
+                                      );
+                                    }
                                   }}
-                                  className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-left cursor-pointer"
+                                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#00BCD4] hover:bg-[#00acc1] text-white text-xs font-semibold transition-all shadow-xs active:scale-95 cursor-pointer"
                                 >
-                                  <Printer className="w-3.5 h-3.5 text-slate-500" />
-                                  <span>Print / PDF</span>
+                                  <LinkIcon className="w-4 h-4" />
+                                  <span>Copy Link</span>
                                 </button>
 
-                                <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
-
+                                {/* 3. Edit Button (Cyan) */}
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setDeleteTarget(row);
                                     setActiveMenuId(null);
+                                    handleOpenEdit(row);
                                   }}
-                                  className="w-full flex items-center gap-2 px-3.5 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-left cursor-pointer"
+                                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#00BCD4] hover:bg-[#00acc1] text-white text-xs font-semibold transition-all shadow-xs active:scale-95 cursor-pointer"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Delete</span>
+                                  <SquarePen className="w-4 h-4" />
+                                  <span>Edit</span>
+                                </button>
+
+                                {/* 4. Clone Button (Cyan) */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuId(null);
+                                    const nextId =
+                                      rfqList.length > 0
+                                        ? Math.max(
+                                            ...rfqList.map((r) => r.id),
+                                          ) + 1
+                                        : 1;
+                                    const cloned: RfqRecord = {
+                                      ...row,
+                                      id: nextId,
+                                      code: `R-${String(nextId).padStart(3, "0")}`,
+                                      date: new Date().toLocaleDateString(
+                                        "en-GB",
+                                        {
+                                          day: "2-digit",
+                                          month: "short",
+                                          year: "numeric",
+                                        },
+                                      ),
+                                    };
+                                    const updated = [cloned, ...rfqList];
+                                    saveRfqList(updated);
+                                    showToast(
+                                      `Cloned RFQ ${row.code} as ${cloned.code}`,
+                                      "success",
+                                    );
+                                  }}
+                                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#00BCD4] hover:bg-[#00acc1] text-white text-xs font-semibold transition-all shadow-xs active:scale-95 cursor-pointer"
+                                >
+                                  <Copy className="w-4 h-4" />
+                                  <span>Clone</span>
                                 </button>
                               </div>
                             )}
@@ -2474,24 +2764,28 @@ export default function RequestForQuotationView() {
                 Previous
               </button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                <button
-                  key={pageNum}
-                  type="button"
-                  onClick={() => setCurrentPage(pageNum)}
-                  className={`w-7 h-7 rounded text-xs font-medium transition-colors cursor-pointer ${
-                    currentPage === pageNum
-                      ? "bg-[#6366F1] text-white"
-                      : "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  {pageNum}
-                </button>
-              ))}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (pageNum) => (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-7 h-7 rounded text-xs font-medium transition-colors cursor-pointer ${
+                      currentPage === pageNum
+                        ? "bg-[#6366F1] text-white"
+                        : "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ),
+              )}
 
               <button
                 type="button"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
                 disabled={currentPage === totalPages || totalEntries === 0}
                 className="px-3 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer text-xs font-medium"
               >
@@ -2515,7 +2809,8 @@ export default function RequestForQuotationView() {
                   <span>Request for Quotation Comparison (RFQ Compare)</span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Comparative analysis of quotations received for Hena Heights &amp; Lake Garden
+                  Comparative analysis of quotations received for Hena Heights
+                  &amp; Lake Garden
                 </p>
               </div>
               <button
@@ -2537,13 +2832,18 @@ export default function RequestForQuotationView() {
                     <th className="py-2.5 px-3">Project</th>
                     <th className="py-2.5 px-3">Date</th>
                     <th className="py-2.5 px-3 text-right">Sub Total (BDT)</th>
-                    <th className="py-2.5 px-3 text-right">Grand Total (BDT)</th>
+                    <th className="py-2.5 px-3 text-right">
+                      Grand Total (BDT)
+                    </th>
                     <th className="py-2.5 px-3 text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {rfqList.slice(0, 6).map((item, idx) => (
-                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <tr
+                      key={item.id}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                    >
                       <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-100">
                         {item.supplierName}
                       </td>
@@ -2551,8 +2851,12 @@ export default function RequestForQuotationView() {
                         {item.code}
                       </td>
                       <td className="py-2.5 px-3">{item.project}</td>
-                      <td className="py-2.5 px-3 text-slate-500">{item.date}</td>
-                      <td className="py-2.5 px-3 text-right font-mono">{item.subTotal.toLocaleString()}</td>
+                      <td className="py-2.5 px-3 text-slate-500">
+                        {item.date}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono">
+                        {item.subTotal.toLocaleString()}
+                      </td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
                         {item.grandTotal.toLocaleString()}
                       </td>
@@ -2642,10 +2946,16 @@ export default function RequestForQuotationView() {
                     <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20">
                       Tk 78 /sft
                     </td>
-                    <td className="py-2.5 px-3 text-right font-mono">Tk 82 /sft</td>
-                    <td className="py-2.5 px-3 text-right font-mono">Tk 85 /sft</td>
+                    <td className="py-2.5 px-3 text-right font-mono">
+                      Tk 82 /sft
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono">
+                      Tk 85 /sft
+                    </td>
                     <td className="py-2.5 px-3 text-center">
-                      <span className="text-emerald-700 dark:text-emerald-300 font-bold">Delta Glass</span>
+                      <span className="text-emerald-700 dark:text-emerald-300 font-bold">
+                        Delta Glass
+                      </span>
                     </td>
                   </tr>
                   <tr>
@@ -2653,13 +2963,19 @@ export default function RequestForQuotationView() {
                       Thai Aluminium Section 1.5mm Bronze (165 Rft)
                     </td>
                     <td className="py-2.5 px-3 text-center">Rft</td>
-                    <td className="py-2.5 px-3 text-right font-mono">Tk 148 /rft</td>
+                    <td className="py-2.5 px-3 text-right font-mono">
+                      Tk 148 /rft
+                    </td>
                     <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20">
                       Tk 145 /rft
                     </td>
-                    <td className="py-2.5 px-3 text-right font-mono">Tk 146 /rft</td>
+                    <td className="py-2.5 px-3 text-right font-mono">
+                      Tk 146 /rft
+                    </td>
                     <td className="py-2.5 px-3 text-center">
-                      <span className="text-emerald-700 dark:text-emerald-300 font-bold">Mohin Business</span>
+                      <span className="text-emerald-700 dark:text-emerald-300 font-bold">
+                        Mohin Business
+                      </span>
                     </td>
                   </tr>
                   <tr>
@@ -2667,13 +2983,19 @@ export default function RequestForQuotationView() {
                       SS-304 Heavy Sliding Rollers (60 Pair)
                     </td>
                     <td className="py-2.5 px-3 text-center">Pair</td>
-                    <td className="py-2.5 px-3 text-right font-mono">Tk 330 /pr</td>
-                    <td className="py-2.5 px-3 text-right font-mono">Tk 320 /pr</td>
+                    <td className="py-2.5 px-3 text-right font-mono">
+                      Tk 330 /pr
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono">
+                      Tk 320 /pr
+                    </td>
                     <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20">
                       Tk 308 /pr
                     </td>
                     <td className="py-2.5 px-3 text-center">
-                      <span className="text-emerald-700 dark:text-emerald-300 font-bold">Rifat Thai</span>
+                      <span className="text-emerald-700 dark:text-emerald-300 font-bold">
+                        Rifat Thai
+                      </span>
                     </td>
                   </tr>
                 </tbody>
@@ -2703,10 +3025,13 @@ export default function RequestForQuotationView() {
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <span>RFQ: {viewingRfq.code}</span>
-                  <span className="text-xs font-normal text-slate-500">({viewingRfq.reference})</span>
+                  <span className="text-xs font-normal text-slate-500">
+                    ({viewingRfq.reference})
+                  </span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Supplier: <strong>{viewingRfq.supplierName}</strong> | Project: {viewingRfq.project}
+                  Supplier: <strong>{viewingRfq.supplierName}</strong> |
+                  Project: {viewingRfq.project}
                 </p>
               </div>
               <button
@@ -2721,19 +3046,31 @@ export default function RequestForQuotationView() {
             {/* Metadata Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-lg text-xs">
               <div>
-                <span className="text-slate-400 block text-[11px]">Project:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-100">{viewingRfq.project}</span>
+                <span className="text-slate-400 block text-[11px]">
+                  Project:
+                </span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                  {viewingRfq.project}
+                </span>
               </div>
               <div>
                 <span className="text-slate-400 block text-[11px]">Date:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-100">{viewingRfq.date}</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                  {viewingRfq.date}
+                </span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[11px]">Added By:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-100">{viewingRfq.addedBy}</span>
+                <span className="text-slate-400 block text-[11px]">
+                  Added By:
+                </span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                  {viewingRfq.addedBy}
+                </span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[11px]">Grand Total:</span>
+                <span className="text-slate-400 block text-[11px]">
+                  Grand Total:
+                </span>
                 <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
                   BDT {viewingRfq.grandTotal.toLocaleString()}
                 </span>
@@ -2742,7 +3079,9 @@ export default function RequestForQuotationView() {
 
             {/* Items Table */}
             <div>
-              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase mb-2">Item Quotation Breakdown</h4>
+              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase mb-2">
+                Item Quotation Breakdown
+              </h4>
               <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-[#6366F1] text-white">
@@ -2758,19 +3097,33 @@ export default function RequestForQuotationView() {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {viewingRfq.items?.map((it) => (
                       <tr key={it.id}>
-                        <td className="py-2 px-3 font-mono font-medium text-indigo-600 dark:text-indigo-400">{it.itemCode}</td>
-                        <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-200">{it.itemName}</td>
+                        <td className="py-2 px-3 font-mono font-medium text-indigo-600 dark:text-indigo-400">
+                          {it.itemCode}
+                        </td>
+                        <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-200">
+                          {it.itemName}
+                        </td>
                         <td className="py-2 px-3">{it.unit}</td>
-                        <td className="py-2 px-3 text-right font-medium">{it.quantity}</td>
-                        <td className="py-2 px-3 text-right font-mono">{it.rate}</td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-slate-100">{it.amount.toLocaleString()}</td>
+                        <td className="py-2 px-3 text-right font-medium">
+                          {it.quantity}
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono">
+                          {it.rate}
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
+                          {it.amount.toLocaleString()}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr className="bg-slate-50 dark:bg-slate-800/80 font-bold border-t border-slate-200 dark:border-slate-700">
-                      <td colSpan={5} className="py-2 px-3 text-right">Total Amount:</td>
-                      <td className="py-2 px-3 text-right text-indigo-600 dark:text-indigo-400">{viewingRfq.grandTotal.toLocaleString()}</td>
+                      <td colSpan={5} className="py-2 px-3 text-right">
+                        Total Amount:
+                      </td>
+                      <td className="py-2 px-3 text-right text-indigo-600 dark:text-indigo-400">
+                        {viewingRfq.grandTotal.toLocaleString()}
+                      </td>
                     </tr>
                   </tfoot>
                 </table>
@@ -2807,11 +3160,15 @@ export default function RequestForQuotationView() {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 max-w-sm w-full space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Confirm Deletion</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              Confirm Deletion
+            </h3>
             <p className="text-xs text-slate-600 dark:text-slate-300">
               Are you sure you want to delete Request for Quotation{" "}
-              <strong className="text-slate-900 dark:text-white">{deleteTarget.code}</strong> from{" "}
-              <strong>{deleteTarget.supplierName}</strong>?
+              <strong className="text-slate-900 dark:text-white">
+                {deleteTarget.code}
+              </strong>{" "}
+              from <strong>{deleteTarget.supplierName}</strong>?
             </p>
             <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
@@ -2832,6 +3189,14 @@ export default function RequestForQuotationView() {
           </div>
         </div>
       )}
+      {/* ========================================================= */}
+      {/* RFQ INVOICE / ORDER PRINT MODAL */}
+      {/* ========================================================= */}
+      <RfqInvoicePrintModal
+        rfq={invoicePrintRfq}
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+      />
     </div>
   );
 }
