@@ -178,6 +178,8 @@ export default function OrganizationWizardModal({
     { year: "numeric", month: "short", day: "numeric" },
   );
 
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   // Wizard Step Validations
   const validateStep1 = () => {
     if (!orgName.trim()) {
@@ -188,6 +190,10 @@ export default function OrganizationWizardModal({
       toast.error("Organization Code is required");
       return false;
     }
+    if (orgEmail.trim() && !EMAIL_REGEX.test(orgEmail.trim())) {
+      toast.error("Please enter a valid Corporate Email or leave it blank");
+      return false;
+    }
     return true;
   };
 
@@ -196,12 +202,16 @@ export default function OrganizationWizardModal({
       toast.error("Admin Full Name is required");
       return false;
     }
-    if (!adminUsername.trim()) {
-      toast.error("Admin Username is required");
+    if (!adminUsername.trim() || adminUsername.trim().length < 3) {
+      toast.error("Admin Username must be at least 3 characters");
       return false;
     }
     if (!adminEmail.trim()) {
       toast.error("Admin Email is required");
+      return false;
+    }
+    if (!EMAIL_REGEX.test(adminEmail.trim())) {
+      toast.error("Please enter a valid Admin Email address");
       return false;
     }
     if (!adminPassword || adminPassword.length < 6) {
@@ -231,11 +241,14 @@ export default function OrganizationWizardModal({
 
     // Build entitlement payload
     const moduleFeatureAccess = Object.entries(selectedFeatures)
-      .filter(([_, featureIds]) => featureIds.length > 0)
+      .filter(([moduleId, featureIds]) => moduleId && featureIds && featureIds.length > 0)
       .map(([moduleId, featureIds]) => ({
         moduleId: isNaN(Number(moduleId)) ? moduleId : Number(moduleId),
-        featureIds: featureIds.map((id) => (typeof id === "string" && !isNaN(Number(id)) ? Number(id) : id)),
-      }));
+        featureIds: featureIds
+          .map((id) => (typeof id === "string" && !isNaN(Number(id)) ? Number(id) : id))
+          .filter((id) => id !== undefined && id !== null && id !== ""),
+      }))
+      .filter((item) => item.featureIds.length > 0);
 
     if (moduleFeatureAccess.length === 0) {
       toast.error("Please grant access to at least 1 module and feature");
@@ -249,12 +262,12 @@ export default function OrganizationWizardModal({
         email: orgEmail.trim() || undefined,
         phone: orgPhone.trim() || undefined,
         address: orgAddress.trim() || undefined,
-        planId: selectedPlanId ? Number(selectedPlanId) : undefined,
-        durationDays,
-        trialDays,
-        maxUsers,
-        maxProjects,
-        maxStorageMb: maxStorageGb * 1024,
+        planId: selectedPlanId ? (isNaN(Number(selectedPlanId)) ? String(selectedPlanId) : Number(selectedPlanId)) : undefined,
+        durationDays: Math.round(Number(durationDays)) || 30,
+        trialDays: Math.round(Number(trialDays)) || 0,
+        maxUsers: Math.round(Number(maxUsers)) || 5,
+        maxProjects: Math.round(Number(maxProjects)) || 5,
+        maxStorageMb: Math.round(Number(maxStorageGb) * 1024) || 20480,
       },
       adminUser: {
         name: adminName.trim(),
@@ -276,8 +289,36 @@ export default function OrganizationWizardModal({
       if (onSuccess) onSuccess(created);
       onClose();
     } catch (err: any) {
-      console.error(err);
-      toast.error(err.response?.data?.message || err.message || "Failed to create organization");
+      console.error("Failed to create organization:", err);
+      const resData = err.response?.data;
+      let errorMsg = "Failed to create organization";
+
+      if (resData) {
+        if (Array.isArray(resData.errors) && resData.errors.length > 0) {
+          const detailMsgs: string[] = [];
+          const extractErrors = (items: any[]) => {
+            for (const item of items) {
+              if (Array.isArray(item.errors)) {
+                detailMsgs.push(...item.errors);
+              }
+              if (Array.isArray(item.children)) {
+                extractErrors(item.children);
+              }
+            }
+          };
+          extractErrors(resData.errors);
+          if (detailMsgs.length > 0) {
+            errorMsg = detailMsgs.join(", ");
+          }
+        } else if (Array.isArray(resData.message)) {
+          errorMsg = resData.message.join(", ");
+        } else if (typeof resData.message === "string") {
+          errorMsg = resData.message;
+        }
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
