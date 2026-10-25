@@ -1,6 +1,6 @@
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "https://backend.garmentech.online/hrm/api/v1";
+  process.env.NEXT_PUBLIC_API_URL ||
+  `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002"}/realbizpro/api/v1`;
 
 /* =========================================================
    USER
@@ -126,9 +126,17 @@ export type UserPayload =
 ========================================================= */
 
 function getHeaders() {
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("admin_access_token") ||
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("token")
+      : null;
+
   return {
     Accept: "application/json",
     "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
 
@@ -414,9 +422,7 @@ export async function getUsers(
 
   const response = await fetch(url, {
     method: "GET",
-    headers: {
-      Accept: "application/json",
-    },
+    headers: getHeaders(),
     cache: "no-store",
   });
 
@@ -882,9 +888,7 @@ export async function getMobileAuthEmployeeCodes(
     }`,
     {
       method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
+      headers: getHeaders(),
       cache: "no-store",
     },
   );
