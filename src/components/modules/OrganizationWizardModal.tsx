@@ -69,8 +69,8 @@ export default function OrganizationWizardModal({
   const [adminDesignation, setAdminDesignation] = useState("Managing Director");
 
   // STEP 3: Module & Feature Selection State
-  // Map of moduleId -> Set of featureIds
-  const [selectedFeatures, setSelectedFeatures] = useState<{ [moduleId: number]: number[] }>({});
+  // Map of moduleId -> Array of featureIds
+  const [selectedFeatures, setSelectedFeatures] = useState<{ [moduleId: string]: (number | string)[] }>({});
 
   useEffect(() => {
     if (isOpen) {
@@ -99,12 +99,13 @@ export default function OrganizationWizardModal({
       }
 
       // Default select all available modules and features
-      const initialMap: { [moduleId: number]: number[] } = {};
+      const initialMap: { [moduleId: string]: (number | string)[] } = {};
       for (const m of fetchedTree) {
-        if (m.id) {
-          initialMap[m.id] = (m.features || [])
-            .map((f) => f.id)
-            .filter((id): id is number => typeof id === "number");
+        const modKey = String(m.id ?? m.uuid ?? "");
+        if (modKey) {
+          initialMap[modKey] = (m.features || [])
+            .map((f) => (f.id !== undefined && f.id !== null ? f.id : f.uuid))
+            .filter((id): id is number | string => id !== undefined && id !== null && id !== "");
         }
       }
       setSelectedFeatures(initialMap);
@@ -129,30 +130,45 @@ export default function OrganizationWizardModal({
   };
 
   // Toggle Module Selection (All or None of its features)
-  const toggleModuleAll = (moduleId: number) => {
-    const mod = moduleTree.find((m) => m.id === moduleId);
+  const toggleModuleAll = (targetModId: number | string) => {
+    const mod = moduleTree.find(
+      (m) =>
+        String(m.id) === String(targetModId) ||
+        (m.uuid && String(m.uuid) === String(targetModId)),
+    );
     if (!mod) return;
-    const allFeatureIds = (mod.features || [])
-      .map((f) => f.id)
-      .filter((id): id is number => typeof id === "number");
 
-    const currentSelected = selectedFeatures[moduleId] || [];
-    if (currentSelected.length === allFeatureIds.length) {
+    const allFeatureIds = (mod.features || [])
+      .map((f) => (f.id !== undefined && f.id !== null ? f.id : f.uuid))
+      .filter((id): id is number | string => id !== undefined && id !== null && id !== "");
+
+    const key = String(targetModId);
+    const currentSelected = selectedFeatures[key] || [];
+    const isAllSelected =
+      allFeatureIds.length > 0 &&
+      allFeatureIds.every((id) =>
+        currentSelected.some((cur) => String(cur) === String(id)),
+      );
+
+    if (isAllSelected) {
       // Deselect all
-      setSelectedFeatures((prev) => ({ ...prev, [moduleId]: [] }));
+      setSelectedFeatures((prev) => ({ ...prev, [key]: [] }));
     } else {
       // Select all
-      setSelectedFeatures((prev) => ({ ...prev, [moduleId]: allFeatureIds }));
+      setSelectedFeatures((prev) => ({ ...prev, [key]: allFeatureIds }));
     }
   };
 
   // Toggle Single Feature Checkbox
-  const toggleFeature = (moduleId: number, featureId: number) => {
+  const toggleFeature = (targetModId: number | string, targetFeatId: number | string) => {
+    const key = String(targetModId);
     setSelectedFeatures((prev) => {
-      const current = prev[moduleId] || [];
-      const exists = current.includes(featureId);
-      const updated = exists ? current.filter((id) => id !== featureId) : [...current, featureId];
-      return { ...prev, [moduleId]: updated };
+      const current = prev[key] || [];
+      const exists = current.some((id) => String(id) === String(targetFeatId));
+      const updated = exists
+        ? current.filter((id) => String(id) !== String(targetFeatId))
+        : [...current, targetFeatId];
+      return { ...prev, [key]: updated };
     });
   };
 
@@ -217,8 +233,8 @@ export default function OrganizationWizardModal({
     const moduleFeatureAccess = Object.entries(selectedFeatures)
       .filter(([_, featureIds]) => featureIds.length > 0)
       .map(([moduleId, featureIds]) => ({
-        moduleId: Number(moduleId),
-        featureIds,
+        moduleId: isNaN(Number(moduleId)) ? moduleId : Number(moduleId),
+        featureIds: featureIds.map((id) => (typeof id === "string" && !isNaN(Number(id)) ? Number(id) : id)),
       }));
 
     if (moduleFeatureAccess.length === 0) {
@@ -664,15 +680,25 @@ export default function OrganizationWizardModal({
               ) : (
                 <div className="space-y-4">
                   {moduleTree.map((mod) => {
-                    const modId = mod.id || 0;
+                    const modId = mod.id ?? mod.uuid ?? "";
+                    const key = String(modId);
                     const featureList = mod.features || [];
-                    const selectedList = selectedFeatures[modId] || [];
+                    const selectedList = selectedFeatures[key] || [];
                     const isAllSelected =
-                      featureList.length > 0 && selectedList.length === featureList.length;
+                      featureList.length > 0 &&
+                      featureList.every((feat) => {
+                        const featId = feat.id ?? feat.uuid ?? "";
+                        return selectedList.some((id) => String(id) === String(featId));
+                      });
+
+                    const selectedCount = featureList.filter((feat) => {
+                      const featId = feat.id ?? feat.uuid ?? "";
+                      return selectedList.some((id) => String(id) === String(featId));
+                    }).length;
 
                     return (
                       <div
-                        key={modId}
+                        key={key}
                         className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-xs"
                       >
                         {/* Module Header Row */}
@@ -680,13 +706,13 @@ export default function OrganizationWizardModal({
                           <div className="flex items-center gap-3">
                             <input
                               type="checkbox"
-                              id={`mod-${modId}`}
+                              id={`mod-${key}`}
                               checked={isAllSelected}
                               onChange={() => toggleModuleAll(modId)}
-                              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                             />
                             <label
-                              htmlFor={`mod-${modId}`}
+                              htmlFor={`mod-${key}`}
                               className="text-xs font-bold text-slate-900 dark:text-white cursor-pointer flex items-center gap-1.5"
                             >
                               <Layers className="h-3.5 w-3.5 text-indigo-600" />
@@ -698,42 +724,50 @@ export default function OrganizationWizardModal({
                           </div>
 
                           <span className="text-[11px] font-semibold text-slate-500">
-                            {selectedList.length} of {featureList.length} features enabled
+                            {selectedCount} of {featureList.length} features enabled
                           </span>
                         </div>
 
                         {/* Nested Features Checkbox Grid */}
                         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                          {featureList.map((feat) => {
-                            const featId = feat.id || 0;
-                            const isChecked = selectedList.includes(featId);
+                          {featureList.length === 0 ? (
+                            <p className="text-xs text-slate-400 italic col-span-full">
+                              No nested features registered for this module yet.
+                            </p>
+                          ) : (
+                            featureList.map((feat) => {
+                              const featId = feat.id ?? feat.uuid ?? "";
+                              const isChecked = selectedList.some(
+                                (id) => String(id) === String(featId),
+                              );
 
-                            return (
-                              <label
-                                key={featId}
-                                className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${
-                                  isChecked
-                                    ? "border-indigo-200 dark:border-indigo-900 bg-indigo-50/20 dark:bg-indigo-950/20"
-                                    : "border-slate-100 dark:border-slate-800/80 hover:bg-slate-50"
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => toggleFeature(modId, featId)}
-                                  className="w-3.5 h-3.5 mt-0.5 rounded text-indigo-600 focus:ring-indigo-500"
-                                />
-                                <div className="min-w-0">
-                                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                                    {feat.name}
-                                  </p>
-                                  <p className="text-[10px] font-mono text-slate-400 truncate">
-                                    {feat.code}
-                                  </p>
-                                </div>
-                              </label>
-                            );
-                          })}
+                              return (
+                                <label
+                                  key={String(featId)}
+                                  className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${
+                                    isChecked
+                                      ? "border-indigo-200 dark:border-indigo-900 bg-indigo-50/20 dark:bg-indigo-950/20"
+                                      : "border-slate-100 dark:border-slate-800/80 hover:bg-slate-50"
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => toggleFeature(modId, featId)}
+                                    className="w-3.5 h-3.5 mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                  />
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                      {feat.name}
+                                    </p>
+                                    <p className="text-[10px] font-mono text-slate-400 truncate">
+                                      {feat.code}
+                                    </p>
+                                  </div>
+                                </label>
+                              );
+                            })
+                          )}
                         </div>
                       </div>
                     );
