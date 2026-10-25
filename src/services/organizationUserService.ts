@@ -725,15 +725,23 @@ function normalizeOptions(value: unknown): DropdownOption[] {
 ========================================================= */
 
 async function getJson(url: string): Promise<unknown> {
-  const response = await fetch(url, {
-    method: "GET",
+  try {
+    const response = await fetch(url, {
+      method: "GET",
 
-    headers: getHeaders(),
+      headers: getHeaders(),
 
-    cache: "no-store",
-  });
+      cache: "no-store",
+    });
 
-  return parseResponse<unknown>(response);
+    if (!response.ok) {
+      return null;
+    }
+
+    return parseResponse<unknown>(response);
+  } catch {
+    return null;
+  }
 }
 
 /* =========================================================

@@ -645,13 +645,21 @@ function pickDropdown(source: unknown, keys: string[]): DropdownOption[] {
 }
 
 async function getJson(url: string): Promise<unknown> {
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getHeaders(),
-    cache: "no-store",
-  });
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getHeaders(),
+      cache: "no-store",
+    });
 
-  return parseResponse<unknown>(response);
+    if (!response.ok) {
+      return null;
+    }
+
+    return parseResponse<unknown>(response);
+  } catch {
+    return null;
+  }
 }
 
 export async function getUserFormDropdowns(): Promise<UserFormDropdowns> {
