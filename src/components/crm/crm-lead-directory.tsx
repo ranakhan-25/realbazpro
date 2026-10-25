@@ -51,6 +51,13 @@ interface CrmRequirement {
   remarks?: string;
 }
 
+interface CrmAttachment {
+  uuid: string;
+  file_name?: string;
+  description?: string;
+  createdAt?: string;
+}
+
 interface CrmLead {
   id: number;
   uuid: string;
@@ -82,7 +89,7 @@ interface CrmLead {
   activities?: CrmActivity[];
   property_interests?: CrmPropertyInterest[];
   requirements?: CrmRequirement[];
-  attachments?: any[];
+  attachments?: CrmAttachment[];
 }
 
 interface LeadForm {
@@ -695,7 +702,7 @@ export default function CrmLeadDirectory() {
             </section>
             <section className="mt-8 border-t border-border pt-5">
               <h3 className="mb-4 text-lg font-black">Attachments</h3>
-              {selectedLead.attachments?.length ? <ul className="mb-4 space-y-2">{selectedLead.attachments.map((attachment: any) => <li key={attachment.uuid} className="rounded-xl border border-border p-3 text-sm"><p className="font-bold">{attachment.file_name || "Attachment"}</p><p className="text-muted-foreground">{attachment.description || "No description"}</p><p className="text-xs text-indigo-600">{formatDate(attachment.createdAt)}</p></li>)}</ul> : <p className="mb-4 text-sm text-muted-foreground">No attachments uploaded.</p>}
+              {selectedLead.attachments?.length ? <ul className="mb-4 space-y-2">{selectedLead.attachments.map((attachment) => <li key={attachment.uuid} className="rounded-xl border border-border p-3 text-sm"><p className="font-bold">{attachment.file_name || "Attachment"}</p><p className="text-muted-foreground">{attachment.description || "No description"}</p><p className="text-xs text-indigo-600">{formatDate(attachment.createdAt)}</p></li>)}</ul> : <p className="mb-4 text-sm text-muted-foreground">No attachments uploaded.</p>}
               <form onSubmit={(event) => void uploadAttachment(event)} className="space-y-3">
                 <label className="block text-sm font-bold">Upload File<input type="file" onChange={(event) => setAttachmentFile(event.target.files?.[0] || null)} className="mt-1 w-full rounded-xl border border-border bg-card p-2.5" /></label>
                 <label className="block text-sm font-bold">Description<input type="text" value={attachmentDescription} onChange={(event) => setAttachmentDescription(event.target.value)} className="mt-1 w-full rounded-xl border border-border bg-card p-2.5" placeholder="File description..." /></label>

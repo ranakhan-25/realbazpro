@@ -81,7 +81,6 @@ projects
   project-type
   project
   site 
-  project-master
   building
   floor
   unit-plot
@@ -94,6 +93,7 @@ projects
   project-progress
 
   project-control
+
   report
 
     project-details 
@@ -426,8 +426,6 @@ requisition
 rfq
   request-for-quotation
   asset-request-for-quotation
-  supplier-quote-list
-  supplier-comparison-report
   
 purchase-order
   purchase-order-list

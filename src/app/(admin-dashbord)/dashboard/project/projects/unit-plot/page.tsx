@@ -1,802 +1,507 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
-  Home, 
-  ChevronRight, 
-  Plus, 
-  Search, 
-  List, 
-  Grid, 
-  Upload, 
-  Edit3, 
-  CheckCircle2, 
-  X, 
-  DollarSign, 
-  Eye,
-  Edit,
-  Trash2,
-  Home as UnitIcon 
+  Home, ChevronRight, Plus, Search, Grid, List, 
+  X, Loader2, AlertCircle, CheckCircle2, Eye, Edit, Trash2,
+  Upload, FileSpreadsheet
 } from 'lucide-react';
 
-interface ProjectUnit {
-  id: string;
-  floorUuid: string;
-  code: string; // T(uniq)
-  type: '1BHK' | '2BHK' | '3BHK' | 'office' | 'shop' | 'plot';
-  size_sqft: number; // N(>0)
-  facing: 'N' | 'S' | 'E' | 'W' | 'NE' | 'NW' | 'SE' | 'SW';
-  price: number; // MONEY(>=0)
-  floor_rise: number; // MONEY
-  premium: number; // MONEY
-  amenities: string[]; // MS
-  notes?: string; // TA
-  images?: string[]; // F(multiple)
-  status: 'available' | 'booked' | 'sold' | 'reserved' | 'blocked';
+/* ----------------------------------------------------------------------------
+ * API CONFIG
+ * ------------------------------------------------------------------------- */
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/realbizpro/api/v1';
+
+interface FloorItem {
+  uuid: string;
+  floorName: string;
+  floorNumber: number;
+  floorCode: string;
 }
 
-const initialUnits: ProjectUnit[] = [
-  {
-    id: 'UNT-001',
-    floorUuid: 'FLR-003',
-    code: 'A-301',
-    type: '3BHK',
-    size_sqft: 1850,
-    facing: 'SE',
-    price: 185000.00,
-    floor_rise: 2500.00,
-    premium: 5000.00,
-    amenities: ['Corner View', 'Balcony', 'Parking'],
-    notes: 'South-East facing luxury apartment with lake view.',
-    status: 'available'
-  },
-  {
-    id: 'UNT-002',
-    floorUuid: 'FLR-003',
-    code: 'A-302',
-    type: '2BHK',
-    size_sqft: 1250,
-    facing: 'N',
-    price: 125000.00,
-    floor_rise: 2500.00,
-    premium: 0,
-    amenities: ['Balcony'],
-    notes: 'Standard 2BHK layout.',
-    status: 'booked'
-  },
-  {
-    id: 'UNT-003',
-    floorUuid: 'FLR-003',
-    code: 'A-303',
-    type: 'office',
-    size_sqft: 2400,
-    facing: 'E',
-    price: 290000.00,
-    floor_rise: 3000.00,
-    premium: 8000.00,
-    amenities: ['Central HVAC', 'Elevator Proximity'],
-    notes: 'Commercial open office space.',
-    status: 'sold'
-  }
-];
+interface UnitPlot {
+  uuid: string;
+  floorUuid: string;
+  plotCode: string;
+  plotType: string;
+  sizeSqft: number;
+  facing: string;
+  basePrice: number;
+  floorRise: number;
+  premium: number;
+  amenities?: string;
+  status: 'Available' | 'Booked' | 'Sold' | 'Reserved' | 'Blocked';
+  notes?: string;
+}
 
-export default function UnitsListPage() {
-  const [units, setUnits] = useState<ProjectUnit[]>(initialUnits);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Filters
-  const [typeFilter, setTypeFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [facingFilter, setFacingFilter] = useState('All');
-
-  // Modals States
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [viewUnit, setViewUnit] = useState<ProjectUnit | null>(null);
-  const [editUnit, setEditUnit] = useState<ProjectUnit | null>(null);
-  const [isBatchEditOpen, setIsBatchEditOpen] = useState(false);
-  const [batchStatus, setBatchStatus] = useState<ProjectUnit['status']>('available');
-
-  // POST Modal Form State
-  const [formData, setFormData] = useState({
-    code: '',
-    type: '3BHK' as ProjectUnit['type'],
-    size_sqft: '',
-    facing: 'SE' as ProjectUnit['facing'],
-    price: '',
-    floor_rise: '0',
-    premium: '0',
-    amenities: '',
-    notes: '',
-    status: 'available' as ProjectUnit['status']
+async function request<T = any>(path: string, init?: RequestInit): Promise<T> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init?.headers || {}),
+    },
   });
+  if (!res.ok) {
+    let msg = `Request failed (${res.status})`;
+    try {
+      const j = await res.json();
+      msg = j?.message || msg;
+    } catch {}
+    throw new Error(msg);
+  }
+  if (res.status === 204) return undefined as T;
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newUnit: ProjectUnit = {
-      id: `UNT-00${units.length + 1}`,
-      floorUuid: 'FLR-003',
-      code: formData.code || `U-${Math.floor(100 + Math.random() * 900)}`,
-      type: formData.type,
-      size_sqft: parseFloat(formData.size_sqft) || 0,
-      facing: formData.facing,
-      price: parseFloat(formData.price) || 0,
-      floor_rise: parseFloat(formData.floor_rise) || 0,
-      premium: parseFloat(formData.premium) || 0,
-      amenities: formData.amenities ? formData.amenities.split(',').map(s => s.trim()) : [],
-      notes: formData.notes,
-      status: formData.status
-    };
+// ✅ আরও শক্তিশালী unwrapList
+const unwrapList = (r: any): any[] => {
+  if (Array.isArray(r)) return r;
+  if (Array.isArray(r?.data)) return r.data;
+  if (Array.isArray(r?.data?.data)) return r.data.data;
+  if (Array.isArray(r?.data?.items)) return r.data.items;
+  if (Array.isArray(r?.items)) return r.items;
+  if (Array.isArray(r?.rows)) return r.rows;
+  return [];
+};
 
-    setUnits([newUnit, ...units]);
-    setIsModalOpen(false);
-    setFormData({
-      code: '',
-      type: '3BHK',
-      size_sqft: '',
-      facing: 'SE',
-      price: '',
-      floor_rise: '0',
-      premium: '0',
-      amenities: '',
-      notes: '',
-      status: 'available'
-    });
-  };
+/* ----------------------------------------------------------------------------
+ * UI Helpers
+ * ------------------------------------------------------------------------- */
+const inputCls = 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10';
+const labelCls = 'mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500';
 
-  // Edit Unit Submit
-  const handleEditSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editUnit) return;
-    setUnits(units.map(u => u.id === editUnit.id ? editUnit : u));
-    setEditUnit(null);
-  };
-
-  // Batch Status Update
-  const handleBatchUpdate = () => {
-    setUnits(units.map(u => ({ ...u, status: batchStatus })));
-    setIsBatchEditOpen(false);
-    alert('All units status updated successfully!');
-  };
-
-  // CSV Import Simulation
-  const handleImportCSV = () => {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.csv';
-    fileInput.onchange = (e: any) => {
-      const file = e.target.files[0];
-      if (file) {
-        alert(`Successfully imported units from ${file.name}`);
-      }
-    };
-    fileInput.click();
-  };
-
-  const filteredUnits = useMemo(() => {
-    return units.filter((u) => {
-      const matchesSearch = 
-        u.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.type.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesType = typeFilter === 'All' || u.type === typeFilter;
-      const matchesStatus = statusFilter === 'All' || u.status === statusFilter;
-      const matchesFacing = facingFilter === 'All' || u.facing === facingFilter;
-      return matchesSearch && matchesType && matchesStatus && matchesFacing;
-    });
-  }, [units, searchQuery, typeFilter, statusFilter, facingFilter]);
+function ModalShell({ title, onClose, children, maxW = 'max-w-lg', z = 'z-50' }: any) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   return (
-    <div className="min-h-screen bg-white p-6 lg:p-8 font-sans text-slate-800">
-      {/* Header & Breadcrumbs */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <nav className="flex items-center text-sm text-slate-500 space-x-2 mb-1">
-            <Link href="/projects" className="flex items-center hover:text-blue-600 transition-colors">
-              <Home className="w-4 h-4 mr-1 text-slate-600" /> Projects
-            </Link>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
-            <span className="hover:text-blue-600 cursor-pointer">Floors</span>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
-            <span className="font-semibold text-slate-900">Units</span>
-          </nav>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Floor Units Directory & Inventory</h1>
-        </div>
-
-        {/* Actions Bar */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600'
-              }`}
-            >
-              <List className="w-3.5 h-3.5" /> List
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600'
-              }`}
-            >
-              <Grid className="w-3.5 h-3.5" /> Grid
-            </button>
-          </div>
-
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 px-4 rounded-xl shadow-sm transition-all"
-          >
-            <Plus className="w-4 h-4" /> Create Unit Form
+    <div className={`fixed inset-0 ${z} flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm`} onMouseDown={onClose}>
+      <div onMouseDown={(e) => e.stopPropagation()} className={`flex max-h-[90vh] w-full ${maxW} flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200`}>
+        <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-6 py-4">
+          <h2 className="text-base font-bold text-slate-900">{title}</h2>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100">
+            <X className="h-5 w-5" />
           </button>
         </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------------------
+ * Main Page Component
+ * ------------------------------------------------------------------------- */
+export default function UnitPlotPage() {
+  const [plots, setPlots] = useState<UnitPlot[]>([]);
+  const [floors, setFloors] = useState<FloorItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isLoadingFloors, setIsLoadingFloors] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editPlot, setEditPlot] = useState<UnitPlot | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UnitPlot | null>(null);
+  const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null);
+
+  // Form State
+  const [formData, setFormData] = useState({
+    floorUuid: '',
+    plotCode: '',
+    plotType: '3BHK',
+    sizeSqft: '',
+    facing: 'SE',
+    basePrice: '',
+    floorRise: '0',
+    premium: '0',
+    amenities: '',
+    status: 'Available',
+    notes: '',
+  });
+
+  const notify = (type: 'ok' | 'err', msg: string) => {
+    setToast({ type, msg });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  // ✅ 1. Floor লিস্ট ফেচ করা
+  const fetchFloors = async () => {
+    try {
+      setIsLoadingFloors(true);
+      const res = await request('/floor?limit=100');
+      const list = unwrapList(res);
+      setFloors(list.map((f: any) => ({
+        uuid: f.uuid,
+        floorName: f.floorName || f.name || 'Unknown',
+        floorNumber: f.floorNumber || f.number || 0,
+        floorCode: f.floorCode || '',
+      })));
+    } catch (e: any) {
+      notify('err', e.message || 'Failed to load floors');
+    } finally {
+      setIsLoadingFloors(false);
+    }
+  };
+
+  // ✅ 2. UnitPlot লিস্ট ফেচ করা (FIXED & DEBUGGED)
+  const fetchPlots = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await request('/unit-plots?limit=100');
+      console.log("=== RAW UNIT PLOTS RESPONSE ===", res); // Debugging
+      
+      const list = unwrapList(res);
+      console.log("=== UNWRAPPED LIST ===", list); // Debugging
+
+      // ✅ Safe Mapping with Fallbacks
+      const mapped: UnitPlot[] = list.map((p: any) => ({
+        uuid: p.uuid || p.id,
+        floorUuid: p.floorUuid || p.floor_uuid || '',
+        plotCode: p.plotCode || p.plot_code || 'N/A',
+        plotType: p.plotType || p.plot_type || 'Unknown',
+        sizeSqft: Number(p.sizeSqft || p.size_sqft || 0),
+        facing: p.facing || 'N/A',
+        basePrice: Number(p.basePrice || p.base_price || 0),
+        floorRise: Number(p.floorRise || p.floor_rise || 0),
+        premium: Number(p.premium || 0),
+        amenities: p.amenities || '',
+        status: p.status || 'Available',
+        notes: p.notes || '',
+      }));
+
+      setPlots(mapped);
+    } catch (e: any) {
+      console.error("Fetch plots error:", e);
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPlots();
+  }, []);
+
+  useEffect(() => {
+    if (isModalOpen || editPlot) fetchFloors();
+  }, [isModalOpen, editPlot]);
+
+  // ✅ 3. Create Submit
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.floorUuid) {
+      notify('err', 'Please select a Floor');
+      return;
+    }
+    setBusy(true);
+    try {
+      await request('/unit-plots', {
+        method: 'POST',
+        body: JSON.stringify({
+          floorUuid: formData.floorUuid,
+          plotCode: formData.plotCode,
+          plotType: formData.plotType,
+          sizeSqft: parseFloat(formData.sizeSqft) || 0,
+          facing: formData.facing,
+          basePrice: parseFloat(formData.basePrice) || 0,
+          floorRise: parseFloat(formData.floorRise) || 0,
+          premium: parseFloat(formData.premium) || 0,
+          amenities: formData.amenities,
+          status: formData.status,
+          notes: formData.notes,
+        }),
+      });
+      notify('ok', 'Unit Plot created successfully!');
+      setIsModalOpen(false);
+      resetForm();
+      fetchPlots(); // ✅ তৈরি করার পর ডাটা রিফ্রেশ
+    } catch (err: any) {
+      notify('err', err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ✅ 4. Edit Submit
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editPlot) return;
+    setBusy(true);
+    try {
+      await request(`/unit-plots/${editPlot.uuid}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          plotCode: editPlot.plotCode,
+          plotType: editPlot.plotType,
+          sizeSqft: editPlot.sizeSqft,
+          status: editPlot.status,
+          basePrice: editPlot.basePrice,
+          notes: editPlot.notes,
+        }),
+      });
+      notify('ok', 'Unit Plot updated successfully!');
+      setEditPlot(null);
+      fetchPlots();
+    } catch (err: any) {
+      notify('err', err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ✅ 5. Delete
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setBusy(true);
+    try {
+      await request(`/unit-plots/${deleteTarget.uuid}`, { method: 'DELETE' });
+      notify('ok', 'Unit Plot deleted');
+      setDeleteTarget(null);
+      fetchPlots();
+    } catch (err: any) {
+      notify('err', err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      floorUuid: '', plotCode: '', plotType: '3BHK', sizeSqft: '', facing: 'SE',
+      basePrice: '', floorRise: '0', premium: '0', amenities: '', status: 'Available', notes: ''
+    });
+  };
+
+  const filteredPlots = useMemo(() => {
+    return plots.filter(p => 
+      p.plotCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.plotType.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [plots, searchQuery]);
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-6 lg:p-8 font-sans text-slate-800">
+      
+      {/* Header */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <nav className="flex items-center text-sm text-slate-500 space-x-2 mb-1">
+            <Link href="/projects" className="hover:text-indigo-600">Projects</Link>
+            <ChevronRight className="h-4 w-4" />
+            <Link href="/floors" className="hover:text-indigo-600">Floors</Link>
+            <ChevronRight className="h-4 w-4" />
+            <span className="font-semibold text-slate-900">Units</span>
+          </nav>
+          <h1 className="text-2xl font-extrabold text-slate-900">Floor Units Directory & Inventory</h1>
+        </div>
+        <button onClick={() => setIsModalOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-indigo-700">
+          <Plus className="h-4 w-4" /> Create Unit Form
+        </button>
       </div>
 
-      {/* Main Container */}
-      <div className="border border-slate-200 rounded-2xl shadow-sm bg-white overflow-hidden">
-        {/* Filters Bar & Bulk Action Controls */}
-        <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Type:</label>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-blue-600 shadow-sm capitalize"
-              >
-                <option value="All">All Types</option>
-                <option value="1BHK">1BHK</option>
-                <option value="2BHK">2BHK</option>
-                <option value="3BHK">3BHK</option>
-                <option value="office">Office</option>
-                <option value="shop">Shop</option>
-                <option value="plot">Plot</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Status:</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-blue-600 shadow-sm capitalize"
-              >
-                <option value="All">All Statuses</option>
-                <option value="available">Available</option>
-                <option value="booked">Booked</option>
-                <option value="sold">Sold</option>
-                <option value="reserved">Reserved</option>
-                <option value="blocked">Blocked</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Facing:</label>
-              <select
-                value={facingFilter}
-                onChange={(e) => setFacingFilter(e.target.value)}
-                className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-blue-600 shadow-sm uppercase"
-              >
-                <option value="All">All Facings</option>
-                <option value="N">North (N)</option>
-                <option value="S">South (S)</option>
-                <option value="E">East (E)</option>
-                <option value="W">West (W)</option>
-                <option value="NE">NE</option>
-                <option value="NW">NW</option>
-                <option value="SE">SE</option>
-                <option value="SW">SW</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <button 
-              onClick={handleImportCSV}
-              className="text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-xl shadow-sm inline-flex items-center gap-1.5"
-            >
-              <Upload className="w-3.5 h-3.5 text-slate-500" /> Import CSV
-            </button>
-            <button 
-              onClick={() => setIsBatchEditOpen(true)}
-              className="text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-xl shadow-sm inline-flex items-center gap-1.5"
-            >
-              <Edit3 className="w-3.5 h-3.5 text-slate-500" /> Batch Edit
-            </button>
-
-            <div className="relative w-full sm:w-60">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-              <input
-                type="text"
-                placeholder="Search unit code..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl pl-10 pr-4 py-2 w-full focus:outline-none focus:border-blue-600 shadow-sm"
-              />
-            </div>
+      {/* Filter Bar */}
+      <div className="mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+            <input type="text" placeholder="Search unit code, type..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={`${inputCls} pl-10`} />
           </div>
         </div>
+      </div>
 
-        {/* LIST VIEW */}
-        {viewMode === 'list' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-100 text-slate-700 text-xs uppercase tracking-wider font-bold border-b border-slate-200">
-                  <th className="py-3.5 px-4">Code</th>
-                  <th className="py-3.5 px-4">Type</th>
-                  <th className="py-3.5 px-4">Size (sqft)</th>
-                  <th className="py-3.5 px-4">Facing</th>
-                  <th className="py-3.5 px-4">Base Price</th>
-                  <th className="py-3.5 px-4">Floor Rise & Premium</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
-                {filteredUnits.length > 0 ? (
-                  filteredUnits.map((unit) => (
-                    <tr key={unit.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-bold text-blue-600">{unit.code}</td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-900 uppercase">{unit.type}</td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-800">{unit.size_sqft} sqft</td>
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-700">{unit.facing}</td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">${unit.price.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                      <td className="py-3.5 px-4 text-slate-600 text-xs font-mono">
-                        Rise: +${unit.floor_rise} \vert{} Prem: +${unit.premium}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className={`inline-flex items-center gap-1 border px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${
-                          unit.status === 'available' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                          unit.status === 'booked' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200'
-                        }`}>
-                          {unit.status}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => setViewUnit(unit)}
-                            className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"
-                            title="View Unit Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setEditUnit({ ...unit })}
-                            className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors"
-                            title="Edit Unit"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setUnits(units.filter(u => u.id !== unit.id))}
-                            className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition-colors"
-                            title="Delete Unit"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
-                      No units found matching selection.
+      {/* Table */}
+      <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+              <tr>
+                <th className="px-5 py-4">Code</th>
+                <th className="px-5 py-4">Type</th>
+                <th className="px-5 py-4">Size (Sqft)</th>
+                <th className="px-5 py-4">Facing</th>
+                <th className="px-5 py-4">Base Price</th>
+                <th className="px-5 py-4">Floor Rise & Premium</th>
+                <th className="px-5 py-4">Status</th>
+                <th className="px-5 py-4 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr><td colSpan={8} className="py-12 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-indigo-600" /></td></tr>
+              ) : error ? (
+                <tr><td colSpan={8} className="py-12 text-center text-rose-600">{error}</td></tr>
+              ) : filteredPlots.length > 0 ? (
+                filteredPlots.map((plot) => (
+                  <tr key={plot.uuid} className="hover:bg-indigo-50/30">
+                    <td className="px-5 py-4 font-mono font-semibold text-indigo-600">{plot.plotCode}</td>
+                    <td className="px-5 py-4 font-bold">{plot.plotType}</td>
+                    <td className="px-5 py-4">{plot.sizeSqft} sqft</td>
+                    <td className="px-5 py-4">{plot.facing}</td>
+                    <td className="px-5 py-4 font-semibold text-slate-900">${plot.basePrice.toLocaleString()}</td>
+                    <td className="px-5 py-4 text-xs text-slate-500">
+                      Rise: +${plot.floorRise} | Prem: +${plot.premium}
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${plot.status === 'Available' ? 'bg-emerald-50 text-emerald-700' : plot.status === 'Booked' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-700'}`}>
+                        {plot.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      <div className="flex justify-center gap-2">
+                        <button onClick={() => setEditPlot(plot)} className="text-slate-500 hover:text-indigo-600"><Edit className="h-4 w-4" /></button>
+                        <button onClick={() => setDeleteTarget(plot)} className="text-slate-500 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>
+                      </div>
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* GRID VIEW */}
-        {viewMode === 'grid' && (
-          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 bg-slate-50/50">
-            {filteredUnits.map((unit) => (
-              <div key={unit.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:border-blue-600 transition-all flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
-                    <span className="font-mono font-bold text-lg text-blue-600">{unit.code}</span>
-                    <span className={`border px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${
-                      unit.status === 'available' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-700 border-slate-200'
-                    }`}>
-                      {unit.status}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-1.5 text-xs text-slate-600">
-                    <div className="flex justify-between">
-                      <span className="font-medium text-slate-500">Unit Type:</span>
-                      <span className="font-bold text-slate-900 uppercase">{unit.type}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-slate-500">Footprint Size:</span>
-                      <span className="font-bold text-slate-900">{unit.size_sqft} sqft</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-slate-500">Orientation Facing:</span>
-                      <span className="font-mono font-bold text-slate-800">{unit.facing}</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-slate-100 font-bold text-sm text-slate-900">
-                      <span>Base Price:</span>
-                      <span className="text-blue-600">${unit.price.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end gap-1">
-                  <button onClick={() => setViewUnit(unit)} className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg">
-                    <Eye className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => setEditUnit({ ...unit })} className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => setUnits(units.filter(u => u.id !== unit.id))} className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                ))
+              ) : (
+                <tr><td colSpan={8} className="py-12 text-center text-slate-400">No unit plots found.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 1. CREATE UNIT MODAL                                                      */}
-      {/* ========================================================================= */}
+      {/* CREATE MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Create Unit Form</h2>
-              <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Unit Code *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. A-301"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 shadow-sm font-mono"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Type *</label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-                    className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 shadow-sm capitalize"
-                  >
-                    <option value="1BHK">1BHK</option>
-                    <option value="2BHK">2BHK</option>
-                    <option value="3BHK">3BHK</option>
-                    <option value="office">Office</option>
-                    <option value="shop">Shop</option>
-                    <option value="plot">Plot</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Size Sqft *</label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="1850"
-                    value={formData.size_sqft}
-                    onChange={(e) => setFormData({ ...formData, size_sqft: e.target.value })}
-                    className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 shadow-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Facing *</label>
-                  <select
-                    value={formData.facing}
-                    onChange={(e) => setFormData({ ...formData, facing: e.target.value as any })}
-                    className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 shadow-sm uppercase"
-                  >
-                    <option value="N">North (N)</option>
-                    <option value="S">South (S)</option>
-                    <option value="E">East (E)</option>
-                    <option value="W">West (W)</option>
-                    <option value="NE">NE</option>
-                    <option value="NW">NW</option>
-                    <option value="SE">SE</option>
-                    <option value="SW">SW</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Base Price ($) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    placeholder="185000"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 shadow-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Floor Rise ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="2500"
-                    value={formData.floor_rise}
-                    onChange={(e) => setFormData({ ...formData, floor_rise: e.target.value })}
-                    className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 shadow-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Premium ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="5000"
-                    value={formData.premium}
-                    onChange={(e) => setFormData({ ...formData, premium: e.target.value })}
-                    className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 shadow-sm"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Amenities (comma separated)</label>
-                <input
-                  type="text"
-                  placeholder="Corner View, Balcony, Parking"
-                  value={formData.amenities}
-                  onChange={(e) => setFormData({ ...formData, amenities: e.target.value })}
-                  className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 shadow-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Unit Notes</label>
-                <textarea
-                  rows={2}
-                  placeholder="Orientation and layout notes..."
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 shadow-sm"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm"
-                >
-                  Save Unit
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 2. VIEW UNIT DETAILS MODAL                                                */}
-      {/* ========================================================================= */}
-      {viewUnit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden">
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Unit Details — {viewUnit.code}</h2>
-              <button onClick={() => setViewUnit(null)} className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <div>
-                  <span className="text-xs text-slate-500 uppercase font-semibold">Type:</span>
-                  <p className="font-bold text-slate-800 uppercase">{viewUnit.type}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-500 uppercase font-semibold">Status:</span>
-                  <p className="font-bold text-emerald-600 uppercase">{viewUnit.status}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-500 uppercase font-semibold">Size:</span>
-                  <p className="font-bold text-slate-800">{viewUnit.size_sqft} sqft</p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-500 uppercase font-semibold">Facing:</span>
-                  <p className="font-bold text-slate-800 font-mono">{viewUnit.facing}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-500 uppercase font-semibold">Base Price:</span>
-                  <p className="font-bold text-blue-600 font-mono">${viewUnit.price.toLocaleString()}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-500 uppercase font-semibold">Floor Rise / Premium:</span>
-                  <p className="font-bold text-slate-800 font-mono">+${viewUnit.floor_rise} / +${viewUnit.premium}</p>
-                </div>
-              </div>
-              <div>
-                <span className="text-xs text-slate-500 uppercase font-semibold block mb-1">Amenities:</span>
-                <div className="flex flex-wrap gap-1">
-                  {viewUnit.amenities.map((a, i) => (
-                    <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-semibold border border-blue-200">
-                      {a}
-                    </span>
+        <ModalShell title="Create Unit Form" onClose={() => setIsModalOpen(false)}>
+          <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
+            
+            {/* Floor Dropdown */}
+            <div>
+              <label className={labelCls}>Select Floor *</label>
+              {isLoadingFloors ? (
+                <div className="flex items-center gap-2 text-sm text-slate-500 py-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading floors...</div>
+              ) : floors.length === 0 ? (
+                <div className="text-sm text-rose-600 py-2 bg-rose-50 px-3 rounded-lg">No floors found. Please create a floor first.</div>
+              ) : (
+                <select required value={formData.floorUuid} onChange={e => setFormData({ ...formData, floorUuid: e.target.value })} className={inputCls}>
+                  <option value="">-- Select a Floor --</option>
+                  {floors.map(f => (
+                    <option key={f.uuid} value={f.uuid}>{f.floorName} (Level {f.floorNumber}) - {f.floorCode}</option>
                   ))}
-                </div>
-              </div>
-              {viewUnit.notes && (
-                <div>
-                  <span className="text-xs text-slate-500 uppercase font-semibold block mb-1">Notes:</span>
-                  <p className="text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-200">{viewUnit.notes}</p>
-                </div>
+                </select>
               )}
             </div>
-            <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
-              <button onClick={() => setViewUnit(null)} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* ========================================================================= */}
-      {/* 3. EDIT UNIT MODAL                                                        */}
-      {/* ========================================================================= */}
-      {editUnit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Edit Unit — {editUnit.code}</h2>
-              <button onClick={() => setEditUnit(null)} className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500">
-                <X className="w-5 h-5" />
-              </button>
+            <div>
+              <label className={labelCls}>Unit Code *</label>
+              <input required placeholder="e.g. A-301" value={formData.plotCode} onChange={e => setFormData({ ...formData, plotCode: e.target.value })} className={inputCls} />
             </div>
 
-            <form onSubmit={handleEditSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Unit Code</label>
-                <input
-                  type="text"
-                  required
-                  value={editUnit.code}
-                  onChange={(e) => setEditUnit({ ...editUnit, code: e.target.value })}
-                  className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full font-mono focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Status</label>
-                  <select
-                    value={editUnit.status}
-                    onChange={(e) => setEditUnit({ ...editUnit, status: e.target.value as any })}
-                    className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 capitalize"
-                  >
-                    <option value="available">Available</option>
-                    <option value="booked">Booked</option>
-                    <option value="sold">Sold</option>
-                    <option value="reserved">Reserved</option>
-                    <option value="blocked">Blocked</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Size (sqft)</label>
-                  <input
-                    type="number"
-                    value={editUnit.size_sqft}
-                    onChange={(e) => setEditUnit({ ...editUnit, size_sqft: parseFloat(e.target.value) || 0 })}
-                    className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Base Price ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editUnit.price}
-                  onChange={(e) => setEditUnit({ ...editUnit, price: parseFloat(e.target.value) || 0 })}
-                  className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full font-mono focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Notes</label>
-                <textarea
-                  rows={2}
-                  value={editUnit.notes || ''}
-                  onChange={(e) => setEditUnit({ ...editUnit, notes: e.target.value })}
-                  className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditUnit(null)}
-                  className="px-5 py-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl shadow-sm"
-                >
-                  Update Unit
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 4. BATCH EDIT MODAL                                                       */}
-      {/* ========================================================================= */}
-      {isBatchEditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Batch Update Units Status</h2>
-              <button onClick={() => setIsBatchEditOpen(false)} className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-500">Select new status to apply across all filtered units in the inventory list:</p>
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">New Status</label>
-                <select
-                  value={batchStatus}
-                  onChange={(e) => setBatchStatus(e.target.value as any)}
-                  className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 capitalize"
-                >
-                  <option value="available">Available</option>
-                  <option value="booked">Booked</option>
-                  <option value="sold">Sold</option>
-                  <option value="reserved">Reserved</option>
-                  <option value="blocked">Blocked</option>
+                <label className={labelCls}>Type *</label>
+                <select value={formData.plotType} onChange={e => setFormData({ ...formData, plotType: e.target.value })} className={inputCls}>
+                  {['1BHK', '2BHK', '3BHK', 'Office', 'Shop', 'Plot'].map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
+              <div>
+                <label className={labelCls}>Size Sqft *</label>
+                <input type="number" required placeholder="1850" value={formData.sizeSqft} onChange={e => setFormData({ ...formData, sizeSqft: e.target.value })} className={inputCls} />
+              </div>
             </div>
-            <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-              <button onClick={() => setIsBatchEditOpen(false)} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl">
-                Cancel
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Facing *</label>
+                <select value={formData.facing} onChange={e => setFormData({ ...formData, facing: e.target.value })} className={inputCls}>
+                  {['NORTH (N)', 'SOUTH (S)', 'EAST (E)', 'WEST (W)', 'NE', 'NW', 'SE', 'SW'].map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Base Price ($) *</label>
+                <input type="number" required placeholder="185000" value={formData.basePrice} onChange={e => setFormData({ ...formData, basePrice: e.target.value })} className={inputCls} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Floor Rise ($)</label>
+                <input type="number" value={formData.floorRise} onChange={e => setFormData({ ...formData, floorRise: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Premium ($)</label>
+                <input type="number" value={formData.premium} onChange={e => setFormData({ ...formData, premium: e.target.value })} className={inputCls} />
+              </div>
+            </div>
+
+            <div>
+              <label className={labelCls}>Amenities (Comma Separated)</label>
+              <input placeholder="Corner View, Balcony, Parking" value={formData.amenities} onChange={e => setFormData({ ...formData, amenities: e.target.value })} className={inputCls} />
+            </div>
+
+            <div>
+              <label className={labelCls}>Unit Notes</label>
+              <textarea rows={2} placeholder="Orientation and layout notes..." value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} className={inputCls} />
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-xl border px-5 py-2.5 text-sm font-semibold text-slate-700">Cancel</button>
+              <button type="submit" disabled={busy || !formData.floorUuid} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+                {busy ? 'Saving...' : 'Save Unit'}
               </button>
-              <button onClick={handleBatchUpdate} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm">
-                Apply Batch Update
-              </button>
+            </div>
+          </form>
+        </ModalShell>
+      )}
+
+      {/* EDIT MODAL */}
+      {editPlot && (
+        <ModalShell title={`Edit Unit — ${editPlot.plotCode}`} onClose={() => setEditPlot(null)} maxW="max-w-md">
+          <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+            <div>
+              <label className={labelCls}>Status</label>
+              <select value={editPlot.status} onChange={e => setEditPlot({ ...editPlot, status: e.target.value as any })} className={inputCls}>
+                {['Available', 'Booked', 'Sold', 'Reserved', 'Blocked'].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Base Price ($)</label>
+              <input type="number" value={editPlot.basePrice} onChange={e => setEditPlot({ ...editPlot, basePrice: parseFloat(e.target.value) || 0 })} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Notes</label>
+              <textarea rows={3} value={editPlot.notes || ''} onChange={e => setEditPlot({ ...editPlot, notes: e.target.value })} className={inputCls} />
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <button type="button" onClick={() => setEditPlot(null)} className="rounded-xl border px-4 py-2 text-sm font-semibold">Cancel</button>
+              <button type="submit" disabled={busy} className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white">{busy ? 'Updating...' : 'Update Unit'}</button>
+            </div>
+          </form>
+        </ModalShell>
+      )}
+
+      {/* DELETE MODAL */}
+      {deleteTarget && (
+        <ModalShell title="Delete Unit?" onClose={() => setDeleteTarget(null)} maxW="max-w-sm">
+          <div className="p-6 text-sm text-center">
+            <p>Are you sure you want to delete <b>{deleteTarget.plotCode}</b>?</p>
+            <div className="mt-6 flex justify-center gap-3">
+              <button onClick={() => setDeleteTarget(null)} className="rounded-xl border px-4 py-2 font-semibold">Cancel</button>
+              <button onClick={confirmDelete} disabled={busy} className="rounded-xl bg-rose-600 px-4 py-2 font-semibold text-white">{busy ? 'Deleting...' : 'Delete'}</button>
             </div>
           </div>
+        </ModalShell>
+      )}
+
+      {/* TOAST */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[70] flex items-center gap-3 rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white shadow-2xl">
+          {toast.type === 'ok' ? <CheckCircle2 className="h-5 w-5 text-emerald-400" /> : <AlertCircle className="h-5 w-5 text-rose-400" />}
+          <span>{toast.msg}</span>
         </div>
       )}
     </div>
