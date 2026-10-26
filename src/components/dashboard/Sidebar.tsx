@@ -94,10 +94,20 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
   }, [accessibleModules]);
 
   const q = filter.trim().toLowerCase();
-  const rawTree = MENUS[module] || [];
+
+  const currentAccessibleMod = useMemo(() => {
+    return accessibleModules.find(
+      (m) => m.key.toLowerCase() === module.toLowerCase(),
+    );
+  }, [accessibleModules, module]);
+
   const permittedTree = useMemo(() => {
+    if (currentAccessibleMod?.menuTree && currentAccessibleMod.menuTree.length > 0) {
+      return currentAccessibleMod.menuTree;
+    }
+    const rawTree = MENUS[module] || [];
     return pruneTreeByAccess(rawTree, module, hasAccessToRoute);
-  }, [rawTree, module, hasAccessToRoute]);
+  }, [currentAccessibleMod, module, hasAccessToRoute]);
 
   const tree = useMemo(() => filterTree(permittedTree, q), [permittedTree, q]);
 
@@ -244,12 +254,14 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         {/* Module Select */}
         <div className="border-b border-sidebar-border p-4">
           <div className="mb-2 flex items-center justify-between">
-            <label
-              htmlFor="module-select"
-              className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground"
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition"
+              title="Return to Universal Workspace Launchpad"
             >
-              Module
-            </label>
+              <LayoutDashboard className="h-3.5 w-3.5 text-blue-600" />
+              <span>Workspace Hub</span>
+            </Link>
             <button
               type="button"
               onClick={onClose}

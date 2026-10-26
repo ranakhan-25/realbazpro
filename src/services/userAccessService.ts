@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import type { MenuNode } from "@/lib/menus";
 
 export interface AccessibleModuleItem {
   id: number;
@@ -8,6 +9,7 @@ export interface AccessibleModuleItem {
   route: string;
   features: string[];
   allowedRoutes: string[];
+  menuTree?: MenuNode[];
 }
 
 export interface UserAccessProfile {
