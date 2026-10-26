@@ -1,8 +1,9 @@
-/* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState } from "react";
+import { useTheme } from "@/lib/theme";
+import { CreditCard, X } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface Props {
 }
 
 export default function PlanCreateModal({ isOpen, onClose, onCreate }: Props) {
+  const { primaryColor } = useTheme();
+  const brandColor = primaryColor || "#0000F2";
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -22,11 +25,14 @@ export default function PlanCreateModal({ isOpen, onClose, onCreate }: Props) {
     const payload = {
       name: formData.get("name"),
       code: formData.get("code"),
+      description: formData.get("description"),
       monthly_price: Number(formData.get("monthly_price")),
       yearly_price: Number(formData.get("yearly_price")),
       user_limit: Number(formData.get("user_limit")),
       project_limit: Number(formData.get("project_limit")),
       storage_gb: Number(formData.get("storage_gb")),
+      duration_days: Number(formData.get("duration_days")),
+      trial_days: Number(formData.get("trial_days")),
       status: formData.get("status"),
     };
     onCreate(payload);
@@ -35,161 +41,199 @@ export default function PlanCreateModal({ isOpen, onClose, onCreate }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-bold text-gray-900">Create New Plan</h2>
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl w-full max-w-3xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col my-8">
+        <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gray-50/70">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold"
+              style={{ backgroundColor: brandColor }}
+            >
+              <CreditCard className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Create New Subscription Plan</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Define pricing tiers, quota allowances, and duration settings
+              </p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-red-500 text-2xl leading-none"
+            className="w-8 h-8 rounded-full hover:bg-gray-200 text-gray-400 hover:text-gray-700 flex items-center justify-center transition-colors"
           >
-            &times;
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto">
-          <form
-            id="create-plan-form"
-            onSubmit={handleSubmit}
-            className="space-y-6"
-          >
-            <section>
-              <h3 className="text-lg font-semibold mb-3 text-gray-800">
-                Basic Info
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Plan Name *
-                  </label>
-                  <input
-                    name="name"
-                    type="text"
-                    required
-                    className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Code *
-                  </label>
-                  <input
-                    name="code"
-                    type="text"
-                    required
-                    className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="e.g. pro-plan"
-                  />
-                </div>
-              </div>
-            </section>
-
-            <section>
-              <h3 className="text-lg font-semibold mb-3 text-gray-800">
-                Pricing
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Monthly Price ($) *
-                  </label>
-                  <input
-                    name="monthly_price"
-                    type="number"
-                    min="0"
-                    required
-                    className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Yearly Price ($) *
-                  </label>
-                  <input
-                    name="yearly_price"
-                    type="number"
-                    min="0"
-                    required
-                    className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-              </div>
-            </section>
-
-            <section>
-              <h3 className="text-lg font-semibold mb-3 text-gray-800">
-                Limits
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">
-                    User Limit *
-                  </label>
-                  <input
-                    name="user_limit"
-                    type="number"
-                    min="1"
-                    required
-                    className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Project Limit *
-                  </label>
-                  <input
-                    name="project_limit"
-                    type="number"
-                    min="1"
-                    required
-                    className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Storage (GB) *
-                  </label>
-                  <input
-                    name="storage_gb"
-                    type="number"
-                    min="1"
-                    required
-                    className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-              </div>
-            </section>
-
-            <section>
-              <h3 className="text-lg font-semibold mb-3 text-gray-800">
-                Status
-              </h3>
+        <div className="p-6 sm:p-8 overflow-y-auto max-h-[70vh]">
+          <form id="create-plan-form" onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Plan Name *
+                </label>
+                <input
+                  name="name"
+                  type="text"
+                  required
+                  placeholder="e.g. Enterprise Tier"
+                  className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Plan Code * (Unique Identifier)
+                </label>
+                <input
+                  name="code"
+                  type="text"
+                  required
+                  placeholder="e.g. ENTERPRISE"
+                  className="w-full border border-gray-200 p-2.5 rounded-xl text-sm font-mono uppercase focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Description
+                </label>
+                <input
+                  name="description"
+                  type="text"
+                  placeholder="Brief summary of included value"
+                  className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Monthly Price ($) *
+                </label>
+                <input
+                  name="monthly_price"
+                  type="number"
+                  min="0"
+                  defaultValue="29"
+                  required
+                  className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Yearly Price ($) *
+                </label>
+                <input
+                  name="yearly_price"
+                  type="number"
+                  min="0"
+                  defaultValue="290"
+                  required
+                  className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  User Limit *
+                </label>
+                <input
+                  name="user_limit"
+                  type="number"
+                  min="1"
+                  defaultValue="10"
+                  required
+                  className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Project Limit *
+                </label>
+                <input
+                  name="project_limit"
+                  type="number"
+                  min="1"
+                  defaultValue="15"
+                  required
+                  className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Storage (GB) *
+                </label>
+                <input
+                  name="storage_gb"
+                  type="number"
+                  min="1"
+                  defaultValue="20"
+                  required
+                  className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Status
+                </label>
                 <select
                   name="status"
-                  className="w-full md:w-1/2 border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                  defaultValue="active"
+                  className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white capitalize"
                 >
                   <option value="draft">Draft</option>
                   <option value="active">Active</option>
                   <option value="archived">Archived</option>
                 </select>
               </div>
-            </section>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Billing Duration (Days)
+                </label>
+                <input
+                  name="duration_days"
+                  type="number"
+                  min="1"
+                  defaultValue="30"
+                  className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Trial Duration (Days)
+                </label>
+                <input
+                  name="trial_days"
+                  type="number"
+                  min="0"
+                  defaultValue="14"
+                  className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                />
+              </div>
+            </div>
           </form>
         </div>
 
-        <div className="flex justify-end space-x-3 p-6 border-t bg-gray-50">
+        <div className="flex justify-end gap-3 p-5 sm:p-6 border-t border-gray-100 bg-gray-50/70">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 border rounded-md hover:bg-gray-100 transition-colors"
+            className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             form="create-plan-form"
-            className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="px-6 py-2.5 text-white rounded-xl text-sm font-medium hover:opacity-95 transition-all disabled:opacity-50 shadow-sm"
+            style={{ backgroundColor: brandColor }}
             disabled={isSubmitting}
           >
             {isSubmitting ? "Creating..." : "Create Plan"}

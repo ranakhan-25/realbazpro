@@ -13,7 +13,12 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useTheme } from "@/lib/theme";
-import { clearStoredTokens } from "@/lib/admin-auth/adminAuthStorage";
+import {
+  clearStoredTokens,
+  getStoredUserProfile,
+  type AdminUserProfile,
+} from "@/lib/admin-auth/adminAuthStorage";
+import { logoutAdminSession } from "@/lib/admin-auth/adminAuthApi";
 
 export default function AdminTopbar() {
   const router = useRouter();
@@ -21,8 +26,13 @@ export default function AdminTopbar() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AdminUserProfile | null>(null);
 
   const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setCurrentUser(getStoredUserProfile());
+  }, []);
 
   /* =====================================================
      CLOSE DROPDOWN ON OUTSIDE CLICK
@@ -58,13 +68,17 @@ export default function AdminTopbar() {
      LOGOUT
   ====================================================== */
 
-  const handleSignOut = () => {
-    clearStoredTokens();
-
-    setProfileOpen(false);
-    setSearchOpen(false);
-
-    router.replace("/admin/login");
+  const handleSignOut = async () => {
+    try {
+      await logoutAdminSession();
+    } catch (err) {
+      console.warn("Logout session error:", err);
+    } finally {
+      clearStoredTokens();
+      setProfileOpen(false);
+      setSearchOpen(false);
+      router.replace("/admin/login");
+    }
   };
 
   return (
@@ -426,7 +440,7 @@ export default function AdminTopbar() {
                   md:text-[13px]
                 "
               >
-                Super Admin
+                {currentUser?.name || "Super Admin"}
               </p>
 
               <p
@@ -442,7 +456,7 @@ export default function AdminTopbar() {
                   md:text-[11px]
                 "
               >
-                Administrator
+                {currentUser?.role || (currentUser?.isSuperUser ? "Super Administrator" : "Administrator")}
               </p>
             </div>
 

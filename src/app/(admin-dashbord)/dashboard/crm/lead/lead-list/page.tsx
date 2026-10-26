@@ -1,1027 +1,703 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import {
-  Users,
-  Search,
-  Plus,
-  Filter,
-  Download,
-  Phone,
-  MessageSquare,
-  Mail,
-  Send,
-  UserCheck,
-  ArrowRightLeft,
-  XCircle,
-  Calendar,
-  Eye,
-  Edit,
-  Trash2,
-  Activity,
-  X,
-  Building,
-  Sparkles,
-  CheckCircle2,
-  Flame,
-  ArrowUpRight
-} from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import LeadHeader from "./components/LeadHeader";
+import LeadTable from "./components/LeadTable";
+import CallActivityView from "./components/CallActivityView";
+import NewEditModal from "./modals/NewEditModal";
+import CallAssignModal from "./modals/CallAssignModal";
+import BulkImportModal from "./modals/BulkImportModal";
+import SmsModals from "./modals/SmsModals";
+import TransferModal from "./modals/TransferModal";
+import AlertDeleteModals from "./modals/AlertDeleteModals";
 
-interface Lead {
-  uuid: string;
-  code: string;
+interface LeadRecord {
+  id: string;
+  leadId: string;
   name: string;
   phone: string;
+  secondaryNumber?: string;
+  address?: string;
+  organization?: string;
+  designation?: string;
   email?: string;
-  category: "hot" | "warm" | "cold";
-  source: string;
-  stage: string;
-  project: string;
-  budget?: number;
-  requirement: string;
-  assignee: string;
-  tags: string[];
-  status: "Active" | "Inactive" | "Rejected" | "Converted";
-  last_activity: string;
-  created_at: string;
+  badge: string;
+  srOfficer: string;
+  cr: string;
+  avatarUrl?: string;
+  leadSource?: string;
+  interestedProject?: string;
+  leadCategory?: string;
+  campaign?: string;
+  birthDate?: string;
+  anniversaryDate?: string;
+  profession?: string;
+  createdAt?: string;
+  lastActivity?: string;
+  nextActivity?: string;
+  remark?: string;
+  query?: string;
 }
 
-const mockLeads: Lead[] = [
+const mockLeadsData: LeadRecord[] = [
   {
-    uuid: "lead-101",
-    code: "LD-2026-001",
-    name: "Dr. Tariqul Islam",
-    phone: "+8801711223344",
-    email: "tariqul@example.com",
-    category: "hot",
-    source: "Facebook Ads",
-    stage: "New",
-    project: "Skyline City Tower",
-    budget: 15000000,
-    requirement: "Looking for 3BR 1800 sqft apartment on higher floor.",
-    assignee: "Shamim Khan",
-    tags: ["VIP", "Urgent"],
-    status: "Active",
-    last_activity: "10 mins ago",
-    created_at: "2026-10-20"
+    id: "lead-1",
+    leadId: "L261015-0135",
+    name: "jannati2222232323",
+    phone: "1754252246",
+    badge: "JUNK",
+    srOfficer: "Admin",
+    cr: "Select CR",
+    createdAt: "15-10-2026 04:10:PM",
+    lastActivity: "Call Connected\nNote: Interested in 3 BHK",
+    nextActivity: "25-10-2026 11:00 AM\nFollow up call",
+    organization: "sdfs",
+    designation: "sfsd",
+    address: "shatkhira",
+    leadSource: "Linkedin"
   },
   {
-    uuid: "lead-102",
-    code: "LD-2026-002",
-    name: "Jannatul Ferdous",
-    phone: "+8801899887766",
-    email: "jannat@example.com",
-    category: "warm",
-    source: "Website Inquiry",
-    stage: "Site Visit Scheduled",
-    project: "Uttara Lake View",
-    budget: 8500000,
-    requirement: "Plot size 5 katha near main avenue.",
-    assignee: "Tanvir Ahmed",
-    tags: ["Plot", "Ready"],
-    status: "Active",
-    last_activity: "2 hours ago",
-    created_at: "2026-10-18"
-  }
+    id: "lead-2",
+    leadId: "L261015-0134",
+    name: "Engr.Syed Sagor Ali",
+    phone: "1709825133",
+    address: "Road No.01, Avenue 03, House-160, Mirpur-12, DOHS, Dhaka",
+    organization: "PJS CONSULT ANT FIRM",
+    designation: "Engineer",
+    badge: "Priority",
+    srOfficer: "Admin",
+    cr: "Select CR",
+    createdAt: "15-10-2026 02:20:PM",
+    lastActivity: "Follow Up\nSent project brochure",
+    nextActivity: "24-10-2026 03:00 PM\nSite Visit",
+  },
+  {
+    id: "lead-3",
+    leadId: "L261012-0132",
+    name: "Kazi Mohammad Aseem",
+    phone: "1963610277",
+    organization: "Madina Group",
+    designation: "Executive Director",
+    badge: "Prospect",
+    srOfficer: "Mohin",
+    cr: "Tazmul Reza",
+    createdAt: "12-10-2026 11:15:AM",
+    lastActivity: "No Answer\nTried calling 2 times",
+    nextActivity: "23-10-2026 05:00 PM\nCall again",
+  },
 ];
 
 export default function LeadListPage() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [selectedLeadUuids, setSelectedLeadUuids] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<"list" | "create" | "detail">("list");
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [detailSubTab, setDetailSubTab] = useState<"activity" | "followups" | "visits" | "offers" | "quotations">("activity");
-
-  // Edit Modal State
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editFormData, setEditFormData] = useState<Lead | null>(null);
-
-  // Modals for Actions
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [showConvertModal, setShowConvertModal] = useState(false);
-  const [newAssignee, setNewAssignee] = useState("");
-
-  // Load leads from localStorage on component mount
-  useEffect(() => {
-    const savedLeads = localStorage.getItem("crm_leads_data");
-    if (savedLeads) {
-      try {
-        setLeads(JSON.parse(savedLeads));
-      } catch (e) {
-        setLeads(mockLeads);
+  const [leads, setLeads] = useState<LeadRecord[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("crm_leads_data");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          // ignore error
+        }
       }
-    } else {
-      setLeads(mockLeads);
-      localStorage.setItem("crm_leads_data", JSON.stringify(mockLeads));
     }
-    setIsLoaded(true);
-  }, []);
-
-  // Save leads to localStorage whenever leads state changes
-  const updateAndPersistLeads = (updatedLeads: Lead[]) => {
-    setLeads(updatedLeads);
-    localStorage.setItem("crm_leads_data", JSON.stringify(updatedLeads));
-  };
-
-  // Filters State
-  const [filters, setFilters] = useState({
-    stage: "all",
-    source: "all",
-    assignee: "all",
-    project: "all",
-    status: "all",
-    from: "",
-    to: "",
-    search: ""
+    return mockLeadsData;
   });
 
-  // Create Form State
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("crm_leads_data", JSON.stringify(leads));
+    }
+  }, [leads]);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterProject, setFilterProject] = useState("");
+
+  const [isNewOrEditModalOpen, setIsNewOrEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const [isLeadDetailsOpen, setIsLeadDetailsOpen] = useState(true);
+  const [isPersonalInfoOpen, setIsPersonalInfoOpen] = useState(false);
+
+  const [isCallAssignOpen, setIsCallAssignOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [isSmsOpen, setIsSmsOpen] = useState(false);
+  const [isWishSmsOpen, setIsWishSmsOpen] = useState(false);
+  const [isSmsConfirmOpen, setIsSmsConfirmOpen] = useState(false);
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+
+  const [callAssignDate, setCallAssignDate] = useState("");
+  const [callAssignUserType, setCallAssignUserType] = useState("Officer/SR");
+  const [callAssignNote, setCallAssignNote] = useState("");
+
+  const [transferUser, setTransferUser] = useState("");
+  const [transferType, setTransferType] = useState("Officer/SR");
+  const [transferFollowup, setTransferFollowup] = useState(false);
+  const [transferManualSet, setTransferManualSet] = useState(false);
+
+  const [smsTemplate, setSmsTemplate] = useState("");
+  const [smsText, setSmsText] = useState("");
+
+  const [activeLead, setActiveLead] = useState<LeadRecord | null>(null);
+
+  const [isCallActivityPageOpen, setIsCallActivityPageOpen] = useState(false);
+
+  const [activeTab, setActiveTab] = useState("Upcoming/Pending");
+  const [currentActivity, setCurrentActivity] = useState("Followup");
+  const [nextActivityType, setNextActivityType] = useState("Followup");
+  const [followupStatus, setFollowupStatus] = useState("");
+  const [followupComment, setFollowupComment] = useState("");
+  const [nextFollowupDate, setNextFollowupDate] = useState("");
+  const [nextFollowupNote, setNextFollowupNote] = useState("");
+  const [isJunk, setIsJunk] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+
+  const [reqPrice, setReqPrice] = useState("");
+  const [reqSize, setReqSize] = useState("");
+  const [reqArea, setReqArea] = useState("");
+  const [reqType, setReqType] = useState("");
+  const [reqDesc, setReqDesc] = useState("");
+
+  const [propProject, setPropProject] = useState("");
+  const [noteInput, setNoteInput] = useState("");
+
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
   const [formData, setFormData] = useState({
+    date: "2026-10-22",
+    leadCode: "L261022-0136",
     name: "",
     phone: "",
+    secondaryNumber: "",
+    assignUser: "Admin",
+    ifCr: "",
+    leadStages: "New Assignment",
+    leadSource: "",
+    interestedProject: "",
+    leadCategory: "",
+    campaign: "",
+    organization: "",
+    designation: "",
+    birthDate: "",
+    anniversaryDate: "",
+    profession: "",
+    address: "",
     email: "",
-    category: "warm",
-    source: "Website",
-    stage: "New",
-    project: "Skyline City Tower",
-    budget: "",
-    requirement: "",
-    assignee: "Shamim Khan",
-    tags: "VIP, High Budget"
   });
 
-  const [phoneError, setPhoneError] = useState("");
+  const tabs = [
+    { name: "Upcoming/Pending", count: null },
+    { name: "Requirements", count: 0 },
+    { name: "Deal Negotiation", count: 0 },
+    { name: "Property", count: 0 },
+    { name: "Follow-up", count: 1 },
+    { name: "Visits", count: 0 },
+    { name: "Note", count: 0 },
+  ];
 
-  const handlePhoneChange = (val: string) => {
-    setFormData({ ...formData, phone: val });
-    const exists = leads.some((l) => l.phone === val);
-    if (exists) {
-      setPhoneError("Phone number already exists for another lead!");
+  const verifySelection = (actionCallback: () => void) => {
+    if (selectedLeads.length === 0) {
+      setIsAlertOpen(true);
     } else {
-      setPhoneError("");
+      actionCallback();
     }
   };
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (phoneError) return;
-
-    const newLead: Lead = {
-      uuid: `lead-${Date.now()}`,
-      code: `LD-2026-00${leads.length + 1}`,
-      name: formData.name,
-      phone: formData.phone,
-      email: formData.email,
-      category: formData.category as "hot" | "warm" | "cold",
-      source: formData.source,
-      stage: formData.stage,
-      project: formData.project,
-      budget: Number(formData.budget) || 0,
-      requirement: formData.requirement,
-      assignee: formData.assignee,
-      tags: formData.tags ? formData.tags.split(",").map((t) => t.trim()) : [],
-      status: "Active",
-      last_activity: "Just now",
-      created_at: new Date().toISOString().slice(0, 10)
-    };
-
-    const newLeadsList = [newLead, ...leads];
-    updateAndPersistLeads(newLeadsList);
-    setActiveTab("list");
-    
-    // Reset Form
+  const handleOpenNewModal = () => {
+    setActiveLead(null);
     setFormData({
+      date: "2026-10-22",
+      leadCode: `L261022-0${Math.floor(100 + Math.random() * 900)}`,
       name: "",
       phone: "",
+      secondaryNumber: "",
+      assignUser: "Admin",
+      ifCr: "",
+      leadStages: "New Assignment",
+      leadSource: "",
+      interestedProject: "",
+      leadCategory: "",
+      campaign: "",
+      organization: "",
+      designation: "",
+      birthDate: "",
+      anniversaryDate: "",
+      profession: "",
+      address: "",
       email: "",
-      category: "warm",
-      source: "Website",
-      stage: "New",
-      project: "Skyline City Tower",
-      budget: "",
-      requirement: "",
-      assignee: "Shamim Khan",
-      tags: ""
     });
+    setIsNewOrEditModalOpen(true);
   };
 
-  // EDIT ACTION HANDLERS
-  const handleOpenEditModal = (lead: Lead) => {
-    setEditFormData({ ...lead });
-    setShowEditModal(true);
+  const handleOpenEditModal = (item: LeadRecord) => {
+    setActiveLead(item);
+    setFormData({
+      date: "2026-10-22",
+      leadCode: item.leadId,
+      name: item.name,
+      phone: item.phone,
+      secondaryNumber: item.secondaryNumber || "",
+      assignUser: item.srOfficer || "Admin",
+      ifCr: item.cr || "",
+      leadStages: item.badge || "New Assignment",
+      leadSource: item.leadSource || "",
+      interestedProject: item.interestedProject || "",
+      leadCategory: item.leadCategory || "",
+      campaign: item.campaign || "",
+      organization: item.organization || "",
+      designation: item.designation || "",
+      birthDate: item.birthDate || "",
+      anniversaryDate: item.anniversaryDate || "",
+      profession: item.profession || "",
+      address: item.address || "",
+      email: item.email || "",
+    });
+    setIsNewOrEditModalOpen(true);
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editFormData) return;
+  const handleOpenCallActivityPage = (item: LeadRecord) => {
+    setActiveLead(item);
+    setFollowupStatus("");
+    setFollowupComment("");
+    setNextFollowupDate("");
+    setNextFollowupNote("");
+    setIsJunk(item.badge === "JUNK" || item.badge === "Junk");
+    setIsCallActivityPageOpen(true);
+  };
 
-    const updated = leads.map((l) => (l.uuid === editFormData.uuid ? editFormData : l));
-    updateAndPersistLeads(updated);
-    if (selectedLead?.uuid === editFormData.uuid) {
-      setSelectedLead(editFormData);
+  const handleOpenDeleteModal = (item: LeadRecord) => {
+    setActiveLead(item);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (activeLead) {
+      setLeads(leads.filter((item) => item.id !== activeLead.id));
+      setIsDeleteModalOpen(false);
+      setActiveLead(null);
     }
-    setShowEditModal(false);
   };
 
-  // DELETE ACTION HANDLER
-  const handleDeleteLead = (uuid: string, leadName: string) => {
-    if (confirm(`Are you sure you want to delete lead "${leadName}"?`)) {
-      const updated = leads.filter((l) => l.uuid !== uuid);
-      updateAndPersistLeads(updated);
-      setSelectedLeadUuids((prev) => prev.filter((id) => id !== uuid));
-      if (selectedLead?.uuid === uuid) {
-        setSelectedLead(null);
-        setActiveTab("list");
+  // ট্রান্সফার কনফার্ম করার ফাংশন (যাতে Transfer History পেজে ডেটা যায়)
+  const handleConfirmTransfer = () => {
+    const assignedTo = transferUser || "Admin";
+
+    const leadsToTransfer = leads.filter((item) => selectedLeads.includes(item.id));
+
+    const newTransferRecords = leadsToTransfer.map((lead, index) => ({
+      id: `${Date.now()}-${index}`,
+      leadCode: lead.leadId,
+      name: lead.name,
+      mobile: lead.phone,
+      from: lead.srOfficer || "Admin",
+      to: assignedTo,
+      date: new Date().toLocaleDateString("en-GB").replace(/\//g, "-"),
+      lastActivity: lead.lastActivity || "",
+    }));
+
+    if (typeof window !== "undefined") {
+      const existingHistory = localStorage.getItem("transfer_history_data");
+      let parsedHistory = [];
+      try {
+        parsedHistory = existingHistory ? JSON.parse(existingHistory) : [];
+      } catch (e) {
+        parsedHistory = [];
       }
+
+      const updatedHistory = [...newTransferRecords, ...parsedHistory];
+      localStorage.setItem("transfer_history_data", JSON.stringify(updatedHistory));
     }
+
+    alert(`Successfully transferred ${selectedLeads.length} leads to ${assignedTo}!`);
+    setIsTransferOpen(false);
+    setSelectedLeads([]);
+    setTransferUser("");
   };
 
-  // Communication Actions
-  const handleCall = () => selectedLead?.phone && window.open(`tel:${selectedLead.phone}`, '_self');
-  const handleSMS = () => selectedLead?.phone && window.open(`sms:${selectedLead.phone}`, '_self');
-  const handleEmail = () => selectedLead?.email ? window.open(`mailto:${selectedLead.email}`, '_self') : alert("No email address provided.");
-  const handleWhatsApp = () => {
-    if (selectedLead?.phone) {
-      const formattedPhone = selectedLead.phone.replace(/[^0-9]/g, '');
-      window.open(`https://wa.me/${formattedPhone}`, '_blank');
-    }
-  };
-
-  const handleAssignSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedLead || !newAssignee) return;
-    const updated = leads.map(l => l.uuid === selectedLead.uuid ? { ...l, assignee: newAssignee } : l);
-    updateAndPersistLeads(updated);
-    setSelectedLead({ ...selectedLead, assignee: newAssignee });
-    setShowAssignModal(false);
-  };
-
-  const handleConvertSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLead) return;
-    const updated = leads.map(l => l.uuid === selectedLead.uuid ? { ...l, status: "Converted" as const, stage: "Converted" } : l);
-    updateAndPersistLeads(updated);
-    setSelectedLead({ ...selectedLead, status: "Converted", stage: "Converted" });
-    setShowConvertModal(false);
-  };
-
-  const handleReject = () => {
-    if (!selectedLead) return;
-    if (confirm("Are you sure you want to reject this lead?")) {
-      const updated = leads.map(l => l.uuid === selectedLead.uuid ? { ...l, status: "Rejected" as const } : l);
-      updateAndPersistLeads(updated);
-      setSelectedLead({ ...selectedLead, status: "Rejected" });
+    if (activeLead) {
+      setLeads(
+        leads.map((item) =>
+          item.id === activeLead.id
+            ? {
+                ...item,
+                name: formData.name,
+                phone: formData.phone,
+                secondaryNumber: formData.secondaryNumber,
+                srOfficer: formData.assignUser,
+                cr: formData.ifCr || "Select CR",
+                badge: formData.leadStages,
+                leadSource: formData.leadSource,
+                interestedProject: formData.interestedProject,
+                leadCategory: formData.leadCategory,
+                campaign: formData.campaign,
+                organization: formData.organization,
+                designation: formData.designation,
+                birthDate: formData.birthDate,
+                anniversaryDate: formData.anniversaryDate,
+                profession: formData.profession,
+                address: formData.address,
+                email: formData.email,
+              }
+            : item
+        )
+      );
+    } else {
+      const newLead: LeadRecord = {
+        id: `lead-${Date.now()}`,
+        leadId: formData.leadCode,
+        name: formData.name,
+        phone: formData.phone,
+        secondaryNumber: formData.secondaryNumber,
+        srOfficer: formData.assignUser || "Admin",
+        cr: formData.ifCr || "Select CR",
+        badge: formData.leadStages || "New Assignment",
+        leadSource: formData.leadSource || "",
+        interestedProject: formData.interestedProject || "",
+        leadCategory: formData.leadCategory || "",
+        campaign: formData.campaign || "",
+        organization: formData.organization || "",
+        designation: formData.designation || "",
+        birthDate: formData.birthDate || "",
+        anniversaryDate: formData.anniversaryDate || "",
+        profession: formData.profession || "",
+        address: formData.address || "",
+        email: formData.email || "",
+        createdAt: "22-10-2026 03:00:PM",
+      };
+      setLeads([newLead, ...leads]);
     }
+    setIsNewOrEditModalOpen(false);
   };
 
-  const handleSelectAll = (checked: boolean) => {
-    setSelectedLeadUuids(checked ? filteredLeads.map((l) => l.uuid) : []);
-  };
+  const handleSaveCallPageChanges = () => {
+    if (!activeLead) return;
 
-  const handleToggleSelect = (uuid: string) => {
-    setSelectedLeadUuids((prev) =>
-      prev.includes(uuid) ? prev.filter((id) => id !== uuid) : [...prev, uuid]
+    setLeads((prevLeads) =>
+      prevLeads.map((item) => {
+        if (item.id === activeLead.id) {
+          const updatedStage = isJunk ? "JUNK" : activeLead.badge;
+          
+          let lastAct = item.lastActivity;
+          if (followupStatus || followupComment) {
+            lastAct = `Status: ${followupStatus || "Follow Up"}\nComment: ${followupComment || "N/A"}`;
+          }
+
+          let nextAct = item.nextActivity;
+          if (nextFollowupDate) {
+            nextAct = `Date: ${nextFollowupDate}\nNote: ${nextFollowupNote || "N/A"}`;
+          }
+
+          return {
+            ...item,
+            ...activeLead,
+            badge: updatedStage,
+            lastActivity: lastAct,
+            nextActivity: nextAct,
+          };
+        }
+        return item;
+      })
     );
+
+    setIsCallActivityPageOpen(false);
   };
 
-  const filteredLeads = leads.filter((lead) => {
+  const handleMarkAsSold = () => {
+    if (!activeLead) return;
+    setLeads((prev) =>
+      prev.map((item) => (item.id === activeLead.id ? { ...item, badge: "Sold" } : item))
+    );
+    setActiveLead((prev) => (prev ? { ...prev, badge: "Sold" } : null));
+    alert(`${activeLead.name} marked as Sold successfully!`);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && activeLead) {
+      const imageUrl = URL.createObjectURL(file);
+      setActiveLead({ ...activeLead, avatarUrl: imageUrl });
+      setLeads((prev) =>
+        prev.map((item) => (item.id === activeLead.id ? { ...item, avatarUrl: imageUrl } : item))
+      );
+    }
+  };
+
+  const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      alert(`Attachment "${file.name}" uploaded successfully!`);
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedLeads.length === currentTableData.length) {
+      setSelectedLeads([]);
+    } else {
+      setSelectedLeads(currentTableData.map((item) => item.id));
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    if (selectedLeads.includes(id)) {
+      setSelectedLeads(selectedLeads.filter((item) => item !== id));
+    } else {
+      setSelectedLeads([...selectedLeads, id]);
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  const filteredData = leads.filter((item) => {
+    const search = searchQuery.trim().toLowerCase();
     const matchesSearch =
-      lead.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-      lead.code.toLowerCase().includes(filters.search.toLowerCase()) ||
-      lead.phone.includes(filters.search);
+      !search ||
+      item.name.toLowerCase().includes(search) ||
+      item.phone.includes(search) ||
+      item.leadId.toLowerCase().includes(search);
 
-    const matchesStage = filters.stage === "all" || lead.stage === filters.stage;
-    const matchesSource = filters.source === "all" || lead.source === filters.source;
-    const matchesAssignee = filters.assignee === "all" || lead.assignee === filters.assignee;
-    const matchesProject = filters.project === "all" || lead.project === filters.project;
-    const matchesStatus = filters.status === "all" || lead.status === filters.status;
+    const matchesCategory =
+      !filterCategory ||
+      (item.leadCategory &&
+        item.leadCategory.trim().toLowerCase() === filterCategory.trim().toLowerCase());
 
-    return matchesSearch && matchesStage && matchesSource && matchesAssignee && matchesProject && matchesStatus;
+    const matchesProject =
+      !filterProject ||
+      (item.interestedProject &&
+        item.interestedProject.trim().toLowerCase() === filterProject.trim().toLowerCase());
+
+    return matchesSearch && matchesCategory && matchesProject;
   });
 
-  if (!isLoaded) {
-    return <div className="p-8 text-center text-sm font-bold text-muted-foreground">Loading Lead Directory...</div>;
+  const totalEntries = filteredData.length;
+  const totalPages = Math.ceil(totalEntries / entriesPerPage) || 1;
+  const indexOfLastItem = currentPage * entriesPerPage;
+  const indexOfFirstItem = indexOfLastItem - entriesPerPage;
+  const currentTableData = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+
+  if (isCallActivityPageOpen && activeLead) {
+    return (
+      <CallActivityView
+        activeLead={activeLead}
+        setActiveLead={setActiveLead}
+        setIsCallActivityPageOpen={setIsCallActivityPageOpen}
+        handleSaveCallPageChanges={handleSaveCallPageChanges}
+        isJunk={isJunk}
+        setIsJunk={setIsJunk}
+        fileInputRef={fileInputRef}
+        attachmentInputRef={attachmentInputRef}
+        handleImageUpload={handleImageUpload}
+        handleAttachmentUpload={handleAttachmentUpload}
+        setIsSmsOpen={setIsSmsOpen}
+        tabs={tabs}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        handleMarkAsSold={handleMarkAsSold}
+        currentActivity={currentActivity}
+        setCurrentActivity={setCurrentActivity}
+        followupStatus={followupStatus}
+        setFollowupStatus={setFollowupStatus}
+        followupComment={followupComment}
+        setFollowupComment={setFollowupComment}
+        nextActivityType={nextActivityType}
+        setNextActivityType={setNextActivityType}
+        nextFollowupDate={nextFollowupDate}
+        setNextFollowupDate={setNextFollowupDate}
+        nextFollowupNote={nextFollowupNote}
+        setNextFollowupNote={setNextFollowupNote}
+        reqPrice={reqPrice}
+        setReqPrice={setReqPrice}
+        reqSize={reqSize}
+        setReqSize={setReqSize}
+        reqArea={reqArea}
+        setReqArea={setReqArea}
+        reqType={reqType}
+        setReqType={setReqType}
+        reqDesc={reqDesc}
+        setReqDesc={setReqDesc}
+        propProject={propProject}
+        setPropProject={setPropProject}
+        noteInput={noteInput}
+        setNoteInput={setNoteInput}
+      />
+    );
   }
 
   return (
-    <div className="w-full space-y-6 px-4 md:px-8 py-6 text-foreground bg-background">
-      
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-            <Sparkles size={15} /> CRM Platform Management
-          </div>
-          <h1 className="text-3xl font-black tracking-tight text-foreground mt-1">Lead Directory</h1>
-          <p className="text-sm text-muted-foreground mt-1 font-medium">Manage prospect lifecycles, monitor agent performance, and track project inquiries.</p>
-        </div>
+    <div className="w-full space-y-6 px-4 md:px-8 py-6 text-foreground bg-slate-50/50 dark:bg-background min-h-screen">
+      <LeadHeader
+        selectedCount={selectedLeads.length}
+        onOpenNewModal={handleOpenNewModal}
+        onCallAssign={() => verifySelection(() => setIsCallAssignOpen(true))}
+        onBulkImport={() => setIsBulkImportOpen(true)}
+        onSendSms={() => verifySelection(() => setIsSmsOpen(true))}
+        onConvertCustomer={() => verifySelection(() => alert(`${selectedLeads.length} leads converted to customer!`))}
+        onTransfer={() => verifySelection(() => setIsTransferOpen(true))}
+        onWishSms={() => verifySelection(() => setIsWishSmsOpen(true))}
+        isFilterPanelOpen={isFilterPanelOpen}
+        setIsFilterPanelOpen={setIsFilterPanelOpen}
+      />
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setActiveTab("list")}
-            className={`px-5 py-2.5 text-sm font-bold rounded-xl transition ${
-              activeTab === "list" ? "bg-indigo-600 text-white shadow-md" : "bg-muted hover:bg-muted/80 text-muted-foreground"
-            }`}
-          >
-            Directory List
-          </button>
-          <button
-            onClick={() => setActiveTab("create")}
-            className={`px-5 py-2.5 text-sm font-bold rounded-xl flex items-center gap-2 transition ${
-              activeTab === "create" ? "bg-indigo-600 text-white shadow-md" : "bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600/20"
-            }`}
-          >
-            <Plus size={18} /> Add Lead
-          </button>
-        </div>
-      </div>
-
-      {/* KPI Overview Cards */}
-      {activeTab === "list" && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm flex items-center justify-between">
-            <div>
-              <span className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Total Leads</span>
-              <div className="text-3xl font-black font-mono mt-1 text-foreground">{leads.length}</div>
-              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1 mt-1">
-                <ArrowUpRight size={14} /> +12% this week
-              </span>
-            </div>
-            <div className="p-3.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl border border-indigo-500/20">
-              <Users size={22} />
-            </div>
+      {isFilterPanelOpen && (
+        <div className="p-5 rounded-2xl border border-border bg-card shadow-sm grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-bold animate-in fade-in">
+          <div>
+            <label className="block text-muted-foreground mb-1">Select Date</label>
+            <input type="text" defaultValue="January 1, 1971 - October 22, 2026" className="w-full p-2 border rounded-lg bg-background border-border" />
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm flex items-center justify-between">
-            <div>
-              <span className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Hot Leads</span>
-              <div className="text-3xl font-black font-mono mt-1 text-foreground">
-                {leads.filter(l => l.category === "hot").length}
-              </div>
-              <span className="text-xs font-bold text-amber-500 flex items-center gap-1 mt-1">
-                <Flame size={14} /> Priority Follow-up
-              </span>
-            </div>
-            <div className="p-3.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-2xl border border-rose-500/20">
-              <Flame size={22} />
-            </div>
+          <div>
+            <label className="block text-muted-foreground mb-1">Lead Category</label>
+            <select
+              value={filterCategory}
+              onChange={(e) => {
+                setFilterCategory(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full p-2 border rounded-lg bg-background border-border"
+            >
+              <option value="">Select Category</option>
+              <option value="Ready Flat">Ready Flat</option>
+              <option value="Ongoing">Ongoing</option>
+              <option value="Upcoming">Upcoming</option>
+              <option value="Junk">Junk</option>
+            </select>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm flex items-center justify-between">
-            <div>
-              <span className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Site Visits</span>
-              <div className="text-3xl font-black font-mono mt-1 text-foreground">
-                {leads.filter(l => l.stage === "Site Visit Scheduled").length}
-              </div>
-              <span className="text-xs font-bold text-indigo-600 flex items-center gap-1 mt-1">
-                <Calendar size={14} /> 2 pending today
-              </span>
-            </div>
-            <div className="p-3.5 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-2xl border border-teal-500/20">
-              <Calendar size={22} />
-            </div>
+          <div>
+            <label className="block text-muted-foreground mb-1">Teams</label>
+            <select className="w-full p-2 border rounded-lg bg-background border-border">
+              <option value="">Select Team</option>
+              <option value="grod">grod</option>
+            </select>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm flex items-center justify-between">
-            <div>
-              <span className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Converted Deals</span>
-              <div className="text-3xl font-black font-mono mt-1 text-foreground">
-                {leads.filter(l => l.status === "Converted").length}
-              </div>
-              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1 mt-1">
-                <CheckCircle2 size={14} /> High conversion
-              </span>
-            </div>
-            <div className="p-3.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-500/20">
-              <CheckCircle2 size={22} />
-            </div>
+          <div>
+            <label className="block text-muted-foreground mb-1">Interested Project</label>
+            <select
+              value={filterProject}
+              onChange={(e) => {
+                setFilterProject(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full p-2 border rounded-lg bg-background border-border"
+            >
+              <option value="">Select Project</option>
+              <option value="Mustain Villa">Mustain Villa</option>
+              <option value="Royal City">Royal City</option>
+              <option value="36 Haque Tower">36 Haque Tower</option>
+            </select>
           </div>
         </div>
       )}
 
-      {/* 1. LEAD LIST VIEW */}
-      {activeTab === "list" && (
-        <div className="space-y-5">
-          
-          {/* Advanced Search & Filter Control Bar */}
-          <div className="p-5 rounded-2xl border border-border bg-card shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <span className="text-sm font-black flex items-center gap-2 text-foreground">
-                <Filter size={18} className="text-indigo-600" /> Advanced Directory Filters
-              </span>
-              <button
-                onClick={() => setFilters({ stage: "all", source: "all", assignee: "all", project: "all", status: "all", from: "", to: "", search: "" })}
-                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-              >
-                Reset Filters
-              </button>
-            </div>
+      <LeadTable
+        currentTableData={currentTableData}
+        selectedLeads={selectedLeads}
+        handleSelectAll={handleSelectAll}
+        handleSelectOne={handleSelectOne}
+        handleOpenEditModal={handleOpenEditModal}
+        handleOpenCallActivityPage={handleOpenCallActivityPage}
+        handleOpenDeleteModal={handleOpenDeleteModal}
+        entriesPerPage={entriesPerPage}
+        setEntriesPerPage={setEntriesPerPage}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        totalPages={totalPages}
+        totalEntries={totalEntries}
+        indexOfFirstItem={indexOfFirstItem}
+        indexOfLastItem={indexOfLastItem}
+        handlePageChange={handlePageChange}
+      />
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 text-sm font-semibold">
-              <div className="col-span-2 relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-                <input
-                  type="text"
-                  placeholder="Search lead code, client name, phone..."
-                  value={filters.search}
-                  onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2.5 border rounded-xl outline-none bg-background border-border text-sm focus:ring-2 focus:ring-indigo-500/20 font-medium"
-                />
-              </div>
+      <NewEditModal
+        isOpen={isNewOrEditModalOpen}
+        onClose={() => setIsNewOrEditModalOpen(false)}
+        onSubmit={handleFormSubmit}
+        formData={formData}
+        setFormData={setFormData}
+        activeLead={activeLead}
+        isLeadDetailsOpen={isLeadDetailsOpen}
+        setIsLeadDetailsOpen={setIsLeadDetailsOpen}
+        isPersonalInfoOpen={isPersonalInfoOpen}
+        setIsPersonalInfoOpen={setIsPersonalInfoOpen}
+      />
 
-              <select
-                value={filters.stage}
-                onChange={(e) => setFilters({ ...filters, stage: e.target.value })}
-                className="border rounded-xl px-3 py-2.5 outline-none bg-background border-border font-medium text-sm"
-              >
-                <option value="all">All Stages</option>
-                <option value="New">New</option>
-                <option value="Site Visit Scheduled">Site Visit Scheduled</option>
-                <option value="Negotiation">Negotiation</option>
-              </select>
+      <CallAssignModal
+        isOpen={isCallAssignOpen}
+        onClose={() => setIsCallAssignOpen(false)}
+        callAssignDate={callAssignDate}
+        setCallAssignDate={setCallAssignDate}
+        callAssignUserType={callAssignUserType}
+        setCallAssignUserType={setCallAssignUserType}
+        callAssignNote={callAssignNote}
+        setCallAssignNote={setCallAssignNote}
+      />
 
-              <select
-                value={filters.source}
-                onChange={(e) => setFilters({ ...filters, source: e.target.value })}
-                className="border rounded-xl px-3 py-2.5 outline-none bg-background border-border font-medium text-sm"
-              >
-                <option value="all">All Sources</option>
-                <option value="Facebook Ads">Facebook Ads</option>
-                <option value="Website Inquiry">Website Inquiry</option>
-                <option value="Cold Call">Cold Call</option>
-              </select>
+      <BulkImportModal
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+      />
 
-              <select
-                value={filters.assignee}
-                onChange={(e) => setFilters({ ...filters, assignee: e.target.value })}
-                className="border rounded-xl px-3 py-2.5 outline-none bg-background border-border font-medium text-sm"
-              >
-                <option value="all">All Assignees</option>
-                <option value="Shamim Khan">Shamim Khan</option>
-                <option value="Tanvir Ahmed">Tanvir Ahmed</option>
-              </select>
+      <SmsModals
+        isSmsOpen={isSmsOpen}
+        isWishSmsOpen={isWishSmsOpen}
+        onCloseSms={() => {
+          setIsSmsOpen(false);
+          setIsWishSmsOpen(false);
+        }}
+        smsTemplate={smsTemplate}
+        setSmsTemplate={setSmsTemplate}
+        smsText={smsText}
+        setSmsText={setSmsText}
+        onSubmitSms={() => {
+          setIsSmsOpen(false);
+          setIsWishSmsOpen(false);
+          setIsSmsConfirmOpen(true);
+        }}
+        isSmsConfirmOpen={isSmsConfirmOpen}
+        onCloseConfirm={() => setIsSmsConfirmOpen(false)}
+        onConfirmOk={() => {
+          alert("SMS sent successfully!");
+          setIsSmsConfirmOpen(false);
+        }}
+      />
 
-              <select
-                value={filters.project}
-                onChange={(e) => setFilters({ ...filters, project: e.target.value })}
-                className="border rounded-xl px-3 py-2.5 outline-none bg-background border-border font-medium text-sm"
-              >
-                <option value="all">All Projects</option>
-                <option value="Skyline City Tower">Skyline City Tower</option>
-                <option value="Uttara Lake View">Uttara Lake View</option>
-              </select>
+      <TransferModal
+        isOpen={isTransferOpen}
+        onClose={() => setIsTransferOpen(false)}
+        selectedCount={selectedLeads.length}
+        transferUser={transferUser}
+        setTransferUser={setTransferUser}
+        transferType={transferType}
+        setTransferType={setTransferType}
+        transferFollowup={transferFollowup}
+        setTransferFollowup={setTransferFollowup}
+        transferManualSet={transferManualSet}
+        setTransferManualSet={setTransferManualSet}
+        onConfirmTransfer={handleConfirmTransfer}
+      />
 
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="border rounded-xl px-3 py-2.5 outline-none bg-background border-border font-medium text-sm"
-              >
-                <option value="all">All Statuses</option>
-                <option value="Active">Active</option>
-                <option value="Converted">Converted</option>
-                <option value="Rejected">Rejected</option>
-              </select>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs font-medium border-t border-border/40">
-              <div className="flex items-center gap-3">
-                <span className="font-extrabold text-muted-foreground text-xs">Date Created:</span>
-                <input
-                  type="date"
-                  value={filters.from}
-                  onChange={(e) => setFilters({ ...filters, from: e.target.value })}
-                  className="border rounded-xl px-2.5 py-1.5 bg-background border-border font-mono text-xs"
-                />
-                <span className="text-muted-foreground">to</span>
-                <input
-                  type="date"
-                  value={filters.to}
-                  onChange={(e) => setFilters({ ...filters, to: e.target.value })}
-                  className="border rounded-xl px-2.5 py-1.5 bg-background border-border font-mono text-xs"
-                />
-              </div>
-
-              <span className="text-muted-foreground font-mono font-bold text-xs">
-                Showing {filteredLeads.length} of {leads.length} Leads
-              </span>
-            </div>
-          </div>
-
-          {/* Table with View, Edit, Delete Actions */}
-          <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground font-extrabold uppercase tracking-wider bg-muted/40">
-                    <th className="p-4 w-12">
-                      <input
-                        type="checkbox"
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                        checked={selectedLeadUuids.length === filteredLeads.length && filteredLeads.length > 0}
-                      />
-                    </th>
-                    <th className="p-4">Lead Code</th>
-                    <th className="p-4">Client Name</th>
-                    <th className="p-4">Phone Number</th>
-                    <th className="p-4">Source</th>
-                    <th className="p-4">Stage</th>
-                    <th className="p-4">Project</th>
-                    <th className="p-4">Assignee</th>
-                    <th className="p-4">Status</th>
-                    <th className="p-4">Last Activity</th>
-                    <th className="p-4 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60 font-semibold text-foreground">
-                  {filteredLeads.length > 0 ? (
-                    filteredLeads.map((l) => (
-                      <tr key={l.uuid} className="hover:bg-muted/40 transition">
-                        <td className="p-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedLeadUuids.includes(l.uuid)}
-                            onChange={() => handleToggleSelect(l.uuid)}
-                          />
-                        </td>
-                        <td className="p-4 font-mono font-black text-indigo-600 dark:text-indigo-400 text-sm">{l.code}</td>
-                        <td className="p-4">
-                          <div className="font-extrabold text-foreground text-base">{l.name}</div>
-                          {l.email && <div className="text-xs text-muted-foreground font-mono mt-0.5">{l.email}</div>}
-                        </td>
-                        <td className="p-4 font-mono font-bold text-sm">{l.phone}</td>
-                        <td className="p-4 text-muted-foreground text-sm">{l.source}</td>
-                        <td className="p-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-black uppercase border ${
-                            l.stage === 'New' ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' :
-                            l.stage === 'Site Visit Scheduled' ? 'bg-teal-500/10 text-teal-600 border-teal-500/20' :
-                            'bg-amber-500/10 text-amber-600 border-amber-500/20'
-                          }`}>
-                            {l.stage}
-                          </span>
-                        </td>
-                        <td className="p-4 text-sm font-bold">
-                          <div className="flex items-center gap-1.5">
-                            <Building size={15} className="text-muted-foreground" />
-                            <span>{l.project}</span>
-                          </div>
-                        </td>
-                        <td className="p-4 font-bold text-sm">{l.assignee}</td>
-                        <td className="p-4">
-                          <span className={`px-2.5 py-1 rounded text-xs font-black uppercase ${
-                            l.status === 'Converted' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' :
-                            l.status === 'Active' ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' :
-                            'bg-rose-500/10 text-rose-600 border border-rose-500/20'
-                          }`}>
-                            {l.status}
-                          </span>
-                        </td>
-                        <td className="p-4 font-mono text-muted-foreground text-xs">{l.last_activity}</td>
-                        <td className="p-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {/* VIEW BUTTON */}
-                            <button
-                              onClick={() => {
-                                setSelectedLead(l);
-                                setActiveTab("detail");
-                              }}
-                              className="p-2 rounded-xl bg-muted hover:bg-indigo-600 hover:text-white transition shadow-sm"
-                              title="View Lead Profile"
-                            >
-                              <Eye size={16} />
-                            </button>
-
-                            {/* EDIT BUTTON */}
-                            <button
-                              onClick={() => handleOpenEditModal(l)}
-                              className="p-2 rounded-xl bg-amber-500/10 text-amber-600 hover:bg-amber-600 hover:text-white transition shadow-sm border border-amber-500/20"
-                              title="Edit Lead Profile"
-                            >
-                              <Edit size={16} />
-                            </button>
-
-                            {/* DELETE BUTTON */}
-                            <button
-                              onClick={() => handleDeleteLead(l.uuid, l.name)}
-                              className="p-2 rounded-xl bg-rose-500/10 text-rose-600 hover:bg-rose-600 hover:text-white transition shadow-sm border border-rose-500/20"
-                              title="Delete Lead"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={11} className="p-10 text-center text-muted-foreground font-extrabold text-base">
-                        No lead profiles match your search filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-      )}
-
-      {/* 2. LEAD CREATE FORM */}
-      {activeTab === "create" && (
-        <div className="max-w-3xl mx-auto rounded-2xl border border-border bg-card p-8 shadow-sm space-y-6">
-          <div className="border-b border-border/60 pb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-black">Register New Lead Profile</h2>
-              <p className="text-sm text-muted-foreground mt-1">Fill in prospect details, property interest, and sales team assignments.</p>
-            </div>
-            <button onClick={() => setActiveTab("list")} className="text-sm font-bold text-muted-foreground hover:underline">
-              Back to List
-            </button>
-          </div>
-
-          <form onSubmit={handleCreateSubmit} className="space-y-5 text-sm font-bold">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <label className="block mb-1.5 text-sm font-extrabold">Client Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Dr. Tariqul Islam"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full border rounded-xl p-3 outline-none bg-background border-border text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block mb-1.5 text-sm font-extrabold">Primary Phone *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="+88017XXXXXXXX"
-                  value={formData.phone}
-                  onChange={(e) => handlePhoneChange(e.target.value)}
-                  className={`w-full border rounded-xl p-3 outline-none bg-background text-sm ${
-                    phoneError ? "border-rose-500" : "border-border"
-                  }`}
-                />
-                {phoneError && <p className="text-rose-500 text-xs mt-1 font-bold">{phoneError}</p>}
-              </div>
-
-              <div>
-                <label className="block mb-1.5 text-sm font-extrabold">Email Address</label>
-                <input
-                  type="email"
-                  placeholder="client@example.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full border rounded-xl p-3 outline-none bg-background border-border text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block mb-1.5 text-sm font-extrabold">Category Level *</label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full border rounded-xl p-3 outline-none bg-background border-border text-sm capitalize"
-                >
-                  <option value="hot">Hot (High Priority)</option>
-                  <option value="warm">Warm (Moderate)</option>
-                  <option value="cold">Cold (Inquiry Only)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block mb-1.5 text-sm font-extrabold">Lead Source *</label>
-                <select
-                  value={formData.source}
-                  onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                  className="w-full border rounded-xl p-3 outline-none bg-background border-border text-sm"
-                >
-                  <option value="Website">Website</option>
-                  <option value="Facebook Ads">Facebook Ads</option>
-                  <option value="Referral">Referral</option>
-                  <option value="Cold Call">Cold Call</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block mb-1.5 text-sm font-extrabold">Initial Pipeline Stage *</label>
-                <select
-                  value={formData.stage}
-                  onChange={(e) => setFormData({ ...formData, stage: e.target.value })}
-                  className="w-full border rounded-xl p-3 outline-none bg-background border-border text-sm"
-                >
-                  <option value="New">New (Default)</option>
-                  <option value="Site Visit Scheduled">Site Visit Scheduled</option>
-                  <option value="Negotiation">Negotiation</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block mb-1.5 text-sm font-extrabold">Project Interest</label>
-                <select
-                  value={formData.project}
-                  onChange={(e) => setFormData({ ...formData, project: e.target.value })}
-                  className="w-full border rounded-xl p-3 outline-none bg-background border-border text-sm"
-                >
-                  <option value="Skyline City Tower">Skyline City Tower</option>
-                  <option value="Uttara Lake View">Uttara Lake View</option>
-                  <option value="Banani Suite 2A">Banani Suite 2A</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block mb-1.5 text-sm font-extrabold">Estimated Budget (BDT)</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 15000000"
-                  value={formData.budget}
-                  onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                  className="w-full border rounded-xl p-3 outline-none bg-background border-border font-mono text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block mb-1.5 text-sm font-extrabold">Assign Sales Executive</label>
-                <select
-                  value={formData.assignee}
-                  onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
-                  className="w-full border rounded-xl p-3 outline-none bg-background border-border text-sm"
-                >
-                  <option value="Shamim Khan">Shamim Khan</option>
-                  <option value="Tanvir Ahmed">Tanvir Ahmed</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block mb-1.5 text-sm font-extrabold">Tags (Comma Separated)</label>
-                <input
-                  type="text"
-                  placeholder="VIP, Urgent, Ready Buyer"
-                  value={formData.tags}
-                  onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                  className="w-full border rounded-xl p-3 outline-none bg-background border-border text-sm"
-                />
-              </div>
-
-            </div>
-
-            <div>
-              <label className="block mb-1.5 text-sm font-extrabold">Requirement Details *</label>
-              <textarea
-                required
-                rows={3}
-                placeholder="Specific unit preference, floor requirements, facing..."
-                value={formData.requirement}
-                onChange={(e) => setFormData({ ...formData, requirement: e.target.value })}
-                className="w-full border rounded-xl p-3 outline-none bg-background border-border text-sm resize-none"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-5 border-t border-border">
-              <button
-                type="button"
-                onClick={() => setActiveTab("list")}
-                className="px-5 py-2.5 rounded-xl bg-muted font-bold text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={!!phoneError}
-                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm shadow-md disabled:opacity-50"
-              >
-                Save Lead Profile
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* 3. LEAD DETAIL VIEW */}
-      {activeTab === "detail" && selectedLead && (
-        <div className="space-y-5">
-          <div className="p-6 rounded-2xl border border-border bg-card shadow-sm space-y-5">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 border-b border-border/60 pb-5">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm font-bold text-indigo-600">{selectedLead.code}</span>
-                  <span className="px-3 py-1 rounded-full text-xs font-extrabold uppercase bg-indigo-500/10 text-indigo-600 border border-indigo-500/20">
-                    {selectedLead.stage}
-                  </span>
-                  <span className="px-3 py-1 rounded-full text-xs font-extrabold uppercase bg-rose-500/10 text-rose-600 border border-rose-500/20">
-                    {selectedLead.category}
-                  </span>
-                </div>
-                <h1 className="text-3xl font-black text-foreground mt-1.5">{selectedLead.name}</h1>
-                <p className="text-sm text-muted-foreground font-mono mt-0.5">{selectedLead.phone} • {selectedLead.email}</p>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                <button onClick={handleCall} className="px-4 py-2.5 bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-xl transition flex items-center gap-2 text-xs font-bold border border-emerald-500/20">
-                  <Phone size={16} /> Call
-                </button>
-
-                <button onClick={handleSMS} className="px-4 py-2.5 bg-blue-600/10 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl transition flex items-center gap-2 text-xs font-bold border border-blue-500/20">
-                  <MessageSquare size={16} /> SMS
-                </button>
-
-                <button onClick={handleEmail} className="px-4 py-2.5 bg-indigo-600/10 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition flex items-center gap-2 text-xs font-bold border border-indigo-500/20">
-                  <Mail size={16} /> Email
-                </button>
-
-                <button onClick={handleWhatsApp} className="px-4 py-2.5 bg-teal-600/10 text-teal-600 hover:bg-teal-600 hover:text-white rounded-xl transition flex items-center gap-2 text-xs font-bold border border-teal-500/20">
-                  <Send size={16} /> WhatsApp
-                </button>
-
-                <button onClick={() => { setNewAssignee(selectedLead.assignee); setShowAssignModal(true); }} className="px-4 py-2.5 bg-purple-600/10 text-purple-600 hover:bg-purple-600 hover:text-white rounded-xl transition flex items-center gap-2 text-xs font-bold border border-purple-500/20">
-                  <UserCheck size={16} /> Assign
-                </button>
-
-                <button onClick={() => setShowConvertModal(true)} className="px-4 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl transition flex items-center gap-2 text-xs font-bold shadow-md">
-                  <ArrowRightLeft size={16} /> Convert
-                </button>
-
-                <button onClick={handleReject} className="px-4 py-2.5 bg-rose-600/10 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl transition flex items-center gap-2 text-xs font-bold border border-rose-500/20">
-                  <XCircle size={16} /> Reject
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 text-sm font-semibold">
-              <div>
-                <span className="text-muted-foreground block text-xs uppercase font-extrabold">Project Interest</span>
-                <span className="text-foreground text-base font-bold">{selectedLead.project}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-xs uppercase font-extrabold">Target Budget</span>
-                <span className="font-mono font-bold text-emerald-600 text-base">৳{selectedLead.budget?.toLocaleString()}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-xs uppercase font-extrabold">Assigned Representative</span>
-                <span className="text-foreground text-base font-bold">{selectedLead.assignee}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-xs uppercase font-extrabold">Tags & Category</span>
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {selectedLead.tags.map((t) => (
-                    <span key={t} className="px-2.5 py-1 bg-muted text-xs rounded-md font-bold">{t}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* DYNAMIC EDIT LEAD MODAL */}
-      {showEditModal && editFormData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl bg-card border border-border p-6 space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-border pb-3">
-              <h3 className="font-black text-lg">Edit Lead Profile ({editFormData.code})</h3>
-              <button onClick={() => setShowEditModal(false)}><X size={20} /></button>
-            </div>
-            <form onSubmit={handleEditSubmit} className="space-y-4 text-sm font-bold">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-extrabold mb-1">Client Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={editFormData.name}
-                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                    className="w-full p-2.5 border rounded-xl bg-background border-border text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-extrabold mb-1">Phone</label>
-                  <input
-                    type="text"
-                    required
-                    value={editFormData.phone}
-                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                    className="w-full p-2.5 border rounded-xl bg-background border-border text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-extrabold mb-1">Stage</label>
-                  <select
-                    value={editFormData.stage}
-                    onChange={(e) => setEditFormData({ ...editFormData, stage: e.target.value })}
-                    className="w-full p-2.5 border rounded-xl bg-background border-border text-sm"
-                  >
-                    <option value="New">New</option>
-                    <option value="Site Visit Scheduled">Site Visit Scheduled</option>
-                    <option value="Negotiation">Negotiation</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-extrabold mb-1">Assignee</label>
-                  <select
-                    value={editFormData.assignee}
-                    onChange={(e) => setEditFormData({ ...editFormData, assignee: e.target.value })}
-                    className="w-full p-2.5 border rounded-xl bg-background border-border text-sm"
-                  >
-                    <option value="Shamim Khan">Shamim Khan</option>
-                    <option value="Tanvir Ahmed">Tanvir Ahmed</option>
-                    <option value="Rafiqul Islam">Rafiqul Islam</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-extrabold mb-1">Status</label>
-                  <select
-                    value={editFormData.status}
-                    onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value as any })}
-                    className="w-full p-2.5 border rounded-xl bg-background border-border text-sm"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Converted">Converted</option>
-                    <option value="Rejected">Rejected</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-extrabold mb-1">Budget (BDT)</label>
-                  <input
-                    type="number"
-                    value={editFormData.budget || 0}
-                    onChange={(e) => setEditFormData({ ...editFormData, budget: Number(e.target.value) })}
-                    className="w-full p-2.5 border rounded-xl bg-background border-border text-sm font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-border">
-                <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 rounded-xl bg-muted font-bold text-sm">
-                  Cancel
-                </button>
-                <button type="submit" className="px-5 py-2 rounded-xl bg-amber-600 text-white font-black text-sm shadow-md">
-                  Update Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ASSIGN MODAL */}
-      {showAssignModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-card border border-border p-6 space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-border pb-3">
-              <h3 className="font-black text-base">Assign Sales Representative</h3>
-              <button onClick={() => setShowAssignModal(false)}><X size={20} /></button>
-            </div>
-            <form onSubmit={handleAssignSubmit} className="space-y-4 text-sm font-bold">
-              <select
-                value={newAssignee}
-                onChange={(e) => setNewAssignee(e.target.value)}
-                className="w-full p-3 border rounded-xl bg-background border-border text-sm"
-              >
-                <option value="Shamim Khan">Shamim Khan</option>
-                <option value="Tanvir Ahmed">Tanvir Ahmed</option>
-                <option value="Rafiqul Islam">Rafiqul Islam</option>
-              </select>
-              <div className="flex justify-end gap-3 pt-3 border-t border-border">
-                <button type="button" onClick={() => setShowAssignModal(false)} className="px-4 py-2 rounded-xl bg-muted font-bold text-sm">Cancel</button>
-                <button type="submit" className="px-5 py-2 rounded-xl bg-purple-600 text-white font-black text-sm shadow-md">Save Assignee</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* CONVERT MODAL */}
-      {showConvertModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-card border border-border p-6 space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-border pb-3">
-              <h3 className="font-black text-base">Convert Lead to Customer</h3>
-              <button onClick={() => setShowConvertModal(false)}><X size={20} /></button>
-            </div>
-            <p className="text-sm text-muted-foreground font-medium">This action will convert <strong>{selectedLead?.name}</strong> to an official Customer Profile.</p>
-            <form onSubmit={handleConvertSubmit} className="space-y-4 text-sm font-bold">
-              <div className="flex justify-end gap-3 pt-3 border-t border-border">
-                <button type="button" onClick={() => setShowConvertModal(false)} className="px-4 py-2 rounded-xl bg-muted font-bold text-sm">Cancel</button>
-                <button type="submit" className="px-5 py-2 rounded-xl bg-emerald-600 text-white font-black text-sm shadow-md">Confirm Conversion</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
+      <AlertDeleteModals
+        isAlertOpen={isAlertOpen}
+        onCloseAlert={() => setIsAlertOpen(false)}
+        isDeleteModalOpen={isDeleteModalOpen}
+        onCloseDelete={() => setIsDeleteModalOpen(false)}
+        activeLead={activeLead}
+        onConfirmDelete={handleConfirmDelete}
+      />
     </div>
   );
 }

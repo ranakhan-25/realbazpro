@@ -1,575 +1,483 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { 
-  Home, 
-  ChevronRight, 
-  Plus, 
-  Search, 
-  Layers, 
-  Grid, 
-  X,
-  Eye,
-  Edit,
-  Trash2,
-  DollarSign
+import { useSearchParams } from 'next/navigation';
+import {
+  Home, ChevronRight, Plus, Search, Layers, Grid, X, Eye, Edit, Trash2,
+  Building2, RefreshCw, Undo2, AlertCircle, CheckCircle2, Loader2, ArrowUpDown,
 } from 'lucide-react';
 
+/* ----------------------------------------------------------------------------
+ * API LAYER
+ * ------------------------------------------------------------------------- */
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/realbizpro/api/v1';
+
 interface ProjectFloor {
-  id: string;
+  uuid: string;
   buildingUuid: string;
+  floorCode: string;
   name: string;
-  number: number; // Unique in building
+  number: number;
   units_count: number;
 }
 
-interface ProjectUnit {
-  id: string;
-  floorUuid: string;
-  code: string;
-  type: '1BHK' | '2BHK' | '3BHK' | 'office' | 'shop' | 'plot';
-  size_sqft: number;
-  facing: string;
-  price: number;
-  status: 'available' | 'booked' | 'sold' | 'reserved' | 'blocked';
+interface BuildingItem {
+  uuid: string;
+  buildingName: string;
+  buildingCode: string;
 }
 
-const initialFloors: ProjectFloor[] = [
-  { id: 'FLR-001', buildingUuid: 'BLD-101', name: 'Ground Floor', number: 0, units_count: 1 },
-  { id: 'FLR-002', buildingUuid: 'BLD-101', name: '1st Floor - Commercial', number: 1, units_count: 1 },
-  { id: 'FLR-003', buildingUuid: 'BLD-101', name: '2nd Floor - Premium Suites', number: 2, units_count: 2 },
-  { id: 'FLR-004', buildingUuid: 'BLD-101', name: '3rd Floor - Executive Penthouse', number: 3, units_count: 0 }
-];
+async function request<T = any>(path: string, init?: RequestInit): Promise<T> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init?.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    let msg = `Request failed (${res.status})`;
+    try {
+      const j = await res.json();
+      msg = Array.isArray(j?.message) ? j.message.join(', ') : j?.message || msg;
+    } catch {}
+    throw new Error(msg);
+  }
+  if (res.status === 204) return undefined as T;
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}
 
-const initialUnits: ProjectUnit[] = [
-  { id: 'UNT-001', floorUuid: 'FLR-003', code: 'A-301', type: '3BHK', size_sqft: 1850, facing: 'SE', price: 185000, status: 'available' },
-  { id: 'UNT-002', floorUuid: 'FLR-003', code: 'A-302', type: '2BHK', size_sqft: 1250, facing: 'N', price: 125000, status: 'booked' },
-  { id: 'UNT-003', floorUuid: 'FLR-001', code: 'G-001', type: 'shop', size_sqft: 600, facing: 'E', price: 90000, status: 'available' },
-  { id: 'UNT-004', floorUuid: 'FLR-002', code: 'C-101', type: 'office', size_sqft: 1200, facing: 'N', price: 150000, status: 'sold' },
-];
+const unwrapList = (r: any): any[] => {
+  if (Array.isArray(r)) return r;
+  if (Array.isArray(r?.data)) return r.data;
+  if (Array.isArray(r?.data?.data)) return r.data.data;
+  if (Array.isArray(r?.data?.items)) return r.data.items;
+  if (Array.isArray(r?.items)) return r.items;
+  return [];
+};
 
-export default function FloorsListPage() {
-  const [floors, setFloors] = useState<ProjectFloor[]>(initialFloors);
-  const [units, setUnits] = useState<ProjectUnit[]>(initialUnits);
+const unwrapOne = (r: any) => (r?.data && !Array.isArray(r.data) ? r.data : r);
+
+const normalize = (f: any): ProjectFloor => ({
+  uuid: f.uuid ?? f.id,
+  buildingUuid: f.buildingUuid ?? f.building_uuid ?? '',
+  floorCode: f.floorCode ?? f.floor_code ?? '',
+  name: f.floorName ?? f.name ?? '',
+  number: Number(f.floorNumber ?? f.number ?? 0),
+  units_count: Number(f.units_count ?? f.unitsCount ?? 0),
+});
+
+const floorApi = {
+  list: async (buildingUuid?: string) => {
+    const q = buildingUuid ? `?buildingUuid=${encodeURIComponent(buildingUuid)}` : '';
+    return unwrapList(await request(`/floor${q}`)).map(normalize);
+  },
+  create: async (body: any) => normalize(unwrapOne(await request('/floor', { method: 'POST', body: JSON.stringify(body) }))),
+  update: async (uuid: string, body: any) => request(`/floor/${uuid}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  remove: (uuid: string) => request(`/floor/${uuid}`, { method: 'DELETE' }),
+  restore: (uuid: string) => request(`/floor/${uuid}/restore`, { method: 'PATCH' }),
+};
+
+// ✅ Building API: siteUuid ছাড়াই কল করলে সব বিল্ডিং আসবে
+const buildingApi = {
+  list: async () => {
+    const res = await request(`/building?limit=100`);
+    return unwrapList(res).map((b: any) => ({
+      uuid: b.uuid,
+      buildingName: b.buildingName ?? b.name ?? 'Unknown',
+      buildingCode: b.buildingCode ?? 'N/A',
+    })) as BuildingItem[];
+  },
+};
+
+/* ----------------------------------------------------------------------------
+ * UI Helpers
+ * ------------------------------------------------------------------------- */
+const inputCls =
+  'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10';
+const labelCls = 'mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500';
+
+function ModalShell({
+  title, subtitle, onClose, children, maxW = 'max-w-lg', z = 'z-50',
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  maxW?: string;
+  z?: string;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className={`fixed inset-0 ${z} flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm`} onMouseDown={onClose}>
+      <div
+        onMouseDown={(e) => e.stopPropagation()}
+        className={`flex max-h-[90vh] w-full ${maxW} flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200`}
+      >
+        <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-6 py-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">{title}</h2>
+            {subtitle && <p className="mt-0.5 font-mono text-[11px] text-slate-400">{subtitle}</p>}
+          </div>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------------------
+ * Page Component
+ * ------------------------------------------------------------------------- */
+function FloorsListInner() {
+  const searchParams = useSearchParams();
+  const buildingUuidFromUrl = searchParams.get('buildingUuid') || undefined;
+
+  const [floors, setFloors] = useState<ProjectFloor[]>([]);
+  const [buildings, setBuildings] = useState<BuildingItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isLoadingBuildings, setIsLoadingBuildings] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Modals States
+  const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string; undo?: () => void } | null>(null);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [viewFloor, setViewFloor] = useState<ProjectFloor | null>(null);
   const [editFloor, setEditFloor] = useState<ProjectFloor | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ProjectFloor | null>(null);
 
-  // View Floor Units Modal State
-  const [selectedFloorForUnits, setSelectedFloorForUnits] = useState<ProjectFloor | null>(null);
-  const [isAddUnitModalOpen, setIsAddUnitModalOpen] = useState(false);
-  const [unitFormData, setUnitFormData] = useState({
-    code: '',
-    type: '3BHK' as ProjectUnit['type'],
-    size_sqft: '',
-    facing: 'SE',
-    price: '',
-    status: 'available' as ProjectUnit['status']
-  });
-
-  // Add Floor Form State
   const [formData, setFormData] = useState({
-    name: '',
-    number: ''
+    buildingUuid: buildingUuidFromUrl ?? '',
+    floorCode: '',
+    floorName: '',
+    floorNumber: '',
   });
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const notify = useCallback((t: NonNullable<typeof toast>) => {
+    setToast(t);
+    window.setTimeout(() => setToast((cur) => (cur === t ? null : cur)), t.undo ? 7000 : 3500);
+  }, []);
+
+  // ✅ বিল্ডিং লিস্ট ফেচ (siteUuid ছাড়াই)
+  const fetchBuildings = useCallback(async () => {
+    try {
+      setIsLoadingBuildings(true);
+      const data = await buildingApi.list();
+      setBuildings(data);
+    } catch (e: any) {
+      console.error('Failed to load buildings', e);
+      notify({ type: 'err', msg: e.message || 'Failed to load buildings' });
+    } finally {
+      setIsLoadingBuildings(false);
+    }
+  }, [notify]);
+
+  useEffect(() => {
+    if (isModalOpen || editFloor) fetchBuildings();
+  }, [isModalOpen, editFloor, fetchBuildings]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setFloors(await floorApi.list(buildingUuidFromUrl));
+    } catch (e: any) {
+      setError(e.message || 'Failed to load floors');
+    } finally {
+      setLoading(false);
+    }
+  }, [buildingUuidFromUrl]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    if (buildingUuidFromUrl) setFormData((c) => ({ ...c, buildingUuid: buildingUuidFromUrl }));
+  }, [buildingUuidFromUrl]);
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const floorNum = parseInt(formData.number) || 0;
-
-    const newFloor: ProjectFloor = {
-      id: `FLR-00${floors.length + 1}`,
-      buildingUuid: 'BLD-101',
-      name: formData.name || `Floor ${floorNum}`,
-      number: floorNum,
-      units_count: 0
-    };
-
-    setFloors([...floors, newFloor]);
-    setIsModalOpen(false);
-    setFormData({ name: '', number: '' });
+    if (!formData.buildingUuid) {
+      notify({ type: 'err', msg: 'Please select a building' });
+      return;
+    }
+    setBusy(true);
+    try {
+      await floorApi.create({
+        buildingUuid: formData.buildingUuid.trim(),
+        floorCode: formData.floorCode.trim(),
+        floorName: formData.floorName.trim(),
+        floorNumber: Number(formData.floorNumber),
+      });
+      setIsModalOpen(false);
+      setFormData({ buildingUuid: buildingUuidFromUrl ?? '', floorCode: '', floorName: '', floorNumber: '' });
+      notify({ type: 'ok', msg: `"${formData.floorName}" created` });
+      await load();
+    } catch (err: any) {
+      notify({ type: 'err', msg: err.message });
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editFloor) return;
-    setFloors(floors.map(f => f.id === editFloor.id ? editFloor : f));
-    setEditFloor(null);
+    setBusy(true);
+    try {
+      await floorApi.update(editFloor.uuid, {
+        buildingUuid: editFloor.buildingUuid,
+        floorCode: editFloor.floorCode.trim(),
+        floorName: editFloor.name.trim(),
+        floorNumber: editFloor.number,
+      });
+      setEditFloor(null);
+      notify({ type: 'ok', msg: 'Floor updated' });
+      await load();
+    } catch (err: any) {
+      notify({ type: 'err', msg: err.message });
+    } finally {
+      setBusy(false);
+    }
   };
 
-  // Add Unit to Specific Floor Handler
-  const handleAddUnitSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFloorForUnits) return;
-
-    const newUnit: ProjectUnit = {
-      id: `UNT-00${units.length + 1}`,
-      floorUuid: selectedFloorForUnits.id,
-      code: unitFormData.code || `U-${Math.floor(100 + Math.random() * 900)}`,
-      type: unitFormData.type,
-      size_sqft: parseFloat(unitFormData.size_sqft) || 1000,
-      facing: unitFormData.facing,
-      price: parseFloat(unitFormData.price) || 100000,
-      status: unitFormData.status
-    };
-
-    setUnits([newUnit, ...units]);
-
-    // Update floor units count
-    setFloors(floors.map(f => f.id === selectedFloorForUnits.id ? { ...f, units_count: f.units_count + 1 } : f));
-    setSelectedFloorForUnits({ ...selectedFloorForUnits, units_count: selectedFloorForUnits.units_count + 1 });
-
-    setIsAddUnitModalOpen(false);
-    setUnitFormData({ code: '', type: '3BHK', size_sqft: '', facing: 'SE', price: '', status: 'available' });
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setBusy(true);
+    try {
+      await floorApi.remove(target.uuid);
+      setDeleteTarget(null);
+      await load();
+      notify({
+        type: 'ok',
+        msg: `"${target.name}" deleted`,
+        undo: async () => {
+          try {
+            await floorApi.restore(target.uuid);
+            notify({ type: 'ok', msg: 'Floor restored' });
+            await load();
+          } catch (err: any) {
+            notify({ type: 'err', msg: err.message });
+          }
+        },
+      });
+    } catch (err: any) {
+      notify({ type: 'err', msg: err.message });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const filteredFloors = useMemo(() => {
-    return floors.filter((f) =>
-      f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      f.number.toString().includes(searchQuery)
-    );
+    const q = searchQuery.toLowerCase();
+    return floors.filter((f) => f.name.toLowerCase().includes(q) || f.number.toString().includes(q));
   }, [floors, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-white p-6 lg:p-8 font-sans text-slate-800">
-      {/* Header & Breadcrumbs */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 p-6 font-sans text-slate-800 lg:p-10">
+      {/* Header */}
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <nav className="flex items-center text-sm text-slate-500 space-x-2 mb-1">
-            <Link href="/projects" className="flex items-center hover:text-blue-600 transition-colors">
-              <Home className="w-4 h-4 mr-1 text-slate-600" /> Projects
+          <nav className="mb-2 flex items-center space-x-2 text-sm text-slate-500">
+            <Link href="/projects" className="flex items-center hover:text-indigo-600">
+              <Home className="mr-1 h-4 w-4" /> Projects
             </Link>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
-            <Link href="/projects/sites" className="hover:text-blue-600 cursor-pointer">Buildings</Link>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
+            <ChevronRight className="h-4 w-4 text-slate-300" />
+            <Link href="/projects/sites" className="hover:text-indigo-600">Buildings</Link>
+            <ChevronRight className="h-4 w-4 text-slate-300" />
             <span className="font-semibold text-slate-900">Floors</span>
           </nav>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Building Floors Directory</h1>
+          <h1 className="bg-gradient-to-r from-slate-900 to-indigo-700 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
+            Building Floors Directory
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">Manage every level, its units and availability in one place.</p>
         </div>
-
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 px-4 rounded-xl shadow-sm transition-all"
-        >
-          <Plus className="w-4 h-4" /> Add Floor
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50">
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </button>
+          <button onClick={() => setIsModalOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 hover:-translate-y-0.5">
+            <Plus className="h-4 w-4" /> Add Floor
+          </button>
+        </div>
       </div>
 
-      {/* Floors Table */}
-      <div className="border border-slate-200 rounded-2xl shadow-sm bg-white overflow-hidden">
-        <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
-          <p className="font-bold text-slate-900 text-sm">Building: Tower A - Residential West</p>
-          <div className="relative w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-            <input
-              type="text"
-              placeholder="Search floor name, number..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl pl-10 pr-4 py-2 w-full focus:outline-none focus:border-blue-600 shadow-sm"
-            />
+      {/* Table card */}
+      <div className="overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-slate-200/70">
+        <div className="flex flex-col gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-indigo-600" />
+            <p className="text-sm font-bold text-slate-900">
+              {buildingUuidFromUrl ? <>Building <span className="font-mono text-indigo-600">{buildingUuidFromUrl.slice(0, 8)}...</span></> : 'All Buildings'}
+            </p>
+          </div>
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+            <input type="text" placeholder="Search floor name, number..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className={`${inputCls} pl-10`} />
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="bg-slate-100 text-slate-700 text-xs uppercase tracking-wider font-bold border-b border-slate-200">
-                <th className="py-3.5 px-4">Floor Code</th>
-                <th className="py-3.5 px-4">Floor Name</th>
-                <th className="py-3.5 px-4">Floor Number</th>
-                <th className="py-3.5 px-4">Units#</th>
-                <th className="py-3.5 px-4 text-center">Units Link</th>
-                <th className="py-3.5 px-4 text-center">Actions</th>
+              <tr className="border-b border-slate-100 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                <th className="px-5 py-3.5">Floor Code</th>
+                <th className="px-5 py-3.5">Floor Name</th>
+                <th className="px-5 py-3.5">Level</th>
+                <th className="px-5 py-3.5">Units</th>
+                <th className="px-5 py-3.5 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
-              {filteredFloors.length > 0 ? (
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={i}><td colSpan={5} className="px-5 py-4"><div className="h-4 animate-pulse rounded bg-slate-100" /></td></tr>
+                ))
+              ) : filteredFloors.length > 0 ? (
                 filteredFloors.map((floor) => (
-                  <tr key={floor.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-semibold text-blue-600">{floor.id}</td>
-                    <td className="py-3.5 px-4 font-bold text-slate-900">{floor.name}</td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-800">#Level {floor.number}</td>
-                    <td className="py-3.5 px-4 font-bold text-slate-900">{floor.units_count} Units</td>
-                    <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => setSelectedFloorForUnits(floor)}
-                        className="text-xs text-blue-600 font-semibold hover:underline inline-flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all hover:bg-blue-100"
-                      >
-                        View Units <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
+                  <tr key={floor.uuid} className="hover:bg-indigo-50/40">
+                    <td className="px-5 py-4 font-mono text-xs font-semibold text-indigo-600">{floor.floorCode || floor.uuid.slice(0, 8)}</td>
+                    <td className="px-5 py-4 font-bold text-slate-900">{floor.name}</td>
+                    <td className="px-5 py-4"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">Level {floor.number}</span></td>
+                    <td className="px-5 py-4 font-bold text-slate-900">{floor.units_count} Units</td>
+                    <td className="px-5 py-4 text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => setViewFloor(floor)}
-                          className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setEditFloor({ ...floor })}
-                          className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors"
-                          title="Edit Floor"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setFloors(floors.filter(f => f.id !== floor.id))}
-                          className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition-colors"
-                          title="Delete Floor"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <button onClick={() => setEditFloor({ ...floor })} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"><Edit className="h-4 w-4" /></button>
+                        <button onClick={() => setDeleteTarget(floor)} className="rounded-lg p-2 text-rose-600 hover:bg-rose-50"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
-                    No floors found matching selection.
-                  </td>
-                </tr>
+                <tr><td colSpan={5} className="py-16 text-center text-slate-400"><Layers className="mx-auto mb-2 h-8 w-8 text-slate-300" /><p>No floors found.</p></td></tr>
               )}
             </tbody>
           </table>
         </div>
+        {!loading && (
+          <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-xs text-slate-500">
+            Showing <b>{filteredFloors.length}</b> of <b>{floors.length}</b> floors
+          </div>
+        )}
       </div>
 
-      {/* ========================================================================= */}
-      {/* 1. ADD FLOOR MODAL                                                        */}
-      {/* ========================================================================= */}
+      {/* Add Floor Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Add Floor Form</h2>
-              <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Floor Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. 2nd Floor - Premium Suites"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 shadow-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Floor Number *</label>
-                <input
-                  type="number"
-                  required
-                  placeholder="2"
-                  value={formData.number}
-                  onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                  className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 shadow-sm"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm"
-                >
-                  Save Floor
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 2. VIEW FLOOR UNITS MODAL (FUNCTIONAL)                                    */}
-      {/* ========================================================================= */}
-      {selectedFloorForUnits && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Units on {selectedFloorForUnits.name}</h2>
-                <p className="text-xs text-slate-500 font-mono">Floor ID: {selectedFloorForUnits.id}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setIsAddUnitModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-xl shadow-sm"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add Unit to Floor
-                </button>
-                <button onClick={() => setSelectedFloorForUnits(null)} className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 overflow-y-auto flex-1">
-              {units.filter(u => u.floorUuid === selectedFloorForUnits.id).length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {units.filter(u => u.floorUuid === selectedFloorForUnits.id).map(unit => (
-                    <div key={unit.id} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 shadow-sm">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-mono font-bold text-blue-600">{unit.code}</span>
-                        <span className="text-xs font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full capitalize">
-                          {unit.status}
-                        </span>
-                      </div>
-                      <div className="space-y-1 text-xs text-slate-600">
-                        <div className="flex justify-between">
-                          <span>Type:</span> <span className="font-bold text-slate-800 uppercase">{unit.type}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Size:</span> <span className="font-bold text-slate-800">{unit.size_sqft} sqft</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Facing:</span> <span className="font-bold text-slate-800 font-mono">{unit.facing}</span>
-                        </div>
-                        <div className="flex justify-between pt-2 border-t border-slate-200 font-bold text-slate-900">
-                          <span>Price:</span> <span className="text-blue-600">${unit.price.toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+        <ModalShell title="Add Floor" onClose={() => setIsModalOpen(false)}>
+          <form onSubmit={handleFormSubmit} className="space-y-4 p-6">
+            <div>
+              <label className={labelCls}>Select Building *</label>
+              {isLoadingBuildings ? (
+                <div className="flex items-center gap-2 text-sm text-slate-500 py-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading buildings...</div>
+              ) : buildings.length === 0 ? (
+                <div className="text-sm text-rose-600 py-2 bg-rose-50 px-3 rounded-lg">No buildings found. Please create a building first.</div>
               ) : (
-                <div className="py-12 text-center text-slate-400">
-                  <p>No units found for this floor yet.</p>
-                  <button
-                    onClick={() => setIsAddUnitModalOpen(true)}
-                    className="mt-3 text-xs text-blue-600 font-semibold hover:underline"
-                  >
-                    + Click here to add the first unit
-                  </button>
-                </div>
+                <select required value={formData.buildingUuid} onChange={(e) => setFormData({ ...formData, buildingUuid: e.target.value })} className={inputCls}>
+                  <option value="">-- Select a Building --</option>
+                  {buildings.map((b) => (
+                    <option key={b.uuid} value={b.uuid}>{b.buildingName} ({b.buildingCode})</option>
+                  ))}
+                </select>
               )}
             </div>
-
-            <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
-              <button onClick={() => setSelectedFloorForUnits(null)} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl">
-                Close
+            <div><label className={labelCls}>Floor Code *</label><input required placeholder="e.g. FL-01" value={formData.floorCode} onChange={(e) => setFormData({ ...formData, floorCode: e.target.value })} className={inputCls} /></div>
+            <div><label className={labelCls}>Floor Name *</label><input required placeholder="e.g. Ground Floor" value={formData.floorName} onChange={(e) => setFormData({ ...formData, floorName: e.target.value })} className={inputCls} /></div>
+            <div><label className={labelCls}>Floor Number *</label><input type="number" min="0" required placeholder="0" value={formData.floorNumber} onChange={(e) => setFormData({ ...formData, floorNumber: e.target.value })} className={inputCls} /></div>
+            <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700">Cancel</button>
+              <button type="submit" disabled={busy || !formData.buildingUuid} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-60">
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />} Save Floor
               </button>
             </div>
-          </div>
-        </div>
+          </form>
+        </ModalShell>
       )}
 
-      {/* ========================================================================= */}
-      {/* 3. ADD UNIT SUB-MODAL                                                     */}
-      {/* ========================================================================= */}
-      {isAddUnitModalOpen && selectedFloorForUnits && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-900">Add Unit to {selectedFloorForUnits.name}</h2>
-              <button onClick={() => setIsAddUnitModalOpen(false)} className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddUnitSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Unit Code *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. A-301"
-                  value={unitFormData.code}
-                  onChange={(e) => setUnitFormData({ ...unitFormData, code: e.target.value })}
-                  className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full font-mono focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Type *</label>
-                  <select
-                    value={unitFormData.type}
-                    onChange={(e) => setUnitFormData({ ...unitFormData, type: e.target.value as any })}
-                    className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 capitalize"
-                  >
-                    <option value="1BHK">1BHK</option>
-                    <option value="2BHK">2BHK</option>
-                    <option value="3BHK">3BHK</option>
-                    <option value="office">Office</option>
-                    <option value="shop">Shop</option>
-                    <option value="plot">Plot</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Size (sqft) *</label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="1200"
-                    value={unitFormData.size_sqft}
-                    onChange={(e) => setUnitFormData({ ...unitFormData, size_sqft: e.target.value })}
-                    className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Facing *</label>
-                  <select
-                    value={unitFormData.facing}
-                    onChange={(e) => setUnitFormData({ ...unitFormData, facing: e.target.value })}
-                    className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600 uppercase"
-                  >
-                    <option value="N">North (N)</option>
-                    <option value="S">South (S)</option>
-                    <option value="E">East (E)</option>
-                    <option value="W">West (W)</option>
-                    <option value="SE">SE</option>
-                    <option value="SW">SW</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Price ($) *</label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="150000"
-                    value={unitFormData.price}
-                    onChange={(e) => setUnitFormData({ ...unitFormData, price: e.target.value })}
-                    className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAddUnitModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 bg-white text-slate-700 text-xs font-semibold rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm"
-                >
-                  Save Unit
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 4. VIEW FLOOR DETAILS MODAL                                               */}
-      {/* ========================================================================= */}
-      {viewFloor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Floor Details — {viewFloor.id}</h2>
-              <button onClick={() => setViewFloor(null)} className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4 text-sm">
-              <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <div className="flex justify-between">
-                  <span className="text-xs text-slate-500 uppercase font-semibold">Floor Name:</span>
-                  <span className="font-bold text-slate-800">{viewFloor.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-slate-500 uppercase font-semibold">Floor Level Number:</span>
-                  <span className="font-bold text-slate-800 font-mono">#Level {viewFloor.number}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-slate-500 uppercase font-semibold">Total Units:</span>
-                  <span className="font-bold text-blue-600">{viewFloor.units_count} Units</span>
-                </div>
-              </div>
-            </div>
-            <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
-              <button onClick={() => setViewFloor(null)} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 5. EDIT FLOOR MODAL                                                       */}
-      {/* ========================================================================= */}
+      {/* Edit Floor Modal */}
       {editFloor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Edit Floor — {editFloor.id}</h2>
-              <button onClick={() => setEditFloor(null)} className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500">
-                <X className="w-5 h-5" />
+        <ModalShell title="Edit Floor" onClose={() => setEditFloor(null)}>
+          <form onSubmit={handleEditSubmit} className="space-y-4 p-6">
+            <div>
+              <label className={labelCls}>Select Building</label>
+              {isLoadingBuildings ? (
+                <div className="flex items-center gap-2 text-sm text-slate-500 py-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading buildings...</div>
+              ) : (
+                <select 
+                  required 
+                  value={editFloor.buildingUuid || ''} 
+                  onChange={(e) => setEditFloor({ ...editFloor, buildingUuid: e.target.value })} 
+                  className={inputCls}
+                >
+                  <option value="">-- Select a Building --</option>
+                  {buildings.map((b) => (
+                    <option key={b.uuid} value={b.uuid}>{b.buildingName} ({b.buildingCode})</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <div><label className={labelCls}>Floor Code</label><input required value={editFloor.floorCode} onChange={(e) => setEditFloor({ ...editFloor, floorCode: e.target.value })} className={inputCls} /></div>
+            <div><label className={labelCls}>Floor Name</label><input required value={editFloor.name} onChange={(e) => setEditFloor({ ...editFloor, name: e.target.value })} className={inputCls} /></div>
+            <div><label className={labelCls}>Floor Number</label><input type="number" required value={editFloor.number} onChange={(e) => setEditFloor({ ...editFloor, number: parseInt(e.target.value) || 0 })} className={inputCls} /></div>
+            <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
+              <button type="button" onClick={() => setEditFloor(null)} className="rounded-xl border px-5 py-2.5 text-sm font-semibold text-slate-700">Cancel</button>
+              <button type="submit" disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-60">
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />} Update Floor
               </button>
             </div>
+          </form>
+        </ModalShell>
+      )}
 
-            <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Floor Name</label>
-                <input
-                  type="text"
-                  required
-                  value={editFloor.name}
-                  onChange={(e) => setEditFloor({ ...editFloor, name: e.target.value })}
-                  className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Floor Number</label>
-                <input
-                  type="number"
-                  required
-                  value={editFloor.number}
-                  onChange={(e) => setEditFloor({ ...editFloor, number: parseInt(e.target.value) || 0 })}
-                  className="bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditFloor(null)}
-                  className="px-5 py-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl shadow-sm"
-                >
-                  Update Floor
-                </button>
-              </div>
-            </form>
+      {/* Delete Modal */}
+      {deleteTarget && (
+        <ModalShell title="Delete Floor?" onClose={() => setDeleteTarget(null)} maxW="max-w-sm">
+          <div className="p-6 text-sm text-slate-600">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600"><Trash2 className="h-6 w-6" /></div>
+            <p className="text-center"><b className="text-slate-900">{deleteTarget.name}</b> will be removed. You can undo it right after.</p>
+            <div className="mt-6 flex justify-center gap-3">
+              <button onClick={() => setDeleteTarget(null)} className="rounded-xl border px-5 py-2.5 text-sm font-semibold text-slate-700">Cancel</button>
+              <button onClick={confirmDelete} disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-60">
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />} Delete
+              </button>
+            </div>
           </div>
+        </ModalShell>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[70] flex items-center gap-3 rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white shadow-2xl">
+          {toast.type === 'ok' ? <CheckCircle2 className="h-5 w-5 text-emerald-400" /> : <AlertCircle className="h-5 w-5 text-rose-400" />}
+          <span>{toast.msg}</span>
+          {toast.undo && (
+            <button onClick={() => { toast.undo?.(); setToast(null); }} className="ml-2 inline-flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1 text-xs font-semibold hover:bg-white/20">
+              <Undo2 className="h-3.5 w-3.5" /> Undo
+            </button>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+export default function FloorsListPage() {
+  return (
+    <Suspense fallback={null}>
+      <FloorsListInner />
+    </Suspense>
   );
 }
