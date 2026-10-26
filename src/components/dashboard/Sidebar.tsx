@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MENUS, MODULES, type MenuNode, type ModuleKey } from "@/lib/menus";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
+import { useUserAccess } from "@/context/UserAccessContext";
 
 const LAMS_ICONS: Record<string, React.ElementType> = {
   dashboard: LayoutDashboard,
@@ -35,6 +36,26 @@ type Props = {
   onClose: () => void;
   filter: string;
 };
+
+function pruneTreeByAccess(
+  nodes: MenuNode[] | undefined,
+  moduleKey: string,
+  hasAccess: (mod: string, path: string) => boolean,
+): MenuNode[] {
+  if (!nodes || !nodes.length) return [];
+  const out: MenuNode[] = [];
+  for (const n of nodes) {
+    const kids = n.children ? pruneTreeByAccess(n.children, moduleKey, hasAccess) : undefined;
+    const selfAllowed = hasAccess(moduleKey, n.path);
+    if (selfAllowed || (kids && kids.length > 0)) {
+      out.push({
+        ...n,
+        children: kids,
+      });
+    }
+  }
+  return out;
+}
 
 function filterTree(nodes: MenuNode[], q: string): MenuNode[] {
   if (!q) return nodes;
@@ -60,9 +81,25 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
   const pathname = usePathname();
   const { primaryColor } = useTheme();
   const brandColor = primaryColor || FALLBACK_PRIMARY;
+  const { accessibleModules, hasAccessToRoute } = useUserAccess();
+
+  const displayModules = useMemo(() => {
+    if (accessibleModules && accessibleModules.length > 0) {
+      return accessibleModules.map((m) => ({
+        key: m.key as ModuleKey,
+        label: m.name,
+      }));
+    }
+    return MODULES;
+  }, [accessibleModules]);
 
   const q = filter.trim().toLowerCase();
-  const tree = useMemo(() => filterTree(MENUS[module], q), [module, q]);
+  const rawTree = MENUS[module] || [];
+  const permittedTree = useMemo(() => {
+    return pruneTreeByAccess(rawTree, module, hasAccessToRoute);
+  }, [rawTree, module, hasAccessToRoute]);
+
+  const tree = useMemo(() => filterTree(permittedTree, q), [permittedTree, q]);
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -240,7 +277,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
               e.currentTarget.style.boxShadow = "";
             }}
           >
-            {MODULES.map((m) => (
+            {displayModules.map((m) => (
               <option key={m.key} value={m.key}>
                 {m.label}
               </option>
