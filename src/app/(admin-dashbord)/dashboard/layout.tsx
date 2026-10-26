@@ -13,10 +13,12 @@ import { UserAccessProvider, useUserAccess } from "@/context/UserAccessContext";
 function DashboardAccessGuard({
   moduleKey,
   activePath,
+  isHubRoot,
   children,
 }: {
   moduleKey: ModuleKey;
   activePath: string;
+  isHubRoot?: boolean;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -33,6 +35,11 @@ function DashboardAccessGuard({
         </div>
       </div>
     );
+  }
+
+  // Universal Dashboard Hub root is always allowed for authenticated sessions
+  if (isHubRoot) {
+    return <>{children}</>;
   }
 
   // Anti-sneak zero-trust validation
@@ -104,10 +111,14 @@ function DashboardContent({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const { accessibleModules } = useUserAccess();
 
+  const isHubRoot = pathname === "/dashboard" || pathname === "/dashboard/";
   const rest = pathname.replace(/^\/dashboard\/?/, "");
   const [first = "", ...restParts] = rest.split("/").filter(Boolean);
-  const moduleKey: ModuleKey = isModuleKey(first) ? first : "project";
+  const defaultModuleKey: ModuleKey =
+    accessibleModules.length > 0 ? (accessibleModules[0].key as ModuleKey) : "project";
+  const moduleKey: ModuleKey = isModuleKey(first) ? first : defaultModuleKey;
   const activePath = restParts.join("/");
 
   return (
@@ -127,7 +138,11 @@ function DashboardContent({
           filter={search}
         />
         <main className="min-w-0 flex-1">
-          <DashboardAccessGuard moduleKey={moduleKey} activePath={activePath}>
+          <DashboardAccessGuard
+            moduleKey={moduleKey}
+            activePath={activePath}
+            isHubRoot={isHubRoot}
+          >
             {children}
           </DashboardAccessGuard>
         </main>

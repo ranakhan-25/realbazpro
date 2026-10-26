@@ -952,6 +952,14 @@ async function apiFetch<T>(
 
     const json = await res.json();
     const data = (json.data !== undefined ? json.data : json) as T;
+    if (method === "POST") {
+      const { resource } = parseEndpoint(endpoint);
+      const list = getFallbackListForResource(resource);
+      if (list && data && typeof data === "object") {
+        list.unshift(data);
+        saveToLocalStorage(resource, list);
+      }
+    }
     // If backend returns an empty array, and fallbackData is provided and non-empty, use fallbackData
     if (Array.isArray(data) && data.length === 0 && Array.isArray(fallbackData) && fallbackData.length > 0) {
       return fallbackData;

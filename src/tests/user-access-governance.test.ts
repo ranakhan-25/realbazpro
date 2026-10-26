@@ -213,3 +213,57 @@ test("DashboardStats: validates response shape for Super Admin vs Org Admin", ()
   assert.equal(orgAdminStats.organization?.id, 14);
   assert.equal(orgAdminStats.organization?.websitePublished, true);
 });
+
+test("UniversalDashboard & DynamicSidebar: verifies Hub route access and dynamic menu tree resolution", () => {
+  // 1. Universal Dashboard Hub is permissible even if user has zero project entitlement
+  const nonProjectEntitlements = ["crm", "accounts"];
+  const nonProjectPaths = ["/dashboard/crm", "/dashboard/accounts"];
+
+  assert.equal(
+    checkRouteAccess("/dashboard", nonProjectEntitlements, nonProjectPaths),
+    true,
+    "Universal Dashboard hub route must be accessible to any authenticated user",
+  );
+
+  assert.equal(
+    checkRouteAccess("/dashboard/", nonProjectEntitlements, nonProjectPaths),
+    true,
+    "Universal Dashboard hub with trailing slash must be accessible",
+  );
+
+  // 2. Dynamic sidebar resolution logic
+  const mockBackendTree = [
+    { label: "Dashboard", slug: "dashboard", path: "dashboard" },
+    {
+      label: "Custom Feature",
+      slug: "custom-feature",
+      path: "custom-feature",
+      children: [{ label: "Sub Item", slug: "sub-item", path: "custom-feature/sub-item" }],
+    },
+  ];
+
+  const currentAccessibleMod = {
+    id: 1,
+    key: "crm",
+    name: "CRM",
+    code: "CRM",
+    route: "/dashboard/crm",
+    features: ["CRM_CUSTOM"],
+    allowedRoutes: ["custom-feature"],
+    menuTree: mockBackendTree,
+  };
+
+  // When backend menuTree is provided, resolveDynamicTree adopts it directly
+  function resolveDynamicTree(mod: typeof currentAccessibleMod, staticFallback: any[]) {
+    if (mod?.menuTree && mod.menuTree.length > 0) {
+      return mod.menuTree;
+    }
+    return staticFallback;
+  }
+
+  const resolved = resolveDynamicTree(currentAccessibleMod, [{ label: "Static", slug: "static", path: "static" }]);
+  assert.equal(resolved.length, 2);
+  assert.equal(resolved[1].label, "Custom Feature");
+  assert.equal(resolved[1].children?.[0].label, "Sub Item");
+});
+

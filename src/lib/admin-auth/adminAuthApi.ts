@@ -31,6 +31,53 @@ interface BackendAuthResponse {
   };
 }
 
+export async function loginUniversalSession(
+  identifier: string,
+  password: string,
+): Promise<AdminAuthSession> {
+  try {
+    const response = await api.post<BackendAuthResponse>("/auth/login", {
+      username: identifier.trim(),
+      password,
+    });
+
+    const resData = response.data;
+    const accessToken = resData.accessToken || resData.data?.accessToken;
+    const refreshToken = resData.refreshToken || resData.data?.refreshToken;
+    const user = resData.user || resData.data?.user;
+
+    if (!accessToken) {
+      throw new Error("Login failed: Authentication token was not returned by server.");
+    }
+
+    const session: AdminAuthSession = {
+      accessToken,
+      token: accessToken,
+      refreshToken: refreshToken || "",
+      tokenType: resData.tokenType || "Bearer",
+      expiresIn: resData.expiresIn || 3600,
+      user: user || {
+        name: identifier.split("@")[0],
+        email: identifier,
+      },
+    };
+
+    return session;
+  } catch (err: any) {
+    if (err.response?.data?.message) {
+      const msg = err.response.data.message;
+      if (Array.isArray(msg)) {
+        throw new Error(msg.join(", "));
+      }
+      throw new Error(msg);
+    }
+    if (err.message) {
+      throw new Error(err.message);
+    }
+    throw new Error("Login failed. Please verify your credentials and try again.");
+  }
+}
+
 export async function loginAdminSession(
   identifier: string,
   password: string,
