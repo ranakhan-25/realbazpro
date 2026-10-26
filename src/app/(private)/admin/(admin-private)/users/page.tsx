@@ -22,6 +22,8 @@ import type { ReactNode, FormEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import UserForm from "@/components/modules/UserForm";
+import UserWizardModal from "@/components/modules/UserWizardModal";
+import { getStoredUserProfile } from "@/lib/admin-auth/adminAuthStorage";
 import {
   deleteUser,
   getUser,
@@ -147,6 +149,7 @@ function roleLabel(role: any, index: number): string {
 
 export default function UsersPage() {
   const { primaryColor } = useTheme();
+  const profile = typeof window !== "undefined" ? getStoredUserProfile() : null;
   const [users, setUsers] = useState<User[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
   const [searchInput, setSearchInput] = useState("");
@@ -156,6 +159,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
@@ -230,23 +234,15 @@ export default function UsersPage() {
           String(user.id).trim() !== "",
       );
 
-      if (validUsers.length === 0) {
-        setUsers(DEMO_USERS);
-        setTotalUsers(DEMO_USERS.length);
-        setError("The API returned no user records. Showing demo data.");
-      } else {
-        setUsers(validUsers);
-        setTotalUsers(total || validUsers.length);
-      }
+      setUsers(validUsers);
+      setTotalUsers(total || validUsers.length);
     } catch (err) {
       if (requestId !== requestIdRef.current) return;
       setError(
-        err instanceof Error
-          ? `${err.message} Showing demo data instead.`
-          : "Backend unavailable. Showing demo data.",
+        err instanceof Error ? err.message : "Failed to retrieve user records.",
       );
-      setUsers(DEMO_USERS);
-      setTotalUsers(DEMO_USERS.length);
+      setUsers([]);
+      setTotalUsers(0);
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
@@ -274,8 +270,7 @@ export default function UsersPage() {
   }, [menuUserId]);
 
   const openCreate = () => {
-    setEditingUser(null);
-    setFormOpen(true);
+    setWizardOpen(true);
   };
   const openEdit = (user: User) => {
     setMenuUserId(null);
@@ -399,9 +394,13 @@ export default function UsersPage() {
     <div className="mx-auto max-w-[1600px]">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Users</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {profile?.isOrgAdmin ? "Company Users" : "Users"}
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Manage platform users, roles, permissions and access.
+            {profile?.isOrgAdmin
+              ? "Manage company team members, authority levels, and workplace credentials."
+              : "Manage platform users, roles, permissions and access."}
           </p>
         </div>
         <button
@@ -764,6 +763,12 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+
+      <UserWizardModal
+        isOpen={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onSuccess={() => void loadUsers()}
+      />
 
       <AnimatePresence>
         {formOpen && (

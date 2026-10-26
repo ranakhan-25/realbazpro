@@ -27,10 +27,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 
-import { clearStoredTokens } from "@/lib/admin-auth/adminAuthStorage";
+import {
+  clearStoredTokens,
+  getStoredUserProfile,
+  AdminUserProfile,
+} from "@/lib/admin-auth/adminAuthStorage";
 import { useTheme } from "@/lib/theme";
 
 type AdminNavItem = {
@@ -153,6 +157,54 @@ export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { primaryColor } = useTheme();
+
+  const [userProfile, setUserProfile] = useState<AdminUserProfile | null>(null);
+
+  useEffect(() => {
+    setUserProfile(getStoredUserProfile());
+  }, []);
+
+  const isSuperAdmin = useMemo(() => {
+    if (!userProfile) return true;
+    return (
+      userProfile.isSuperUser === true ||
+      userProfile.role === "super-admin" ||
+      (Array.isArray(userProfile.roles) && userProfile.roles.includes("super-admin"))
+    );
+  }, [userProfile]);
+
+  const visibleMenuGroups = useMemo(() => {
+    if (isSuperAdmin) {
+      return menuGroups;
+    }
+
+    const allowedHrefs = new Set([
+      "/admin/dashboard",
+      "/admin/web-settings",
+      "/admin/organization",
+      "/admin/users",
+      "/admin/roles",
+    ]);
+
+    return menuGroups
+      .map((item) => {
+        if ("href" in item) {
+          return allowedHrefs.has(item.href) ? item : null;
+        }
+
+        const filteredChildren = item.children.filter((child) =>
+          allowedHrefs.has(child.href),
+        );
+
+        if (filteredChildren.length === 0) return null;
+
+        return {
+          ...item,
+          children: filteredChildren,
+        };
+      })
+      .filter(Boolean) as AdminMenuItem[];
+  }, [isSuperAdmin]);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     "System Management": true,
@@ -288,7 +340,7 @@ export default function AdminSidebar() {
         {/* NAVIGATION */}
         <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 py-3 sm:px-3 sm:py-4">
           <div className="space-y-1">
-            {menuGroups.map((item, index) => {
+            {visibleMenuGroups.map((item, index) => {
               const Icon = item.icon;
 
               // ========== Single Link Item ==========
