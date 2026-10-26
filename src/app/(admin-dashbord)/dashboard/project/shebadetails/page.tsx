@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 "use client";
 
 import ProjectApiDashboard from "../dashboard/project-api-dashboard";
