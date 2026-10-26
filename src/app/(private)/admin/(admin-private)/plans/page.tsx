@@ -7,6 +7,13 @@ import { useTheme } from "@/lib/theme";
 import PlanCreateModal from "./components/PlanCreateModal";
 import PlanEditModal from "./components/PlanEditModal";
 import {
+  getPlans,
+  createPlan,
+  updatePlan,
+  deletePlan,
+  type Plan,
+} from "@/services/planService";
+import {
   Search,
   Filter,
   ChevronLeft,
@@ -84,9 +91,7 @@ export default function PlanListPage() {
   const fetchPlans = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/plans");
-      if (!res.ok) throw new Error("API Error");
-      const data = await res.json();
+      const data = await getPlans();
       if (!data || data.length === 0) {
         setPlans(DUMMY_PLANS);
         setIsUsingDummy(true);
@@ -109,15 +114,22 @@ export default function PlanListPage() {
   // ২. CRUD
   const handleCreate = async (payload: any) => {
     try {
-      const res = await fetch("/api/plans", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const created = await createPlan({
+        name: payload.name,
+        code: payload.code,
+        description: payload.description,
+        monthlyPrice: Number(payload.monthly_price || payload.monthlyPrice) || 0,
+        yearlyPrice: Number(payload.yearly_price || payload.yearlyPrice) || 0,
+        maxUsers: Number(payload.user_limit || payload.maxUsers) || 5,
+        maxProjects: Number(payload.project_limit || payload.maxProjects) || 5,
+        maxStorageMb: (Number(payload.storage_gb) || 10) * 1024,
+        durationDays: Number(payload.duration_days || payload.durationDays) || 30,
+        trialDays: Number(payload.trial_days || payload.trialDays) || 14,
+        status: payload.status || "active",
       });
-      if (!res.ok) throw new Error("Create failed");
-      const newPlan = await res.json();
-      setPlans((prev) => [newPlan, ...prev]);
+      setPlans((prev) => [created, ...prev]);
     } catch (error) {
+      console.error(error);
       setPlans((prev) => [
         { ...payload, uuid: Date.now().toString(), subscribers: 0 },
         ...prev,
@@ -127,15 +139,20 @@ export default function PlanListPage() {
 
   const handleUpdate = async (uuid: string, payload: any) => {
     try {
-      const res = await fetch(`/api/plans/${uuid}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const updated = await updatePlan(uuid, {
+        name: payload.name,
+        code: payload.code,
+        description: payload.description,
+        monthlyPrice: Number(payload.monthly_price || payload.monthlyPrice),
+        yearlyPrice: Number(payload.yearly_price || payload.yearlyPrice),
+        maxUsers: Number(payload.user_limit || payload.maxUsers),
+        maxProjects: Number(payload.project_limit || payload.maxProjects),
+        maxStorageMb: (Number(payload.storage_gb) || 10) * 1024,
+        status: payload.status,
       });
-      if (!res.ok) throw new Error("Update failed");
-      const updated = await res.json();
       setPlans((prev) => prev.map((p) => (p.uuid === uuid ? updated : p)));
     } catch (error) {
+      console.error(error);
       setPlans((prev) =>
         prev.map((p) => (p.uuid === uuid ? { ...p, ...payload } : p)),
       );
@@ -145,10 +162,10 @@ export default function PlanListPage() {
   const handleDelete = async (uuid: string) => {
     if (!confirm("Are you sure you want to delete this plan?")) return;
     try {
-      const res = await fetch(`/api/plans/${uuid}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
+      await deletePlan(uuid);
       setPlans((prev) => prev.filter((p) => p.uuid !== uuid));
     } catch (error) {
+      console.error(error);
       setPlans((prev) => prev.filter((p) => p.uuid !== uuid));
     }
   };
@@ -317,14 +334,14 @@ export default function PlanListPage() {
                 <div className="px-5 pt-4 pb-3">
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-extrabold text-gray-900">
-                      ${plan.monthly_price}
+                      ${plan.monthlyPrice ?? plan.monthly_price ?? 0}
                     </span>
                     <span className="text-sm text-gray-500 font-medium">
                       /mo
                     </span>
                   </div>
                   <p className="text-xs text-gray-400 mt-1">
-                    ${plan.yearly_price} billed yearly
+                    ${plan.yearlyPrice ?? plan.yearly_price ?? 0} billed yearly
                   </p>
                 </div>
 
@@ -334,7 +351,7 @@ export default function PlanListPage() {
                     <Users className="h-4 w-4 text-gray-400 shrink-0" />
                     <span>
                       <strong className="font-semibold text-gray-800">
-                        {plan.user_limit}
+                        {plan.maxUsers ?? plan.user_limit ?? 5}
                       </strong>{" "}
                       Users
                     </span>
@@ -343,7 +360,7 @@ export default function PlanListPage() {
                     <FolderKanban className="h-4 w-4 text-gray-400 shrink-0" />
                     <span>
                       <strong className="font-semibold text-gray-800">
-                        {plan.project_limit}
+                        {plan.maxProjects ?? plan.project_limit ?? 5}
                       </strong>{" "}
                       Projects
                     </span>
@@ -352,7 +369,7 @@ export default function PlanListPage() {
                     <HardDrive className="h-4 w-4 text-gray-400 shrink-0" />
                     <span>
                       <strong className="font-semibold text-gray-800">
-                        {plan.storage_gb} GB
+                        {plan.maxStorageMb ? Math.round(plan.maxStorageMb / 1024) : (plan.storage_gb ?? 10)} GB
                       </strong>{" "}
                       Storage
                     </span>
@@ -369,7 +386,7 @@ export default function PlanListPage() {
                       borderColor: `${brandColor}20`,
                     }}
                   >
-                    {plan.subscribers || 0} subscribers
+                    {plan.subscribersCount ?? plan.subscribers ?? 0} subscribers
                   </span>
 
                   <div className="flex items-center gap-1.5">

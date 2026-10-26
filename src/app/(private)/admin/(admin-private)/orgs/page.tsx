@@ -6,6 +6,12 @@ import { useState, useEffect, useMemo } from "react";
 import OrgCreateModal from "./components/OrgCreateModal";
 import OrgEditModal from "./components/OrgEditModal";
 import OrgViewModal from "./components/OrgViewModal";
+import OrganizationWizardModal from "@/components/modules/OrganizationWizardModal";
+import {
+  getOrganizations,
+  toggleOrganizationLock,
+  type Organization,
+} from "@/services/organizationService";
 import { useTheme } from "@/lib/theme";
 import {
   Search,
@@ -14,7 +20,11 @@ import {
   ChevronRight,
   Plus,
   Building2,
+  Lock,
+  Unlock,
+  ShieldCheck,
 } from "lucide-react";
+import { toast } from "sonner";
 
 const DUMMY_ORGS = [
   {
@@ -102,6 +112,7 @@ export default function OrgListPage() {
   const brandColor = primaryColor || "#2ed573";
 
   // Modal States
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -117,9 +128,7 @@ export default function OrgListPage() {
   const fetchOrgs = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/orgs");
-      if (!res.ok) throw new Error("API Error");
-      const data = await res.json();
+      const data = await getOrganizations();
       if (!data || data.length === 0) {
         setOrgs(DUMMY_ORGS);
         setIsUsingDummy(true);
@@ -138,6 +147,31 @@ export default function OrgListPage() {
   useEffect(() => {
     fetchOrgs();
   }, []);
+
+  const handleToggleLock = async (org: any) => {
+    const nextLocked = !org.isLocked;
+    const confirmMsg = nextLocked
+      ? `Are you sure you want to lock organization "${org.name}"? All users will be barred from logging in.`
+      : `Unlock organization "${org.name}"?`;
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      await toggleOrganizationLock(org.id || org.uuid, {
+        isLocked: nextLocked,
+        lockReason: nextLocked ? "Suspended by Super Administrator" : undefined,
+      });
+      setOrgs((prev) =>
+        prev.map((o) =>
+          o.uuid === org.uuid || o.id === org.id
+            ? { ...o, isLocked: nextLocked, status: nextLocked ? "suspended" : "active" }
+            : o,
+        ),
+      );
+      toast.success(`Organization ${nextLocked ? "locked" : "unlocked"}`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to update lock state");
+    }
+  };
 
   // ২. CRUD (Create, Update, Delete)
   const handleCreate = async (payload: any) => {
@@ -161,20 +195,9 @@ export default function OrgListPage() {
   };
 
   const handleUpdate = async (uuid: string, payload: any) => {
-    try {
-      const res = await fetch(`/api/orgs/${uuid}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Update failed");
-      const updated = await res.json();
-      setOrgs((prev) => prev.map((o) => (o.uuid === uuid ? updated : o)));
-    } catch (error) {
-      setOrgs((prev) =>
-        prev.map((o) => (o.uuid === uuid ? { ...o, ...payload } : o)),
-      );
-    }
+    setOrgs((prev) =>
+      prev.map((o) => (o.uuid === uuid || String(o.id) === uuid ? { ...o, ...payload } : o)),
+    );
   };
 
   const handleDelete = async (uuid: string) => {
@@ -233,11 +256,11 @@ export default function OrgListPage() {
           </div>
 
           <button
-            onClick={() => setIsCreateOpen(true)}
+            onClick={() => setIsWizardOpen(true)}
             className="px-5 py-2.5 rounded-xl text-white font-medium text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 whitespace-nowrap"
             style={{ backgroundColor: brandColor }}
           >
-            <Plus className="h-4 w-4" /> Create Organization
+            <Plus className="h-4 w-4" /> Create Organization (Wizard)
           </button>
         </div>
 
@@ -356,7 +379,7 @@ export default function OrgListPage() {
                             {org.name}
                           </span>
                           <span className="text-xs text-gray-400 font-mono mt-0.5">
-                            {org.slug}
+                            {org.code || org.slug}
                           </span>
                         </div>
                       </td>
@@ -371,47 +394,61 @@ export default function OrgListPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span
-                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border"
-                          style={{
-                            backgroundColor: `${brandColor}10`,
-                            color: brandColor,
-                            borderColor: `${brandColor}20`,
-                          }}
-                        >
-                          {org.plan || org.plan_id || "N/A"}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border w-fit"
+                            style={{
+                              backgroundColor: `${brandColor}10`,
+                              color: brandColor,
+                              borderColor: `${brandColor}20`,
+                            }}
+                          >
+                            {org.plan?.name || org.plan || "Standard"}
+                          </span>
+                          <span className="text-[11px] text-gray-400 font-medium">
+                            {org.userCount || 0} / {org.maxUsers || 5} Users
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize ${
-                            org.status === "active"
-                              ? "bg-green-50 text-green-700 border border-green-200"
-                              : org.status === "trial"
-                                ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                : "bg-red-50 text-red-700 border border-red-200"
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                              org.status === "active"
-                                ? "bg-green-500"
-                                : org.status === "trial"
-                                  ? "bg-amber-500"
-                                  : "bg-red-500"
-                            }`}
-                          ></span>
-                          {org.status}
-                        </span>
+                        {org.isLocked ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-200">
+                            <Lock className="h-3 w-3 text-red-600" />
+                            Locked
+                          </span>
+                        ) : org.subscriptionStatus === "expired" ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            Expired
+                          </span>
+                        ) : org.subscriptionStatus === "trial" || org.status === "trial" ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            Trial
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
+                            Active
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => handleToggleLock(org)}
+                            className={`p-1.5 rounded-lg border transition ${
+                              org.isLocked
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                            }`}
+                            title={org.isLocked ? "Unlock Organization" : "Lock Organization"}
+                          >
+                            {org.isLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                          </button>
                           <button
                             onClick={() => {
                               setSelectedOrg(org);
                               setIsViewOpen(true);
                             }}
-                            className="px-3 py-1.5 text-xs font-medium rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+                            className="px-2.5 py-1 text-xs font-medium rounded-lg hover:bg-gray-100 text-gray-600 border border-gray-200 transition-colors"
                           >
                             View
                           </button>
@@ -505,6 +542,11 @@ export default function OrgListPage() {
       </div>
 
       {/* Modals */}
+      <OrganizationWizardModal
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        onSuccess={(created) => setOrgs((prev) => [created, ...prev])}
+      />
       <OrgCreateModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
@@ -520,6 +562,10 @@ export default function OrgListPage() {
         isOpen={isViewOpen}
         onClose={() => setIsViewOpen(false)}
         orgData={selectedOrg}
+        onEdit={(org) => {
+          setSelectedOrg(org);
+          setIsEditOpen(true);
+        }}
       />
     </div>
   );

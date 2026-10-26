@@ -21,10 +21,7 @@ interface BoqItem {
   uid?: string;
   projectId?: string;
   deletedAt?: string | null;
-  project?: {
-    name: string;
-    uuid?: string;
-  };
+  project?: { name: string; uuid?: string };
 }
 
 interface Project {
@@ -62,6 +59,11 @@ interface BoqLineItem {
   amount: number;
 }
 
+interface TaskItem {
+  uuid: string;
+  taskName: string;
+}
+
 // ====================== STATIC OPTIONS ======================
 const TYPE_OPTIONS = ["Material", "Work", "Cost"];
 const UNIT_OPTIONS = [
@@ -96,6 +98,10 @@ export default function BoqPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectTypes, setProjectTypes] = useState<ProjectType[]>([]);
   const [projectSites, setProjectSites] = useState<ProjectSite[]>([]);
+  
+  // ✅ Task ড্রপডাউনের জন্য স্টেট
+  const [tasks, setTasks] = useState<TaskItem[]>([]); 
+
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -136,7 +142,6 @@ export default function BoqPage() {
       );
       const json = await res.json();
       if (json.success) {
-        // ✅ deletedAt চেক করে ফিল্টার করা হলো
         const activeBoqs = (json.data.data || []).filter((item: BoqItem) => !item.deletedAt);
         setBoqList(activeBoqs);
       }
@@ -177,11 +182,25 @@ export default function BoqPage() {
     }
   };
 
+  // ✅ Task লিস্ট ফেচ
+  const fetchTasks = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/task?page=1&limit=100`);
+      const json = await res.json();
+      if (json.success) {
+        setTasks(json.data.data || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchBoqList();
     fetchProjects();
     fetchProjectTypes();
     fetchProjectSites();
+    fetchTasks(); // ✅ কল করা হলো
   }, []);
 
   // ====================== CREATE ======================
@@ -246,38 +265,24 @@ export default function BoqPage() {
   // ====================== DELETE ======================
   const handleDelete = async (boq: BoqItem) => {
     if (!window.confirm(`Delete "${boq.titleOfWork}"?`)) return;
-
     const uuid = boq.uuid;
     if (!uuid) {
       alert("UUID missing – cannot delete");
       return;
     }
-
     try {
       setDeletingId(uuid);
-
-      // Optimistic: UI থেকে সাথে সাথে সরাও
       setBoqList((prev) => prev.filter((item) => item.uuid !== uuid));
-
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/boq/${uuid}`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-        }
+        { method: "DELETE", headers: { "Content-Type": "application/json" } }
       );
-
       const json = await res.json().catch(() => ({}));
-
-      if (res.ok || json.success) {
-        console.log("Soft delete success:", uuid);
-      } else {
-        console.error("Delete failed:", res.status, json);
+      if (!res.ok && !json.success) {
         alert(`Delete failed: ${json.message || res.status}`);
-        fetchBoqList(); // ব্যর্থ হলে আবার লিস্ট আনো
+        fetchBoqList();
       }
     } catch (err: any) {
-      console.error("Delete error:", err);
       alert(`Delete error: ${err.message}`);
       fetchBoqList();
     } finally {
@@ -498,24 +503,22 @@ export default function BoqPage() {
                 </select>
               </div>
 
+              {/* ✅ API-চালিত Task ড্রপডাউন */}
               <div>
                 <label className="block text-sm mb-1">Task</label>
-                <input
+                <select
                   value={form.task}
                   onChange={(e) => setForm({ ...form, task: e.target.value })}
-                  placeholder="Task name"
                   className="w-full border rounded px-3 py-2 text-sm"
-                />
+                >
+                  <option value="">Select Task</option>
+                  {tasks.map((t) => (
+                    <option key={t.uuid} value={t.taskName}>{t.taskName}</option>
+                  ))}
+                </select>
               </div>
 
-              <div className="flex items-center gap-2 mt-6">
-                <input
-                  type="checkbox"
-                  checked={form.addTask}
-                  onChange={(e) => setForm({ ...form, addTask: e.target.checked })}
-                />
-                <label className="text-sm">Add Task</label>
-              </div>
+              {/* Add Task চেকবক্স থাকলে এখানে রাখতে পারেন, না লাগলে বাদ দিতে পারেন */}
             </div>
           </div>
 
@@ -612,9 +615,7 @@ export default function BoqPage() {
           <span className="text-sm text-gray-600 ml-2">
             Show{" "}
             <select className="border rounded px-2 py-1 mx-1">
-              <option>20</option>
-              <option>50</option>
-              <option>100</option>
+              <option>20</option><option>50</option><option>100</option>
             </select>{" "}
             entries
           </span>
@@ -656,9 +657,7 @@ export default function BoqPage() {
               </thead>
               <tbody>
                 {boqList.length === 0 ? (
-                  <tr>
-                    <td colSpan={11} className="text-center py-8 text-gray-500">No data available in table</td>
-                  </tr>
+                  <tr><td colSpan={11} className="text-center py-8 text-gray-500">No data available in table</td></tr>
                 ) : (
                   boqList.map((item) => (
                     <tr key={item.uuid} className="border-b hover:bg-gray-50">
@@ -685,21 +684,11 @@ export default function BoqPage() {
                 )}
                 <tr className="bg-gray-50 font-medium">
                   <td colSpan={4} className="px-3 py-2 text-right">GRAND TOTAL:</td>
-                  <td className="px-3 py-2">
-                    {boqList.reduce((sum, item) => sum + (Number(item.budget) || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="px-3 py-2">
-                    {boqList.reduce((sum, item) => sum + (Number(item.percentageOfTotalBudget) || 0), 0).toFixed(2)}%
-                  </td>
-                  <td className="px-3 py-2">
-                    {boqList.reduce((sum, item) => sum + (Number(item.perSftBudget) || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="px-3 py-2">
-                    {boqList.reduce((sum, item) => sum + (Number(item.cost) || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="px-3 py-2">
-                    {boqList.reduce((sum, item) => sum + (Number(item.available) || 0), 0).toFixed(2)}
-                  </td>
+                  <td className="px-3 py-2">{boqList.reduce((sum, item) => sum + (Number(item.budget) || 0), 0).toFixed(2)}</td>
+                  <td className="px-3 py-2">{boqList.reduce((sum, item) => sum + (Number(item.percentageOfTotalBudget) || 0), 0).toFixed(2)}%</td>
+                  <td className="px-3 py-2">{boqList.reduce((sum, item) => sum + (Number(item.perSftBudget) || 0), 0).toFixed(2)}</td>
+                  <td className="px-3 py-2">{boqList.reduce((sum, item) => sum + (Number(item.cost) || 0), 0).toFixed(2)}</td>
+                  <td className="px-3 py-2">{boqList.reduce((sum, item) => sum + (Number(item.available) || 0), 0).toFixed(2)}</td>
                   <td colSpan={2}></td>
                 </tr>
               </tbody>

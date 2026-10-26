@@ -1,6 +1,21 @@
+export interface AdminUserProfile {
+  id?: number;
+  uuid?: string;
+  name: string;
+  email: string;
+  username?: string;
+  role?: string;
+  roles?: string[];
+  isSuperUser?: boolean;
+  isOrgAdmin?: boolean;
+  orgId?: number | null;
+  orgUuid?: string | null;
+}
+
 export const ADMIN_AUTH_STORAGE_KEYS = {
   accessToken: "admin_access_token",
   refreshToken: "admin_refresh_token",
+  userProfile: "admin_user_profile",
 };
 
 export function getStoredAccessToken(): string | null {
@@ -13,7 +28,22 @@ export function getStoredRefreshToken(): string | null {
   return window.localStorage.getItem(ADMIN_AUTH_STORAGE_KEYS.refreshToken);
 }
 
-export function setStoredTokens(accessToken?: string, refreshToken?: string) {
+export function getStoredUserProfile(): AdminUserProfile | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(ADMIN_AUTH_STORAGE_KEYS.userProfile);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as AdminUserProfile;
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredTokens(
+  accessToken?: string,
+  refreshToken?: string,
+  userProfile?: AdminUserProfile,
+) {
   if (typeof window === "undefined") return;
 
   if (accessToken) {
@@ -21,12 +51,21 @@ export function setStoredTokens(accessToken?: string, refreshToken?: string) {
       ADMIN_AUTH_STORAGE_KEYS.accessToken,
       accessToken,
     );
+    // Also synchronize shared access_token key for axios interceptors
+    window.localStorage.setItem("access_token", accessToken);
   }
 
   if (refreshToken) {
     window.localStorage.setItem(
       ADMIN_AUTH_STORAGE_KEYS.refreshToken,
       refreshToken,
+    );
+  }
+
+  if (userProfile) {
+    window.localStorage.setItem(
+      ADMIN_AUTH_STORAGE_KEYS.userProfile,
+      JSON.stringify(userProfile),
     );
   }
 }
@@ -36,11 +75,14 @@ export function clearStoredTokens() {
 
   window.localStorage.removeItem(ADMIN_AUTH_STORAGE_KEYS.accessToken);
   window.localStorage.removeItem(ADMIN_AUTH_STORAGE_KEYS.refreshToken);
+  window.localStorage.removeItem(ADMIN_AUTH_STORAGE_KEYS.userProfile);
+  window.localStorage.removeItem("access_token");
 }
 
 export const adminAuthStorage = {
   getAccessToken: getStoredAccessToken,
   getRefreshToken: getStoredRefreshToken,
+  getUserProfile: getStoredUserProfile,
   setTokens: setStoredTokens,
   clear: clearStoredTokens,
 };
