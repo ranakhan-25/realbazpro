@@ -9,7 +9,16 @@ export function getSession(): Session | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Session) : null;
+    if (raw) return JSON.parse(raw) as Session;
+    const adminUserRaw = window.localStorage.getItem("admin_user_profile");
+    if (adminUserRaw) {
+      const adminUser = JSON.parse(adminUserRaw);
+      return {
+        name: adminUser.name || adminUser.username || "Administrator",
+        email: adminUser.email || "",
+      };
+    }
+    return null;
   } catch {
     return null;
   }

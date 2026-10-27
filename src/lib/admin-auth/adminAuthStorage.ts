@@ -10,6 +10,7 @@ export interface AdminUserProfile {
   isOrgAdmin?: boolean;
   orgId?: number | null;
   orgUuid?: string | null;
+  orgName?: string | null;
 }
 
 export const ADMIN_AUTH_STORAGE_KEYS = {
@@ -67,6 +68,13 @@ export function setStoredTokens(
       ADMIN_AUTH_STORAGE_KEYS.userProfile,
       JSON.stringify(userProfile),
     );
+    window.localStorage.setItem(
+      "realbiz-session",
+      JSON.stringify({
+        name: userProfile.name || userProfile.username || "User",
+        email: userProfile.email || "",
+      }),
+    );
   }
 }
 
@@ -77,6 +85,7 @@ export function clearStoredTokens() {
   window.localStorage.removeItem(ADMIN_AUTH_STORAGE_KEYS.refreshToken);
   window.localStorage.removeItem(ADMIN_AUTH_STORAGE_KEYS.userProfile);
   window.localStorage.removeItem("access_token");
+  window.localStorage.removeItem("realbiz-session");
 }
 
 export const adminAuthStorage = {

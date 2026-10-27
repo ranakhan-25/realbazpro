@@ -1,3 +1,5 @@
+import api from "@/lib/api";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002"}/realbizpro/api/v1`;
@@ -75,6 +77,7 @@ export interface GetUsersParams {
   sectionId?: number;
   unitId?: number;
   companyId?: number;
+  orgId?: number;
 }
 
 /* =========================================================
@@ -82,6 +85,7 @@ export interface GetUsersParams {
 ========================================================= */
 
 export interface BaseUserPayload {
+  name?: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -94,6 +98,8 @@ export interface BaseUserPayload {
   categoryIds?: number[];
   userType?: string;
   companyIds?: number[];
+  orgId?: number;
+  orgUuid?: string;
 }
 
 
@@ -122,8 +128,55 @@ export type UserPayload =
   | UpdateUserPayload;
 
 /* =========================================================
-   HEADERS
+   AXIOS & FETCH ERROR HANDLING
 ========================================================= */
+
+function handleAxiosError(err: any): never {
+  const res = err?.response;
+  const result = res?.data;
+  let message = "";
+
+  if (typeof result === "string") {
+    message = result;
+  } else if (typeof result?.message === "string") {
+    message = result.message;
+  } else if (typeof result?.error === "string") {
+    message = result.error;
+  }
+
+  if (Array.isArray(result?.errors)) {
+    const errorMessages = result.errors
+      .map((item: any) =>
+        typeof item === "string"
+          ? item
+          : item?.message || item?.msg || item?.error || JSON.stringify(item),
+      )
+      .filter(Boolean);
+
+    if (errorMessages.length > 0) {
+      message = errorMessages.join(", ");
+    }
+  }
+
+  if (Array.isArray(result?.message)) {
+    message = result.message
+      .map((item: any) =>
+        typeof item === "string"
+          ? item
+          : item?.message || JSON.stringify(item),
+      )
+      .join(", ");
+  }
+
+  if (!message) {
+    message = res?.status
+      ? `Request failed with status code ${res.status}`
+      : err?.message || "API request failed";
+  }
+
+  console.error(`[UserService] API Error (${res?.status || "network"}):`, message);
+  throw new Error(message);
+}
 
 function getHeaders() {
   const token =
@@ -140,10 +193,6 @@ function getHeaders() {
   };
 }
 
-/* =========================================================
-   PARSE RESPONSE
-========================================================= */
-
 async function parseResponse<T = unknown>(
   response: Response,
 ): Promise<T> {
@@ -158,71 +207,32 @@ async function parseResponse<T = unknown>(
   }
 
   if (!response.ok) {
-    console.error("API ERROR:", {
-      status: response.status,
-      statusText: response.statusText,
-      response: result,
-    });
-
-    /*
-     * Handle different backend validation formats
-     */
-
     let message = "";
 
     if (typeof result === "string") {
       message = result;
-    }
-
-    if (typeof result?.message === "string") {
+    } else if (typeof result?.message === "string") {
       message = result.message;
-    }
-
-    if (typeof result?.error === "string") {
+    } else if (typeof result?.error === "string") {
       message = result.error;
     }
 
-    /*
-     * errors can be:
-     *
-     * {
-     *   errors: [
-     *     { message: "Username already exists" }
-     *   ]
-     * }
-     */
-
     if (Array.isArray(result?.errors)) {
       const errorMessages = result.errors
-        .map((item: any) => {
-          if (typeof item === "string") {
-            return item;
-          }
-
-          return (
-            item?.message ||
-            item?.msg ||
-            item?.error ||
-            JSON.stringify(item)
-          );
-        })
+        .map((item: any) =>
+          typeof item === "string"
+            ? item
+            : item?.message ||
+              item?.msg ||
+              item?.error ||
+              JSON.stringify(item),
+        )
         .filter(Boolean);
 
       if (errorMessages.length > 0) {
         message = errorMessages.join(", ");
       }
     }
-
-    /*
-     * NestJS/class-validator style:
-     *
-     * {
-     *   message: [
-     *     "username must be a string",
-     *     "email must be an email"
-     *   ]
-     * }
-     */
 
     if (Array.isArray(result?.message)) {
       message = result.message
@@ -238,6 +248,11 @@ async function parseResponse<T = unknown>(
       message =
         `Request failed with status code ${response.status}`;
     }
+
+    console.error(
+      `[UserService] API ERROR [${response.status} ${response.statusText}]:`,
+      message,
+    );
 
     throw new Error(message);
   }
@@ -417,45 +432,38 @@ export async function getUsers(
     );
   }
 
-  const url =
-    `${API_BASE_URL}/users?${searchParams.toString()}`;
+  try {
+    const url = `/users?${searchParams.toString()}`;
+    const response = await api.get(url);
+    const result = response.data;
 
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getHeaders(),
-    cache: "no-store",
-  });
+    const users = Array.isArray(result?.data?.data)
+      ? result.data.data
+      : Array.isArray(result?.data)
+      ? result.data
+      : Array.isArray(result)
+      ? result
+      : [];
 
-  const result = await parseResponse<any>(response);
+    const meta =
+      result?.data?.meta ??
+      result?.meta ?? {
+        page: params.page ?? 1,
+        limit: params.limit ?? 50,
+        total: users.length,
+        totalPages: 1,
+        hasNext: false,
+        hasPrevious: false,
+      };
 
-  if (!result?.success) {
-    throw new Error(
-      result?.message ||
-        "Unable to load users.",
-    );
-  }
-
-  const users = Array.isArray(
-    result.data?.data,
-  )
-    ? result.data.data
-    : [];
-
-  const meta =
-    result.data?.meta ?? {
-      page: params.page ?? 1,
-      limit: params.limit ?? 50,
-      total: users.length,
-      totalPages: 1,
-      hasNext: false,
-      hasPrevious: false,
+    return {
+      success: true,
+      data: users,
+      meta,
     };
-
-  return {
-    success: true,
-    data: users,
-    meta,
-  };
+  } catch (err: any) {
+    handleAxiosError(err);
+  }
 }
 
 /* =========================================================
@@ -470,18 +478,12 @@ export async function getUser(
     ? "?includePermissions=true"
     : "";
 
-  const response = await fetch(
-    `${API_BASE_URL}/users/${uuid}${query}`,
-    {
-      method: "GET",
-      headers: getHeaders(),
-      cache: "no-store",
-    },
-  );
-
-  const result = await parseResponse<any>(response);
-
-  return unwrapUser(result);
+  try {
+    const response = await api.get(`/users/${uuid}${query}`);
+    return unwrapUser(response.data);
+  } catch (err: any) {
+    handleAxiosError(err);
+  }
 }
 
 /* =========================================================
@@ -491,18 +493,12 @@ export async function getUser(
 export async function createUser(
   payload: CreateUserPayload,
 ): Promise<User> {
-  const response = await fetch(
-    `${API_BASE_URL}/users`,
-    {
-      method: "POST",
-      headers: getHeaders(),
-      body: JSON.stringify(payload),
-    },
-  );
-
-  const result = await parseResponse<any>(response);
-
-  return unwrapUser(result);
+  try {
+    const response = await api.post("/users", payload);
+    return unwrapUser(response.data);
+  } catch (err: any) {
+    handleAxiosError(err);
+  }
 }
 
 /* =========================================================
@@ -513,18 +509,12 @@ export async function updateUser(
   uuid: string | number,
   payload: UpdateUserPayload,
 ): Promise<User> {
-  const response = await fetch(
-    `${API_BASE_URL}/users/${uuid}`,
-    {
-      method: "PATCH",
-      headers: getHeaders(),
-      body: JSON.stringify(payload),
-    },
-  );
-
-  const result = await parseResponse<any>(response);
-
-  return unwrapUser(result);
+  try {
+    const response = await api.patch(`/users/${uuid}`, payload);
+    return unwrapUser(response.data);
+  } catch (err: any) {
+    handleAxiosError(err);
+  }
 }
 
 /* =========================================================
@@ -534,17 +524,12 @@ export async function updateUser(
 export async function deleteUser(
   uuid: string | number,
 ): Promise<boolean> {
-  const response = await fetch(
-    `${API_BASE_URL}/users/${uuid}`,
-    {
-      method: "DELETE",
-      headers: getHeaders(),
-    },
-  );
-
-  await parseResponse(response);
-
-  return true;
+  try {
+    await api.delete(`/users/${uuid}`);
+    return true;
+  } catch (err: any) {
+    handleAxiosError(err);
+  }
 }
 
 /* =========================================================
@@ -554,17 +539,12 @@ export async function deleteUser(
 export async function convertEmployeeToUser(
   employeeId: number,
 ): Promise<User> {
-  const response = await fetch(
-    `${API_BASE_URL}/users/convert/employee/${employeeId}`,
-    {
-      method: "POST",
-      headers: getHeaders(),
-    },
-  );
-
-  const result = await parseResponse<any>(response);
-
-  return unwrapUser(result);
+  try {
+    const response = await api.post(`/users/convert/employee/${employeeId}`);
+    return unwrapUser(response.data);
+  } catch (err: any) {
+    handleAxiosError(err);
+  }
 }
 
 /* =========================================================
@@ -644,19 +624,10 @@ function pickDropdown(source: unknown, keys: string[]): DropdownOption[] {
   return [];
 }
 
-async function getJson(url: string): Promise<unknown> {
+async function getJson(endpoint: string): Promise<unknown> {
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getHeaders(),
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    return parseResponse<unknown>(response);
+    const response = await api.get(endpoint);
+    return response.data;
   } catch {
     return null;
   }
@@ -664,11 +635,11 @@ async function getJson(url: string): Promise<unknown> {
 
 export async function getUserFormDropdowns(): Promise<UserFormDropdowns> {
   const [base, designations, modules, roles, companies] = await Promise.all([
-    getJson(`${API_BASE_URL}/users/dropdown/list`),
-    getJson(`${API_BASE_URL}/designation/dropdown`),
-    getJson(`${API_BASE_URL}/modules/dropdown`),
-    getJson(`${API_BASE_URL}/roles/dropdown`),
-    getJson(`${API_BASE_URL}/companies`),
+    getJson("/users/dropdown/list"),
+    getJson("/designation/dropdown"),
+    getJson("/modules/dropdown"),
+    getJson("/roles/dropdown"),
+    getJson("/companies"),
   ]);
 
   return {
@@ -769,18 +740,15 @@ export async function getUserDropdown(
 
   const queryString = query.toString();
 
-  const response = await fetch(
-    `${API_BASE_URL}/users/dropdown/list${
-      queryString ? `?${queryString}` : ""
-    }`,
-    {
-      method: "GET",
-      headers: getHeaders(),
-      cache: "no-store",
-    },
-  );
-
-  return parseResponse(response);
+  try {
+    const response = await api.get(
+      `/users/dropdown/list${queryString ? `?${queryString}` : ""}`,
+    );
+    const result = response.data;
+    return Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : [];
+  } catch (err: any) {
+    handleAxiosError(err);
+  }
 }
 
 /* =========================================================
@@ -791,32 +759,24 @@ export async function assignRole(
   userId: number,
   roleId: number,
 ) {
-  const response = await fetch(
-    `${API_BASE_URL}/users/${userId}/roles/${roleId}`,
-    {
-      method: "POST",
-      headers: getHeaders(),
-    },
-  );
-
-  return parseResponse(response);
+  try {
+    const response = await api.post(`/users/${userId}/roles/${roleId}`);
+    return response.data;
+  } catch (err: any) {
+    handleAxiosError(err);
+  }
 }
 
 export async function removeRole(
   userId: number,
   roleId: number,
 ) {
-  const response = await fetch(
-    `${API_BASE_URL}/users/${userId}/roles/${roleId}`,
-    {
-      method: "DELETE",
-      headers: getHeaders(),
-    },
-  );
-
-  await parseResponse(response);
-
-  return true;
+  try {
+    const response = await api.delete(`/users/${userId}/roles/${roleId}`);
+    return response.data;
+  } catch (err: any) {
+    handleAxiosError(err);
+  }
 }
 
 /* =========================================================
@@ -830,16 +790,12 @@ export async function addUserPermissions(
     permissionIds: number[];
   },
 ) {
-  const response = await fetch(
-    `${API_BASE_URL}/users/permissions`,
-    {
-      method: "POST",
-      headers: getHeaders(),
-      body: JSON.stringify(payload),
-    },
-  );
-
-  return parseResponse(response);
+  try {
+    const response = await api.post("/users/permissions", payload);
+    return response.data;
+  } catch (err: any) {
+    handleAxiosError(err);
+  }
 }
 
 export async function deleteUserPermissions(
@@ -848,18 +804,12 @@ export async function deleteUserPermissions(
     permissionIds: number[];
   },
 ) {
-  const response = await fetch(
-    `${API_BASE_URL}/users/permissions`,
-    {
-      method: "DELETE",
-      headers: getHeaders(),
-      body: JSON.stringify(payload),
-    },
-  );
-
-  await parseResponse(response);
-
-  return true;
+  try {
+    const response = await api.delete("/users/permissions", { data: payload });
+    return response.data;
+  } catch (err: any) {
+    handleAxiosError(err);
+  }
 }
 
 /* =========================================================
@@ -890,16 +840,12 @@ export async function getMobileAuthEmployeeCodes(
 
   const queryString = query.toString();
 
-  const response = await fetch(
-    `${API_BASE_URL}/users/public/mobile-auth-employee-codes${
-      queryString ? `?${queryString}` : ""
-    }`,
-    {
-      method: "GET",
-      headers: getHeaders(),
-      cache: "no-store",
-    },
-  );
-
-  return parseResponse(response);
+  try {
+    const response = await api.get(
+      `/users/public/mobile-auth-employee-codes${queryString ? `?${queryString}` : ""}`,
+    );
+    return response.data;
+  } catch (err: any) {
+    handleAxiosError(err);
+  }
 }
