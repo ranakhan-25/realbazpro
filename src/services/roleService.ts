@@ -24,7 +24,11 @@ export interface Role {
   id: number | string;
   uuid?: string;
   name: string;
+  slug?: string;
   description?: string | null;
+  roleLevel?: number;
+  orgId?: number | null;
+  isSystemRole?: boolean;
   createdAt?: string;
   updatedAt?: string;
   permissions?: RolePermission[];
