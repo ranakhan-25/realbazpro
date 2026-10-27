@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sparkles, Search, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, AlertTriangle, Loader2 } from "lucide-react";
+import { Sparkles, Search, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, AlertTriangle, Loader2, RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
@@ -16,6 +16,7 @@ interface ProfessionRecord {
   name: string;
   status: string;
   description: string;
+  deletedAt?: string | null;
   addedBy?: any;
 }
 
@@ -27,6 +28,10 @@ export default function ProfessionPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalEntries, setTotalEntries] = useState(0);
+  const [showDeleted, setShowDeleted] = useState(false);
+
+  // Dropdowns
+  const [statuses, setStatuses] = useState<any[]>([]);
 
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,15 +52,18 @@ export default function ProfessionPage() {
   const fetchProfessions = async (page = 1, search = "") => {
     try {
       setLoading(true);
-      const url = `${API_PATH}/crm/configuration/professions?page=${page}&limit=${entriesPerPage}&search=${search}&withDeleted=false`;
+      const url = `${API_PATH}/crm/configuration/professions?page=${page}&limit=${entriesPerPage}&search=${search}&withDeleted=${showDeleted}`;
       
       const res = await fetch(url);
       const json = await res.json();
       
       if (json.success) {
-        setProfessions(json.data.data || []);
+        // ✅ ফ্রন্টএন্ডেও ফিল্টার করা হচ্ছে যাতে deleted ডাটা না আসে
+        const activeData = (json.data.data || []).filter((item: any) => !item.deletedAt);
+        
+        setProfessions(activeData);
         setTotalPages(json.data.meta?.totalPages || 1);
-        setTotalEntries(json.data.meta?.total || 0);
+        setTotalEntries(activeData.length || 0);
       }
     } catch (err) {
       console.error(err);
@@ -65,9 +73,23 @@ export default function ProfessionPage() {
     }
   };
 
+  const fetchDropdowns = async () => {
+    try {
+      const resStatus = await fetch(`${API_PATH}/crm/configuration/professions/dropdown/statuses`);
+      const jsonStatus = await resStatus.json();
+      if (jsonStatus.success) setStatuses(jsonStatus.data.data || jsonStatus.data || []);
+    } catch (err) {
+      console.error("Failed to load statuses", err);
+    }
+  };
+
   useEffect(() => {
     fetchProfessions(currentPage, searchQuery);
-  }, [currentPage, entriesPerPage]);
+  }, [currentPage, entriesPerPage, showDeleted]);
+
+  useEffect(() => {
+    fetchDropdowns();
+  }, []);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -157,7 +179,7 @@ export default function ProfessionPage() {
       return;
     }
 
-    // ✅ Optimistic UI Update: সাথে সাথে টেবিল থেকে সরিয়ে দাও
+    // ✅ Optimistic UI: ক্লিক করার সাথে সাথেই টেবিল থেকে ডাটা সরিয়ে দাও
     const previousData = [...professions];
     setProfessions(prev => prev.filter(item => (item.uuid || item.id) !== recordId));
     setIsDeleteModalOpen(false);
@@ -172,17 +194,35 @@ export default function ProfessionPage() {
       
       if (res.ok || json.success) {
         toast.success("Deleted successfully!");
-        // ✅ ডিলিট সফল হলে আবার ডাটা রিফ্রেশ করো (পেজিনেশন আপডেটের জন্য)
+        // ✅ সফল হলে ডাটা রিফ্রেশ করো
         fetchProfessions(currentPage, searchQuery);
       } else {
-        // ❌ যদি API ফেইল করে, তবে ডাটা ফিরিয়ে আনো
         toast.error(json.message || "Failed to delete");
+        // ❌ ফেইল করলে ডাটা ফিরিয়ে আনো
         setProfessions(previousData);
       }
     } catch (err) {
       console.error(err);
       toast.error("Error deleting profession");
-      setProfessions(previousData); // রোলব্যাক
+      setProfessions(previousData); // Rollback
+    }
+  };
+
+  // ====================== RESTORE HANDLER ======================
+  const handleRestore = async (item: ProfessionRecord) => {
+    if (!window.confirm(`Restore profession "${item.name}"?`)) return;
+    try {
+      const res = await fetch(`${API_PATH}/crm/configuration/professions/${item.uuid}/restore`, {
+        method: "PATCH",
+      });
+      if (res.ok) {
+        toast.success("Restored successfully!");
+        fetchProfessions(currentPage, searchQuery);
+      } else {
+        toast.error("Failed to restore");
+      }
+    } catch (err) {
+      toast.error("Error restoring profession");
     }
   };
 
@@ -214,13 +254,23 @@ export default function ProfessionPage() {
             Profession
           </h1>
         </div>
-        <button
-          onClick={handleOpenAddModal}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm shadow-md shadow-indigo-600/30 transition cursor-pointer"
-        >
-          <Plus size={18} />
-          <span>Profession Add</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowDeleted(!showDeleted)}
+            className={`px-4 py-2 rounded-xl text-sm font-bold border transition ${
+              showDeleted ? "bg-rose-100 text-rose-700 border-rose-300" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+            }`}
+          >
+            {showDeleted ? "Hide Deleted" : "Show Deleted"}
+          </button>
+          <button
+            onClick={handleOpenAddModal}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm shadow-md shadow-indigo-600/30 transition cursor-pointer"
+          >
+            <Plus size={18} />
+            <span>Profession Add</span>
+          </button>
+        </div>
       </div>
 
       {/* SEARCH & SHOW ENTRIES */}
@@ -294,6 +344,7 @@ export default function ProfessionPage() {
                           type="button"
                           onClick={(e) => {
                             e.preventDefault();
+                            e.stopPropagation();
                             handleOpenEditModal(item);
                           }}
                           className="p-2 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white transition cursor-pointer shadow-xs"
@@ -305,6 +356,7 @@ export default function ProfessionPage() {
                           type="button"
                           onClick={(e) => {
                             e.preventDefault();
+                            e.stopPropagation();
                             handleOpenDeleteModal(item);
                           }}
                           className="p-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition cursor-pointer shadow-xs"
@@ -312,6 +364,19 @@ export default function ProfessionPage() {
                         >
                           <Trash2 size={15} />
                         </button>
+                        {showDeleted && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleRestore(item);
+                            }}
+                            className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition cursor-pointer shadow-xs"
+                            title="Restore"
+                          >
+                            <RotateCcw size={15} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -424,6 +489,14 @@ export default function ProfessionPage() {
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
+                  {statuses.map((st, index) => {
+                    const statusName = typeof st === 'string' ? st : st?.name;
+                    return (
+                      <option key={`status-${index}`} value={statusName}>
+                        {statusName}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
