@@ -633,11 +633,11 @@ export default function MenusPage() {
                   </div>
                 }
                 style={{ borderColor: BORDER_COLOR }}
-                bodyStyle={{ padding: "12px 16px" }}
+                styles={{ body: { padding: "12px 16px" } }}
               >
                 {loading ? (
                   <div className="py-12 flex justify-center">
-                    <Spin tip="Loading navigation tree..." />
+                    <Spin description="Loading navigation tree..." />
                   </div>
                 ) : adminTreeData.length === 0 ? (
                   <Empty description="No sidebar menus configured for this role" />
