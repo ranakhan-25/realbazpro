@@ -1096,7 +1096,6 @@ export default function PurchaseBillInvoicePage() {
     const newItem: FormLineItem = {
       tempId: `item-${Date.now()}`,
       item_code: `MAT-PRC-${Math.floor(100 + Math.random() * 900)}`,
-      itemName: "General Construction Supplies",
       item_name: "General Construction Supplies",
       unit: "Pcs",
       quantity: 1,

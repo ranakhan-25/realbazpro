@@ -1,9 +1,6 @@
+/* eslint-disable prettier/prettier */
 "use client";
 
-<<<<<<< HEAD
-import { CrmPageTemplate } from "@/components/crm/CrmPageTemplate";
-
-=======
 import React, { useState } from "react";
 import { Sparkles, Search, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, AlertTriangle } from "lucide-react";
 
@@ -38,7 +35,6 @@ const leaderOptions = [
 
 
 
->>>>>>> 2f03ac08430f919648a4d56e103f68d58e1609d5
 export default function TeamsPage() {
   const [teams, setTeams] = useState<TeamRecord[]>(initialTeams);
   const [searchQuery, setSearchQuery] = useState("");

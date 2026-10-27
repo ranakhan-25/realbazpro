@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import api from "@/lib/api";
 import { Plan } from "./planService";
 

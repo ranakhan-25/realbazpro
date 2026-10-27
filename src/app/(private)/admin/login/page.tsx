@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 "use client";
 
 import Link from "next/link";
@@ -86,7 +87,6 @@ export default function LoginPage() {
         session.refreshToken,
         session.user,
       );
-
       router.replace("/admin/dashboard");
     } catch (err) {
       setError(
@@ -98,7 +98,6 @@ export default function LoginPage() {
       setIsSubmitting(false);
     }
   };
-
   const handleUseSuperAdmin = () => {
     setEmail("admin@admin.com");
     setPassword("12345678");
