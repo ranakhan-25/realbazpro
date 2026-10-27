@@ -186,6 +186,15 @@ export const defaultMenuGroups: AdminMenuItem[] = [
   },
 ];
 
+// Org Admin allowed sidebar links
+const ORG_ADMIN_ALLOWED_HREFS = new Set([
+  "/admin/dashboard",
+  "/admin/web-settings",
+  "/admin/organization",
+  "/admin/users",
+  "/admin/roles",
+]);
+
 export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -198,12 +207,13 @@ export default function AdminSidebar() {
     const profile = getStoredUserProfile();
     setUserProfile(profile);
 
-    const roleParam =
-      profile?.isSuperUser ||
-      profile?.role === "super-admin" ||
-      (profile?.roles && profile.roles.includes("super-admin"))
-        ? "super-admin"
-        : "org-admin";
+    const isSuper = Boolean(
+      profile?.isSuperUser === true ||
+        profile?.role === "super-admin" ||
+        (Array.isArray(profile?.roles) && profile.roles.includes("super-admin"))
+    );
+
+    const roleParam = isSuper ? "super-admin" : "org-admin";
 
     adminMenuService
       .getMenuTree(roleParam)
@@ -219,57 +229,63 @@ export default function AdminSidebar() {
 
   const isSuperAdmin = useMemo(() => {
     if (!userProfile) return true;
-    return (
+    return Boolean(
       userProfile.isSuperUser === true ||
-      userProfile.role === "super-admin" ||
-      (Array.isArray(userProfile.roles) && userProfile.roles.includes("super-admin"))
+        userProfile.role === "super-admin" ||
+        (Array.isArray(userProfile.roles) && userProfile.roles.includes("super-admin"))
     );
   }, [userProfile]);
 
   // Convert dynamic backend tree to sidebar structure, or fall back to default
   const visibleMenuGroups = useMemo<AdminMenuItem[]>(() => {
     if (dynamicMenuTree && dynamicMenuTree.length > 0) {
-      return dynamicMenuTree.map((node) => {
-        const IconComponent = (node.icon && ICON_MAP[node.icon]) || FolderTree;
-        if (node.children && node.children.length > 0) {
+      return dynamicMenuTree
+        .map((node) => {
+          const IconComponent = (node.icon && ICON_MAP[node.icon]) || FolderTree;
+
+          if (node.children && node.children.length > 0) {
+            const filteredChildren = isSuperAdmin
+              ? node.children
+              : node.children.filter((c) => c.url && ORG_ADMIN_ALLOWED_HREFS.has(c.url));
+
+            if (filteredChildren.length === 0) return null;
+
+            return {
+              label: node.title,
+              icon: IconComponent,
+              children: filteredChildren.map((c) => ({
+                label: c.title,
+                href: c.url || "#",
+                icon: (c.icon && ICON_MAP[c.icon]) || ChevronRight,
+              })),
+            };
+          }
+
+          if (!isSuperAdmin && node.url && !ORG_ADMIN_ALLOWED_HREFS.has(node.url)) {
+            return null;
+          }
+
           return {
             label: node.title,
+            href: node.url || "#",
             icon: IconComponent,
-            children: node.children.map((c) => ({
-              label: c.title,
-              href: c.url || "#",
-              icon: (c.icon && ICON_MAP[c.icon]) || ChevronRight,
-            })),
           };
-        }
-        return {
-          label: node.title,
-          href: node.url || "#",
-          icon: IconComponent,
-        };
-      });
+        })
+        .filter(Boolean) as AdminMenuItem[];
     }
 
     if (isSuperAdmin) {
       return defaultMenuGroups;
     }
 
-    const allowedHrefs = new Set([
-      "/admin/dashboard",
-      "/admin/web-settings",
-      "/admin/organization",
-      "/admin/users",
-      "/admin/roles",
-    ]);
-
     return defaultMenuGroups
       .map((item) => {
         if ("href" in item) {
-          return allowedHrefs.has(item.href) ? item : null;
+          return ORG_ADMIN_ALLOWED_HREFS.has(item.href) ? item : null;
         }
 
         const filteredChildren = item.children.filter((child) =>
-          allowedHrefs.has(child.href)
+          ORG_ADMIN_ALLOWED_HREFS.has(child.href)
         );
 
         if (filteredChildren.length === 0) return null;
