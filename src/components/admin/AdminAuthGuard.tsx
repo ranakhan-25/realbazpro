@@ -15,6 +15,7 @@ const SUPER_ADMIN_ONLY_PREFIXES = [
   "/admin/plans",
   "/admin/orgs",
   "/admin/modules",
+  "/admin/menus",
   "/admin/audit",
   "/admin/agreements",
   "/admin/config",
