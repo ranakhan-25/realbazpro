@@ -1,70 +1,38 @@
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
-import { Sparkles, Search, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, AlertTriangle } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Sparkles, Search, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, AlertTriangle, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
+const API_PATH = `${API_BASE}/realbizpro/api/v1`;
+
+// ====================== TYPES ======================
 interface CategoryRecord {
-  id: string;
+  uuid: string;
   code: string;
   name: string;
   description: string;
-  addBy: string;
+  isActive: boolean;
+  deletedAt?: string | null;
+  addedBy?: any;
 }
 
-const initialCategories: CategoryRecord[] = [
-  {
-    id: "1",
-    code: "LC5589255",
-    name: "Land share",
-    description: "assdasd",
-    addBy: "Admin",
-  },
-  {
-    id: "2",
-    code: "LC5999555",
-    name: "Used Flat",
-    description: "List all leads who want to buy a used flat",
-    addBy: "",
-  },
-  {
-    id: "3",
-    code: "LC7540564",
-    name: "Junk",
-    description: "",
-    addBy: "",
-  },
-  {
-    id: "4",
-    code: "LC4364740",
-    name: "Upcoming",
-    description: "Listing those clients who are interested for upcoming projects.",
-    addBy: "",
-  },
-  {
-    id: "5",
-    code: "LC6717551",
-    name: "On going",
-    description: "Listing those clients who are interested for under construction or on going projects.",
-    addBy: "",
-  },
-  {
-    id: "6",
-    code: "LC5543544",
-    name: "Ready Flat",
-    description: "List all those clients who are interested in buying a ready flat.",
-    addBy: "",
-  },
-];
-
 export default function LeadCategoryPage() {
-  const [categories, setCategories] = useState<CategoryRecord[]>(initialCategories);
+  const [categories, setCategories] = useState<CategoryRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-
-  // Add / Edit Modal States
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalEntries, setTotalEntries] = useState(0);
+  
+  // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<CategoryRecord | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     code: "",
@@ -72,35 +40,142 @@ export default function LeadCategoryPage() {
     description: "",
   });
 
-  // Delete Confirmation Modal States
+  // Delete Modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedCategoryToDelete, setSelectedCategoryToDelete] = useState<CategoryRecord | null>(null);
 
-  // Filter Logic
-  const filteredData = categories.filter((item) => {
-    const search = searchQuery.trim().toLowerCase();
-    return (
-      !search ||
-      item.name.toLowerCase().includes(search) ||
-      item.code.toLowerCase().includes(search) ||
-      item.description.toLowerCase().includes(search) ||
-      item.addBy.toLowerCase().includes(search)
-    );
-  });
-
-  const totalEntries = filteredData.length;
-  const totalPages = Math.ceil(totalEntries / entriesPerPage) || 1;
-  const indexOfLastItem = currentPage * entriesPerPage;
-  const indexOfFirstItem = indexOfLastItem - entriesPerPage;
-  const currentTableData = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
+  // ====================== FETCH DATA ======================
+  const fetchCategories = async (page = 1, search = "") => {
+    try {
+      setLoading(true);
+      const url = `${API_PATH}/crm/configuration/lead-categories?page=${page}&limit=${entriesPerPage}&search=${search}&withDeleted=false`;
+      
+      const res = await fetch(url);
+      const json = await res.json();
+      
+      if (json.success) {
+        setCategories(json.data.data || []);
+        setTotalPages(json.data.meta?.totalPages || 1);
+        setTotalEntries(json.data.meta?.total || 0);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load lead categories");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Open Modal for Add
+  useEffect(() => {
+    fetchCategories(currentPage, searchQuery);
+  }, [currentPage, entriesPerPage]);
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+    fetchCategories(1, e.target.value);
+  };
+
+  // ====================== EDIT HANDLER ======================
+  const handleOpenEditModal = (item: CategoryRecord) => {
+    setEditingRecord(item);
+    setFormData({
+      code: item.code || "",
+      name: item.name || "",
+      description: item.description || "",
+    });
+    setIsModalOpen(true);
+  };
+
+  // ====================== SUBMIT HANDLER (POST / PATCH) ======================
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name) {
+      toast.error("Please enter Category Name!");
+      return;
+    }
+
+    setSubmitting(true);
+    const payload = {
+      code: formData.code,
+      name: formData.name,
+      description: formData.description,
+      isActive: true,
+      createdBy: "Admin",
+    };
+
+    try {
+      const isEdit = !!editingRecord;
+      const url = isEdit
+        ? `${API_PATH}/crm/configuration/lead-categories/${editingRecord!.uuid}`
+        : `${API_PATH}/crm/configuration/lead-categories`;
+      const method = isEdit ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (res.ok || json.success) {
+        toast.success(isEdit ? "Updated Successfully!" : "Created Successfully!");
+        setIsModalOpen(false);
+        setEditingRecord(null);
+        fetchCategories(currentPage, searchQuery);
+      } else {
+        toast.error(json.message || "Something went wrong");
+      }
+    } catch (err) {
+      toast.error("Network Error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ====================== DELETE HANDLERS ======================
+  const handleOpenDeleteModal = (item: CategoryRecord) => {
+    setSelectedCategoryToDelete(item);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedCategoryToDelete) return;
+    
+    // Debugging
+    console.log("Deleting Category UUID:", selectedCategoryToDelete.uuid);
+
+    try {
+      const res = await fetch(`${API_PATH}/crm/configuration/lead-categories/${selectedCategoryToDelete.uuid}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" }, // Sometimes API requires headers for DELETE
+      });
+      
+      const json = await res.json().catch(() => ({}));
+      
+      // ✅ res.ok অথবা json.success যেকোনো একটি সত্য হলে সফল ধরবে
+      if (res.ok || json.success) {
+        toast.success("Deleted successfully!");
+        setIsDeleteModalOpen(false);
+        setSelectedCategoryToDelete(null);
+        
+        // ✅ পেজিনেশন হ্যান্ডেল
+        if (categories.length === 1 && currentPage > 1) {
+          setCurrentPage(currentPage - 1);
+        } else {
+          fetchCategories(currentPage, searchQuery);
+        }
+      } else {
+        toast.error(json.message || "Failed to delete");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error deleting category");
+    }
+  };
+
+  // ====================== ADD HANDLER ======================
   const handleOpenAddModal = () => {
     setEditingRecord(null);
     setFormData({
@@ -111,94 +186,31 @@ export default function LeadCategoryPage() {
     setIsModalOpen(true);
   };
 
-  // Open Modal for Edit
-  const handleOpenEditModal = (item: CategoryRecord) => {
-    setEditingRecord(item);
-    setFormData({
-      code: item.code,
-      name: item.name,
-      description: item.description || "",
-    });
-    setIsModalOpen(true);
-  };
-
-  // Submit Handler
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name) {
-      alert("Please enter Category Name!");
-      return;
-    }
-
-    if (editingRecord) {
-      // Edit logic
-      setCategories(
-        categories.map((item) =>
-          item.id === editingRecord.id
-            ? {
-                ...item,
-                code: formData.code,
-                name: formData.name,
-                description: formData.description,
-              }
-            : item
-        )
-      );
-    } else {
-      // Add logic
-      const newRecord: CategoryRecord = {
-        id: `${Date.now()}`,
-        code: formData.code || `LC${Math.floor(1000000 + Math.random() * 9000000)}`,
-        name: formData.name,
-        description: formData.description,
-        addBy: "Admin",
-      };
-      setCategories([newRecord, ...categories]);
-    }
-
-    setIsModalOpen(false);
-    setEditingRecord(null);
-  };
-
-  // Open Delete Modal
-  const handleOpenDeleteModal = (item: CategoryRecord) => {
-    setSelectedCategoryToDelete(item);
-    setIsDeleteModalOpen(true);
-  };
-
-  // Confirm Delete Action
-  const handleConfirmDelete = () => {
-    if (selectedCategoryToDelete) {
-      setCategories(categories.filter((item) => item.id !== selectedCategoryToDelete.id));
-      setIsDeleteModalOpen(false);
-      setSelectedCategoryToDelete(null);
-    }
-  };
-
+  // ====================== RENDER ======================
   return (
-    <div className="w-full space-y-6 p-4 md:p-6 bg-slate-50/50 dark:bg-background min-h-screen text-foreground font-sans">
+    <div className="w-full space-y-6 p-4 md:p-6 bg-slate-50/50 min-h-screen text-foreground font-sans">
       
-      {/* HEADER & ADD BUTTON */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-3xl border border-border/85 bg-card/70 backdrop-blur-2xl p-6 md:p-8 shadow-sm">
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-3xl border border-border/85 bg-white/70 backdrop-blur-2xl p-6 md:p-8 shadow-sm">
         <div>
-          <div className="flex items-center gap-2 text-xs md:text-sm font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+          <div className="flex items-center gap-2 text-xs md:text-sm font-black uppercase tracking-wider text-indigo-600">
             <Sparkles size={18} className="animate-pulse" /> Leads Management
           </div>
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground mt-1">
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-800 mt-1">
             Lead Category
           </h1>
         </div>
         <button
           onClick={handleOpenAddModal}
-          className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm shadow-md shadow-indigo-600/30 transition cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm shadow-md shadow-indigo-600/30 transition cursor-pointer"
         >
           <Plus size={18} />
           <span>Category Add</span>
         </button>
       </div>
 
-      {/* SHOW ENTRIES & SEARCH BAR */}
-      <div className="p-4 md:p-5 rounded-2xl border border-border/80 bg-card shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+      {/* SEARCH & SHOW ENTRIES */}
+      <div className="p-4 md:p-5 rounded-2xl border border-border/80 bg-white shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-sm font-extrabold text-muted-foreground w-full sm:w-auto">
           <span>Show</span>
           <select
@@ -222,17 +234,14 @@ export default function LeadCategoryPage() {
             type="text"
             placeholder="Search..."
             value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
+            onChange={handleSearch}
             className="w-full pl-10 pr-4 py-2.5 border rounded-xl outline-none bg-background border-border text-sm font-bold"
           />
         </div>
       </div>
 
       {/* TABLE */}
-      <div className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-border/80 bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
@@ -242,36 +251,52 @@ export default function LeadCategoryPage() {
                 <th className="py-5 px-4 min-w-[200px]">NAME</th>
                 <th className="py-5 px-4 min-w-[300px]">DESCRIPTION</th>
                 <th className="py-5 px-4 min-w-[140px]">ADD BY</th>
-                <th className="py-5 px-4 text-center min-w-[120px]">ACTION</th>
+                <th className="py-5 px-4 text-center min-w-[160px]">ACTION</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-border/60 font-semibold text-foreground text-sm">
-              {currentTableData.length > 0 ? (
-                currentTableData.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-muted/40 transition-colors">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-indigo-600" />
+                  </td>
+                </tr>
+              ) : categories.length > 0 ? (
+                categories.map((item, index) => (
+                  <tr key={item.uuid} className="hover:bg-muted/40 transition-colors">
                     <td className="py-4 px-4 font-mono font-bold text-center text-muted-foreground">
-                      {indexOfFirstItem + index + 1}
+                      {(currentPage - 1) * entriesPerPage + index + 1}
                     </td>
-                    <td className="py-4 px-4 font-mono font-black text-indigo-600 dark:text-indigo-400">
+                    <td className="py-4 px-4 font-mono font-black text-indigo-600">
                       {item.code}
                     </td>
                     <td className="py-4 px-4 font-extrabold text-foreground">{item.name}</td>
                     <td className="py-4 px-4 text-muted-foreground">{item.description || "—"}</td>
-                    <td className="py-4 px-4 font-bold text-muted-foreground">{item.addBy || "—"}</td>
+                    <td className="py-4 px-4 font-bold text-muted-foreground">
+                      {typeof item.addedBy === "string" ? item.addedBy : "Admin"}
+                    </td>
                     <td className="py-4 px-4 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        {/* Edit Button */}
                         <button
-                          onClick={() => handleOpenEditModal(item)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleOpenEditModal(item);
+                          }}
                           className="p-2 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white transition cursor-pointer shadow-xs"
                           title="Edit"
                         >
                           <Edit size={15} />
                         </button>
-                        {/* Delete Button */}
                         <button
-                          onClick={() => handleOpenDeleteModal(item)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleOpenDeleteModal(item);
+                          }}
                           className="p-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition cursor-pointer shadow-xs"
                           title="Delete"
                         >
@@ -292,17 +317,17 @@ export default function LeadCategoryPage() {
           </table>
         </div>
 
-        {/* FOOTER & PAGINATION */}
+        {/* PAGINATION */}
         <div className="p-4 md:p-5 border-t border-border/80 bg-card/50 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm font-bold text-muted-foreground">
           <div>
-            Showing <span className="text-foreground font-black">{totalEntries > 0 ? indexOfFirstItem + 1 : 0}</span> to{" "}
-            <span className="text-foreground font-black">{Math.min(indexOfLastItem, totalEntries)}</span> of{" "}
+            Showing <span className="text-foreground font-black">{totalEntries > 0 ? (currentPage - 1) * entriesPerPage + 1 : 0}</span> to{" "}
+            <span className="text-foreground font-black">{Math.min(currentPage * entriesPerPage, totalEntries)}</span> of{" "}
             <span className="text-foreground font-black">{totalEntries}</span> entries
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => handlePageChange(currentPage - 1)}
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
               className="px-3.5 py-2 rounded-xl border border-border/80 bg-background hover:bg-indigo-50 disabled:opacity-40 transition flex items-center gap-1.5 text-foreground cursor-pointer font-extrabold text-xs"
             >
@@ -314,7 +339,7 @@ export default function LeadCategoryPage() {
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                 <button
                   key={page}
-                  onClick={() => handlePageChange(page)}
+                  onClick={() => setCurrentPage(page)}
                   className={`w-9 h-9 rounded-xl font-extrabold text-xs transition cursor-pointer ${
                     currentPage === page
                       ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/30"
@@ -327,7 +352,7 @@ export default function LeadCategoryPage() {
             </div>
 
             <button
-              onClick={() => handlePageChange(currentPage + 1)}
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages || totalPages === 0}
               className="px-3.5 py-2 rounded-xl border border-border/80 bg-background hover:bg-indigo-50 disabled:opacity-40 transition flex items-center gap-1.5 text-foreground cursor-pointer font-extrabold text-xs"
             >
@@ -338,17 +363,17 @@ export default function LeadCategoryPage() {
         </div>
       </div>
 
-      {/* LEAD CATEGORY ADD / EDIT MODAL */}
+      {/* ADD / EDIT MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 md:p-8 space-y-5 shadow-2xl">
-            <div className="flex justify-between items-center border-b pb-4 border-slate-200 dark:border-slate-800">
-              <h3 className="text-xl font-black text-slate-800 dark:text-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-2xl rounded-2xl bg-white border border-slate-200 p-6 md:p-8 space-y-5 shadow-2xl">
+            <div className="flex justify-between items-center border-b pb-4 border-slate-200">
+              <h3 className="text-xl font-black text-slate-800">
                 {editingRecord ? "Lead Category Edit" : "Lead Category Add"}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X size={20} />
               </button>
@@ -361,8 +386,8 @@ export default function LeadCategoryPage() {
                   type="text"
                   placeholder="Category Code"
                   value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full p-3 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  readOnly
+                  className="w-full p-3 border rounded-xl bg-slate-100 border-slate-200 text-sm font-semibold outline-none text-muted-foreground cursor-not-allowed"
                 />
               </div>
 
@@ -375,7 +400,8 @@ export default function LeadCategoryPage() {
                   placeholder="Category Name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full p-3 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full p-3 border rounded-xl bg-white border-slate-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  required
                 />
               </div>
 
@@ -386,11 +412,11 @@ export default function LeadCategoryPage() {
                   rows={3}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full p-3 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full p-3 border rounded-xl bg-white border-slate-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
@@ -400,8 +426,10 @@ export default function LeadCategoryPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-md cursor-pointer transition text-sm"
+                  disabled={submitting}
+                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-md cursor-pointer transition text-sm flex items-center gap-2"
                 >
+                  {submitting && <Loader2 size={16} className="animate-spin" />}
                   Submit
                 </button>
               </div>
@@ -412,15 +440,15 @@ export default function LeadCategoryPage() {
 
       {/* DELETE CONFIRMATION MODAL */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 text-center space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 p-6 text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-rose-500/10 text-rose-600 flex items-center justify-center mx-auto">
               <AlertTriangle size={24} />
             </div>
-            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100">
+            <h3 className="text-xl font-black text-slate-800">
               Are you sure?
             </h3>
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            <p className="text-xs font-semibold text-slate-500">
               You are about to delete <span className="font-bold text-foreground">"{selectedCategoryToDelete?.name}"</span>. This action cannot be undone.
             </p>
             <div className="flex justify-center gap-3 pt-2">

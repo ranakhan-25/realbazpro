@@ -77,7 +77,7 @@ export default function WebSettingsPage() {
   // Status
   const [isPublished, setIsPublished] = useState(true);
 
-  // Load organizations if super admin
+  // Load organizations if super admin, or lock to orgId if org admin
   useEffect(() => {
     if (isSuperAdmin) {
       getOrganizations()
@@ -88,8 +88,10 @@ export default function WebSettingsPage() {
           }
         })
         .catch(() => {});
+    } else if (profile?.orgId) {
+      setSelectedOrgId(Number(profile.orgId));
     }
-  }, [isSuperAdmin]);
+  }, [isSuperAdmin, profile?.orgId]);
 
   // Load Site Data
   const loadSite = async () => {
@@ -222,16 +224,31 @@ export default function WebSettingsPage() {
             </a>
           )}
 
-          <button
-            onClick={handleSave}
-            disabled={isSaving || loading}
-            className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium text-sm hover:opacity-90 disabled:opacity-50 transition shadow-sm"
-          >
-            {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {isSaving ? "Saving..." : "Save Changes"}
-          </button>
+          {!isSuperAdmin ? (
+            <button
+              onClick={handleSave}
+              disabled={isSaving || loading}
+              className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium text-sm hover:opacity-90 disabled:opacity-50 transition shadow-sm"
+            >
+              {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isSaving ? "Saving..." : "Save Changes"}
+            </button>
+          ) : (
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700">
+              Read-Only Inspection Mode
+            </span>
+          )}
         </div>
       </div>
+
+      {isSuperAdmin && (
+        <div className="flex items-center gap-3 p-4 bg-amber-50 text-amber-900 border border-amber-200 rounded-xl text-xs font-medium">
+          <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+          <p>
+            <strong>Tenant Sovereignty Policy:</strong> Organization website CMS content is managed solely by each organization’s administrator. Super Administrators have read-only inspection access.
+          </p>
+        </div>
+      )}
 
       {showSuccess && (
         <div className="flex items-center gap-3 p-4 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 rounded-xl transition animate-in fade-in">

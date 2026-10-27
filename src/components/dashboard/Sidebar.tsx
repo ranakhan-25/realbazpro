@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MENUS, MODULES, type MenuNode, type ModuleKey } from "@/lib/menus";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
+import { useUserAccess } from "@/context/UserAccessContext";
 
 const LAMS_ICONS: Record<string, React.ElementType> = {
   dashboard: LayoutDashboard,
@@ -35,6 +36,26 @@ type Props = {
   onClose: () => void;
   filter: string;
 };
+
+function pruneTreeByAccess(
+  nodes: MenuNode[] | undefined,
+  moduleKey: string,
+  hasAccess: (mod: string, path: string) => boolean,
+): MenuNode[] {
+  if (!nodes || !nodes.length) return [];
+  const out: MenuNode[] = [];
+  for (const n of nodes) {
+    const kids = n.children ? pruneTreeByAccess(n.children, moduleKey, hasAccess) : undefined;
+    const selfAllowed = hasAccess(moduleKey, n.path);
+    if (selfAllowed || (kids && kids.length > 0)) {
+      out.push({
+        ...n,
+        children: kids,
+      });
+    }
+  }
+  return out;
+}
 
 function filterTree(nodes: MenuNode[], q: string): MenuNode[] {
   if (!q) return nodes;
@@ -60,9 +81,35 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
   const pathname = usePathname();
   const { primaryColor } = useTheme();
   const brandColor = primaryColor || FALLBACK_PRIMARY;
+  const { accessibleModules, hasAccessToRoute } = useUserAccess();
+
+  const displayModules = useMemo(() => {
+    if (accessibleModules && accessibleModules.length > 0) {
+      return accessibleModules.map((m) => ({
+        key: m.key as ModuleKey,
+        label: m.name,
+      }));
+    }
+    return MODULES;
+  }, [accessibleModules]);
 
   const q = filter.trim().toLowerCase();
-  const tree = useMemo(() => filterTree(MENUS[module], q), [module, q]);
+
+  const currentAccessibleMod = useMemo(() => {
+    return accessibleModules.find(
+      (m) => m.key.toLowerCase() === module.toLowerCase(),
+    );
+  }, [accessibleModules, module]);
+
+  const permittedTree = useMemo(() => {
+    if (currentAccessibleMod?.menuTree && currentAccessibleMod.menuTree.length > 0) {
+      return currentAccessibleMod.menuTree;
+    }
+    const rawTree = MENUS[module] || [];
+    return pruneTreeByAccess(rawTree, module, hasAccessToRoute);
+  }, [currentAccessibleMod, module, hasAccessToRoute]);
+
+  const tree = useMemo(() => filterTree(permittedTree, q), [permittedTree, q]);
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -207,12 +254,14 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         {/* Module Select */}
         <div className="border-b border-sidebar-border p-4">
           <div className="mb-2 flex items-center justify-between">
-            <label
-              htmlFor="module-select"
-              className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground"
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition"
+              title="Return to Universal Workspace Launchpad"
             >
-              Module
-            </label>
+              <LayoutDashboard className="h-3.5 w-3.5 text-blue-600" />
+              <span>Workspace Hub</span>
+            </Link>
             <button
               type="button"
               onClick={onClose}
@@ -240,7 +289,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
               e.currentTarget.style.boxShadow = "";
             }}
           >
-            {MODULES.map((m) => (
+            {displayModules.map((m) => (
               <option key={m.key} value={m.key}>
                 {m.label}
               </option>
