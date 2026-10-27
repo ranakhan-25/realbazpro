@@ -15,53 +15,28 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { useTheme } from "@/lib/theme";
-import RolePermissionModal, { Modal } from "./Modal";
-
-// টাইপ ডেফিনিশন
-interface Role {
-  id: string | number;
-  name: string;
-  description?: string;
-  permissions?: any[];
-  createdAt?: string;
-}
-
-// ডেমো রোল ডেটা
-const INITIAL_DEMO_ROLES: Role[] = [
-  {
-    id: 1,
-    name: "Super Admin",
-    description: "Full access to all system modules and management tools.",
-    permissions: [{ id: 1 }, { id: 2 }],
-    createdAt: "2024-01-01T00:00:00.000Z",
-  },
-  {
-    id: 2,
-    name: "Project Manager",
-    description: "Can manage project workflows and daily operational tasks.",
-    permissions: [{ id: 3 }],
-    createdAt: "2024-01-02T00:00:00.000Z",
-  },
-  {
-    id: 3,
-    name: "Sales Team",
-    description: "Limited access for sales pipeline, leads, and follow-ups.",
-    permissions: [{ id: 4 }, { id: 5 }],
-    createdAt: "2024-01-03T00:00:00.000Z",
-  },
-];
+import RolePermissionModal, { Modal, type RolePermissionSavePayload } from "./Modal";
+import {
+  getRoles,
+  createRoleWithPermissions,
+  updateRole,
+  deleteRole,
+  type Role,
+} from "@/services/roleService";
 
 export default function RolesPage() {
   const { primaryColor } = useTheme();
 
-  // স্টেট
-  const [roles, setRoles] = useState<Role[]>(INITIAL_DEMO_ROLES);
+  // State
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState(true);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
 
-  // মডাল স্টেট
+  // Modal State
   const [formOpen, setFormOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
 
@@ -69,7 +44,7 @@ export default function RolesPage() {
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
   const [deletingId, setDeletingId] = useState<string | number | null>(null);
 
-  // সার্চ ডিবাউন্স
+  // Search debounce
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput.trim());
@@ -77,7 +52,25 @@ export default function RolesPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // হ্যান্ডলারসমূহ
+  // Fetch live roles
+  const loadRoles = async () => {
+    try {
+      setLoadingRoles(true);
+      const data = await getRoles();
+      setRoles(data);
+    } catch (err: any) {
+      console.error("Failed to fetch roles:", err);
+      toast.error("Failed to load roles from server");
+    } finally {
+      setLoadingRoles(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRoles();
+  }, []);
+
+  // Handlers
   const openCreate = () => {
     setEditingRole(null);
     setFormOpen(true);
@@ -88,34 +81,49 @@ export default function RolesPage() {
     setFormOpen(true);
   };
 
-  // মডাল থেকে ডেটা রিসিভ করা (Add / Edit)
-  const handleFormSuccess = (newRoleData: any) => {
-    setRoles((prev) => {
-      const exists = prev.find((r) => r.id === newRoleData.roleId);
-
-      const formattedRole: Role = {
-        id: newRoleData.roleId || Date.now(),
-        name: newRoleData.roleName,
-        description: editingRole?.description || "Newly created role",
-        permissions: newRoleData.permissionIds.map((id: any) => ({ id })),
-        createdAt: editingRole?.createdAt || new Date().toISOString(),
-      };
-
-      if (exists) {
-        return prev.map((r) => (r.id === formattedRole.id ? formattedRole : r));
+  // Save (Create / Update) from modal
+  const handleSaveRole = async (payload: RolePermissionSavePayload) => {
+    try {
+      if (editingRole && editingRole.id) {
+        // Update
+        await updateRole(editingRole.id, {
+          name: payload.roleName,
+          description: payload.description,
+        });
+        toast.success(`Role '${payload.roleName}' updated successfully`);
+      } else {
+        // Create new role with permissions across all modules
+        await createRoleWithPermissions({
+          name: payload.roleName,
+          description: payload.description,
+          roleLevel: payload.roleLevel,
+          permissionIds: payload.permissionIds.map(Number),
+        });
+        toast.success(`Role '${payload.roleName}' created with permissions`);
       }
-      return [formattedRole, ...prev];
-    });
+
+      setFormOpen(false);
+      await loadRoles();
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || "Failed to save role";
+      toast.error(msg);
+      throw err;
+    }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!roleToDelete) return;
-    setDeletingId(roleToDelete.id);
-    setTimeout(() => {
-      setRoles((prev) => prev.filter((r) => r.id !== roleToDelete.id));
+    try {
+      setDeletingId(roleToDelete.id);
+      await deleteRole(roleToDelete.id);
+      toast.success(`Role '${roleToDelete.name}' deleted successfully`);
       setRoleToDelete(null);
+      await loadRoles();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete role");
+    } finally {
       setDeletingId(null);
-    }, 300);
+    }
   };
 
   const filteredRoles = useMemo(() => {
@@ -135,11 +143,7 @@ export default function RolesPage() {
           <div>
             <div className="flex items-center gap-3">
               <div
-                className="flex h-10 w-10 items-center justify-center rounded-xl"
-                style={{
-                  backgroundColor: `${primaryColor}1A`,
-                  color: primaryColor,
-                }}
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600"
               >
                 <Shield className="h-5 w-5" />
               </div>
@@ -148,7 +152,7 @@ export default function RolesPage() {
                   Role Management
                 </h1>
                 <p className="mt-0.5 text-sm text-slate-500">
-                  Manage roles and their assigned permissions.
+                  Manage roles and their assigned granular permissions across all modules.
                 </p>
               </div>
             </div>
@@ -156,8 +160,7 @@ export default function RolesPage() {
 
           <button
             onClick={openCreate}
-            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold text-white shadow-sm transition-all hover:opacity-90 hover:shadow-md active:scale-[0.98]"
-            style={{ backgroundColor: primaryColor }}
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" />
             Add Role
@@ -171,7 +174,7 @@ export default function RolesPage() {
         <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-slate-800">
-              System Roles
+              Configured Roles
             </h2>
             <p className="mt-0.5 text-xs text-slate-400">
               {filteredRoles.length}{" "}
@@ -184,112 +187,118 @@ export default function RolesPage() {
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
               placeholder="Search roles..."
-              className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-700 outline-none transition focus:bg-white"
+              className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-700 outline-none transition focus:bg-white focus:border-blue-500"
             />
           </div>
         </div>
 
         {/* TABLE */}
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/70">
-                <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Role
-                </th>
-                <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Description
-                </th>
-                <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Permissions
-                </th>
-                <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Created
-                </th>
-                <th className="px-5 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredRoles.map((role, index) => (
-                <motion.tr
-                  key={role.id}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: index * 0.025 }}
-                  className="group transition-colors hover:bg-slate-50/80"
-                >
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-                        style={{
-                          backgroundColor: `${primaryColor}1A`,
-                          color: primaryColor,
-                        }}
-                      >
-                        <Shield className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-800">
-                          {role.name}
-                        </p>
-                        <p className="mt-0.5 text-xs text-slate-400">
-                          ID: {role.id}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4">
-                    <p className="max-w-[360px] truncate text-sm text-slate-500">
-                      {role.description || "No description available"}
-                    </p>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span
-                      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold"
-                      style={{
-                        backgroundColor: `${primaryColor}1A`,
-                        color: primaryColor,
-                      }}
+          {loadingRoles ? (
+            <div className="flex h-48 items-center justify-center text-xs text-slate-400">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin text-blue-600" />
+              Loading system and organization roles...
+            </div>
+          ) : (
+            <table className="w-full min-w-[900px]">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/70">
+                  <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Role
+                  </th>
+                  <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Description
+                  </th>
+                  <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Permissions
+                  </th>
+                  <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Created
+                  </th>
+                  <th className="px-5 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredRoles.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-xs text-slate-400">
+                      No roles found matching your search.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRoles.map((role, index) => (
+                    <motion.tr
+                      key={role.id}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay: index * 0.025 }}
+                      className="group transition-colors hover:bg-slate-50/80"
                     >
-                      <KeyRound className="h-3.5 w-3.5" />
-                      {role.permissions?.length ?? 0}
-                      <span style={{ opacity: 0.7 }}>permissions</span>
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-500">
-                    {role.createdAt
-                      ? new Date(role.createdAt).toLocaleDateString()
-                      : "—"}
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => setViewingRole(role)}
-                        className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#009432]"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => openEdit(role)}
-                        className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#009432]"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => setRoleToDelete(role)}
-                        className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                            <Shield className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-800">
+                              {role.name}
+                            </p>
+                            <p className="mt-0.5 text-xs text-slate-400">
+                              ID: {role.id}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <p className="max-w-[360px] truncate text-sm text-slate-500">
+                          {role.description || "No description available"}
+                        </p>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 text-blue-700 px-2.5 py-1.5 text-xs font-semibold">
+                          <KeyRound className="h-3.5 w-3.5" />
+                          {role.permissions?.length ?? 0}
+                          <span style={{ opacity: 0.7 }}>permissions</span>
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-500">
+                        {role.createdAt
+                          ? new Date(role.createdAt).toLocaleDateString()
+                          : "—"}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => setViewingRole(role)}
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-blue-600"
+                            title="View details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => openEdit(role)}
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-blue-600"
+                            title="Edit role"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setRoleToDelete(role)}
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                            title="Delete role"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </section>
 
@@ -301,7 +310,7 @@ export default function RolesPage() {
         title={
           editingRole ? "Edit Role & Permissions" : "Create Role & Permissions"
         }
-        onSave={handleFormSuccess}
+        onSave={handleSaveRole}
       />
 
       {/* VIEW MODAL (Details) */}
@@ -363,8 +372,7 @@ export default function RolesPage() {
                 disabled={deletingId !== null}
                 className="px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2"
               >
-                {deletingId && <Loader2 className="h-4 w-4 animate-spin" />}{" "}
-                Delete
+                {deletingId && <Loader2 className="h-4 w-4 animate-spin" />} Delete
               </button>
             </div>
           </div>

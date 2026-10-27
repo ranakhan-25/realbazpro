@@ -52,7 +52,42 @@ export interface CreateRolePayload {
 export interface CreateRoleWithPermissionsPayload {
   name: string;
   description?: string;
+  roleLevel?: number;
   permissionIds: number[];
+}
+
+export interface FeatureTreeNode {
+  id: string;
+  name: string;
+  moduleId?: number;
+  module?: {
+    id: string;
+    name: string;
+    description?: string | null;
+  };
+  description?: string | null;
+  permissions: {
+    id: string;
+    key: string;
+    name: string;
+    description?: string | null;
+    resource: string;
+    action: string;
+    context: string;
+  }[];
+}
+
+export async function getFeaturesTreePermissions(moduleId?: number): Promise<FeatureTreeNode[]> {
+  const response = await api.get<{ success: boolean; data: FeatureTreeNode[] }>(
+    "/features/tree-permissions",
+    { params: moduleId ? { moduleId } : undefined },
+  );
+
+  return Array.isArray(response.data?.data)
+    ? response.data.data
+    : Array.isArray(response.data)
+      ? (response.data as unknown as FeatureTreeNode[])
+      : [];
 }
 
 export async function getRoles(): Promise<Role[]> {

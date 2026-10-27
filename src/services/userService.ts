@@ -554,6 +554,10 @@ export async function convertEmployeeToUser(
 export interface DropdownOption {
   id: number | string;
   name: string;
+  slug?: string;
+  description?: string | null;
+  roleLevel?: number;
+  orgId?: number | null;
 }
 
 export interface UserFormDropdowns {
@@ -599,7 +603,14 @@ function normalizeOptions(value: unknown): DropdownOption[] {
         return null;
       }
 
-      return { id, name: String(name) };
+      return {
+        id,
+        name: String(name),
+        slug: typeof item.slug === "string" ? item.slug : undefined,
+        description: typeof item.description === "string" ? item.description : null,
+        roleLevel: typeof item.roleLevel === "number" ? item.roleLevel : undefined,
+        orgId: typeof item.orgId === "number" ? item.orgId : null,
+      };
     })
     .filter((item): item is DropdownOption => item !== null);
 }
