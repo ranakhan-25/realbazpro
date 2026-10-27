@@ -27,6 +27,7 @@ import {
   type CreateUserPayload,
   type User as UserModel,
 } from "@/services/userService";
+import { getOrganizations, type Organization } from "@/services/organizationService";
 import { getStoredUserProfile } from "@/lib/admin-auth/adminAuthStorage";
 
 interface UserWizardModalProps {
@@ -70,6 +71,11 @@ export default function UserWizardModal({
   const [designation, setDesignation] = useState("Operations Staff");
   const [isActive, setIsActive] = useState(true);
 
+  // Organization Assignment (for Super Admin)
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [selectedOrgId, setSelectedOrgId] = useState<string>("");
+  const [loadingOrgs, setLoadingOrgs] = useState(false);
+
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -81,8 +87,26 @@ export default function UserWizardModal({
       setCurrentStep(1);
       setErrorMessage("");
       loadRoles();
+      if (profile?.isSuperUser) {
+        loadOrganizations();
+      }
     }
   }, [isOpen]);
+
+  const loadOrganizations = async () => {
+    try {
+      setLoadingOrgs(true);
+      const orgList = await getOrganizations();
+      setOrganizations(orgList);
+      if (orgList.length > 0 && !selectedOrgId) {
+        setSelectedOrgId(String(orgList[0].id));
+      }
+    } catch (err: any) {
+      console.warn("Could not load organizations for wizard:", err);
+    } finally {
+      setLoadingOrgs(false);
+    }
+  };
 
   const loadRoles = async () => {
     try {
@@ -175,6 +199,10 @@ export default function UserWizardModal({
         email.trim().toLowerCase().split("@")[0] ||
         "user";
 
+      const finalOrgId = profile?.isSuperUser
+        ? (selectedOrgId ? Number(selectedOrgId) : undefined)
+        : (profile?.orgId ? Number(profile.orgId) : undefined);
+
       const payload: CreateUserPayload = {
         name: `${firstName} ${lastName}`.trim(),
         firstName: firstName.trim(),
@@ -186,6 +214,7 @@ export default function UserWizardModal({
         roleIds: [Number(selectedRoleId)],
         isActive,
         userType: "Office",
+        orgId: finalOrgId,
       };
 
       const created = await createUser(payload);
@@ -497,6 +526,33 @@ export default function UserWizardModal({
           {/* STEP 3: WORKPLACE & DESIGNATION */}
           {currentStep === 3 ? (
             <div className="space-y-4">
+              {profile?.isSuperUser ? (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Target Organization <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Building className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <select
+                      value={selectedOrgId}
+                      onChange={(e) => setSelectedOrgId(e.target.value)}
+                      disabled={loadingOrgs}
+                      className="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-600 bg-white"
+                    >
+                      <option value="">Select Tenant Organization...</option>
+                      {organizations.map((org) => (
+                        <option key={org.id} value={org.id}>
+                          {org.name} ({org.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    As Super Admin, assign this user directly to a tenant organization to isolate their workspace and team.
+                  </p>
+                </div>
+              ) : null}
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Designation / Job Title
@@ -573,14 +629,27 @@ export default function UserWizardModal({
                     <span className="text-slate-400 uppercase font-semibold text-[10px]">Assigned Role</span>
                     <p className="font-bold text-blue-700 mt-0.5">{selectedRole?.name || "Standard Role"}</p>
                   </div>
+                  <div className="col-span-2">
+                    <span className="text-slate-400 uppercase font-semibold text-[10px]">Organization</span>
+                    <p className="font-bold text-slate-800 mt-0.5">
+                      {profile?.isSuperUser
+                        ? organizations.find((o) => String(o.id) === String(selectedOrgId))?.name || "Selected Organization"
+                        : profile?.orgName || `Org #${profile?.orgId || "Current"}`}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                 <span>
-                  This user will be provisioned under organization ID{" "}
-                  <strong>{profile?.orgId || "Current Organization"}</strong> with automatic entitlement inheritance.
+                  This user will be provisioned under{" "}
+                  <strong>
+                    {profile?.isSuperUser
+                      ? organizations.find((o) => String(o.id) === String(selectedOrgId))?.name || "the chosen Organization"
+                      : profile?.orgName || `Organization ID ${profile?.orgId}`}
+                  </strong>{" "}
+                  with isolated tenant workspace and automatic entitlement inheritance.
                 </span>
               </div>
             </div>
