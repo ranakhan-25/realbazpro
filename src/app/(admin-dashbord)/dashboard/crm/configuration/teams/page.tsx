@@ -1,8 +1,4 @@
-/* eslint-disable prettier/prettier */
-<<<<<<< HEAD
-=======
-/* eslint-disable @typescript-eslint/no-explicit-any */
->>>>>>> 6fcbe48887b92b62c928ecae94c85ca39903863f
+/* eslint-disable @typescript-eslint/no-explicit-any *//* eslint-disable prettier/prettier */
 "use client";
 
 import React, { useState, useEffect } from "react";
