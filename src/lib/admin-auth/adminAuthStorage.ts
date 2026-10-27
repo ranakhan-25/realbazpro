@@ -10,6 +10,7 @@ export interface AdminUserProfile {
   isOrgAdmin?: boolean;
   orgId?: number | null;
   orgUuid?: string | null;
+  orgName?: string | null;
 }
 
 export const ADMIN_AUTH_STORAGE_KEYS = {

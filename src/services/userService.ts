@@ -77,6 +77,7 @@ export interface GetUsersParams {
   sectionId?: number;
   unitId?: number;
   companyId?: number;
+  orgId?: number;
 }
 
 /* =========================================================
@@ -97,6 +98,8 @@ export interface BaseUserPayload {
   categoryIds?: number[];
   userType?: string;
   companyIds?: number[];
+  orgId?: number;
+  orgUuid?: string;
 }
 
 
