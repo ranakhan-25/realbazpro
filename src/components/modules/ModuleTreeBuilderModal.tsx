@@ -164,7 +164,18 @@ export default function ModuleTreeBuilderModal({
         description: description.trim() || undefined,
         displayOrder,
         isActive,
-        features,
+        features: features.map((f, idx) => ({
+          id: f.id,
+          uuid: f.uuid,
+          moduleId: f.moduleId || initialModule?.id,
+          name: f.name.trim(),
+          code: f.code.trim().toUpperCase().replace(/\s+/g, "_"),
+          routePath: f.routePath?.trim() || undefined,
+          actionType: f.actionType || "read",
+          description: f.description?.trim() || undefined,
+          displayOrder: f.displayOrder ?? idx + 1,
+          isActive: f.isActive ?? true,
+        })),
       };
 
       const result = await saveModuleTree(payload);
