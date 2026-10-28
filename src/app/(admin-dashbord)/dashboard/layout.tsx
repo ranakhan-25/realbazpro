@@ -86,7 +86,7 @@ function DashboardAccessGuard({
             ) : null}
             <button
               type="button"
-              onClick={() => router.push("/admin/dashboard")}
+              onClick={() => router.push("/dashboard")}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition"
             >
               <ArrowLeft className="h-4 w-4" />

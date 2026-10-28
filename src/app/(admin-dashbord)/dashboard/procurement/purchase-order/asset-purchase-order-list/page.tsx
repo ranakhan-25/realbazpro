@@ -1,6 +1,13 @@
+/* eslint-disable prettier/prettier */
 "use client";
 
-import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
+import React, {
+  useMemo,
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+} from "react";
 import Link from "next/link";
 import {
   ChevronRight,
@@ -38,9 +45,7 @@ import {
   CreateAssetPurchaseOrderPayload,
   UpdateAssetPurchaseOrderPayload,
 } from "@/lib/procurement/procurementAssetPurchaseOrderApi";
-import {
-  procurementAssetItemEntryApi,
-} from "@/lib/procurement/procurementAssetItemEntryApi";
+import { procurementAssetItemEntryApi } from "@/lib/procurement/procurementAssetItemEntryApi";
 
 // -------------------------------------------------------------
 // Helper: Error Parser
@@ -64,7 +69,7 @@ function parseApiError(err: unknown, defaultMessage: string): string {
         .map((e) =>
           e.message
             ? `${e.field ? `${e.field}: ` : ""}${e.message}`
-            : JSON.stringify(e)
+            : JSON.stringify(e),
         )
         .join(", ");
     }
@@ -145,20 +150,22 @@ export default function AssetPurchaseOrderPage() {
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
   // Dropdown Options State (Populated exclusively from Real API)
-  const [dropdowns, setDropdowns] = useState<AssetPurchaseOrderDropdownsResult>({
-    companies: [],
-    suppliers: [],
-    projectTypes: [],
-    projects: [],
-    titleOfWorks: [],
-    tasks: [],
-    sites: [],
-    categories: [],
-    items: [],
-    units: [],
-    assetRequisitions: [],
-    users: [],
-  });
+  const [dropdowns, setDropdowns] = useState<AssetPurchaseOrderDropdownsResult>(
+    {
+      companies: [],
+      suppliers: [],
+      projectTypes: [],
+      projects: [],
+      titleOfWorks: [],
+      tasks: [],
+      sites: [],
+      categories: [],
+      items: [],
+      units: [],
+      assetRequisitions: [],
+      users: [],
+    },
+  );
 
   // Filter Bar State
   const [filters, setFilters] = useState({
@@ -172,7 +179,7 @@ export default function AssetPurchaseOrderPage() {
 
   // Create / Edit Form State
   const [formDate, setFormDate] = useState<string>(
-    () => new Date().toISOString().split("T")[0]
+    () => new Date().toISOString().split("T")[0],
   );
   const [formSupplierId, setFormSupplierId] = useState<string>("");
   const [formCode, setFormCode] = useState<string>("");
@@ -188,18 +195,18 @@ export default function AssetPurchaseOrderPage() {
   const [formAttachment, setFormAttachment] = useState<string>("");
   const [formApprovalLayer, setFormApprovalLayer] =
     useState<ProcurementAssetPurchaseOrderApprovalLayer>(
-      ProcurementAssetPurchaseOrderApprovalLayer.PENDING
+      ProcurementAssetPurchaseOrderApprovalLayer.PENDING,
     );
   const [formStatus, setFormStatus] =
     useState<ProcurementAssetPurchaseOrderStatus>(
-      ProcurementAssetPurchaseOrderStatus.PENDING
+      ProcurementAssetPurchaseOrderStatus.PENDING,
     );
   const [formSelectedItemUuid, setFormSelectedItemUuid] = useState<string>("");
   const [formAssetItems, setFormAssetItems] = useState<AssetItemLineRow[]>([]);
 
   // Modals
   const [viewOrder, setViewOrder] = useState<BackendAssetPurchaseOrder | null>(
-    null
+    null,
   );
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] =
@@ -232,7 +239,7 @@ export default function AssetPurchaseOrderPage() {
       setToast({ message, type });
       setTimeout(() => setToast(null), 3500);
     },
-    []
+    [],
   );
 
   // Debounce search input
@@ -265,7 +272,7 @@ export default function AssetPurchaseOrderPage() {
     try {
       const data = await procurementAssetPurchaseOrderApi.getDropdowns(
         formProjectId || undefined,
-        formCategoryId || undefined
+        formCategoryId || undefined,
       );
       setDropdowns(data);
     } catch (err) {
@@ -308,7 +315,7 @@ export default function AssetPurchaseOrderPage() {
         setOrders(onlyDeleted);
         setTotalEntries(onlyDeleted.length);
         setTotalPages(
-          Math.max(1, Math.ceil(onlyDeleted.length / entriesPerPage))
+          Math.max(1, Math.ceil(onlyDeleted.length / entriesPerPage)),
         );
       } else {
         // In Active Mode: query active items + background check of deleted count
@@ -345,7 +352,7 @@ export default function AssetPurchaseOrderPage() {
           setTotalPages(
             serverMeta?.totalPages !== undefined
               ? serverMeta.totalPages
-              : Math.max(1, Math.ceil(totalFromMeta / entriesPerPage))
+              : Math.max(1, Math.ceil(totalFromMeta / entriesPerPage)),
           );
           setActiveCount(totalFromMeta);
         } else {
@@ -355,7 +362,7 @@ export default function AssetPurchaseOrderPage() {
         if (withDeletedRes.status === "fulfilled") {
           const allWithDeleted = withDeletedRes.value.data || [];
           const delCount = allWithDeleted.filter((r) =>
-            Boolean(r.deletedAt)
+            Boolean(r.deletedAt),
           ).length;
           setDeletedCount(delCount);
         }
@@ -363,7 +370,7 @@ export default function AssetPurchaseOrderPage() {
     } catch (err: unknown) {
       const msg = parseApiError(
         err,
-        "Failed to load asset purchase orders from server"
+        "Failed to load asset purchase orders from server",
       );
       setFetchError(msg);
       showToast(msg, "error");
@@ -387,7 +394,7 @@ export default function AssetPurchaseOrderPage() {
   const availableSites = useMemo(() => {
     if (!formProjectId) return dropdowns.sites;
     return dropdowns.sites.filter(
-      (s) => !s.projectId || s.projectId === formProjectId
+      (s) => !s.projectId || s.projectId === formProjectId,
     );
   }, [dropdowns.sites, formProjectId]);
 
@@ -395,7 +402,7 @@ export default function AssetPurchaseOrderPage() {
   const availableAssetItems = useMemo(() => {
     if (!formCategoryId) return dropdowns.items;
     return dropdowns.items.filter(
-      (it) => !it.category_id || it.category_id === formCategoryId
+      (it) => !it.category_id || it.category_id === formCategoryId,
     );
   }, [dropdowns.items, formCategoryId]);
 
@@ -407,7 +414,7 @@ export default function AssetPurchaseOrderPage() {
     if (!item) return;
 
     const existingIndex = formAssetItems.findIndex(
-      (it) => it.itemId === item.uuid
+      (it) => it.itemId === item.uuid,
     );
     if (existingIndex >= 0) {
       setFormAssetItems((prev) =>
@@ -418,8 +425,8 @@ export default function AssetPurchaseOrderPage() {
                 quantity: it.quantity + 1,
                 amount: (it.quantity + 1) * it.rate,
               }
-            : it
-        )
+            : it,
+        ),
       );
       showToast(`Updated quantity for ${item.name}`, "info");
     } else {
@@ -445,7 +452,7 @@ export default function AssetPurchaseOrderPage() {
   const handleUpdateItemLine = (
     tempId: string,
     field: "quantity" | "rate" | "details",
-    value: string | number
+    value: string | number,
   ) => {
     setFormAssetItems((prev) =>
       prev.map((it) => {
@@ -458,7 +465,7 @@ export default function AssetPurchaseOrderPage() {
           updated.amount = Number((qty * rate).toFixed(2));
         }
         return updated;
-      })
+      }),
     );
   };
 
@@ -469,7 +476,7 @@ export default function AssetPurchaseOrderPage() {
   // Calculations
   const formSubTotal = useMemo(
     () => formAssetItems.reduce((acc, it) => acc + (it.amount || 0), 0),
-    [formAssetItems]
+    [formAssetItems],
   );
   const formGrandTotal = formSubTotal;
 
@@ -502,42 +509,44 @@ export default function AssetPurchaseOrderPage() {
     setIsDetailLoading(true);
     try {
       const fullOrder = await procurementAssetPurchaseOrderApi.getOrder(
-        order.uuid
+        order.uuid,
       );
       setEditingUuid(fullOrder.uuid);
       setFormDate(
         fullOrder.date ||
           (fullOrder.createdAt
             ? fullOrder.createdAt.split("T")[0]
-            : new Date().toISOString().split("T")[0])
+            : new Date().toISOString().split("T")[0]),
       );
-      setFormSupplierId(fullOrder.supplier_id || fullOrder.supplier?.uuid || "");
+      setFormSupplierId(
+        fullOrder.supplier_id || fullOrder.supplier?.uuid || "",
+      );
       setFormCode(fullOrder.code || "");
       setFormCompanyId(fullOrder.company_id || fullOrder.company?.uuid || "");
       setFormProjectTypeId(
-        fullOrder.project_type_id || fullOrder.projectType?.uuid || ""
+        fullOrder.project_type_id || fullOrder.projectType?.uuid || "",
       );
       setFormProjectId(fullOrder.project_id || fullOrder.project?.uuid || "");
       setFormTitleOfWorkId(
-        fullOrder.title_of_work_id || fullOrder.titleOfWork?.uuid || ""
+        fullOrder.title_of_work_id || fullOrder.titleOfWork?.uuid || "",
       );
       setFormTaskId(fullOrder.task_id || fullOrder.task?.uuid || "");
       setFormSiteId(fullOrder.site_id || fullOrder.site?.uuid || "");
       setFormCategoryId(
-        fullOrder.category_id || fullOrder.category?.uuid || ""
+        fullOrder.category_id || fullOrder.category?.uuid || "",
       );
       setFormRequisitionId(
-        fullOrder.requisition_id || fullOrder.requisition?.uuid || ""
+        fullOrder.requisition_id || fullOrder.requisition?.uuid || "",
       );
       setFormReference(fullOrder.reference || "");
       setFormAttachment(fullOrder.attachment || "");
       setFormApprovalLayer(
         (fullOrder.approval_layer as ProcurementAssetPurchaseOrderApprovalLayer) ||
-          ProcurementAssetPurchaseOrderApprovalLayer.PENDING
+          ProcurementAssetPurchaseOrderApprovalLayer.PENDING,
       );
       setFormStatus(
         (fullOrder.status as ProcurementAssetPurchaseOrderStatus) ||
-          ProcurementAssetPurchaseOrderStatus.PENDING
+          ProcurementAssetPurchaseOrderStatus.PENDING,
       );
 
       // Populate item lines
@@ -561,7 +570,10 @@ export default function AssetPurchaseOrderPage() {
       setViewMode("edit");
       showToast(`Loaded details for order #${fullOrder.code}`, "info");
     } catch (err: unknown) {
-      const msg = parseApiError(err, "Failed to load order details for editing");
+      const msg = parseApiError(
+        err,
+        "Failed to load order details for editing",
+      );
       showToast(msg, "error");
     } finally {
       setIsDetailLoading(false);
@@ -577,7 +589,7 @@ export default function AssetPurchaseOrderPage() {
     setViewOrder(order);
     try {
       const fullOrder = await procurementAssetPurchaseOrderApi.getOrder(
-        order.uuid
+        order.uuid,
       );
       setViewOrder(fullOrder);
     } catch (err) {
@@ -602,7 +614,7 @@ export default function AssetPurchaseOrderPage() {
     if (formAssetItems.length === 0) {
       showToast(
         "Please add at least one asset item line to the purchase order",
-        "error"
+        "error",
       );
       return;
     }
@@ -638,11 +650,11 @@ export default function AssetPurchaseOrderPage() {
 
         const updated = await procurementAssetPurchaseOrderApi.updateOrder(
           editingUuid,
-          updatePayload
+          updatePayload,
         );
         showToast(
           `Asset Purchase Order #${updated.code} updated successfully`,
-          "success"
+          "success",
         );
       } else {
         const createPayload: CreateAssetPurchaseOrderPayload = {
@@ -664,12 +676,11 @@ export default function AssetPurchaseOrderPage() {
           items: itemsPayload,
         };
 
-        const created = await procurementAssetPurchaseOrderApi.createOrder(
-          createPayload
-        );
+        const created =
+          await procurementAssetPurchaseOrderApi.createOrder(createPayload);
         showToast(
           `Asset Purchase Order #${created.code} created successfully`,
-          "success"
+          "success",
         );
       }
 
@@ -681,7 +692,7 @@ export default function AssetPurchaseOrderPage() {
         err,
         viewMode === "edit"
           ? "Failed to update asset purchase order"
-          : "Failed to create asset purchase order"
+          : "Failed to create asset purchase order",
       );
       showToast(msg, "error");
     } finally {
@@ -699,15 +710,12 @@ export default function AssetPurchaseOrderPage() {
       await procurementAssetPurchaseOrderApi.deleteOrder(deleteTarget.uuid);
       showToast(
         `Asset Purchase Order #${deleteTarget.code} deleted successfully`,
-        "success"
+        "success",
       );
       setDeleteTarget(null);
       loadOrders();
     } catch (err: unknown) {
-      const msg = parseApiError(
-        err,
-        "Failed to delete asset purchase order"
-      );
+      const msg = parseApiError(err, "Failed to delete asset purchase order");
       showToast(msg, "error");
     } finally {
       setIsActionLoading(false);
@@ -722,19 +730,16 @@ export default function AssetPurchaseOrderPage() {
     setIsActionLoading(true);
     try {
       const restored = await procurementAssetPurchaseOrderApi.restoreOrder(
-        restoreTarget.uuid
+        restoreTarget.uuid,
       );
       showToast(
         `Asset Purchase Order #${restored.code} restored successfully`,
-        "success"
+        "success",
       );
       setRestoreTarget(null);
       loadOrders();
     } catch (err: unknown) {
-      const msg = parseApiError(
-        err,
-        "Failed to restore asset purchase order"
-      );
+      const msg = parseApiError(err, "Failed to restore asset purchase order");
       showToast(msg, "error");
     } finally {
       setIsActionLoading(false);
@@ -844,17 +849,19 @@ export default function AssetPurchaseOrderPage() {
             `"${o.grand_total || 0}"`,
             `"${o.status || ""}"`,
             `"${o.approval_layer || ""}"`,
-          ].join(",")
+          ].join(","),
         ),
       ];
 
-      const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob([csvRows.join("\n")], {
+        type: "text/csv;charset=utf-8;",
+      });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute(
         "download",
-        `Asset_Purchase_Orders_${recordsTab}_${new Date().toISOString().split("T")[0]}.csv`
+        `Asset_Purchase_Orders_${recordsTab}_${new Date().toISOString().split("T")[0]}.csv`,
       );
       document.body.appendChild(link);
       link.click();
@@ -881,8 +888,8 @@ export default function AssetPurchaseOrderPage() {
             toast.type === "success"
               ? "bg-slate-900 text-white border-slate-700 dark:bg-white dark:text-slate-900"
               : toast.type === "error"
-              ? "bg-rose-900 text-white border-rose-700"
-              : "bg-indigo-900 text-white border-indigo-700"
+                ? "bg-rose-900 text-white border-rose-700"
+                : "bg-indigo-900 text-white border-indigo-700"
           }`}
         >
           {toast.type === "success" ? (
@@ -1016,7 +1023,8 @@ export default function AssetPurchaseOrderPage() {
                       <option value="">All Suppliers</option>
                       {dropdowns.suppliers.map((s) => (
                         <option key={s.uuid} value={s.uuid}>
-                          {s.supplierName} {s.supplierCode ? `(${s.supplierCode})` : ""}
+                          {s.supplierName}{" "}
+                          {s.supplierCode ? `(${s.supplierCode})` : ""}
                         </option>
                       ))}
                     </select>
@@ -1058,7 +1066,10 @@ export default function AssetPurchaseOrderPage() {
                     <select
                       value={filters.titleOfWorkId}
                       onChange={(e) => {
-                        setFilters({ ...filters, titleOfWorkId: e.target.value });
+                        setFilters({
+                          ...filters,
+                          titleOfWorkId: e.target.value,
+                        });
                         setCurrentPage(1);
                       }}
                       className="w-full h-9 pl-3 pr-8 text-xs bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none transition-colors"
@@ -1210,7 +1221,9 @@ export default function AssetPurchaseOrderPage() {
                     title="Reload data"
                     className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                    <RefreshCw
+                      className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`}
+                    />
                   </button>
                 </div>
               </div>
@@ -1232,7 +1245,9 @@ export default function AssetPurchaseOrderPage() {
                       <th className="px-3.5 py-3 text-left">#</th>
                       <th className="px-3.5 py-3 text-left">PROJECT TYPE</th>
                       <th className="px-3.5 py-3 text-left">PROJECT</th>
-                      <th className="px-3.5 py-3 text-left">TITLE/NAME OF WORK</th>
+                      <th className="px-3.5 py-3 text-left">
+                        TITLE/NAME OF WORK
+                      </th>
                       <th className="px-3.5 py-3 text-left">SUPPLIER NAME</th>
                       <th className="px-3.5 py-3 text-left">CODE</th>
                       <th className="px-3.5 py-3 text-left">REFERENCE</th>
@@ -1275,7 +1290,10 @@ export default function AssetPurchaseOrderPage() {
                           {order.reference || "—"}
                         </td>
                         <td className="px-3.5 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300">
-                          {order.date || (order.createdAt ? order.createdAt.split("T")[0] : "—")}
+                          {order.date ||
+                            (order.createdAt
+                              ? order.createdAt.split("T")[0]
+                              : "—")}
                         </td>
                         <td className="px-3.5 py-3 text-right whitespace-nowrap tabular-nums text-slate-700 dark:text-slate-300">
                           {formatCurrency(order.subtotal)}
@@ -1296,7 +1314,8 @@ export default function AssetPurchaseOrderPage() {
                           >
                             <CheckCircle2 className="w-3 h-3" />
                             <span>
-                              {order.approval_layer === "all_approvals_completed"
+                              {order.approval_layer ===
+                              "all_approvals_completed"
                                 ? "All Approvals Completed"
                                 : order.approval_layer || "Pending"}
                             </span>
@@ -1311,7 +1330,9 @@ export default function AssetPurchaseOrderPage() {
                               <Paperclip className="w-3.5 h-3.5" />
                             </span>
                           ) : (
-                            <span className="text-slate-300 dark:text-slate-600">—</span>
+                            <span className="text-slate-300 dark:text-slate-600">
+                              —
+                            </span>
                           )}
                         </td>
                         <td className="px-3.5 py-3 text-center relative whitespace-nowrap">
@@ -1385,11 +1406,13 @@ export default function AssetPurchaseOrderPage() {
                                 : "No deleted asset purchase orders found"}
                             </p>
                             <p className="text-[11px] text-slate-400">
-                              {searchTerm || filters.supplierId || filters.projectId
+                              {searchTerm ||
+                              filters.supplierId ||
+                              filters.projectId
                                 ? "Try clearing filters or search term to see more results."
                                 : recordsTab === "active"
-                                ? "Click '+Create New Asset Purchase Order' to add the first order."
-                                : "Any deleted orders will appear here for restoration."}
+                                  ? "Click '+Create New Asset Purchase Order' to add the first order."
+                                  : "Any deleted orders will appear here for restoration."}
                             </p>
                           </div>
                         </td>
@@ -1402,8 +1425,12 @@ export default function AssetPurchaseOrderPage() {
               {/* Pagination Footer */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                 <span>
-                  Showing {orders.length === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1} to{" "}
-                  {Math.min(currentPage * entriesPerPage, totalEntries)} of {totalEntries} entries
+                  Showing{" "}
+                  {orders.length === 0
+                    ? 0
+                    : (currentPage - 1) * entriesPerPage + 1}{" "}
+                  to {Math.min(currentPage * entriesPerPage, totalEntries)} of{" "}
+                  {totalEntries} entries
                 </span>
 
                 <div className="flex items-center gap-1.5 self-center sm:self-auto">
@@ -1415,25 +1442,29 @@ export default function AssetPurchaseOrderPage() {
                   >
                     Previous
                   </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      disabled={isLoading}
-                      onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                        page === currentPage
-                          ? "bg-[#5D5FEF] text-white font-semibold shadow-2xs"
-                          : "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => (
+                      <button
+                        key={page}
+                        type="button"
+                        disabled={isLoading}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                          page === currentPage
+                            ? "bg-[#5D5FEF] text-white font-semibold shadow-2xs"
+                            : "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ),
+                  )}
                   <button
                     type="button"
                     disabled={currentPage >= totalPages || isLoading}
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
                     className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium cursor-pointer"
                   >
                     Next
@@ -1465,7 +1496,9 @@ export default function AssetPurchaseOrderPage() {
                 </div>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                 <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {viewMode === "edit" ? "Edit Asset Purchase Order" : "Asset Purchase Order"}
+                  {viewMode === "edit"
+                    ? "Edit Asset Purchase Order"
+                    : "Asset Purchase Order"}
                 </span>
               </nav>
 
@@ -1518,7 +1551,8 @@ export default function AssetPurchaseOrderPage() {
                           <option value="">Select Supplier</option>
                           {dropdowns.suppliers.map((s) => (
                             <option key={s.uuid} value={s.uuid}>
-                              {s.supplierName} {s.supplierCode ? `(${s.supplierCode})` : ""}
+                              {s.supplierName}{" "}
+                              {s.supplierCode ? `(${s.supplierCode})` : ""}
                             </option>
                           ))}
                         </select>
@@ -1723,7 +1757,9 @@ export default function AssetPurchaseOrderPage() {
                         onChange={(e) => {
                           const val = e.target.value;
                           setFormRequisitionId(val);
-                          const req = dropdowns.assetRequisitions.find((r) => r.uuid === val);
+                          const req = dropdowns.assetRequisitions.find(
+                            (r) => r.uuid === val,
+                          );
                           if (req && !formReference) {
                             setFormReference(req.code);
                           }
@@ -1768,12 +1804,17 @@ export default function AssetPurchaseOrderPage() {
                         value={formApprovalLayer}
                         onChange={(e) =>
                           setFormApprovalLayer(
-                            e.target.value as ProcurementAssetPurchaseOrderApprovalLayer
+                            e.target
+                              .value as ProcurementAssetPurchaseOrderApprovalLayer,
                           )
                         }
                         className="w-full h-9 pl-3 pr-8 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none"
                       >
-                        <option value={ProcurementAssetPurchaseOrderApprovalLayer.PENDING}>
+                        <option
+                          value={
+                            ProcurementAssetPurchaseOrderApprovalLayer.PENDING
+                          }
+                        >
                           Pending
                         </option>
                         <option
@@ -1783,11 +1824,17 @@ export default function AssetPurchaseOrderPage() {
                         >
                           All Approvals Completed
                         </option>
-                        <option value={ProcurementAssetPurchaseOrderApprovalLayer.ADMIN}>
+                        <option
+                          value={
+                            ProcurementAssetPurchaseOrderApprovalLayer.ADMIN
+                          }
+                        >
                           Admin
                         </option>
                         <option
-                          value={ProcurementAssetPurchaseOrderApprovalLayer.RASEL_HOSAIN}
+                          value={
+                            ProcurementAssetPurchaseOrderApprovalLayer.RASEL_HOSAIN
+                          }
                         >
                           Rasel Hosain
                         </option>
@@ -1806,21 +1853,30 @@ export default function AssetPurchaseOrderPage() {
                         value={formStatus}
                         onChange={(e) =>
                           setFormStatus(
-                            e.target.value as ProcurementAssetPurchaseOrderStatus
+                            e.target
+                              .value as ProcurementAssetPurchaseOrderStatus,
                           )
                         }
                         className="w-full h-9 pl-3 pr-8 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none"
                       >
-                        <option value={ProcurementAssetPurchaseOrderStatus.PENDING}>
+                        <option
+                          value={ProcurementAssetPurchaseOrderStatus.PENDING}
+                        >
                           Pending
                         </option>
-                        <option value={ProcurementAssetPurchaseOrderStatus.APPROVED}>
+                        <option
+                          value={ProcurementAssetPurchaseOrderStatus.APPROVED}
+                        >
                           Approved
                         </option>
-                        <option value={ProcurementAssetPurchaseOrderStatus.REJECTED}>
+                        <option
+                          value={ProcurementAssetPurchaseOrderStatus.REJECTED}
+                        >
                           Rejected
                         </option>
-                        <option value={ProcurementAssetPurchaseOrderStatus.COMPLETED}>
+                        <option
+                          value={ProcurementAssetPurchaseOrderStatus.COMPLETED}
+                        >
                           Completed
                         </option>
                       </select>
@@ -1848,7 +1904,9 @@ export default function AssetPurchaseOrderPage() {
                           {availableAssetItems.map((item) => (
                             <option key={item.uuid} value={item.uuid}>
                               {item.item_code} - {item.name}{" "}
-                              {item.purchase_price ? `(৳${formatCurrency(item.purchase_price)})` : ""}
+                              {item.purchase_price
+                                ? `(৳${formatCurrency(item.purchase_price)})`
+                                : ""}
                             </option>
                           ))}
                         </select>
@@ -1860,7 +1918,10 @@ export default function AssetPurchaseOrderPage() {
                           setNewAssetData({
                             code: `AST-${Math.floor(1000 + Math.random() * 9000)}`,
                             name: "",
-                            categoryId: formCategoryId || dropdowns.categories[0]?.uuid || "",
+                            categoryId:
+                              formCategoryId ||
+                              dropdowns.categories[0]?.uuid ||
+                              "",
                             unitId: dropdowns.units[0]?.uuid || "",
                             rate: "",
                           });
@@ -1895,10 +1956,18 @@ export default function AssetPurchaseOrderPage() {
                         <th className="px-3.5 py-2.5">ITEM NAME</th>
                         <th className="px-3.5 py-2.5">DETAILS</th>
                         <th className="px-3.5 py-2.5">UNIT</th>
-                        <th className="px-3.5 py-2.5 text-right w-28">QUANTITY</th>
-                        <th className="px-3.5 py-2.5 text-right w-36">RATE (BDT)</th>
-                        <th className="px-3.5 py-2.5 text-right">AMOUNT (BDT)</th>
-                        <th className="px-3.5 py-2.5 text-center w-20">ACTION</th>
+                        <th className="px-3.5 py-2.5 text-right w-28">
+                          QUANTITY
+                        </th>
+                        <th className="px-3.5 py-2.5 text-right w-36">
+                          RATE (BDT)
+                        </th>
+                        <th className="px-3.5 py-2.5 text-right">
+                          AMOUNT (BDT)
+                        </th>
+                        <th className="px-3.5 py-2.5 text-center w-20">
+                          ACTION
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
@@ -1921,7 +1990,7 @@ export default function AssetPurchaseOrderPage() {
                                 handleUpdateItemLine(
                                   item.tempId,
                                   "details",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               placeholder="Specifications / remarks"
@@ -1941,7 +2010,7 @@ export default function AssetPurchaseOrderPage() {
                                 handleUpdateItemLine(
                                   item.tempId,
                                   "quantity",
-                                  Number(e.target.value)
+                                  Number(e.target.value),
                                 )
                               }
                               className="w-24 h-8 px-2 text-right text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -1957,7 +2026,7 @@ export default function AssetPurchaseOrderPage() {
                                 handleUpdateItemLine(
                                   item.tempId,
                                   "rate",
-                                  Number(e.target.value)
+                                  Number(e.target.value),
                                 )
                               }
                               className="w-32 h-8 px-2 text-right text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -1985,7 +2054,8 @@ export default function AssetPurchaseOrderPage() {
                             colSpan={8}
                             className="px-4 py-8 text-center text-xs text-slate-400 dark:text-slate-500"
                           >
-                            No asset items added yet. Select an item from the dropdown above to add.
+                            No asset items added yet. Select an item from the
+                            dropdown above to add.
                           </td>
                         </tr>
                       )}
@@ -2077,8 +2147,14 @@ export default function AssetPurchaseOrderPage() {
                     disabled={isSubmitting}
                     className="inline-flex items-center gap-2 px-8 py-2 rounded-md text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 shadow-sm transition-all cursor-pointer disabled:opacity-60"
                   >
-                    {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    <span>{viewMode === "edit" ? "Update Purchase Order" : "Submit Purchase Order"}</span>
+                    {isSubmitting && (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    )}
+                    <span>
+                      {viewMode === "edit"
+                        ? "Update Purchase Order"
+                        : "Submit Purchase Order"}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -2118,7 +2194,9 @@ export default function AssetPurchaseOrderPage() {
               {/* Header Fields Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 text-xs bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                 <div>
-                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">Supplier</span>
+                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">
+                    Supplier
+                  </span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {viewOrder.supplier?.supplierName || "—"}
                   </span>
@@ -2130,70 +2208,93 @@ export default function AssetPurchaseOrderPage() {
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">Project</span>
+                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">
+                    Project
+                  </span>
                   <span className="font-medium text-slate-800 dark:text-slate-200">
                     {viewOrder.project?.name || "—"}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">Project Type</span>
+                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">
+                    Project Type
+                  </span>
                   <span className="font-medium text-slate-800 dark:text-slate-200">
                     {viewOrder.projectType?.name || "—"}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">Site</span>
+                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">
+                    Site
+                  </span>
                   <span className="font-medium text-slate-800 dark:text-slate-200">
                     {viewOrder.site?.name || "—"}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">Title of Work</span>
+                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">
+                    Title of Work
+                  </span>
                   <span className="font-medium text-slate-800 dark:text-slate-200">
                     {viewOrder.titleOfWork?.name || "—"}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">Task</span>
+                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">
+                    Task
+                  </span>
                   <span className="font-medium text-slate-800 dark:text-slate-200">
                     {viewOrder.task?.taskName || "—"}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">Date</span>
+                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">
+                    Date
+                  </span>
                   <span className="text-slate-700 dark:text-slate-300">
-                    {viewOrder.date || (viewOrder.createdAt ? viewOrder.createdAt.split("T")[0] : "—")}
+                    {viewOrder.date ||
+                      (viewOrder.createdAt
+                        ? viewOrder.createdAt.split("T")[0]
+                        : "—")}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">Reference</span>
+                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">
+                    Reference
+                  </span>
                   <span className="font-mono text-slate-700 dark:text-slate-300">
                     {viewOrder.reference || "—"}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">Category</span>
+                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">
+                    Category
+                  </span>
                   <span className="text-slate-700 dark:text-slate-300">
                     {viewOrder.category?.name || "—"}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">Status</span>
+                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">
+                    Status
+                  </span>
                   <span className="font-semibold text-emerald-600 dark:text-emerald-400 capitalize">
                     {viewOrder.status || "Pending"}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">Approval Layer</span>
+                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">
+                    Approval Layer
+                  </span>
                   <span className="font-medium text-slate-700 dark:text-slate-300">
                     {viewOrder.approval_layer === "all_approvals_completed"
                       ? "All Approvals Completed"
@@ -2202,7 +2303,9 @@ export default function AssetPurchaseOrderPage() {
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">Attachment</span>
+                  <span className="text-slate-400 block text-[11px] uppercase tracking-wider mb-0.5">
+                    Attachment
+                  </span>
                   <span className="text-slate-700 dark:text-slate-300">
                     {viewOrder.attachment || "None"}
                   </span>
@@ -2230,7 +2333,10 @@ export default function AssetPurchaseOrderPage() {
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {viewOrder.items && viewOrder.items.length > 0 ? (
                         viewOrder.items.map((line, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                          <tr
+                            key={idx}
+                            className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
+                          >
                             <td className="px-3.5 py-2 font-mono font-medium text-slate-800 dark:text-slate-200">
                               {line.item_code || line.item?.item_code || "—"}
                             </td>
@@ -2256,7 +2362,10 @@ export default function AssetPurchaseOrderPage() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
+                          <td
+                            colSpan={7}
+                            className="px-4 py-6 text-center text-slate-400"
+                          >
                             No items recorded in this order
                           </td>
                         </tr>
@@ -2264,7 +2373,10 @@ export default function AssetPurchaseOrderPage() {
                     </tbody>
                     <tfoot>
                       <tr className="bg-slate-50 dark:bg-slate-800/60 font-bold border-t border-slate-200 dark:border-slate-700">
-                        <td colSpan={6} className="px-3.5 py-2.5 text-right uppercase text-[11px] text-slate-600 dark:text-slate-300">
+                        <td
+                          colSpan={6}
+                          className="px-3.5 py-2.5 text-right uppercase text-[11px] text-slate-600 dark:text-slate-300"
+                        >
                           Grand Total:
                         </td>
                         <td className="px-3.5 py-2.5 text-right text-indigo-600 dark:text-indigo-400 tabular-nums">
@@ -2337,7 +2449,9 @@ export default function AssetPurchaseOrderPage() {
                   onClick={handleConfirmDelete}
                   className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 transition-colors disabled:opacity-50"
                 >
-                  {isActionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {isActionLoading && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  )}
                   <span>Delete Order</span>
                 </button>
               </div>
@@ -2388,7 +2502,9 @@ export default function AssetPurchaseOrderPage() {
                   onClick={handleConfirmRestore}
                   className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50"
                 >
-                  {isActionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {isActionLoading && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  )}
                   <span>Restore Order</span>
                 </button>
               </div>
@@ -2425,7 +2541,10 @@ export default function AssetPurchaseOrderPage() {
                       type="text"
                       value={newAssetData.code}
                       onChange={(e) =>
-                        setNewAssetData({ ...newAssetData, code: e.target.value })
+                        setNewAssetData({
+                          ...newAssetData,
+                          code: e.target.value,
+                        })
                       }
                       placeholder="e.g. AST-1001"
                       className="w-full h-8 px-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
@@ -2439,7 +2558,10 @@ export default function AssetPurchaseOrderPage() {
                     <select
                       value={newAssetData.unitId}
                       onChange={(e) =>
-                        setNewAssetData({ ...newAssetData, unitId: e.target.value })
+                        setNewAssetData({
+                          ...newAssetData,
+                          unitId: e.target.value,
+                        })
                       }
                       required
                       className="w-full h-8 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
@@ -2461,7 +2583,10 @@ export default function AssetPurchaseOrderPage() {
                       type="text"
                       value={newAssetData.name}
                       onChange={(e) =>
-                        setNewAssetData({ ...newAssetData, name: e.target.value })
+                        setNewAssetData({
+                          ...newAssetData,
+                          name: e.target.value,
+                        })
                       }
                       required
                       placeholder="e.g. CAT 320D Excavator"
@@ -2503,7 +2628,10 @@ export default function AssetPurchaseOrderPage() {
                       step="any"
                       value={newAssetData.rate}
                       onChange={(e) =>
-                        setNewAssetData({ ...newAssetData, rate: e.target.value })
+                        setNewAssetData({
+                          ...newAssetData,
+                          rate: e.target.value,
+                        })
                       }
                       placeholder="e.g. 450000"
                       className="w-full h-8 px-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"

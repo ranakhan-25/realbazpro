@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 "use client";
 
 import React, {
@@ -1424,19 +1425,7 @@ export default function PurchaseBillInvoicePage() {
           </div>
         </div>
 
-        {/* Backend limitation informative banner if server responds with error */}
-        {apiErrorBanner && viewMode === "list" && (
-          <div className="p-3.5 rounded-xl border border-[#FEDF89] bg-[#FFFAEB] text-[#B54708] text-[13px] flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 shrink-0 text-[#DC6803] mt-0.5" />
-            <div className="space-y-0.5">
-              <span className="font-semibold">Backend API Notice:</span>
-              <p className="text-[12px] opacity-90">
-                {apiErrorBanner} (Synchronized local procurement data is active
-                so you can continue testing workflows seamlessly).
-              </p>
-            </div>
-          </div>
-        )}
+
 
         {/* =================================================================== */}
         {/* VIEW 1: LISTING VIEW                                                */}

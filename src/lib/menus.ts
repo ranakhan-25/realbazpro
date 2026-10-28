@@ -444,17 +444,13 @@ purchase-bill
   purchase-bill-invoice
   asset-purchase-bill-invoice
   
-approvals
-  procurement-approvals
-  
-vendors
-  vendor-list
-  
 boq
   all-boq
   
 equipment-hire
   hire-orders
+  hire-in
+  hire-out
   equipment-bills
   equipment-on-site
   

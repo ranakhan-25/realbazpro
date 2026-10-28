@@ -205,44 +205,57 @@ export const procurementPurchaseBillApi = {
 
     const queryString = query.toString();
     const url = `/procurement/purchase-bill${queryString ? `?${queryString}` : ""}`;
-    const res = await api.get(url);
-    const body = res.data;
+    try {
+      const res = await api.get(url);
+      const body = res.data;
 
-    let items: BackendPurchaseBill[] = [];
-    let meta: PurchaseBillPaginationMeta = {
-      total: 0,
-      page: params?.page || 1,
-      limit: params?.limit || 10,
-      totalPages: 1,
-    };
+      let items: BackendPurchaseBill[] = [];
+      let meta: PurchaseBillPaginationMeta = {
+        total: 0,
+        page: params?.page || 1,
+        limit: params?.limit || 10,
+        totalPages: 1,
+      };
 
-    if (body) {
-      if (Array.isArray(body.data)) {
-        items = body.data;
-        if (body.meta) {
+      if (body) {
+        if (Array.isArray(body.data)) {
+          items = body.data;
+          if (body.meta) {
+            meta = {
+              total: Number(body.meta.total) || items.length,
+              page: Number(body.meta.page) || 1,
+              limit: Number(body.meta.limit) || 10,
+              totalPages: Number(body.meta.totalPages) || 1,
+            };
+          } else {
+            meta.total = items.length;
+          }
+        } else if (body.data && Array.isArray(body.data.data)) {
+          items = body.data.data;
+          const total =
+            Number(body.data.total ?? body.data.count) || items.length;
           meta = {
-            total: Number(body.meta.total) || items.length,
-            page: Number(body.meta.page) || 1,
-            limit: Number(body.meta.limit) || 10,
-            totalPages: Number(body.meta.totalPages) || 1,
+            total,
+            page: Number(body.data.page) || params?.page || 1,
+            limit: Number(body.data.limit) || params?.limit || 10,
+            totalPages: Math.max(1, Math.ceil(total / (params?.limit || 10))),
           };
-        } else {
-          meta.total = items.length;
         }
-      } else if (body.data && Array.isArray(body.data.data)) {
-        items = body.data.data;
-        const total =
-          Number(body.data.total ?? body.data.count) || items.length;
-        meta = {
-          total,
-          page: Number(body.data.page) || params?.page || 1,
-          limit: Number(body.data.limit) || params?.limit || 10,
-          totalPages: Math.max(1, Math.ceil(total / (params?.limit || 10))),
-        };
       }
-    }
 
-    return { data: items, meta };
+      return { data: items, meta };
+    } catch (err) {
+      console.warn("Backend /procurement/purchase-bill list error, using resilient fallback:", err);
+      return {
+        data: [],
+        meta: {
+          total: 0,
+          page: params?.page || 1,
+          limit: params?.limit || 10,
+          totalPages: 1,
+        },
+      };
+    }
   },
 
   /**
