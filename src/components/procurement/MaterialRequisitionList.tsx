@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 "use client";
 
 import React, {
@@ -58,9 +59,6 @@ export interface RequisitionRow {
   approvalSteps: ApprovalStep[];
   attachment?: string;
   items?: RequisitionItem[];
-  address?: string;
-  siteEngineer?: string;
-  phone?: string;
 }
 
 export interface RequisitionItem {
@@ -69,16 +67,12 @@ export interface RequisitionItem {
   itemName: string;
   details: string;
   unit: string;
-  brand?: string;
   budgetQty: number;
   alreadyPurchaseQty: number;
   availableQty: number;
   demandQty: number;
   stock: number;
-<<<<<<< HEAD
   brand?: string;
-=======
->>>>>>> 2f03ac08430f919648a4d56e103f68d58e1609d5
   approvedQty?: number;
 }
 
