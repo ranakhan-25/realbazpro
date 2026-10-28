@@ -439,12 +439,6 @@ purchase-bill
   purchase-bill-invoice
   asset-purchase-bill-invoice
   
-approvals
-  procurement-approvals
-  
-vendors
-  vendor-list
-  
 boq
   all-boq
   
