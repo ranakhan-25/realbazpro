@@ -450,6 +450,8 @@ boq
   
 equipment-hire
   hire-orders
+  hire-in
+  hire-out
   equipment-bills
   equipment-on-site
   
