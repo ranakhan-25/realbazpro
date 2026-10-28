@@ -64,6 +64,7 @@ interface CallActivityViewProps {
   setPropProject: (val: string) => void;
   noteInput: string;
   setNoteInput: (val: string) => void;
+  detailTabs?: Record<string, any[]>;
 }
 
 /* ---------- Balanced Professional Tokens ---------- */
@@ -194,6 +195,7 @@ export default function CallActivityView({
   setPropProject,
   noteInput,
   setNoteInput,
+  detailTabs = {},
 }: CallActivityViewProps) {
 
   const handleStopNextActivity = () => {
@@ -826,7 +828,7 @@ export default function CallActivityView({
                       </tr>
                     </thead>
                     <tbody className={tbody}>
-                      <EmptyRow colSpan={5} icon={<FileSpreadsheet size={24} />} text="No Requirements Logged Yet." />
+                      {(detailTabs.requirements ?? []).length ? (detailTabs.requirements ?? []).map((row: any) => <tr key={row.uuid ?? row.id}><td className={td}>{row.budgetMin ?? row.budgetMax ?? "—"}</td><td className={td}>{row.remarks ?? "—"}</td><td className={td}>{row.sizeSqft ?? "—"}</td><td className={td}>{row.preferredArea ?? "—"}</td><td className={td}>{row.propertyType ?? row.requirementType?.name ?? "—"}</td></tr>) : <EmptyRow colSpan={5} icon={<FileSpreadsheet size={24} />} text="No Requirements Logged Yet." />}
                     </tbody>
                   </table>
                 </div>
@@ -854,7 +856,7 @@ export default function CallActivityView({
                       </tr>
                     </thead>
                     <tbody className={tbody}>
-                      <EmptyRow colSpan={11} icon={<Layers size={24} />} text="No Deal Negotiation Records Found." />
+                      {(detailTabs.negotiations ?? []).length ? (detailTabs.negotiations ?? []).map((row: any, index: number) => <tr key={row.uuid ?? row.id}><td className={td}>{index + 1}</td><td className={td}>{row.project?.name ?? "—"}</td><td className={td}>{row.flatLand?.flatLandNo ?? row.flatLandId ?? "—"}</td><td className={td}>{row.activityType ?? "offer"}</td><td className={td}>{row.clientOfferedPrice ?? "—"}</td><td className={td}>{row.counterPrice ?? "—"}</td><td className={td}>{row.listedPrice ?? "—"}</td><td className={td}>{row.finalAgreedPrice ?? "—"}</td><td className={td}>{row.status ?? "—"}</td><td className={td}>{row.roundNo ?? index + 1}</td><td className={td}>{row.creator?.name ?? "—"}</td></tr>) : <EmptyRow colSpan={11} icon={<Layers size={24} />} text="No Deal Negotiation Records Found." />}
                     </tbody>
                   </table>
                 </div>
@@ -898,7 +900,7 @@ export default function CallActivityView({
                       </tr>
                     </thead>
                     <tbody className={tbody}>
-                      <EmptyRow colSpan={8} icon={<Building2 size={24} />} text="No Property Listed Yet." />
+                      {(detailTabs.property ?? []).length ? (detailTabs.property ?? []).map((row: any) => <tr key={row.uuid ?? row.id}><td className={td}>{row.uuid ?? row.id}</td><td className={td}>{row.project?.name ?? row.projectName ?? "—"}</td><td className={td}>{row.plotFlatNo ?? "—"}</td><td className={td}>{row.size ?? "—"}</td><td className={td}>—</td><td className={td}>—</td><td className={td}>—</td><td className={td}>{row.status ?? "—"}</td></tr>) : <EmptyRow colSpan={8} icon={<Building2 size={24} />} text="No Property Listed Yet." />}
                     </tbody>
                   </table>
                 </div>
@@ -951,7 +953,7 @@ export default function CallActivityView({
                     </tr>
                   </thead>
                   <tbody className={tbody}>
-                    <EmptyRow colSpan={5} icon={<Calendar size={24} />} text="No Visit Logs Recorded." />
+                    {(detailTabs.visits ?? []).length ? (detailTabs.visits ?? []).map((row: any) => <tr key={row.uuid ?? row.id}><td className={td}>{row.activityDate ?? "—"}</td><td className={td}>{row.summary ?? "—"}</td><td className={td}>{row.feedback ?? "—"}</td><td className={td}>{row.conductedByUser?.name ?? activeLead.srOfficer}</td><td className={td}>{row.visitStatus?.name ?? row.activityType ?? "—"}</td></tr>) : <EmptyRow colSpan={5} icon={<Calendar size={24} />} text="No Visit Logs Recorded." />}
                   </tbody>
                 </table>
               </div>
@@ -981,7 +983,7 @@ export default function CallActivityView({
                       </tr>
                     </thead>
                     <tbody className={tbody}>
-                      <EmptyRow colSpan={3} icon={<FileText size={24} />} text="No Notes Available." />
+                      {(detailTabs.notes ?? []).length ? (detailTabs.notes ?? []).map((row: any, index: number) => <tr key={row.uuid ?? row.id}><td className={td}>{index + 1}</td><td className={td}>{row.activityDate ?? "—"}</td><td className={td}>{row.summary ?? "—"}</td></tr>) : <EmptyRow colSpan={3} icon={<FileText size={24} />} text="No Notes Available." />}
                     </tbody>
                   </table>
                 </div>

@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 "use client";
 
 import React, {
@@ -615,7 +616,6 @@ export default function AssetGoodsReceiptNotePage() {
       tempId: `item-${Date.now()}`,
       item_id: selected.uuid,
       item_code: selected.item_code,
-      itemName: selected.name,
       item_name: selected.name,
       details: "Asset delivery verified",
       unit_id: selected.unit?.uuid,

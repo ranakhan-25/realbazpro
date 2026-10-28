@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   UserX
 } from "lucide-react";
+import { crmLeadApi } from "@/services/crmLeadApi";
 
 interface JunkLeadRecord {
   id: string;
@@ -44,25 +45,14 @@ const mockJunkData: JunkLeadRecord[] = [
 ];
 
 export default function JunkLeadPage() {
-  const [junkLeads, setJunkLeads] = useState<JunkLeadRecord[]>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("crm_junk_leads_data");
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {
-          // ignore
-        }
-      }
-    }
-    return mockJunkData;
-  });
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("crm_junk_leads_data", JSON.stringify(junkLeads));
-    }
-  }, [junkLeads]);
+  const [junkLeads, setJunkLeads] = useState<JunkLeadRecord[]>([]);
+  const refreshJunkLeads = async () => {
+    try {
+      const result = await crmLeadApi.listAllJunk();
+      setJunkLeads(result.data.map((row: any) => ({ id: row.id, leadId: row.leadId, name: row.name, address: row.address, phone: row.phone, status: row.status ?? "Junk", officer: row.srOfficer, lastActivity: row.lastActivity, note: row.remark, category: row.leadCategory })));
+    } catch (error) { console.error("Failed to load junk leads", error); setJunkLeads([]); }
+  };
+  useEffect(() => { void refreshJunkLeads(); }, []);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDateRange, setSelectedDateRange] = useState("1 October, 2026 - 31 October, 2026");
@@ -94,32 +84,24 @@ export default function JunkLeadPage() {
     }
   };
 
-  const handleRestoreLead = (item: JunkLeadRecord) => {
-    setJunkLeads((prev) => prev.filter((l) => l.id !== item.id));
-    setSelectedLeads((prev) => prev.filter((id) => id !== item.id));
-    alert(`Lead "${item.name}" restored!`);
+  const handleRestoreLead = async (item: JunkLeadRecord) => {
+    try { await crmLeadApi.restoreJunk(item.id); await refreshJunkLeads(); setSelectedLeads((prev) => prev.filter((id) => id !== item.id)); }
+    catch (error) { console.error("Failed to restore junk lead", error); }
   };
 
-  const handleRestoreSelected = () => {
+  const handleRestoreSelected = async () => {
     if (selectedLeads.length === 0) return;
-    setJunkLeads((prev) => prev.filter((l) => !selectedLeads.includes(l.id)));
-    setSelectedLeads([]);
-    alert(`${selectedLeads.length} leads restored!`);
+    try { await crmLeadApi.bulkJunkAction("restore", selectedLeads); await refreshJunkLeads(); setSelectedLeads([]); }
+    catch (error) { console.error("Failed to restore selected junk leads", error); }
   };
 
   // Confirm Delete Handler
-  const handleConfirmDelete = () => {
-    if (isBulkDelete) {
-      if (selectedLeads.length === 0) return;
-      setJunkLeads((prev) => prev.filter((l) => !selectedLeads.includes(l.id)));
-      setSelectedLeads([]);
-    } else if (leadToDelete) {
-      setJunkLeads((prev) => prev.filter((l) => l.id !== leadToDelete.id));
-      setSelectedLeads((prev) => prev.filter((id) => id !== leadToDelete.id));
-    }
-    setShowDeleteModal(false);
-    setLeadToDelete(null);
-    setIsBulkDelete(false);
+  const handleConfirmDelete = async () => {
+    try {
+      if (isBulkDelete) { await crmLeadApi.bulkJunkAction("delete", selectedLeads); setSelectedLeads([]); }
+      else if (leadToDelete) { await crmLeadApi.deleteJunk(leadToDelete.id); setSelectedLeads((prev) => prev.filter((id) => id !== leadToDelete.id)); }
+      await refreshJunkLeads(); setShowDeleteModal(false); setLeadToDelete(null); setIsBulkDelete(false);
+    } catch (error) { console.error("Failed to delete junk leads", error); }
   };
 
   const filteredData = junkLeads.filter((item) => {

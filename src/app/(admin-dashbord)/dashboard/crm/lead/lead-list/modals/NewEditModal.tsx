@@ -11,6 +11,7 @@ interface NewEditModalProps {
   setIsLeadDetailsOpen: (val: boolean) => void;
   isPersonalInfoOpen: boolean;
   setIsPersonalInfoOpen: (val: boolean) => void;
+  options?: Record<string, any[]>;
 }
 
 export default function NewEditModal({
@@ -24,6 +25,7 @@ export default function NewEditModal({
   setIsLeadDetailsOpen,
   isPersonalInfoOpen,
   setIsPersonalInfoOpen,
+  options = {},
 }: NewEditModalProps) {
   if (!isOpen) return null;
 
@@ -124,32 +126,29 @@ export default function NewEditModal({
 
               <div>
                 <label className="block text-slate-600 dark:text-slate-300 mb-1.5 font-bold text-xs md:text-sm">Assign User/SR</label>
-                <input
-                  type="text"
+                <select
                   value={formData.assignUser}
                   onChange={(e) => setFormData({ ...formData, assignUser: e.target.value })}
                   className="w-full px-3.5 py-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-600"
-                />
+                ><option value="">Select User/SR</option>{(options.user ?? []).map((item) => <option key={item.uuid} value={item.uuid}>{item.name}</option>)}</select>
               </div>
 
               <div>
                 <label className="block text-slate-600 dark:text-slate-300 mb-1.5 font-bold text-xs md:text-sm">If CR</label>
-                <input
-                  type="text"
+                <select
                   value={formData.ifCr}
                   onChange={(e) => setFormData({ ...formData, ifCr: e.target.value })}
                   className="w-full px-3.5 py-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-600"
-                />
+                ><option value="">Select CR</option>{(options.user ?? []).map((item) => <option key={item.uuid} value={item.uuid}>{item.name}</option>)}</select>
               </div>
 
               <div>
                 <label className="block text-slate-600 dark:text-slate-300 mb-1.5 font-bold text-xs md:text-sm">Lead Stages</label>
-                <input
-                  type="text"
+                <select
                   value={formData.leadStages}
                   onChange={(e) => setFormData({ ...formData, leadStages: e.target.value })}
                   className="w-full px-3.5 py-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-600"
-                />
+                ><option value="">Select Stage</option>{(options.stage ?? []).map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select>
               </div>
             </div>
           </div>
@@ -177,8 +176,7 @@ export default function NewEditModal({
                     className="w-full px-3.5 py-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-600"
                   >
                     <option value="">Select Source</option>
-                    <option value="Linkedin">Linkedin</option>
-                    <option value="Facebook">Facebook</option>
+                    {(options.source ?? []).map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
                   </select>
                 </div>
 
@@ -190,8 +188,7 @@ export default function NewEditModal({
                     className="w-full px-3.5 py-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-600"
                   >
                     <option value="">Select Interested Project</option>
-                    <option value="Mustain Villa">Mustain Villa</option>
-                    <option value="Royal City">Royal City</option>
+                    {(options.project ?? []).map((item) => <option key={item.uuid} value={item.name}>{item.name}</option>)}
                   </select>
                 </div>
 
@@ -203,8 +200,7 @@ export default function NewEditModal({
                     className="w-full px-3.5 py-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-600"
                   >
                     <option value="">Select Category</option>
-                    <option value="Ready Flat">Ready Flat</option>
-                    <option value="Ongoing">Ongoing</option>
+                    {(options.category ?? []).map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
                   </select>
                 </div>
 
@@ -215,7 +211,8 @@ export default function NewEditModal({
                     onChange={(e) => setFormData({ ...formData, campaign: e.target.value })}
                     className="w-full px-3.5 py-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-600"
                   >
-                    <option value="">Select Lead Source</option>
+                    <option value="">Select Campaign</option>
+                    {(options.campaign ?? []).map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
                   </select>
                 </div>
               </div>
@@ -272,8 +269,7 @@ export default function NewEditModal({
                     className="w-full px-3.5 py-2.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-600"
                   >
                     <option value="">Select Profession</option>
-                    <option value="Engineer">Engineer</option>
-                    <option value="Doctor">Doctor</option>
+                    {(options.profession ?? []).map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
                   </select>
                 </div>
                 <div className="md:col-span-2">
