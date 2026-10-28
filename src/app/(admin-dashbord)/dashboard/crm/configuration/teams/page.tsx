@@ -68,8 +68,8 @@ export default function TeamsPage() {
       
       if (json.success) {
         setTeams(json.data.data || []);
-        setTotalPages(json.data.meta.totalPages || 1);
-        setTotalEntries(json.data.meta.total || 0);
+        setTotalPages(json.data.meta?.totalPages || 1);
+        setTotalEntries(json.data.meta?.total || 0);
       }
     } catch (err) {
       toast.error("Failed to load teams");
@@ -129,12 +129,21 @@ export default function TeamsPage() {
     }
 
     setSubmitting(true);
-    const payload = {
-      name: formData.name,
-      leaderUuid: formData.leaderUuid || null,
-      memberUuids: formData.memberUuids,
-      createdBy: "Admin",
-    };
+
+    // ✅ Edit করার সময় শুধু প্রয়োজনীয় ফিল্ড পাঠানো হচ্ছে
+    const payload = editingRecord
+      ? {
+          // PATCH এর জন্য শুধু পরিবর্তিত ডাটা পাঠানো ভালো, তবে API সব ফিল্ড চাইলে নিচের লাইনগুলো ব্যবহার করুন
+          name: formData.name,
+          leaderUuid: formData.leaderUuid || null,
+          memberUuids: formData.memberUuids,
+        }
+      : {
+          name: formData.name,
+          leaderUuid: formData.leaderUuid || null,
+          memberUuids: formData.memberUuids,
+          createdBy: "Admin",
+        };
 
     try {
       const isEdit = !!editingRecord;
@@ -149,13 +158,15 @@ export default function TeamsPage() {
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
+      const json = await res.json().catch(() => ({}));
+
+      if (res.ok || json.success) {
         toast.success(isEdit ? "Team Updated!" : "Team Created!");
         setIsModalOpen(false);
+        setEditingRecord(null);
         fetchTeams(currentPage, searchQuery);
       } else {
-        const error = await res.json();
-        toast.error(error.message || "Something went wrong");
+        toast.error(json.message || "Something went wrong");
       }
     } catch (err) {
       toast.error("Network Error");
@@ -176,12 +187,16 @@ export default function TeamsPage() {
       const res = await fetch(`${API_PATH}/crm/configuration/teams/${selectedTeamToDelete.uuid}`, {
         method: "DELETE",
       });
-      if (res.ok) {
+      
+      const json = await res.json().catch(() => ({}));
+      
+      if (res.ok || json.success) {
         toast.success("Team Deleted!");
         setIsDeleteModalOpen(false);
+        setSelectedTeamToDelete(null);
         fetchTeams(currentPage, searchQuery);
       } else {
-        toast.error("Failed to delete");
+        toast.error(json.message || "Failed to delete");
       }
     } catch (err) {
       toast.error("Error deleting team");
@@ -272,7 +287,6 @@ export default function TeamsPage() {
                     </td>
                     <td className="py-4 px-4 font-extrabold text-foreground">{item.name}</td>
                     
-                    {/* ✅ Leader Safe Render */}
                     <td className="py-4 px-4 font-bold text-muted-foreground">
                       {typeof item.leader === "string" 
                         ? item.leader 
@@ -281,7 +295,6 @@ export default function TeamsPage() {
                           : item.leaderUuid || "—"}
                     </td>
                     
-                    {/* ✅ Members Safe Render */}
                     <td className="py-4 px-4">
                       {item.members && item.members.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
@@ -307,7 +320,6 @@ export default function TeamsPage() {
                       )}
                     </td>
                     
-                    {/* ✅ AddedBy Safe Render */}
                     <td className="py-4 px-4 font-bold text-muted-foreground">
                       {typeof item.addedBy === "string" 
                         ? item.addedBy 
@@ -319,14 +331,24 @@ export default function TeamsPage() {
                     <td className="py-4 px-4 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
-                          onClick={() => handleOpenEditModal(item)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleOpenEditModal(item);
+                          }}
                           className="p-2 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white transition cursor-pointer shadow-xs"
                           title="Edit"
                         >
                           <Edit size={15} />
                         </button>
                         <button
-                          onClick={() => handleOpenDeleteModal(item)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleOpenDeleteModal(item);
+                          }}
                           className="p-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition cursor-pointer shadow-xs"
                           title="Delete"
                         >

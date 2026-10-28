@@ -54,9 +54,11 @@ export default function LeadCategoryPage() {
       const json = await res.json();
       
       if (json.success) {
-        setCategories(json.data.data || []);
+        // ✅ ফ্রন্টএন্ডেও ডিলিট হওয়া ডাটা ফিল্টার করা হচ্ছে
+        const activeData = (json.data.data || []).filter((item: any) => !item.deletedAt);
+        setCategories(activeData);
         setTotalPages(json.data.meta?.totalPages || 1);
-        setTotalEntries(json.data.meta?.total || 0);
+        setTotalEntries(activeData.length || 0);
       }
     } catch (err) {
       console.error(err);
@@ -76,6 +78,17 @@ export default function LeadCategoryPage() {
     fetchCategories(1, e.target.value);
   };
 
+  // ====================== ADD HANDLER ======================
+  const handleOpenAddModal = () => {
+    setEditingRecord(null);
+    setFormData({
+      code: `LC${Math.floor(1000000 + Math.random() * 9000000)}`,
+      name: "",
+      description: "",
+    });
+    setIsModalOpen(true);
+  };
+
   // ====================== EDIT HANDLER ======================
   const handleOpenEditModal = (item: CategoryRecord) => {
     setEditingRecord(item);
@@ -87,7 +100,7 @@ export default function LeadCategoryPage() {
     setIsModalOpen(true);
   };
 
-  // ====================== SUBMIT HANDLER (POST / PATCH) ======================
+  // ====================== SUBMIT HANDLER ======================
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name) {
@@ -134,7 +147,7 @@ export default function LeadCategoryPage() {
     }
   };
 
-  // ====================== DELETE HANDLERS ======================
+  // ====================== DELETE HANDLER ======================
   const handleOpenDeleteModal = (item: CategoryRecord) => {
     setSelectedCategoryToDelete(item);
     setIsDeleteModalOpen(true);
@@ -143,47 +156,33 @@ export default function LeadCategoryPage() {
   const handleConfirmDelete = async () => {
     if (!selectedCategoryToDelete) return;
     
-    // Debugging
-    console.log("Deleting Category UUID:", selectedCategoryToDelete.uuid);
+    const deletedUuid = selectedCategoryToDelete.uuid;
+    
+    // ✅ Optimistic UI Update: সাথে সাথে টেবিল থেকে সরিয়ে দাও
+    setCategories(prev => prev.filter(item => item.uuid !== deletedUuid));
+    setIsDeleteModalOpen(false);
+    setSelectedCategoryToDelete(null);
 
     try {
-      const res = await fetch(`${API_PATH}/crm/configuration/lead-categories/${selectedCategoryToDelete.uuid}`, {
+      const res = await fetch(`${API_PATH}/crm/configuration/lead-categories/${deletedUuid}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" }, // Sometimes API requires headers for DELETE
+        headers: { "Content-Type": "application/json" },
       });
       
       const json = await res.json().catch(() => ({}));
       
-      // ✅ res.ok অথবা json.success যেকোনো একটি সত্য হলে সফল ধরবে
       if (res.ok || json.success) {
         toast.success("Deleted successfully!");
-        setIsDeleteModalOpen(false);
-        setSelectedCategoryToDelete(null);
-        
-        // ✅ পেজিনেশন হ্যান্ডেল
-        if (categories.length === 1 && currentPage > 1) {
-          setCurrentPage(currentPage - 1);
-        } else {
-          fetchCategories(currentPage, searchQuery);
-        }
+        fetchCategories(currentPage, searchQuery);
       } else {
         toast.error(json.message || "Failed to delete");
+        fetchCategories(currentPage, searchQuery); // রোলব্যাক
       }
     } catch (err) {
       console.error(err);
       toast.error("Error deleting category");
+      fetchCategories(currentPage, searchQuery); // রোলব্যাক
     }
-  };
-
-  // ====================== ADD HANDLER ======================
-  const handleOpenAddModal = () => {
-    setEditingRecord(null);
-    setFormData({
-      code: `LC${Math.floor(1000000 + Math.random() * 9000000)}`,
-      name: "",
-      description: "",
-    });
-    setIsModalOpen(true);
   };
 
   // ====================== RENDER ======================
@@ -280,11 +279,7 @@ export default function LeadCategoryPage() {
                       <div className="flex items-center justify-center gap-2">
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleOpenEditModal(item);
-                          }}
+                          onClick={() => handleOpenEditModal(item)}
                           className="p-2 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white transition cursor-pointer shadow-xs"
                           title="Edit"
                         >
@@ -292,11 +287,7 @@ export default function LeadCategoryPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleOpenDeleteModal(item);
-                          }}
+                          onClick={() => handleOpenDeleteModal(item)}
                           className="p-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition cursor-pointer shadow-xs"
                           title="Delete"
                         >

@@ -32,6 +32,7 @@
   ],
   "exclude": [
     "node_modules",
+    ".next/dev/types",
     "src/routes",
     "src/routeTree.gen.ts",
     "src/router.tsx",

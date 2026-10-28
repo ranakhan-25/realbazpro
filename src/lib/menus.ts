@@ -81,6 +81,7 @@ projects
   project-type
   project
   site 
+project-extra
   building
   floor
   unit-plot
@@ -91,7 +92,6 @@ projects
   project-budget
   project-cost
   project-progress
-
   project-control
 
   report
@@ -351,17 +351,22 @@ configuration
   communication-status
   teams
   lead-category
-  categories
+  
   campaign
   profession
   lead-source
-  sources
+ 
   offers
   area
   lead-stage
-  stages
+  
   project
   price-range
+  requirement-type
+  visit-places
+  visit-status
+  task-type
+  internal-task
 lead
   lead-list
   pipeline
