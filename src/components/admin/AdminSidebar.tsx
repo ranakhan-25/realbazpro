@@ -24,14 +24,51 @@ import {
   Gauge,
   FileText,
   Settings2,
+  Layers,
+  Database,
+  BarChart3,
+  Bell,
+  Sliders,
+  FolderTree,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 
-import { clearStoredTokens } from "@/lib/admin-auth/adminAuthStorage";
+import {
+  clearStoredTokens,
+  getStoredUserProfile,
+  AdminUserProfile,
+} from "@/lib/admin-auth/adminAuthStorage";
 import { useTheme } from "@/lib/theme";
+import { adminMenuService, AdminMenuItemNode } from "@/services/adminMenuService";
+
+// Map Lucide icons by string identifier
+const ICON_MAP: Record<string, LucideIcon> = {
+  LayoutDashboard,
+  Boxes,
+  Building,
+  Building2,
+  CreditCard,
+  Menu: MenuIcon,
+  Settings,
+  User,
+  Users,
+  ShieldCheck,
+  KeyRound,
+  FileCog,
+  History,
+  Gauge,
+  FileText,
+  Settings2,
+  Layers,
+  Database,
+  BarChart3,
+  Bell,
+  Sliders,
+  FolderTree,
+};
 
 type AdminNavItem = {
   label: string;
@@ -47,7 +84,7 @@ type AdminNavGroup = {
 
 type AdminMenuItem = AdminNavItem | AdminNavGroup;
 
-export const menuGroups: AdminMenuItem[] = [
+export const defaultMenuGroups: AdminMenuItem[] = [
   {
     label: "Dashboard",
     href: "/admin/dashboard",
@@ -59,7 +96,7 @@ export const menuGroups: AdminMenuItem[] = [
     children: [
       {
         label: "Organization",
-        href: "/admin/orgs", // Organization Management (Org List)
+        href: "/admin/orgs",
         icon: Building2,
       },
       {
@@ -149,14 +186,121 @@ export const menuGroups: AdminMenuItem[] = [
   },
 ];
 
+// Org Admin allowed sidebar links
+const ORG_ADMIN_ALLOWED_HREFS = new Set([
+  "/admin/dashboard",
+  "/admin/web-settings",
+  "/admin/organization",
+  "/admin/users",
+  "/admin/roles",
+]);
+
 export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { primaryColor } = useTheme();
 
+  const [userProfile, setUserProfile] = useState<AdminUserProfile | null>(null);
+  const [dynamicMenuTree, setDynamicMenuTree] = useState<AdminMenuItemNode[] | null>(null);
+
+  useEffect(() => {
+    const profile = getStoredUserProfile();
+    setUserProfile(profile);
+
+    const isSuper = Boolean(
+      profile?.isSuperUser === true ||
+        profile?.role === "super-admin" ||
+        (Array.isArray(profile?.roles) && profile.roles.includes("super-admin"))
+    );
+
+    const roleParam = isSuper ? "super-admin" : "org-admin";
+
+    adminMenuService
+      .getMenuTree(roleParam)
+      .then((tree) => {
+        if (Array.isArray(tree) && tree.length > 0) {
+          setDynamicMenuTree(tree);
+        }
+      })
+      .catch(() => {
+        // Fallback to static defaultMenuGroups
+      });
+  }, []);
+
+  const isSuperAdmin = useMemo(() => {
+    if (!userProfile) return true;
+    return Boolean(
+      userProfile.isSuperUser === true ||
+        userProfile.role === "super-admin" ||
+        (Array.isArray(userProfile.roles) && userProfile.roles.includes("super-admin"))
+    );
+  }, [userProfile]);
+
+  // Convert dynamic backend tree to sidebar structure, or fall back to default
+  const visibleMenuGroups = useMemo<AdminMenuItem[]>(() => {
+    if (dynamicMenuTree && dynamicMenuTree.length > 0) {
+      return dynamicMenuTree
+        .map((node) => {
+          const IconComponent = (node.icon && ICON_MAP[node.icon]) || FolderTree;
+
+          if (node.children && node.children.length > 0) {
+            const filteredChildren = isSuperAdmin
+              ? node.children
+              : node.children.filter((c) => c.url && ORG_ADMIN_ALLOWED_HREFS.has(c.url));
+
+            if (filteredChildren.length === 0) return null;
+
+            return {
+              label: node.title,
+              icon: IconComponent,
+              children: filteredChildren.map((c) => ({
+                label: c.title,
+                href: c.url || "#",
+                icon: (c.icon && ICON_MAP[c.icon]) || ChevronRight,
+              })),
+            };
+          }
+
+          if (!isSuperAdmin && node.url && !ORG_ADMIN_ALLOWED_HREFS.has(node.url)) {
+            return null;
+          }
+
+          return {
+            label: node.title,
+            href: node.url || "#",
+            icon: IconComponent,
+          };
+        })
+        .filter(Boolean) as AdminMenuItem[];
+    }
+
+    if (isSuperAdmin) {
+      return defaultMenuGroups;
+    }
+
+    return defaultMenuGroups
+      .map((item) => {
+        if ("href" in item) {
+          return ORG_ADMIN_ALLOWED_HREFS.has(item.href) ? item : null;
+        }
+
+        const filteredChildren = item.children.filter((child) =>
+          ORG_ADMIN_ALLOWED_HREFS.has(child.href)
+        );
+
+        if (filteredChildren.length === 0) return null;
+
+        return {
+          ...item,
+          children: filteredChildren,
+        };
+      })
+      .filter(Boolean) as AdminMenuItem[];
+  }, [dynamicMenuTree, isSuperAdmin]);
+
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     "System Management": true,
-    Authentication: true,
+    "Authentication & Access": true,
   });
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -170,246 +314,206 @@ export default function AdminSidebar() {
 
   const handleSignOut = () => {
     clearStoredTokens();
-    setMobileOpen(false);
     router.replace("/admin/login");
   };
 
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
+  const isItemActive = (href: string) => {
+    if (href === "/admin/dashboard") {
+      return pathname === "/admin/dashboard" || pathname === "/admin";
     }
+    return pathname.startsWith(href);
+  };
 
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [mobileOpen]);
+  const isGroupActive = (children: AdminNavItem[]) => {
+    return children.some((c) => isItemActive(c.href));
+  };
 
   return (
     <>
-      {/* MOBILE TOP BAR */}
-      <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm lg:hidden">
-        <Link
-          href="/admin/dashboard"
-          className="flex min-w-0 items-center"
-          aria-label="Go to dashboard"
-        >
-          <Image
-            src={"/logo.svg"}
-            alt="GarmenTek"
-            width={150}
-            height={50}
-            priority
-            className="h-auto max-h-10 w-[125px] object-contain object-left"
-          />
-        </Link>
+      {/* MOBILE TRIGGER */}
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        className="fixed bottom-4 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 text-white shadow-xl transition-all duration-200 active:scale-95 md:hidden"
+        aria-label="Open navigation menu"
+      >
+        <MenuIcon size={20} />
+      </button>
 
-        <button
-          type="button"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open navigation"
-          aria-expanded={mobileOpen}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95"
-        >
-          <MenuIcon size={21} strokeWidth={2} />
-        </button>
-      </header>
-
-      {/* MOBILE OVERLAY */}
+      {/* BACKDROP FOR MOBILE */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.15 }}
             onClick={() => setMobileOpen(false)}
-            aria-hidden="true"
-            className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-[2px] lg:hidden"
+            className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm md:hidden"
           />
         )}
       </AnimatePresence>
 
-      {/* SIDEBAR */}
+      {/* SIDEBAR CONTAINER */}
       <aside
-        aria-label="Admin navigation"
-        className={`
-          fixed inset-y-0 left-0 z-50
-          flex w-[280px] max-w-[88vw] flex-col
-          border-r border-slate-200
-          bg-white
-          shadow-xl shadow-slate-900/10
-          transition-transform duration-300 ease-out
-          lg:w-[250px]
-          lg:translate-x-0
-          lg:shadow-none
-          ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
-        `}
+        className={`fixed top-0 bottom-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 ease-out md:translate-x-0 ${
+          mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+        }`}
       >
-        {/* LOGO */}
-        <div className="flex h-[68px] shrink-0 items-center justify-between border-b border-slate-200 px-4 sm:px-5">
+        {/* LOGO & BRAND HEADER */}
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 px-4">
           <Link
             href="/admin/dashboard"
-            className="min-w-0 flex-1"
             onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-3"
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              whileHover={{ scale: 1.015 }}
-              className="origin-left"
-            >
+            <div className="relative h-8 w-8">
               <Image
-                src={"/logo.svg"}
-                alt="GarmenTek"
-                width={300}
-                height={200}
+                src="/images/logo.png"
+                alt="Realbiz Logo"
+                fill
+                sizes="32px"
+                className="object-contain"
                 priority
-                className="h-auto max-h-[46px] w-[155px] object-contain object-left sm:w-[170px]"
               />
-            </motion.div>
+            </div>
+            <div className="leading-tight">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-semibold tracking-tight text-slate-900">
+                  Realbiz
+                </span>
+                <span
+                  className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                  style={{
+                    backgroundColor: `${primaryColor}14`,
+                    color: primaryColor,
+                  }}
+                >
+                  Admin
+                </span>
+              </div>
+              <p className="text-[11px] font-normal text-slate-500">
+                {isSuperAdmin ? "Super Admin Console" : "Org Admin Portal"}
+              </p>
+            </div>
           </Link>
-
           <button
             type="button"
             onClick={() => setMobileOpen(false)}
-            aria-label="Close navigation"
-            className="ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 active:scale-95 lg:hidden"
+            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 md:hidden"
+            aria-label="Close navigation menu"
           >
-            <X size={20} strokeWidth={2} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* NAVIGATION */}
-        <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 py-3 sm:px-3 sm:py-4">
+        {/* NAVIGATION ITEMS */}
+        <nav className="flex-1 overflow-y-auto px-2.5 py-3 sm:px-3">
           <div className="space-y-1">
-            {menuGroups.map((item, index) => {
-              const Icon = item.icon;
-
-              // ========== Single Link Item ==========
-              if ("href" in item) {
-                const active =
-                  pathname === item.href ||
-                  pathname.startsWith(`${item.href}/`);
+            {visibleMenuGroups.map((group) => {
+              // SINGLE NAV ITEM (No children)
+              if ("href" in group) {
+                const active = isItemActive(group.href);
+                const Icon = group.icon;
 
                 return (
-                  <motion.div
-                    key={item.label}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.04 }}
+                  <Link
+                    key={group.href}
+                    href={group.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="block"
                   >
-                    <Link
-                      href={item.href}
-                      onClick={() => setMobileOpen(false)}
-                      className="block"
-                    >
-                      <motion.div
-                        whileHover={{ x: active ? 0 : 2 }}
-                        whileTap={{ scale: 0.985 }}
-                        className="relative flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all"
-                        style={
-                          active
-                            ? {
-                                backgroundColor: primaryColor,
-                                color: "#ffffff",
-                                boxShadow: `0 1px 2px ${primaryColor}33`,
-                              }
-                            : { color: "#475569" }
+                    <motion.div
+                      whileHover={{ x: active ? 0 : 2 }}
+                      whileTap={{ scale: 0.985 }}
+                      className="relative flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all"
+                      style={
+                        active
+                          ? {
+                              backgroundColor: primaryColor,
+                              color: "#ffffff",
+                              boxShadow: `0 1px 2px ${primaryColor}33`,
+                            }
+                          : { color: "#475569" }
+                      }
+                      onMouseEnter={(e) => {
+                        if (!active) {
+                          e.currentTarget.style.backgroundColor = `${primaryColor}0D`;
+                          e.currentTarget.style.color = primaryColor;
                         }
-                        onMouseEnter={(e) => {
-                          if (!active) {
-                            e.currentTarget.style.backgroundColor = `${primaryColor}0D`;
-                            e.currentTarget.style.color = primaryColor;
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!active) {
-                            e.currentTarget.style.backgroundColor = "";
-                            e.currentTarget.style.color = "#475569";
-                          }
-                        }}
-                      >
-                        <Icon
-                          size={17}
-                          className="shrink-0"
-                          strokeWidth={active ? 2.2 : 1.8}
-                        />
-                        <span className="min-w-0 flex-1 truncate">
-                          {item.label}
-                        </span>
-                        {active && (
-                          <ChevronRight size={14} className="shrink-0" />
-                        )}
-                      </motion.div>
-                    </Link>
-                  </motion.div>
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!active) {
+                          e.currentTarget.style.backgroundColor = "";
+                          e.currentTarget.style.color = "#475569";
+                        }
+                      }}
+                    >
+                      <Icon
+                        size={17}
+                        className="shrink-0"
+                        strokeWidth={active ? 2.2 : 1.8}
+                      />
+                      <span className="min-w-0 flex-1 truncate">
+                        {group.label}
+                      </span>
+                      {active && (
+                        <ChevronRight size={14} className="shrink-0" />
+                      )}
+                    </motion.div>
+                  </Link>
                 );
               }
 
-              // ========== Group Item ==========
-              const isOpen = openGroups[item.label];
-              const childActive = item.children.some(
-                (child) =>
-                  pathname === child.href ||
-                  pathname.startsWith(`${child.href}/`),
-              );
+              // COLLAPSIBLE GROUP
+              const isOpen = openGroups[group.label] ?? false;
+              const hasActiveChild = isGroupActive(group.children);
+              const GroupIcon = group.icon;
 
               return (
                 <motion.div
-                  key={item.label}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.04 }}
+                  key={group.label}
+                  className="space-y-0.5"
+                  initial={false}
                 >
-                  <motion.button
+                  <button
                     type="button"
-                    onClick={() => toggleGroup(item.label)}
-                    whileTap={{ scale: 0.985 }}
-                    aria-expanded={isOpen}
-                    className="relative flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[13px] font-medium transition-all"
+                    onClick={() => toggleGroup(group.label)}
+                    className="flex min-h-10 w-full items-center justify-between rounded-lg px-3 py-2 text-[13px] font-medium transition-colors"
                     style={
-                      childActive
+                      hasActiveChild && !isOpen
                         ? {
-                            backgroundColor: `${primaryColor}1A`,
+                            backgroundColor: `${primaryColor}0D`,
                             color: primaryColor,
                           }
                         : { color: "#475569" }
                     }
                     onMouseEnter={(e) => {
-                      if (!childActive) {
-                        e.currentTarget.style.backgroundColor = `${primaryColor}0D`;
-                        e.currentTarget.style.color = primaryColor;
+                      if (!hasActiveChild || isOpen) {
+                        e.currentTarget.style.backgroundColor = "#F8FAFC";
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (!childActive) {
+                      if (!hasActiveChild || isOpen) {
                         e.currentTarget.style.backgroundColor = "";
-                        e.currentTarget.style.color = "#475569";
                       }
                     }}
                   >
-                    <Icon
-                      size={17}
-                      className="shrink-0"
-                      strokeWidth={childActive ? 2.2 : 1.8}
-                    />
-                    <span className="min-w-0 flex-1 truncate">
-                      {item.label}
-                    </span>
-                    <motion.span
-                      animate={{ rotate: isOpen ? 0 : -90 }}
-                      transition={{ duration: 0.18 }}
-                      className="shrink-0"
+                    <div className="flex min-w-0 items-center gap-3">
+                      <GroupIcon
+                        size={17}
+                        className="shrink-0"
+                        strokeWidth={hasActiveChild ? 2.2 : 1.8}
+                      />
+                      <span className="min-w-0 truncate">{group.label}</span>
+                    </div>
+                    <motion.div
+                      animate={{ rotate: isOpen ? 180 : 0 }}
+                      transition={{ duration: 0.15 }}
                     >
-                      <ChevronDown size={15} />
-                    </motion.span>
-                  </motion.button>
+                      <ChevronDown size={14} className="shrink-0 opacity-60" />
+                    </motion.div>
+                  </button>
 
                   <AnimatePresence initial={false}>
                     {isOpen && (
@@ -417,18 +521,17 @@ export default function AdminSidebar() {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        transition={{ duration: 0.18, ease: "easeInOut" }}
                         className="overflow-hidden"
                       >
-                        <div
-                          className="ml-4 mt-1 space-y-1 border-l pl-2 sm:ml-5"
-                          style={{ borderColor: `${primaryColor}33` }}
-                        >
-                          {item.children.map((child) => {
+                        <div className="relative space-y-0.5 py-0.5 pl-6 pr-1">
+                          <div
+                            aria-hidden
+                            className="absolute top-1 bottom-1 left-4 w-px bg-slate-200"
+                          />
+                          {group.children.map((child) => {
+                            const active = isItemActive(child.href);
                             const ChildIcon = child.icon;
-                            const active =
-                              pathname === child.href ||
-                              pathname.startsWith(`${child.href}/`);
 
                             return (
                               <Link
@@ -453,14 +556,12 @@ export default function AdminSidebar() {
                                   onMouseEnter={(e) => {
                                     if (!active) {
                                       e.currentTarget.style.backgroundColor = `${primaryColor}0D`;
-                                      e.currentTarget.style.color =
-                                        primaryColor;
+                                      e.currentTarget.style.color = primaryColor;
                                     }
                                   }}
                                   onMouseLeave={(e) => {
                                     if (!active) {
-                                      e.currentTarget.style.backgroundColor =
-                                        "";
+                                      e.currentTarget.style.backgroundColor = "";
                                       e.currentTarget.style.color = "#64748B";
                                     }
                                   }}
@@ -474,10 +575,7 @@ export default function AdminSidebar() {
                                     {child.label}
                                   </span>
                                   {active && (
-                                    <ChevronRight
-                                      size={13}
-                                      className="shrink-0"
-                                    />
+                                    <ChevronRight size={13} className="shrink-0" />
                                   )}
                                 </motion.div>
                               </Link>
