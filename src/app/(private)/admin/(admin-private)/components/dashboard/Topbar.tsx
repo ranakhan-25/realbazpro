@@ -141,7 +141,7 @@ export function Topbar({
                 type="button"
                 onClick={() => {
                   logout();
-                  router.push("/login");
+                  router.push("/rb/login");
                 }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive transition hover:bg-foreground/5"
               >

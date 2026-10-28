@@ -61,7 +61,7 @@ export default function TenantPortalPage({
           The requested organization portal <code className="font-mono text-blue-400 font-bold">{subdomain}</code> could not be found or has not been published yet.
         </p>
         <Link
-          href="/admin/login"
+          href="/login"
           className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition"
         >
           Return to Admin Login
@@ -127,7 +127,7 @@ export default function TenantPortalPage({
 
           <div className="flex items-center gap-3">
             <Link
-              href="/admin/login"
+              href="/rb/login"
               className="text-xs font-semibold px-4 py-2 rounded-lg text-white transition shadow-sm hover:opacity-90"
               style={{ backgroundColor: theme.primaryColor }}
             >
@@ -169,7 +169,7 @@ export default function TenantPortalPage({
 
                 <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
                   <Link
-                    href={content.ctaLink || "/admin/login"}
+                    href={content.ctaLink || "/rb/login"}
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white shadow-xl hover:opacity-90 transition"
                     style={{ backgroundColor: theme.primaryColor }}
                   >
