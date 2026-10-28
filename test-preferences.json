@@ -1,6 +1,0 @@
-{
-  "tool": "node:test",
-  "testDir": "src/tests",
-  "filePattern": "**/*.test.ts",
-  "packageManager": "pnpm"
-}

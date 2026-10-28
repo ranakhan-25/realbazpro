@@ -2,11 +2,35 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import React, { useState } from "react";
+import {
+  Sparkles,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Edit,
+  Trash2,
+  X,
+  AlertTriangle,
+} from "lucide-react";
 import React, { useState, useEffect } from "react";
-import { Sparkles, Search, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, AlertTriangle, Loader2 } from "lucide-react";
+import {
+  Sparkles,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Edit,
+  Trash2,
+  X,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
 const API_PATH = `${API_BASE}/realbizpro/api/v1`;
 
 // ====================== TYPES ======================
@@ -58,15 +82,18 @@ export default function TeamsPage() {
 
   // Delete Confirmation Modal States
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedTeamToDelete, setSelectedTeamToDelete] = useState<TeamRecord | null>(null);
+  const [selectedTeamToDelete, setSelectedTeamToDelete] =
+    useState<TeamRecord | null>(null);
 
   // ====================== FETCH DATA ======================
   const fetchTeams = async (page = 1, search = "") => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_PATH}/crm/configuration/teams?page=${page}&limit=${entriesPerPage}&search=${search}`);
+      const res = await fetch(
+        `${API_PATH}/crm/configuration/teams?page=${page}&limit=${entriesPerPage}&search=${search}`,
+      );
       const json = await res.json();
-      
+
       if (json.success) {
         setTeams(json.data.data || []);
         setTotalPages(json.data.meta?.totalPages || 1);
@@ -81,7 +108,9 @@ export default function TeamsPage() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch(`${API_PATH}/crm/configuration/teams/dropdown/users`);
+      const res = await fetch(
+        `${API_PATH}/crm/configuration/teams/dropdown/users`,
+      );
       const json = await res.json();
       if (json.success) {
         setUsers(json.data.data || json.data || []);
@@ -117,7 +146,7 @@ export default function TeamsPage() {
     setFormData({
       name: item.name || "",
       leaderUuid: item.leaderUuid || "",
-      memberUuids: item.members?.map(m => m.uuid) || [],
+      memberUuids: item.members?.map((m) => m.uuid) || [],
     });
     setIsModalOpen(true);
   };
@@ -185,12 +214,15 @@ export default function TeamsPage() {
   const handleConfirmDelete = async () => {
     if (!selectedTeamToDelete) return;
     try {
-      const res = await fetch(`${API_PATH}/crm/configuration/teams/${selectedTeamToDelete.uuid}`, {
-        method: "DELETE",
-      });
-      
+      const res = await fetch(
+        `${API_PATH}/crm/configuration/teams/${selectedTeamToDelete.uuid}`,
+        {
+          method: "DELETE",
+        },
+      );
+
       const json = await res.json().catch(() => ({}));
-      
+
       if (res.ok || json.success) {
         toast.success("Team Deleted!");
         setIsDeleteModalOpen(false);
@@ -207,7 +239,6 @@ export default function TeamsPage() {
   // ====================== RENDER ======================
   return (
     <div className="w-full space-y-6 p-4 md:p-6 bg-slate-50/50 dark:bg-background min-h-screen text-foreground font-sans">
-      
       {/* HEADER & ADD BUTTON */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-3xl border border-border/85 bg-card/70 backdrop-blur-2xl p-6 md:p-8 shadow-sm">
         <div>
@@ -247,7 +278,10 @@ export default function TeamsPage() {
         </div>
 
         <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+          <Search
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+            size={18}
+          />
           <input
             type="text"
             placeholder="Search..."
@@ -276,35 +310,45 @@ export default function TeamsPage() {
             <tbody className="divide-y divide-border/60 font-semibold text-foreground text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                  <td
+                    colSpan={6}
+                    className="p-8 text-center text-muted-foreground"
+                  >
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-indigo-600" />
                   </td>
                 </tr>
               ) : teams.length > 0 ? (
                 teams.map((item, index) => (
-                  <tr key={item.uuid} className="hover:bg-muted/40 transition-colors">
+                  <tr
+                    key={item.uuid}
+                    className="hover:bg-muted/40 transition-colors"
+                  >
                     <td className="py-4 px-4 font-mono font-bold text-center text-muted-foreground">
                       {(currentPage - 1) * entriesPerPage + index + 1}
                     </td>
-                    <td className="py-4 px-4 font-extrabold text-foreground">{item.name}</td>
-                    
+                    <td className="py-4 px-4 font-extrabold text-foreground">
+                      {item.name}
+                    </td>
+
                     <td className="py-4 px-4 font-bold text-muted-foreground">
-                      {typeof item.leader === "string" 
-                        ? item.leader 
-                        : item.leader?.name 
-                          ? item.leader.name 
+                      {typeof item.leader === "string"
+                        ? item.leader
+                        : item.leader?.name
+                          ? item.leader.name
                           : item.leaderUuid || "—"}
                     </td>
-                    
+
                     <td className="py-4 px-4">
                       {item.members && item.members.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {item.members.map((member: any, idx) => {
-                            const memberName = 
-                              member.user?.name || 
-                              member.name || 
-                              member.roleInTeam || 
-                              (typeof member === 'string' ? member : "Unknown Member");
+                            const memberName =
+                              member.user?.name ||
+                              member.name ||
+                              member.roleInTeam ||
+                              (typeof member === "string"
+                                ? member
+                                : "Unknown Member");
 
                             return (
                               <span
@@ -320,12 +364,12 @@ export default function TeamsPage() {
                         "—"
                       )}
                     </td>
-                    
+
                     <td className="py-4 px-4 font-bold text-muted-foreground">
-                      {typeof item.addedBy === "string" 
-                        ? item.addedBy 
-                        : item.addedBy?.name 
-                          ? item.addedBy.name 
+                      {typeof item.addedBy === "string"
+                        ? item.addedBy
+                        : item.addedBy?.name
+                          ? item.addedBy.name
                           : "Admin"}
                     </td>
 
@@ -361,7 +405,10 @@ export default function TeamsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-muted-foreground font-bold text-sm">
+                  <td
+                    colSpan={6}
+                    className="p-8 text-center text-muted-foreground font-bold text-sm"
+                  >
                     No teams found.
                   </td>
                 </tr>
@@ -373,14 +420,22 @@ export default function TeamsPage() {
         {/* FOOTER & PAGINATION */}
         <div className="p-4 md:p-5 border-t border-border/80 bg-card/50 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm font-bold text-muted-foreground">
           <div>
-            Showing <span className="text-foreground font-black">{totalEntries > 0 ? (currentPage - 1) * entriesPerPage + 1 : 0}</span> to{" "}
-            <span className="text-foreground font-black">{Math.min(currentPage * entriesPerPage, totalEntries)}</span> of{" "}
-            <span className="text-foreground font-black">{totalEntries}</span> entries
+            Showing{" "}
+            <span className="text-foreground font-black">
+              {totalEntries > 0 ? (currentPage - 1) * entriesPerPage + 1 : 0}
+            </span>{" "}
+            to{" "}
+            <span className="text-foreground font-black">
+              {Math.min(currentPage * entriesPerPage, totalEntries)}
+            </span>{" "}
+            of{" "}
+            <span className="text-foreground font-black">{totalEntries}</span>{" "}
+            entries
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
               className="px-3.5 py-2 rounded-xl border border-border/80 bg-background hover:bg-indigo-50 disabled:opacity-40 transition flex items-center gap-1.5 text-foreground cursor-pointer font-extrabold text-xs"
             >
@@ -389,23 +444,27 @@ export default function TeamsPage() {
             </button>
 
             <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`w-9 h-9 rounded-xl font-extrabold text-xs transition cursor-pointer ${
-                    currentPage === page
-                      ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/30"
-                      : "bg-background border border-border/80 hover:bg-slate-100 text-foreground"
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-9 h-9 rounded-xl font-extrabold text-xs transition cursor-pointer ${
+                      currentPage === page
+                        ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/30"
+                        : "bg-background border border-border/80 hover:bg-slate-100 text-foreground"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ),
+              )}
             </div>
 
             <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
               disabled={currentPage === totalPages || totalPages === 0}
               className="px-3.5 py-2 rounded-xl border border-border/80 bg-background hover:bg-indigo-50 disabled:opacity-40 transition flex items-center gap-1.5 text-foreground cursor-pointer font-extrabold text-xs"
             >
@@ -432,7 +491,10 @@ export default function TeamsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="space-y-4 text-xs font-bold">
+            <form
+              onSubmit={handleFormSubmit}
+              className="space-y-4 text-xs font-bold"
+            >
               <div>
                 <label className="block text-slate-500 mb-1.5">
                   Team Name <span className="text-rose-500">*</span>
@@ -441,7 +503,9 @@ export default function TeamsPage() {
                   type="text"
                   placeholder="Name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   className="w-full p-3 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20"
                   required
                 />
@@ -453,7 +517,9 @@ export default function TeamsPage() {
                 </label>
                 <select
                   value={formData.leaderUuid}
-                  onChange={(e) => setFormData({ ...formData, leaderUuid: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, leaderUuid: e.target.value })
+                  }
                   className="w-full p-3 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm font-extrabold outline-none cursor-pointer"
                 >
                   <option value="">Select Leader</option>
@@ -473,7 +539,10 @@ export default function TeamsPage() {
                   multiple
                   value={formData.memberUuids}
                   onChange={(e) => {
-                    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+                    const selectedOptions = Array.from(
+                      e.target.selectedOptions,
+                      (option) => option.value,
+                    );
                     setFormData({ ...formData, memberUuids: selectedOptions });
                   }}
                   className="w-full p-3 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20 min-h-[100px]"
@@ -484,7 +553,9 @@ export default function TeamsPage() {
                     </option>
                   ))}
                 </select>
-                <p className="text-[10px] text-slate-400 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select multiple members.</p>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Hold Ctrl (Windows) or Cmd (Mac) to select multiple members.
+                </p>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
@@ -520,7 +591,11 @@ export default function TeamsPage() {
               Are you sure?
             </h3>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              You are about to delete <span className="font-bold text-foreground">"{selectedTeamToDelete?.name}"</span>. This action cannot be undone.
+              You are about to delete{" "}
+              <span className="font-bold text-foreground">
+                "{selectedTeamToDelete?.name}"
+              </span>
+              . This action cannot be undone.
             </p>
             <div className="flex justify-center gap-3 pt-2">
               <button
@@ -541,7 +616,6 @@ export default function TeamsPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

@@ -1,4 +1,9 @@
-export type ProcurementPeriod = "today" | "weekly" | "monthly" | "yearly" | "all";
+export type ProcurementPeriod =
+  | "today"
+  | "weekly"
+  | "monthly"
+  | "yearly"
+  | "all";
 
 export interface ProcurementStat {
   id: string;
@@ -6,8 +11,6 @@ export interface ProcurementStat {
   value: number;
   icon: string;
   type: "pending" | "total";
-
-  // Optional card design data
   change?: number;
   changeLabel?: string;
   color?: "red" | "blue" | "green" | "purple" | "orange" | "cyan";
@@ -35,3 +38,5 @@ export interface PendingVoucher {
   saleOffer: string;
   status: string;
 }
+
+export * from "@/lib/procurement/procurementDashboardApi";
