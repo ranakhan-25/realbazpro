@@ -13,7 +13,7 @@ export default function AdminAuthGuard({ children }: { children: ReactNode }) {
     const token = getStoredAccessToken();
 
     if (!token) {
-      router.replace("/admin/login");
+      router.replace("/login");
       return;
     }
 

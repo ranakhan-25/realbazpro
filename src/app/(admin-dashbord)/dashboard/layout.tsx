@@ -161,7 +161,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     const s = getSession();
-    if (!s) router.replace("/login");
+    if (!s) router.replace("/rb/login");
     else setSession(s);
   }, [router]);
 

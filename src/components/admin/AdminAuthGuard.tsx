@@ -33,7 +33,7 @@ export default function AdminAuthGuard({ children }: { children: ReactNode }) {
 
     if (!token) {
       clearStoredTokens();
-      router.replace("/admin/login");
+      router.replace("/login");
       return;
     }
 
@@ -52,7 +52,7 @@ export default function AdminAuthGuard({ children }: { children: ReactNode }) {
     // Verify user has any administrative standing
     if (user && !isSuperAdmin && !isOrgAdmin) {
       clearStoredTokens();
-      router.replace("/admin/login");
+      router.replace("/login");
       return;
     }
 

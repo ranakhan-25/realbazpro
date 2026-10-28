@@ -337,7 +337,7 @@ export default function AdminSidebar() {
 
   const handleSignOut = () => {
     clearStoredTokens();
-    router.replace("/admin/login");
+    router.replace("/login");
   };
 
   const isItemActive = (href: string) => {
