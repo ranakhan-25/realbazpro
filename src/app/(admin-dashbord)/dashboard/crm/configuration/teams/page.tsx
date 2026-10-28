@@ -1,166 +1,210 @@
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-<<<<<<< HEAD
-import { CrmPageTemplate } from "@/components/crm/CrmPageTemplate";
+import React, { useState, useEffect } from "react";
+import { Sparkles, Search, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, AlertTriangle, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 
-=======
-import React, { useState } from "react";
-import { Sparkles, Search, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, AlertTriangle } from "lucide-react";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
+const API_PATH = `${API_BASE}/realbizpro/api/v1`;
 
-interface TeamRecord {
-  id: string;
-  name: string;
-  leader: string;
-  members: string[];
-  addedBy: string;
+// ====================== TYPES ======================
+interface TeamMember {
+  uuid: string;
+  name?: string;
+  roleInTeam?: string;
+  user?: { uuid: string; name: string };
 }
 
-const initialTeams: TeamRecord[] = [
-  { id: "1", name: "Diponkar Team", leader: "", members: [], addedBy: "Admin" },
-  { id: "2", name: "Go", leader: "", members: [], addedBy: "" },
-  { id: "3", name: "Team Warriers", leader: "", members: ["Admin"], addedBy: "Admin" },
-  { id: "4", name: "Gladiators", leader: "", members: [], addedBy: "" },
-];
+interface TeamRecord {
+  uuid: string;
+  name: string;
+  department: string;
+  leaderUuid: string;
+  leader?: string | { uuid: string; name: string };
+  members: TeamMember[];
+  addedBy?: any;
+  isActive: boolean;
+}
 
-const leaderOptions = [
-  "Admin",
-  "Tazmul Reza",
-  "Rasel Hosain",
-  "Mohin",
-  "Sarna",
-  "Rowza",
-  "Sarna11",
-  "Metro Engineering",
-  "Naima Trading",
-  "Test",
-  "Kuldip International",
-];
+interface User {
+  uuid: string;
+  name: string;
+}
 
-
-
->>>>>>> 2f03ac08430f919648a4d56e103f68d58e1609d5
 export default function TeamsPage() {
-  const [teams, setTeams] = useState<TeamRecord[]>(initialTeams);
+  const [teams, setTeams] = useState<TeamRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalEntries, setTotalEntries] = useState(0);
+
+  // Dropdown Data
+  const [users, setUsers] = useState<User[]>([]);
 
   // Add / Edit Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<TeamRecord | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
-    leader: "",
-    members: "",
+    leaderUuid: "",
+    memberUuids: [] as string[],
   });
 
   // Delete Confirmation Modal States
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedTeamToDelete, setSelectedTeamToDelete] = useState<TeamRecord | null>(null);
 
-  // Filter Logic
-  const filteredData = teams.filter((item) => {
-    const search = searchQuery.trim().toLowerCase();
-    return (
-      !search ||
-      item.name.toLowerCase().includes(search) ||
-      item.leader.toLowerCase().includes(search) ||
-      item.addedBy.toLowerCase().includes(search)
-    );
-  });
-
-  const totalEntries = filteredData.length;
-  const totalPages = Math.ceil(totalEntries / entriesPerPage) || 1;
-  const indexOfLastItem = currentPage * entriesPerPage;
-  const indexOfFirstItem = indexOfLastItem - entriesPerPage;
-  const currentTableData = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
+  // ====================== FETCH DATA ======================
+  const fetchTeams = async (page = 1, search = "") => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_PATH}/crm/configuration/teams?page=${page}&limit=${entriesPerPage}&search=${search}`);
+      const json = await res.json();
+      
+      if (json.success) {
+        setTeams(json.data.data || []);
+        setTotalPages(json.data.meta?.totalPages || 1);
+        setTotalEntries(json.data.meta?.total || 0);
+      }
+    } catch (err) {
+      toast.error("Failed to load teams");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Open Modal for Add
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch(`${API_PATH}/crm/configuration/teams/dropdown/users`);
+      const json = await res.json();
+      if (json.success) {
+        setUsers(json.data.data || json.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to load users", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeams(currentPage, searchQuery);
+  }, [currentPage, entriesPerPage]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+    fetchTeams(1, e.target.value);
+  };
+
+  // ====================== FORM HANDLERS ======================
   const handleOpenAddModal = () => {
     setEditingRecord(null);
-    setFormData({
-      name: "",
-      leader: "",
-      members: "",
-    });
+    setFormData({ name: "", leaderUuid: "", memberUuids: [] });
     setIsModalOpen(true);
   };
 
-  // Open Modal for Edit
   const handleOpenEditModal = (item: TeamRecord) => {
     setEditingRecord(item);
     setFormData({
-      name: item.name,
-      leader: item.leader || "",
-      members: item.members.join(", ") || "",
+      name: item.name || "",
+      leaderUuid: item.leaderUuid || "",
+      memberUuids: item.members?.map(m => m.uuid) || [],
     });
     setIsModalOpen(true);
   };
 
-  // Submit Handler
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name) {
-      alert("Please enter Team Name!");
+      toast.error("Please enter Team Name!");
       return;
     }
 
-    const membersArray = formData.members
-      ? formData.members.split(",").map((m) => m.trim()).filter(Boolean)
-      : [];
+    setSubmitting(true);
 
-    if (editingRecord) {
-      // Edit logic
-      setTeams(
-        teams.map((item) =>
-          item.id === editingRecord.id
-            ? {
-                ...item,
-                name: formData.name,
-                leader: formData.leader,
-                members: membersArray,
-              }
-            : item
-        )
-      );
-    } else {
-      // Add logic
-      const newRecord: TeamRecord = {
-        id: `${Date.now()}`,
-        name: formData.name,
-        leader: formData.leader,
-        members: membersArray,
-        addedBy: "Admin",
-      };
-      setTeams([newRecord, ...teams]);
+    // ✅ Edit করার সময় শুধু প্রয়োজনীয় ফিল্ড পাঠানো হচ্ছে
+    const payload = editingRecord
+      ? {
+          // PATCH এর জন্য শুধু পরিবর্তিত ডাটা পাঠানো ভালো, তবে API সব ফিল্ড চাইলে নিচের লাইনগুলো ব্যবহার করুন
+          name: formData.name,
+          leaderUuid: formData.leaderUuid || null,
+          memberUuids: formData.memberUuids,
+        }
+      : {
+          name: formData.name,
+          leaderUuid: formData.leaderUuid || null,
+          memberUuids: formData.memberUuids,
+          createdBy: "Admin",
+        };
+
+    try {
+      const isEdit = !!editingRecord;
+      const url = isEdit
+        ? `${API_PATH}/crm/configuration/teams/${editingRecord!.uuid}`
+        : `${API_PATH}/crm/configuration/teams`;
+      const method = isEdit ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (res.ok || json.success) {
+        toast.success(isEdit ? "Team Updated!" : "Team Created!");
+        setIsModalOpen(false);
+        setEditingRecord(null);
+        fetchTeams(currentPage, searchQuery);
+      } else {
+        toast.error(json.message || "Something went wrong");
+      }
+    } catch (err) {
+      toast.error("Network Error");
+    } finally {
+      setSubmitting(false);
     }
-
-    setIsModalOpen(false);
-    setEditingRecord(null);
   };
 
-  // Open Delete Modal
+  // ====================== DELETE HANDLERS ======================
   const handleOpenDeleteModal = (item: TeamRecord) => {
     setSelectedTeamToDelete(item);
     setIsDeleteModalOpen(true);
   };
 
-  // Confirm Delete Action
-  const handleConfirmDelete = () => {
-    if (selectedTeamToDelete) {
-      setTeams(teams.filter((item) => item.id !== selectedTeamToDelete.id));
-      setIsDeleteModalOpen(false);
-      setSelectedTeamToDelete(null);
+  const handleConfirmDelete = async () => {
+    if (!selectedTeamToDelete) return;
+    try {
+      const res = await fetch(`${API_PATH}/crm/configuration/teams/${selectedTeamToDelete.uuid}`, {
+        method: "DELETE",
+      });
+      
+      const json = await res.json().catch(() => ({}));
+      
+      if (res.ok || json.success) {
+        toast.success("Team Deleted!");
+        setIsDeleteModalOpen(false);
+        setSelectedTeamToDelete(null);
+        fetchTeams(currentPage, searchQuery);
+      } else {
+        toast.error(json.message || "Failed to delete");
+      }
+    } catch (err) {
+      toast.error("Error deleting team");
     }
   };
 
+  // ====================== RENDER ======================
   return (
     <div className="w-full space-y-6 p-4 md:p-6 bg-slate-50/50 dark:bg-background min-h-screen text-foreground font-sans">
       
@@ -208,10 +252,7 @@ export default function TeamsPage() {
             type="text"
             placeholder="Search..."
             value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
+            onChange={handleSearch}
             className="w-full pl-10 pr-4 py-2.5 border rounded-xl outline-none bg-background border-border text-sm font-bold"
           />
         </div>
@@ -233,44 +274,82 @@ export default function TeamsPage() {
             </thead>
 
             <tbody className="divide-y divide-border/60 font-semibold text-foreground text-sm">
-              {currentTableData.length > 0 ? (
-                currentTableData.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-muted/40 transition-colors">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-indigo-600" />
+                  </td>
+                </tr>
+              ) : teams.length > 0 ? (
+                teams.map((item, index) => (
+                  <tr key={item.uuid} className="hover:bg-muted/40 transition-colors">
                     <td className="py-4 px-4 font-mono font-bold text-center text-muted-foreground">
-                      {indexOfFirstItem + index + 1}
+                      {(currentPage - 1) * entriesPerPage + index + 1}
                     </td>
                     <td className="py-4 px-4 font-extrabold text-foreground">{item.name}</td>
-                    <td className="py-4 px-4 font-bold text-muted-foreground">{item.leader || "—"}</td>
+                    
+                    <td className="py-4 px-4 font-bold text-muted-foreground">
+                      {typeof item.leader === "string" 
+                        ? item.leader 
+                        : item.leader?.name 
+                          ? item.leader.name 
+                          : item.leaderUuid || "—"}
+                    </td>
+                    
                     <td className="py-4 px-4">
                       {item.members && item.members.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
-                          {item.members.map((member, idx) => (
-                            <span
-                              key={idx}
-                              className="px-3 py-1 rounded-md text-xs font-black uppercase border bg-amber-500/10 text-amber-600 border-amber-500/20"
-                            >
-                              {member}
-                            </span>
-                          ))}
+                          {item.members.map((member: any, idx) => {
+                            const memberName = 
+                              member.user?.name || 
+                              member.name || 
+                              member.roleInTeam || 
+                              (typeof member === 'string' ? member : "Unknown Member");
+
+                            return (
+                              <span
+                                key={idx}
+                                className="px-3 py-1 rounded-md text-xs font-black uppercase border bg-amber-500/10 text-amber-600 border-amber-500/20"
+                              >
+                                {memberName}
+                              </span>
+                            );
+                          })}
                         </div>
                       ) : (
                         "—"
                       )}
                     </td>
-                    <td className="py-4 px-4 font-bold text-muted-foreground">{item.addedBy || "—"}</td>
+                    
+                    <td className="py-4 px-4 font-bold text-muted-foreground">
+                      {typeof item.addedBy === "string" 
+                        ? item.addedBy 
+                        : item.addedBy?.name 
+                          ? item.addedBy.name 
+                          : "Admin"}
+                    </td>
+
                     <td className="py-4 px-4 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        {/* Edit Button */}
                         <button
-                          onClick={() => handleOpenEditModal(item)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleOpenEditModal(item);
+                          }}
                           className="p-2 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white transition cursor-pointer shadow-xs"
                           title="Edit"
                         >
                           <Edit size={15} />
                         </button>
-                        {/* Delete Button */}
                         <button
-                          onClick={() => handleOpenDeleteModal(item)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleOpenDeleteModal(item);
+                          }}
                           className="p-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition cursor-pointer shadow-xs"
                           title="Delete"
                         >
@@ -294,14 +373,14 @@ export default function TeamsPage() {
         {/* FOOTER & PAGINATION */}
         <div className="p-4 md:p-5 border-t border-border/80 bg-card/50 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm font-bold text-muted-foreground">
           <div>
-            Showing <span className="text-foreground font-black">{totalEntries > 0 ? indexOfFirstItem + 1 : 0}</span> to{" "}
-            <span className="text-foreground font-black">{Math.min(indexOfLastItem, totalEntries)}</span> of{" "}
+            Showing <span className="text-foreground font-black">{totalEntries > 0 ? (currentPage - 1) * entriesPerPage + 1 : 0}</span> to{" "}
+            <span className="text-foreground font-black">{Math.min(currentPage * entriesPerPage, totalEntries)}</span> of{" "}
             <span className="text-foreground font-black">{totalEntries}</span> entries
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => handlePageChange(currentPage - 1)}
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
               className="px-3.5 py-2 rounded-xl border border-border/80 bg-background hover:bg-indigo-50 disabled:opacity-40 transition flex items-center gap-1.5 text-foreground cursor-pointer font-extrabold text-xs"
             >
@@ -313,7 +392,7 @@ export default function TeamsPage() {
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                 <button
                   key={page}
-                  onClick={() => handlePageChange(page)}
+                  onClick={() => setCurrentPage(page)}
                   className={`w-9 h-9 rounded-xl font-extrabold text-xs transition cursor-pointer ${
                     currentPage === page
                       ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/30"
@@ -326,7 +405,7 @@ export default function TeamsPage() {
             </div>
 
             <button
-              onClick={() => handlePageChange(currentPage + 1)}
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages || totalPages === 0}
               className="px-3.5 py-2 rounded-xl border border-border/80 bg-background hover:bg-indigo-50 disabled:opacity-40 transition flex items-center gap-1.5 text-foreground cursor-pointer font-extrabold text-xs"
             >
@@ -354,50 +433,58 @@ export default function TeamsPage() {
             </div>
 
             <form onSubmit={handleFormSubmit} className="space-y-4 text-xs font-bold">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-slate-500 mb-1.5">
-                    Name <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full p-3 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-500 mb-1.5">
-                    Team Leader <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={formData.leader}
-                    onChange={(e) => setFormData({ ...formData, leader: e.target.value })}
-                    className="w-full p-3 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm font-extrabold outline-none cursor-pointer"
-                  >
-                    <option value="">Select Leader</option>
-                    {leaderOptions.map((leader, i) => (
-                      <option key={i} value={leader}>
-                        {leader}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-slate-500 mb-1.5">
+                  Team Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full p-3 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  required
+                />
               </div>
 
               <div>
                 <label className="block text-slate-500 mb-1.5">
-                  Team members <span className="text-rose-500">*</span>
+                  Team Leader
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Admin, Mohin"
-                  value={formData.members}
-                  onChange={(e) => setFormData({ ...formData, members: e.target.value })}
-                  className="w-full p-3 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
+                <select
+                  value={formData.leaderUuid}
+                  onChange={(e) => setFormData({ ...formData, leaderUuid: e.target.value })}
+                  className="w-full p-3 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm font-extrabold outline-none cursor-pointer"
+                >
+                  <option value="">Select Leader</option>
+                  {users.map((user) => (
+                    <option key={user.uuid} value={user.uuid}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-500 mb-1.5">
+                  Team Members
+                </label>
+                <select
+                  multiple
+                  value={formData.memberUuids}
+                  onChange={(e) => {
+                    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+                    setFormData({ ...formData, memberUuids: selectedOptions });
+                  }}
+                  className="w-full p-3 border rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20 min-h-[100px]"
+                >
+                  {users.map((user) => (
+                    <option key={user.uuid} value={user.uuid}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select multiple members.</p>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
@@ -410,8 +497,10 @@ export default function TeamsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-md cursor-pointer transition text-sm"
+                  disabled={submitting}
+                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-md cursor-pointer transition text-sm flex items-center gap-2"
                 >
+                  {submitting && <Loader2 size={16} className="animate-spin" />}
                   Submit
                 </button>
               </div>

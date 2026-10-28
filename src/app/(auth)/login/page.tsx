@@ -4,15 +4,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { Loader2, ArrowRight, ShieldCheck, Building2, User } from "lucide-react";
 
-import { getSession, login } from "@/lib/auth";
+import { loginUniversalSession } from "@/lib/admin-auth/adminAuthApi";
+import {
+  getStoredAccessToken,
+  setStoredTokens,
+} from "@/lib/admin-auth/adminAuthStorage";
 import { SiteShell } from "@/components/site/SiteNav";
 
 const slides = [
   {
     image:
       "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1400&q=90",
-    badge: "RealBiz OS v3.4",
+    badge: "RealBiz OS Enterprise",
     title: "Command center for high-performance teams.",
     description:
       "Streamline your pipeline, analyze operational metrics, and scale growth securely from a unified workspace.",
@@ -20,7 +25,7 @@ const slides = [
   {
     image:
       "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1400&q=90",
-    badge: "SMART OPERATIONS",
+    badge: "Smart Operations",
     title: "Everything your business needs in one place.",
     description:
       "Manage sales, projects, finance, customers, vendors, and daily operations from one powerful platform.",
@@ -28,7 +33,7 @@ const slides = [
   {
     image:
       "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1400&q=90",
-    badge: "BUSINESS INTELLIGENCE",
+    badge: "Business Intelligence",
     title: "Turn your business data into better decisions.",
     description:
       "Track performance, monitor cash flow, understand your numbers, and make faster decisions with real-time insights.",
@@ -38,14 +43,17 @@ const slides = [
 function LoginPages() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    if (getSession()) router.replace("/dashboard");
+    if (getStoredAccessToken()) {
+      router.replace("/dashboard");
+    }
   }, [router]);
 
   // Auto slide
@@ -57,16 +65,43 @@ function LoginPages() {
     return () => clearInterval(interval);
   }, []);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email.includes("@") || password.length < 4) {
-      setError("Enter a valid email and a password of at least 4 characters.");
+    const cleanIdentifier = identifier.trim();
+    if (!cleanIdentifier || password.length < 4) {
+      setError("Please enter your email or username, and a password of at least 4 characters.");
       return;
     }
 
-    login(email);
-    router.push("/dashboard");
+    setIsSubmitting(true);
+    setError("");
+
+    try {
+      const session = await loginUniversalSession(cleanIdentifier, password);
+
+      setStoredTokens(
+        session.accessToken,
+        session.refreshToken,
+        session.user,
+      );
+
+      router.replace("/dashboard");
+    } catch (err: any) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Authentication failed. Please verify your credentials and try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleQuickFill = (emailVal: string, passVal: string) => {
+    setIdentifier(emailVal);
+    setPassword(passVal);
+    setError("");
   };
 
   const slide = slides[currentSlide];
@@ -165,7 +200,7 @@ function LoginPages() {
               >
                 {/* Small Label */}
                 <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">
-                  RealBiz Platform
+                  RealBiz Universal Platform
                 </p>
 
                 {/* Title */}
@@ -203,7 +238,7 @@ function LoginPages() {
             {/* Footer Metadata */}
             <div className="mt-7 flex items-center justify-between border-t border-white/15 pt-5 text-[10px] uppercase tracking-wider text-white/50">
               <span>Enterprise Grade Security</span>
-              <span>SOC2 Type II Certified</span>
+              <span>Universal Workspace Gateway</span>
             </div>
           </div>
         </div>
@@ -221,28 +256,54 @@ function LoginPages() {
               </h1>
 
               <p className="text-sm text-zinc-600">
-                Enter your credentials to access your organization deck.
+                Sign in with your organization account to access your workspace.
               </p>
             </div>
 
+            {/* Quick preset selector */}
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                Quick Fill:
+              </span>
+              <button
+                type="button"
+                onClick={() => handleQuickFill("admin@admin.com", "12345678")}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 hover:border-zinc-300 transition"
+              >
+                <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
+                Super Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill("admin@apex.com", "12345678")}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 hover:border-zinc-300 transition"
+              >
+                <Building2 className="h-3.5 w-3.5 text-emerald-600" />
+                Org Admin
+              </button>
+            </div>
+
             {/* Login Form */}
-            <form onSubmit={submit} className="mt-8 space-y-4">
-              {/* Email */}
+            <form onSubmit={submit} className="mt-6 space-y-4">
+              {/* Email / Username */}
               <div className="space-y-1.5">
                 <label
-                  htmlFor="email"
+                  htmlFor="identifier"
                   className="text-xs font-medium uppercase tracking-wider text-zinc-500"
                 >
-                  Work Email
+                  Work Email or Username
                 </label>
 
                 <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
-                  placeholder="name@company.com"
+                  id="identifier"
+                  type="text"
+                  autoComplete="username"
+                  required
+                  disabled={isSubmitting}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 disabled:opacity-60"
+                  placeholder="name@company.com or username"
                 />
               </div>
 
@@ -258,9 +319,12 @@ function LoginPages() {
                 <input
                   id="password"
                   type="password"
+                  autoComplete="current-password"
+                  required
+                  disabled={isSubmitting}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 disabled:opacity-60"
                   placeholder="••••••••"
                 />
               </div>
@@ -275,11 +339,20 @@ function LoginPages() {
               {/* Submit */}
               <button
                 type="submit"
-                className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.99]"
+                disabled={isSubmitting}
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <span>Sign In to Workspace</span>
-
-                <span className="transition group-hover:translate-x-1">→</span>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    <span>Authenticating Workspace...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Sign In to Workspace</span>
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </>
+                )}
               </button>
             </form>
 
@@ -292,7 +365,10 @@ function LoginPages() {
                 ← Return to main site
               </Link>
 
-              <span className="text-xs text-zinc-400">Demo mode active</span>
+              <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                Live Universal Gateway
+              </span>
             </div>
           </div>
         </div>
