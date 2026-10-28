@@ -11,6 +11,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
     "/crm-module",
     "/dashboard",
     "/login",
+    "/rb",
     "/features",
     "/about",
     "/contact",

@@ -23,6 +23,10 @@ const FALLBACK_PRIMARY = "#2ed573";
 export function SiteNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const isLoginPage =
+    pathname === "/login" ||
+    pathname === "/admin/login" ||
+    pathname === "/rb/login";
   const { theme, toggle, primaryColor } = useTheme();
   const { language, setLanguage, t } = useLanguage();
 
@@ -127,13 +131,15 @@ export function SiteNav() {
           </button>
 
           {/* Login — Desktop */}
-          <Link
-            href="/login"
-            className="hidden rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 sm:inline-flex"
-            style={{ backgroundColor: brandColor }}
-          >
-            {t("nav.login")}
-          </Link>
+          {!isLoginPage && (
+            <Link
+              href="/login"
+              className="hidden rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 sm:inline-flex"
+              style={{ backgroundColor: brandColor }}
+            >
+              {t("nav.login")}
+            </Link>
+          )}
 
           {/* Mobile Menu Button */}
           <button
@@ -179,16 +185,18 @@ export function SiteNav() {
               })}
             </nav>
 
-            <div className="mt-3 border-t border-border pt-3 sm:hidden">
-              <Link
-                href="/login"
-                onClick={() => setOpen(false)}
-                className="block w-full rounded-md py-2 text-center text-sm font-semibold text-white transition hover:opacity-90"
-                style={{ backgroundColor: brandColor }}
-              >
-                {t("nav.login")}
-              </Link>
-            </div>
+            {!isLoginPage && (
+              <div className="mt-3 border-t border-border pt-3 sm:hidden">
+                <Link
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="block w-full rounded-md py-2 text-center text-sm font-semibold text-white transition hover:opacity-90"
+                  style={{ backgroundColor: brandColor }}
+                >
+                  {t("nav.login")}
+                </Link>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
