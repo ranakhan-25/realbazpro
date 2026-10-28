@@ -23,7 +23,7 @@ import {
   procurementBrandApi,
   BackendBrand,
   getAuthenticatedUserId,
-} from "@/lib/procurementBrandApi";
+} from "@/lib/procurement/procurementBrandApi";
 
 function parseApiError(err: unknown, defaultMessage: string): string {
   if (err && typeof err === "object") {

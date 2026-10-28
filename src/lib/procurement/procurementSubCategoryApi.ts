@@ -1,63 +1,27 @@
-import api from "./api";
+import api from "../api";
 
-export interface ItemEntryDropdownCategory {
+export interface BackendSubCategoryCategory {
   uuid: string;
   code?: string;
-  name: string;
+  name?: string;
 }
 
-export interface ItemEntryDropdownSubCategory {
-  uuid: string;
-  categoryId?: string;
-  code?: string;
-  name: string;
-}
-
-export interface ItemEntryDropdownBrand {
-  uuid: string;
-  code?: string;
-  name: string;
-}
-
-export interface ItemEntryDropdownUnit {
-  uuid: string;
-  code?: string;
-  name: string;
-  conversionUnit?: string;
-  rate?: string | number;
-}
-
-export interface ItemEntryDropdownsResult {
-  categories: ItemEntryDropdownCategory[];
-  subCategories: ItemEntryDropdownSubCategory[];
-  brands: ItemEntryDropdownBrand[];
-  units: ItemEntryDropdownUnit[];
-}
-
-export interface BackendItemEntry {
+export interface BackendSubCategory {
   id: string | number;
   uuid: string;
-  item_code: string;
+  categoryId: string;
+  code: string;
   name: string;
-  purchase_price: number | string;
-  sale_price: number | string;
-  category_id?: string | null;
-  sub_category_id?: string | null;
-  brand_id?: string | null;
-  unit_id?: string | null;
   createdBy?: string | null;
   updatedBy?: string | null;
   deletedBy?: string | null;
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
-  category?: ItemEntryDropdownCategory | null;
-  sub_category?: ItemEntryDropdownSubCategory | null;
-  brand?: ItemEntryDropdownBrand | null;
-  unit?: ItemEntryDropdownUnit | null;
+  category?: BackendSubCategoryCategory | null;
 }
 
-export interface ItemEntryPaginationMeta {
+export interface SubCategoryPaginationMeta {
   page: number;
   pageNo?: number;
   nextPage?: number | null;
@@ -68,57 +32,39 @@ export interface ItemEntryPaginationMeta {
   totalPages: number;
 }
 
-export interface ItemEntryListResult {
-  data: BackendItemEntry[];
-  meta: ItemEntryPaginationMeta;
+export interface SubCategoryListResult {
+  data: BackendSubCategory[];
+  meta: SubCategoryPaginationMeta;
 }
 
-export interface CreateItemEntryPayload {
-  item_code: string;
+export interface CreateSubCategoryPayload {
+  categoryId: string;
+  code: string;
   name: string;
-  purchase_price: number;
-  sale_price: number;
-  category_id?: string;
-  sub_category_id?: string;
-  brand_id?: string;
-  unit_id?: string;
   createdBy?: string;
 }
 
-export interface UpdateItemEntryPayload {
-  item_code?: string;
+export interface UpdateSubCategoryPayload {
+  categoryId?: string;
+  code?: string;
   name?: string;
-  purchase_price?: number;
-  sale_price?: number;
-  category_id?: string;
-  sub_category_id?: string;
-  brand_id?: string;
-  unit_id?: string;
+  updatedBy?: string;
 }
 
-export interface QueryItemEntryParams {
+export interface QuerySubCategoryParams {
   page?: number;
   limit?: number;
   skip?: number;
   search?: string;
   categoryId?: string;
-  subCategoryId?: string;
-  brandId?: string;
-  unitId?: string;
-  sortBy?:
-    | "createdAt"
-    | "updatedAt"
-    | "name"
-    | "item_code"
-    | "purchase_price"
-    | "sale_price";
+  sortBy?: "createdAt" | "updatedAt" | "name" | "code";
   sortOrder?: "ASC" | "DESC";
   withDeleted?: boolean;
 }
 
 /**
  * Helper to retrieve currently authenticated user ID/UUID from localStorage / session / token.
- * Defaults to "user-uuid" if no session exists, following the backend contract.
+ * Defaults to "user-uuid" if no session exists, following the existing backend contract.
  */
 export function getAuthenticatedUserId(): string {
   if (typeof window === "undefined") return "user-uuid";
@@ -196,19 +142,21 @@ export function getAuthenticatedUserId(): string {
 }
 
 /**
- * Procurement Item Entry API Service
- * Interacts with /realbizpro/api/v1/procurement/item-entry
+ * Procurement Sub Category API Service
+ * Interacts with /realbizpro/api/v1/procurement/sub-category
  */
-export const procurementItemEntryApi = {
+export const procurementSubCategoryApi = {
   /**
-   * Fetch paginated items with search, category, and withDeleted filters
+   * Fetch paginated sub-categories with search, categoryId, and withDeleted filters
    */
-  async getItems(params?: QueryItemEntryParams): Promise<ItemEntryListResult> {
+  async getSubCategories(
+    params?: QuerySubCategoryParams,
+  ): Promise<SubCategoryListResult> {
     const cleanParams: Record<string, unknown> = { ...(params || {}) };
     if (!params?.withDeleted) {
       delete cleanParams.withDeleted;
     }
-    const res = await api.get("/procurement/item-entry", {
+    const res = await api.get("/procurement/sub-category", {
       params: cleanParams,
     });
     const rootData = res.data?.data || res.data;
@@ -235,61 +183,47 @@ export const procurementItemEntryApi = {
   },
 
   /**
-   * Fetch dropdown datasets (categories, sub-categories, brands, units)
+   * Fetch a single sub-category's details by uuid
    */
-  async getDropdowns(): Promise<ItemEntryDropdownsResult> {
-    const res = await api.get("/procurement/item-entry/dropdowns");
-    const data = res.data?.data || res.data || {};
-    return {
-      categories: Array.isArray(data.categories) ? data.categories : [],
-      subCategories: Array.isArray(data.subCategories)
-        ? data.subCategories
-        : [],
-      brands: Array.isArray(data.brands) ? data.brands : [],
-      units: Array.isArray(data.units) ? data.units : [],
-    };
-  },
-
-  /**
-   * Fetch single item details by uuid
-   */
-  async getItem(uuid: string): Promise<BackendItemEntry> {
-    const res = await api.get(`/procurement/item-entry/${uuid}`);
+  async getSubCategory(uuid: string): Promise<BackendSubCategory> {
+    const res = await api.get(`/procurement/sub-category/${uuid}`);
     return res.data?.data || res.data;
   },
 
   /**
-   * Create a new item
+   * Create a new sub-category
    */
-  async createItem(payload: CreateItemEntryPayload): Promise<BackendItemEntry> {
-    const res = await api.post("/procurement/item-entry", payload);
+  async createSubCategory(
+    payload: CreateSubCategoryPayload,
+  ): Promise<BackendSubCategory> {
+    const res = await api.post("/procurement/sub-category", payload);
     return res.data?.data || res.data;
   },
 
   /**
-   * Update an existing item by uuid
+   * Update an existing sub-category by uuid
    */
-  async updateItem(
+  async updateSubCategory(
     uuid: string,
-    payload: UpdateItemEntryPayload,
-  ): Promise<BackendItemEntry> {
-    const res = await api.patch(`/procurement/item-entry/${uuid}`, payload);
+    payload: UpdateSubCategoryPayload,
+  ): Promise<BackendSubCategory> {
+    const res = await api.patch(`/procurement/sub-category/${uuid}`, payload);
     return res.data?.data || res.data;
   },
 
   /**
-   * Soft-delete an item by uuid
+   * Soft-delete a sub-category by uuid
    */
-  async deleteItem(uuid: string): Promise<{ message: string }> {
-    const res = await api.delete(`/procurement/item-entry/${uuid}`);
+  async deleteSubCategory(uuid: string): Promise<{ message: string }> {
+    const res = await api.delete(`/procurement/sub-category/${uuid}`);
     return res.data?.data || res.data;
   },
 
   /**
-   * Restore a soft-deleted item by uuid
+   * Restore a soft-deleted sub-category by uuid
    */
-  async restoreItem(uuid: string): Promise<BackendItemEntry> {
-    const res = await api.patch(`/procurement/item-entry/${uuid}/restore`);
+  async restoreSubCategory(uuid: string): Promise<BackendSubCategory> {
+    const res = await api.patch(`/procurement/sub-category/${uuid}/restore`);
     return res.data?.data || res.data;
   },
 };

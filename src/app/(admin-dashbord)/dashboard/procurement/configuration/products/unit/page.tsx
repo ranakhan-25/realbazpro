@@ -23,7 +23,7 @@ import {
   procurementUnitApi,
   BackendUnit,
   getAuthenticatedUserId,
-} from "@/lib/procurementUnitApi";
+} from "@/lib/procurement/procurementUnitApi";
 
 function parseApiError(err: unknown, defaultMessage: string): string {
   if (err && typeof err === "object") {
