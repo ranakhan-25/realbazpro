@@ -59,10 +59,7 @@ export interface RequisitionRow {
   approvalSteps: ApprovalStep[];
   attachment?: string;
   items?: RequisitionItem[];
-<<<<<<< HEAD
   address?: string;
-=======
->>>>>>> d5bcee36a9d5077d99e72b207c105ac055c1793e
 }
 
 export interface RequisitionItem {
