@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
+import { crmLeadApi } from "@/services/crmLeadApi";
 
 interface TransferLeadRecord {
   id: string;
@@ -27,34 +28,12 @@ const mockTransferLeads: TransferLeadRecord[] = [
 
 export default function TransferLeadListPage() {
   const [transferLeads, setTransferLeads] = useState<TransferLeadRecord[]>([]);
-
-  // LocalStorage theke data load korar function
-  const loadTransfers = () => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("transfer_history_data");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            setTransferLeads(parsed);
-            return;
-          }
-        } catch (e) {
-          // JSON parse error handle
-        }
-      }
-      setTransferLeads(mockTransferLeads);
-    }
-  };
-
   useEffect(() => {
-    loadTransfers();
-
-    // Onno tab ba page theke update hole sync korar jonno
-    window.addEventListener("storage", loadTransfers);
-    return () => {
-      window.removeEventListener("storage", loadTransfers);
-    };
+    void crmLeadApi.listAllTransfers().then((result) => setTransferLeads(result.data.map((row: any) => ({
+      id: row.uuid, leadCode: row.leadCode ?? "", name: row.name ?? "", mobile: row.mobile ?? "",
+      from: row.sourceUser?.name ?? row.from ?? "", to: row.targetUser?.name ?? row.to ?? "",
+      date: row.date ?? row.transferDate ?? "", lastActivity: row.lastActivity?.summary ?? row.lastActivity ?? "",
+    })))).catch((error) => { console.error("Failed to load transfer history", error); setTransferLeads([]); });
   }, []);
 
   const [selectedDateRange, setSelectedDateRange] = useState("September 23, 2026 - October 22, 2026");

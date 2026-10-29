@@ -7,6 +7,7 @@ interface CallAssignModalProps {
   setCallAssignUserType: (val: string) => void;
   callAssignNote: string;
   setCallAssignNote: (val: string) => void;
+  onSubmit: () => void;
 }
 
 export default function CallAssignModal({
@@ -18,6 +19,7 @@ export default function CallAssignModal({
   setCallAssignUserType,
   callAssignNote,
   setCallAssignNote,
+  onSubmit,
 }: CallAssignModalProps) {
   if (!isOpen) return null;
 
@@ -77,10 +79,7 @@ export default function CallAssignModal({
           </button>
           <button
             type="button"
-            onClick={() => {
-              alert(`Assigned successfully!`);
-              onClose();
-            }}
+            onClick={onSubmit}
             className="px-6 py-2 rounded-xl bg-indigo-600 text-white font-black shadow-md"
           >
             Submit

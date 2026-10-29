@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Users
 } from "lucide-react";
+import { crmDirectoryApi } from "@/services/crmLeadApi";
 
 interface Party {
   uuid: string;
@@ -27,6 +28,7 @@ interface Party {
   type: "customer" | "investor" | "vendor" | "other";
   tags: string[];
   assignee?: string;
+  assigneeUuid?: string;
   created_at: string;
 }
 
@@ -60,6 +62,11 @@ const mockParties: Party[] = [
 export default function PartiesPage() {
   const [parties, setParties] = useState<Party[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [partyUsers, setPartyUsers] = useState<any[]>([]);
+  const refreshParties = async () => {
+    try { setParties(await crmDirectoryApi.parties() as Party[]); }
+    catch (error) { console.error("Failed to load CRM parties", error); setParties([]); }
+  };
 
   // Filters State
   const [typeFilter, setTypeFilter] = useState("all");
@@ -108,23 +115,11 @@ export default function PartiesPage() {
 
   // 1. Load LocalStorage Data
   useEffect(() => {
-    const saved = localStorage.getItem("crm_parties_data");
-    if (saved) {
-      try {
-        setParties(JSON.parse(saved));
-      } catch (e) {
-        setParties(mockParties);
-      }
-    } else {
-      setParties(mockParties);
-      localStorage.setItem("crm_parties_data", JSON.stringify(mockParties));
-    }
-    setIsLoaded(true);
+    Promise.all([refreshParties(), crmDirectoryApi.partyUsers().then(setPartyUsers).catch((error) => { console.error("Failed to load party assignees", error); setPartyUsers([]); })]).finally(() => setIsLoaded(true));
   }, []);
 
   const saveParties = (data: Party[]) => {
     setParties(data);
-    localStorage.setItem("crm_parties_data", JSON.stringify(data));
   };
 
   // 2. Open Party Modal (Create or Edit)
@@ -156,7 +151,7 @@ export default function PartiesPage() {
   };
 
   // Submit Party Form
-  const handlePartyFormSubmit = (e: React.FormEvent) => {
+  const handlePartyFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!partyFormData.name || !partyFormData.phone) return;
 
@@ -164,77 +159,40 @@ export default function PartiesPage() {
       ? partyFormData.tagsInput.split(",").map((t) => t.trim()).filter(Boolean)
       : [];
 
-    if (partyFormData.uuid) {
-      const updated = parties.map((p) =>
-        p.uuid === partyFormData.uuid
-          ? {
-              ...p,
-              name: partyFormData.name,
-              phone: partyFormData.phone,
-              email: partyFormData.email,
-              nid: partyFormData.nid,
-              address: partyFormData.address,
-              type: partyFormData.type,
-              tags: tagsArr,
-            }
-          : p
-      );
-      saveParties(updated);
-    } else {
-      const newParty: Party = {
-        uuid: `party-${Date.now()}`,
-        name: partyFormData.name,
-        phone: partyFormData.phone,
-        email: partyFormData.email,
-        nid: partyFormData.nid,
-        address: partyFormData.address,
-        type: partyFormData.type,
-        tags: tagsArr,
-        assignee: "Shamim Khan",
-        created_at: new Date().toISOString().slice(0, 10),
-      };
-      saveParties([newParty, ...parties]);
-    }
-
-    setShowPartyModal(false);
+    try { await crmDirectoryApi.saveParty(partyFormData, partyFormData.uuid || undefined); await refreshParties(); setShowPartyModal(false); }
+    catch (error) { console.error("Failed to save CRM party", error); }
   };
 
   // 3. Confirm Delete Party
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!selectedParty) return;
-    const updated = parties.filter((p) => p.uuid !== selectedParty.uuid);
-    saveParties(updated);
-    setShowDeleteModal(false);
-    setSelectedParty(null);
+    try { await crmDirectoryApi.deleteParty(selectedParty.uuid); await refreshParties(); setShowDeleteModal(false); setSelectedParty(null); }
+    catch (error) { console.error("Failed to delete CRM party", error); }
   };
 
   // 4. Submit Assignment Form
-  const handleAssignSubmit = (e: React.FormEvent) => {
+  const handleAssignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedParty) return;
 
-    const updated = parties.map((p) =>
-      p.uuid === selectedParty.uuid ? { ...p, assignee: assigneeData.assignee } : p
-    );
-    saveParties(updated);
-    setShowAssignModal(false);
-    alert(`Party assigned to ${assigneeData.assignee}`);
+    const selectedUser = partyUsers.find((user) => user.uuid === assigneeData.assignee || user.name === assigneeData.assignee);
+    if (!selectedUser) return;
+    try { await crmDirectoryApi.assignParty(selectedParty.uuid, selectedUser.uuid, assigneeData.note); await refreshParties(); setShowAssignModal(false); }
+    catch (error) { console.error("Failed to assign CRM party", error); }
   };
 
   // 5. Submit Communication Form
-  const handleCommSubmit = (e: React.FormEvent) => {
+  const handleCommSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedParty || !commFormData.content) return;
 
-    alert(`Communication log recorded for ${selectedParty.name} via ${commFormData.channel.toUpperCase()}`);
-    setShowCommModal(false);
-    setCommFormData({
+    try { await crmDirectoryApi.logPartyCommunication(selectedParty.uuid, commFormData); setShowCommModal(false); setCommFormData({
       channel: "call",
       direction: "out",
       content: "",
       attachmentName: "",
       at: new Date().toISOString().slice(0, 16),
-    });
+    }); } catch (error) { console.error("Failed to record party communication", error); }
   };
 
   // Filter Parties
@@ -486,7 +444,7 @@ export default function PartiesPage() {
                         </button>
 
                         <button
-                          onClick={() => { setSelectedParty(party); setAssigneeData({ assignee: party.assignee || "Shamim Khan", note: "" }); setShowAssignModal(true); }}
+                          onClick={() => { setSelectedParty(party); setAssigneeData({ assignee: party.assigneeUuid || "", note: "" }); setShowAssignModal(true); }}
                           className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 hover:bg-purple-500 hover:text-white dark:text-purple-400 dark:hover:text-white border border-purple-500/20 transition-all duration-200 active:scale-95 cursor-pointer"
                           title="Assign Party"
                         >
@@ -683,9 +641,7 @@ export default function PartiesPage() {
                   onChange={(e) => setAssigneeData({ ...assigneeData, assignee: e.target.value })}
                   className="w-full px-3.5 py-2.5 border rounded-xl bg-background border-border outline-none font-bold text-foreground focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
                 >
-                  <option value="Shamim Khan">Shamim Khan (SE)</option>
-                  <option value="Tanvir Ahmed">Tanvir Ahmed (CRM)</option>
-                  <option value="Rafiqul Islam">Rafiqul Islam (Manager)</option>
+                  {partyUsers.map((user: any) => <option key={user.uuid} value={user.uuid}>{user.name}</option>)}
                 </select>
               </div>
 

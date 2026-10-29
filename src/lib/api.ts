@@ -73,7 +73,7 @@ api.interceptors.response.use(
         localStorage.removeItem("token");
         localStorage.removeItem("admin_user_profile");
         if (window.location.pathname.startsWith("/admin")) {
-          window.location.href = "/admin/login";
+          window.location.href = "/login";
         }
         return Promise.reject(error);
       }
@@ -136,7 +136,7 @@ api.interceptors.response.use(
         localStorage.removeItem("admin_refresh_token");
         localStorage.removeItem("admin_user_profile");
         if (window.location.pathname.startsWith("/admin")) {
-          window.location.href = "/admin/login";
+          window.location.href = "/login";
         }
         return Promise.reject(refreshError);
       } finally {

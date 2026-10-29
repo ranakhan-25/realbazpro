@@ -77,7 +77,7 @@ export default function AdminTopbar() {
       clearStoredTokens();
       setProfileOpen(false);
       setSearchOpen(false);
-      router.replace("/admin/login");
+      router.replace("/login");
     }
   };
 
