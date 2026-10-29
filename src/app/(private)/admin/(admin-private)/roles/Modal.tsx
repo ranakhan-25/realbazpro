@@ -2,6 +2,7 @@
 
 import type { Role } from "@/services/roleService";
 import { getFeaturesTreePermissions, type FeatureTreeNode } from "@/services/roleService";
+import { getUserAccess } from "@/services/userAccessService";
 import { useTheme } from "@/lib/theme";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, ShieldCheck, X } from "lucide-react";
@@ -196,8 +197,17 @@ export default function RolePermissionModal({
     const loadLiveTree = async () => {
       try {
         setLoading(true);
-        const featureTree = await getFeaturesTreePermissions();
+        const [featureTree, userAccess] = await Promise.all([
+          getFeaturesTreePermissions(),
+          getUserAccess().catch(() => null),
+        ]);
         if (cancelled) return;
+
+        // If user is a tenant admin or staff, enforce their entitled modules
+        const allowedModuleIds =
+          userAccess && !userAccess.user?.isSuperUser && Array.isArray(userAccess.accessibleModules)
+            ? new Set(userAccess.accessibleModules.map((m) => String(m.id)))
+            : null;
 
         // Group features by module
         const moduleMap = new Map<string, { id: string | number; name: string; features: FeatureItem[] }>();
@@ -205,6 +215,10 @@ export default function RolePermissionModal({
         for (const feat of featureTree) {
           const modId = feat.module?.id || (feat.moduleId ? String(feat.moduleId) : "general");
           const modName = feat.module?.name || "General Modules";
+
+          if (allowedModuleIds && !allowedModuleIds.has(String(modId))) {
+            continue;
+          }
 
           if (!moduleMap.has(String(modId))) {
             moduleMap.set(String(modId), {
