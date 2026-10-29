@@ -171,7 +171,7 @@ export default function AdminSidebar() {
   const handleSignOut = () => {
     clearStoredTokens();
     setMobileOpen(false);
-    router.replace("/admin/login");
+    router.replace("/login");
   };
 
   useEffect(() => {

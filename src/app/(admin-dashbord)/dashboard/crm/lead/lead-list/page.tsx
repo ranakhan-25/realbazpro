@@ -10,6 +10,7 @@ import BulkImportModal from "./modals/BulkImportModal";
 import SmsModals from "./modals/SmsModals";
 import TransferModal from "./modals/TransferModal";
 import AlertDeleteModals from "./modals/AlertDeleteModals";
+import { crmLeadApi, mapLead } from "@/services/crmLeadApi";
 
 interface LeadRecord {
   id: string;
@@ -23,15 +24,24 @@ interface LeadRecord {
   email?: string;
   badge: string;
   srOfficer: string;
+  srOfficerId?: string;
   cr: string;
+  crId?: string;
   avatarUrl?: string;
   leadSource?: string;
+  leadSourceId?: number;
   interestedProject?: string;
+  interestedProjectId?: string;
   leadCategory?: string;
+  leadCategoryId?: number;
   campaign?: string;
+  campaignId?: number;
   birthDate?: string;
   anniversaryDate?: string;
   profession?: string;
+  professionId?: number;
+  stageId?: number;
+  status?: string;
   createdAt?: string;
   lastActivity?: string;
   nextActivity?: string;
@@ -88,31 +98,46 @@ const mockLeadsData: LeadRecord[] = [
 ];
 
 export default function LeadListPage() {
-  const [leads, setLeads] = useState<LeadRecord[]>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("crm_leads_data");
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {
-          // ignore error
-        }
-      }
+  const [leads, setLeads] = useState<LeadRecord[]>([]);
+  const [leadOptions, setLeadOptions] = useState<Record<string, any[]>>({});
+  const [isLoadingLeads, setIsLoadingLeads] = useState(true);
+  const refreshLeads = async (filters: Record<string, any> = {}) => {
+    setIsLoadingLeads(true);
+    try {
+      const result = await crmLeadApi.listAllLeads(filters);
+      setLeads(result.data as LeadRecord[]);
+    } catch (error) {
+      console.error("Failed to load CRM leads", error);
+      setLeads([]);
+    } finally {
+      setIsLoadingLeads(false);
     }
-    return mockLeadsData;
-  });
-
+  };
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("crm_leads_data", JSON.stringify(leads));
-    }
-  }, [leads]);
+    void refreshLeads();
+    Promise.all(["category", "source", "campaign", "profession", "area", "team", "project", "user", "stage", "status", "occasion", "lead-type"].map(async (key) => {
+      try { return [key, await crmLeadApi.dropdown(key)] as const; }
+      catch (error) { console.error(`Failed to load CRM ${key} options`, error); return [key, []] as const; }
+    })).then((entries) => setLeadOptions(Object.fromEntries(entries)));
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
 
   const [filterCategory, setFilterCategory] = useState("");
   const [filterProject, setFilterProject] = useState("");
+  const [filterTeamId, setFilterTeamId] = useState("");
+  const [filterDateRange, setFilterDateRange] = useState("January 1, 1971 - October 22, 2026");
+  const currentLeadQuery = () => {
+    const [start, end] = filterDateRange.split(" - ");
+    const from = start ? new Date(start) : null;
+    const to = end ? new Date(end) : null;
+    return {
+      ...(filterTeamId ? { teamId: filterTeamId } : {}),
+      ...(from && !Number.isNaN(from.getTime()) ? { dateFrom: from.toISOString().slice(0, 10) } : {}),
+      ...(to && !Number.isNaN(to.getTime()) ? { dateTo: to.toISOString().slice(0, 10) } : {}),
+    };
+  };
 
   const [isNewOrEditModalOpen, setIsNewOrEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -142,6 +167,7 @@ export default function LeadListPage() {
   const [smsText, setSmsText] = useState("");
 
   const [activeLead, setActiveLead] = useState<LeadRecord | null>(null);
+  const [leadDetailTabs, setLeadDetailTabs] = useState<Record<string, any[]>>({});
 
   const [isCallActivityPageOpen, setIsCallActivityPageOpen] = useState(false);
 
@@ -217,7 +243,7 @@ export default function LeadListPage() {
       name: "",
       phone: "",
       secondaryNumber: "",
-      assignUser: "Admin",
+      assignUser: leadOptions.user?.find((user: any) => user.name === "Admin")?.uuid ?? leadOptions.user?.[0]?.uuid ?? "",
       ifCr: "",
       leadStages: "New Assignment",
       leadSource: "",
@@ -243,8 +269,8 @@ export default function LeadListPage() {
       name: item.name,
       phone: item.phone,
       secondaryNumber: item.secondaryNumber || "",
-      assignUser: item.srOfficer || "Admin",
-      ifCr: item.cr || "",
+      assignUser: item.srOfficerId || "",
+      ifCr: item.crId || "",
       leadStages: item.badge || "New Assignment",
       leadSource: item.leadSource || "",
       interestedProject: item.interestedProject || "",
@@ -269,6 +295,11 @@ export default function LeadListPage() {
     setNextFollowupNote("");
     setIsJunk(item.badge === "JUNK" || item.badge === "Junk");
     setIsCallActivityPageOpen(true);
+    void crmLeadApi.details(item.id).then((detail: any) => {
+      const mapped = mapLead(detail);
+      setActiveLead({ ...item, ...mapped } as LeadRecord);
+      setLeadDetailTabs(detail?.tabs ?? {});
+    }).catch((error) => console.error("Failed to load lead activity details", error));
   };
 
   const handleOpenDeleteModal = (item: LeadRecord) => {
@@ -277,164 +308,98 @@ export default function LeadListPage() {
   };
 
   const handleConfirmDelete = () => {
-    if (activeLead) {
-      setLeads(leads.filter((item) => item.id !== activeLead.id));
-      setIsDeleteModalOpen(false);
-      setActiveLead(null);
-    }
+    if (!activeLead) return;
+    void crmLeadApi.deleteLead(activeLead.id).then(() => refreshLeads()).then(() => {
+      setIsDeleteModalOpen(false); setActiveLead(null);
+    }).catch((error) => console.error("Failed to delete lead", error));
+  };
+
+  const handleCallAssign = async () => {
+    const parsedDate = callAssignDate ? new Date(callAssignDate) : undefined;
+    if (parsedDate && Number.isNaN(parsedDate.getTime())) { console.error("Enter a valid call assignment date"); return; }
+    try {
+      await crmLeadApi.callAssign({ leadUuids: selectedLeads, date: parsedDate?.toISOString(), assignUserType: callAssignUserType, note: callAssignNote });
+      await refreshLeads(); setIsCallAssignOpen(false); setSelectedLeads([]); setCallAssignDate(""); setCallAssignNote("");
+    } catch (error) { console.error("Failed to schedule call assignment", error); }
   };
 
   // ট্রান্সফার কনফার্ম করার ফাংশন (যাতে Transfer History পেজে ডেটা যায়)
-  const handleConfirmTransfer = () => {
-    const assignedTo = transferUser || "Admin";
-
-    const leadsToTransfer = leads.filter((item) => selectedLeads.includes(item.id));
-
-    const newTransferRecords = leadsToTransfer.map((lead, index) => ({
-      id: `${Date.now()}-${index}`,
-      leadCode: lead.leadId,
-      name: lead.name,
-      mobile: lead.phone,
-      from: lead.srOfficer || "Admin",
-      to: assignedTo,
-      date: new Date().toLocaleDateString("en-GB").replace(/\//g, "-"),
-      lastActivity: lead.lastActivity || "",
-    }));
-
-    if (typeof window !== "undefined") {
-      const existingHistory = localStorage.getItem("transfer_history_data");
-      let parsedHistory = [];
-      try {
-        parsedHistory = existingHistory ? JSON.parse(existingHistory) : [];
-      } catch (e) {
-        parsedHistory = [];
-      }
-
-      const updatedHistory = [...newTransferRecords, ...parsedHistory];
-      localStorage.setItem("transfer_history_data", JSON.stringify(updatedHistory));
-    }
-
-    alert(`Successfully transferred ${selectedLeads.length} leads to ${assignedTo}!`);
-    setIsTransferOpen(false);
-    setSelectedLeads([]);
-    setTransferUser("");
+  const handleConfirmTransfer = async () => {
+    const targetUser = leadOptions.user?.find((user: any) => user.uuid === transferUser || user.name === transferUser);
+    if (!targetUser) { console.error("Choose a valid active user before transferring leads"); return; }
+    try {
+      await crmLeadApi.transfer({ leadUuids: selectedLeads, assignments: [{ userId: targetUser.uuid, quantity: selectedLeads.length }], assignType: transferType, followup: transferFollowup, manualSet: transferManualSet });
+      await refreshLeads(); setIsTransferOpen(false); setSelectedLeads([]); setTransferUser("");
+    } catch (error) { console.error("Failed to transfer leads", error); }
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (activeLead) {
-      setLeads(
-        leads.map((item) =>
-          item.id === activeLead.id
-            ? {
-                ...item,
-                name: formData.name,
-                phone: formData.phone,
-                secondaryNumber: formData.secondaryNumber,
-                srOfficer: formData.assignUser,
-                cr: formData.ifCr || "Select CR",
-                badge: formData.leadStages,
-                leadSource: formData.leadSource,
-                interestedProject: formData.interestedProject,
-                leadCategory: formData.leadCategory,
-                campaign: formData.campaign,
-                organization: formData.organization,
-                designation: formData.designation,
-                birthDate: formData.birthDate,
-                anniversaryDate: formData.anniversaryDate,
-                profession: formData.profession,
-                address: formData.address,
-                email: formData.email,
-              }
-            : item
-        )
-      );
-    } else {
-      const newLead: LeadRecord = {
-        id: `lead-${Date.now()}`,
-        leadId: formData.leadCode,
-        name: formData.name,
-        phone: formData.phone,
-        secondaryNumber: formData.secondaryNumber,
-        srOfficer: formData.assignUser || "Admin",
-        cr: formData.ifCr || "Select CR",
-        badge: formData.leadStages || "New Assignment",
-        leadSource: formData.leadSource || "",
-        interestedProject: formData.interestedProject || "",
-        leadCategory: formData.leadCategory || "",
-        campaign: formData.campaign || "",
-        organization: formData.organization || "",
-        designation: formData.designation || "",
-        birthDate: formData.birthDate || "",
-        anniversaryDate: formData.anniversaryDate || "",
-        profession: formData.profession || "",
-        address: formData.address || "",
-        email: formData.email || "",
-        createdAt: "22-10-2026 03:00:PM",
-      };
-      setLeads([newLead, ...leads]);
-    }
-    setIsNewOrEditModalOpen(false);
+    const byName = (items: any[] = [], value: string) => items.find((item) => item.uuid === value || String(item.id) === value || item.name?.toLowerCase() === value?.toLowerCase());
+    const user = byName(leadOptions.user, formData.assignUser);
+    const cr = byName(leadOptions.user, formData.ifCr);
+    const stage = byName(leadOptions.stage, formData.leadStages);
+    const source = byName(leadOptions.source, formData.leadSource);
+    const category = byName(leadOptions.category, formData.leadCategory);
+    const campaign = byName(leadOptions.campaign, formData.campaign);
+    const profession = byName(leadOptions.profession, formData.profession);
+    const project = byName(leadOptions.project, formData.interestedProject);
+    const payload = {
+      clientName: formData.name, phone: formData.phone, alternatePhone: formData.secondaryNumber || undefined,
+      leadCode: activeLead ? undefined : formData.leadCode, leadDate: formData.date || new Date().toISOString().slice(0, 10),
+      assignedTo: user?.uuid ?? activeLead?.srOfficerId ?? undefined, creditOfficerId: cr?.uuid ?? activeLead?.crId ?? undefined,
+      leadStageId: stage?.id ?? activeLead?.stageId ?? undefined, leadSourceId: source?.id ?? activeLead?.leadSourceId ?? undefined,
+      leadCategoryId: category?.id ?? activeLead?.leadCategoryId ?? undefined, campaignId: campaign?.id ?? activeLead?.campaignId ?? undefined,
+      professionId: profession?.id ?? activeLead?.professionId ?? undefined, projectId: project?.uuid ?? activeLead?.interestedProjectId ?? undefined,
+      projectName: formData.interestedProject || undefined, organization: formData.organization, designation: formData.designation,
+      birthDate: formData.birthDate || undefined, anniversaryDate: formData.anniversaryDate || undefined,
+      presentAddress: formData.address, email: formData.email || undefined, initialRemark: activeLead?.remark,
+    };
+    try {
+      if (activeLead) await crmLeadApi.updateLead(activeLead.id, payload);
+      else await crmLeadApi.createLead(payload);
+      await refreshLeads(); setIsNewOrEditModalOpen(false);
+    } catch (error) { console.error("Failed to save lead", error); }
   };
 
-  const handleSaveCallPageChanges = () => {
+  const handleSaveCallPageChanges = async () => {
     if (!activeLead) return;
-
-    setLeads((prevLeads) =>
-      prevLeads.map((item) => {
-        if (item.id === activeLead.id) {
-          const updatedStage = isJunk ? "JUNK" : activeLead.badge;
-          
-          let lastAct = item.lastActivity;
-          if (followupStatus || followupComment) {
-            lastAct = `Status: ${followupStatus || "Follow Up"}\nComment: ${followupComment || "N/A"}`;
-          }
-
-          let nextAct = item.nextActivity;
-          if (nextFollowupDate) {
-            nextAct = `Date: ${nextFollowupDate}\nNote: ${nextFollowupNote || "N/A"}`;
-          }
-
-          return {
-            ...item,
-            ...activeLead,
-            badge: updatedStage,
-            lastActivity: lastAct,
-            nextActivity: nextAct,
-          };
-        }
-        return item;
-      })
-    );
-
-    setIsCallActivityPageOpen(false);
+    try {
+      const stage = leadOptions.stage?.find((item: any) => item.id === activeLead.stageId || item.name === activeLead.badge);
+      await crmLeadApi.updateLead(activeLead.id, {
+        clientName: activeLead.name, phone: activeLead.phone, email: activeLead.email, presentAddress: activeLead.address,
+        organization: activeLead.organization, designation: activeLead.designation, leadStageId: stage?.id ?? activeLead.stageId,
+        leadCategoryId: activeLead.leadCategoryId, leadSourceId: activeLead.leadSourceId, campaignId: activeLead.campaignId,
+        professionId: activeLead.professionId, assignedTo: activeLead.srOfficerId, creditOfficerId: activeLead.crId,
+        initialRemark: activeLead.remark, status: isJunk ? "junk" : activeLead.status,
+      });
+      if (followupStatus || followupComment || nextFollowupDate) await crmLeadApi.addActivity(activeLead.id, {
+        activityType: currentActivity === "Task/Visit" ? "task_visit" : "followup",
+        comment: followupComment || followupStatus || "Follow-up", communicationStatus: followupStatus || undefined,
+        activityDate: new Date().toISOString(), nextFollowupDate: nextFollowupDate || undefined,
+        feedback: nextFollowupNote || undefined, leadStageId: stage?.id, leadStatus: isJunk ? "junk" : undefined,
+        junkNote: isJunk ? activeLead.remark : undefined,
+      });
+      await refreshLeads(); setIsCallActivityPageOpen(false);
+    } catch (error) { console.error("Failed to save lead activity", error); }
   };
 
-  const handleMarkAsSold = () => {
+  const handleMarkAsSold = async () => {
     if (!activeLead) return;
-    setLeads((prev) =>
-      prev.map((item) => (item.id === activeLead.id ? { ...item, badge: "Sold" } : item))
-    );
-    setActiveLead((prev) => (prev ? { ...prev, badge: "Sold" } : null));
-    alert(`${activeLead.name} marked as Sold successfully!`);
+    try { await crmLeadApi.updateLead(activeLead.id, { status: "converted", priority: "Sold" }); await refreshLeads(); setActiveLead({ ...activeLead, badge: "Sold", status: "converted" }); }
+    catch (error) { console.error("Failed to mark lead as sold", error); }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && activeLead) {
-      const imageUrl = URL.createObjectURL(file);
-      setActiveLead({ ...activeLead, avatarUrl: imageUrl });
-      setLeads((prev) =>
-        prev.map((item) => (item.id === activeLead.id ? { ...item, avatarUrl: imageUrl } : item))
-      );
+      console.warn(`Avatar upload is not supported by the current CRM API: ${file.name}`);
     }
   };
 
   const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      alert(`Attachment "${file.name}" uploaded successfully!`);
-    }
+    if (file) console.warn(`Attachment upload requires a file storage API: ${file.name}`);
   };
 
   const handleSelectAll = () => {
@@ -530,6 +495,7 @@ export default function LeadListPage() {
         setPropProject={setPropProject}
         noteInput={noteInput}
         setNoteInput={setNoteInput}
+        detailTabs={leadDetailTabs}
       />
     );
   }
@@ -553,7 +519,7 @@ export default function LeadListPage() {
         <div className="p-5 rounded-2xl border border-border bg-card shadow-sm grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-bold animate-in fade-in">
           <div>
             <label className="block text-muted-foreground mb-1">Select Date</label>
-            <input type="text" defaultValue="January 1, 1971 - October 22, 2026" className="w-full p-2 border rounded-lg bg-background border-border" />
+            <input type="text" value={filterDateRange} onChange={(e) => setFilterDateRange(e.target.value)} onBlur={() => void refreshLeads(currentLeadQuery())} className="w-full p-2 border rounded-lg bg-background border-border" />
           </div>
 
           <div>
@@ -567,18 +533,15 @@ export default function LeadListPage() {
               className="w-full p-2 border rounded-lg bg-background border-border"
             >
               <option value="">Select Category</option>
-              <option value="Ready Flat">Ready Flat</option>
-              <option value="Ongoing">Ongoing</option>
-              <option value="Upcoming">Upcoming</option>
-              <option value="Junk">Junk</option>
+              {(leadOptions.category ?? []).map((item: any) => <option key={item.id} value={item.name}>{item.name}</option>)}
             </select>
           </div>
 
           <div>
             <label className="block text-muted-foreground mb-1">Teams</label>
-            <select className="w-full p-2 border rounded-lg bg-background border-border">
+            <select value={filterTeamId} onChange={(e) => { setFilterTeamId(e.target.value); void refreshLeads({ ...currentLeadQuery(), teamId: e.target.value || undefined }); }} className="w-full p-2 border rounded-lg bg-background border-border">
               <option value="">Select Team</option>
-              <option value="grod">grod</option>
+              {(leadOptions.team ?? []).map((item: any) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
           </div>
 
@@ -593,9 +556,7 @@ export default function LeadListPage() {
               className="w-full p-2 border rounded-lg bg-background border-border"
             >
               <option value="">Select Project</option>
-              <option value="Mustain Villa">Mustain Villa</option>
-              <option value="Royal City">Royal City</option>
-              <option value="36 Haque Tower">36 Haque Tower</option>
+              {(leadOptions.project ?? []).map((item: any) => <option key={item.uuid} value={item.name}>{item.name}</option>)}
             </select>
           </div>
         </div>
@@ -633,6 +594,7 @@ export default function LeadListPage() {
         setIsLeadDetailsOpen={setIsLeadDetailsOpen}
         isPersonalInfoOpen={isPersonalInfoOpen}
         setIsPersonalInfoOpen={setIsPersonalInfoOpen}
+        options={leadOptions}
       />
 
       <CallAssignModal
@@ -644,6 +606,7 @@ export default function LeadListPage() {
         setCallAssignUserType={setCallAssignUserType}
         callAssignNote={callAssignNote}
         setCallAssignNote={setCallAssignNote}
+        onSubmit={handleCallAssign}
       />
 
       <BulkImportModal

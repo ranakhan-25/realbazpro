@@ -15,9 +15,11 @@ import {
   ChevronRight,
   AlertTriangle
 } from "lucide-react";
+import { crmDirectoryApi, rowsOf } from "@/services/crmLeadApi";
 
 interface PipelineProject {
   id: string;
+  projectUuid?: string;
   name: string;
   totalLeads: number;
   activeDeals: number;
@@ -67,6 +69,7 @@ const defaultPipelines: PipelineProject[] = [
 
 export default function PipelineListPage() {
   const [pipelines, setPipelines] = useState<PipelineProject[]>([]);
+  const [availableProjects, setAvailableProjects] = useState<any[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   
@@ -91,71 +94,52 @@ export default function PipelineListPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   // 1. PAGE LOAD HOLE LOCALSTORAGE THEKE DATA ANBO
-  useEffect(() => {
-    const savedData = localStorage.getItem("crm_pipeline_list_data");
-    if (savedData) {
-      try {
-        setPipelines(JSON.parse(savedData));
-      } catch (e) {
-        setPipelines(defaultPipelines);
-      }
-    } else {
-      setPipelines(defaultPipelines);
-      localStorage.setItem("crm_pipeline_list_data", JSON.stringify(defaultPipelines));
-    }
-    setIsLoaded(true);
-  }, []);
+  const refreshPipelines = async () => {
+    try {
+      const [response, projects] = await Promise.all([crmDirectoryApi.pipelines({ page: 1, limit: 100 }), crmDirectoryApi.pipelineProjects()]);
+      setAvailableProjects(projects);
+      setPipelines(rowsOf(response).map((row: any) => ({ id: row.pipelineUuid ?? row.projectUuid, projectUuid: row.projectUuid, name: row.projectName, totalLeads: row.totalLeads, activeDeals: row.activeDeals, newThisQtr: row.newThisQuarter, value: row.estimatedPipelineValue, status: row.projectStatus === "ACTIVE" ? "Active" : "Completed" })));
+    } catch (error) { console.error("Failed to load CRM pipeline", error); setPipelines([]); }
+    finally { setIsLoaded(true); }
+  };
+  useEffect(() => { void refreshPipelines(); }, []);
 
   // 2. DATA UPDATE HOLE LOCALSTORAGE-E SAVE KORAR HELPER FUNCTION
   const updateAndSavePipelines = (data: PipelineProject[]) => {
     setPipelines(data);
-    localStorage.setItem("crm_pipeline_list_data", JSON.stringify(data));
   };
 
   // Handle Add New Pipeline Project
-  const handleAddProjectSubmit = (e: React.FormEvent) => {
+  const handleAddProjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProject.name) return;
 
-    const created: PipelineProject = {
-      id: `pipe-${Date.now()}`,
-      name: newProject.name,
-      totalLeads: Number(newProject.totalLeads) || 0,
-      activeDeals: Number(newProject.totalLeads) || 0,
-      newThisQtr: 1,
-      value: Number(newProject.value) || 0,
-      status: "Active",
-    };
-
-    const updatedList = [created, ...pipelines];
-    updateAndSavePipelines(updatedList);
-
-    setShowAddModal(false);
-    setNewProject({ name: "", totalLeads: "", value: "" });
+    const project = availableProjects.find((item) => item.name?.toLowerCase() === newProject.name.trim().toLowerCase() || item.uuid === newProject.name.trim());
+    if (!project) { console.error("Choose an existing project for the pipeline"); return; }
+    try { await crmDirectoryApi.createPipeline({ projectUuid: project.uuid, initialLeadsCount: Number(newProject.totalLeads) || 0, estimatedPipelineValue: Number(newProject.value) || 0 }); await refreshPipelines(); setShowAddModal(false); setNewProject({ name: "", totalLeads: "", value: "" }); }
+    catch (error) { console.error("Failed to create pipeline", error); }
   };
 
   // Handle Save Edit Project
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProject) return;
 
-    const updatedList = pipelines.map((item) =>
-      item.id === selectedProject.id ? selectedProject : item
-    );
-    updateAndSavePipelines(updatedList);
-
-    setShowEditModal(false);
-    setSelectedProject(null);
+    const project = availableProjects.find((item) => item.name === selectedProject.name || item.uuid === selectedProject.projectUuid);
+    if (!project) return;
+    try {
+      if (selectedProject.id && selectedProject.id !== selectedProject.projectUuid) await crmDirectoryApi.updatePipeline(selectedProject.id, { projectUuid: project.uuid, initialLeadsCount: selectedProject.totalLeads, estimatedPipelineValue: selectedProject.value });
+      else await crmDirectoryApi.createPipeline({ projectUuid: project.uuid, initialLeadsCount: selectedProject.totalLeads, estimatedPipelineValue: selectedProject.value });
+      await refreshPipelines(); setShowEditModal(false); setSelectedProject(null);
+    } catch (error) { console.error("Failed to update pipeline", error); }
   };
 
   // Handle Delete Confirmation from Modal
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!selectedProject) return;
-    const updatedList = pipelines.filter((item) => item.id !== selectedProject.id);
-    updateAndSavePipelines(updatedList);
-
-    setShowDeleteModal(false);
-    setSelectedProject(null);
+    if (!selectedProject.id || selectedProject.id === selectedProject.projectUuid) return;
+    try { await crmDirectoryApi.deletePipeline(selectedProject.id); await refreshPipelines(); setShowDeleteModal(false); setSelectedProject(null); }
+    catch (error) { console.error("Failed to delete pipeline", error); }
   };
 
   // Filter Pipelines based on Search Input

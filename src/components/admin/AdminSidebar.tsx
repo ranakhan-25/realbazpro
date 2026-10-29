@@ -184,6 +184,11 @@ export const defaultMenuGroups: AdminMenuItem[] = [
       },
     ],
   },
+  {
+    label: "Enterprise Analytics Suite",
+    href: "/admin/analytics",
+    icon: BarChart3,
+  },
 ];
 
 // Org Admin allowed sidebar links
@@ -239,39 +244,57 @@ export default function AdminSidebar() {
   // Convert dynamic backend tree to sidebar structure, or fall back to default
   const visibleMenuGroups = useMemo<AdminMenuItem[]>(() => {
     if (dynamicMenuTree && dynamicMenuTree.length > 0) {
-      return dynamicMenuTree
-        .map((node) => {
-          const IconComponent = (node.icon && ICON_MAP[node.icon]) || FolderTree;
+      // Filter out any operational module items that do not belong to /admin portal
+      const adminNodes = dynamicMenuTree.filter((node) => {
+        if (!node.children || node.children.length === 0) {
+          return Boolean(node.url && node.url.startsWith("/admin"));
+        }
+        return node.children.some((c) => Boolean(c.url && c.url.startsWith("/admin")));
+      });
 
-          if (node.children && node.children.length > 0) {
-            const filteredChildren = isSuperAdmin
-              ? node.children
-              : node.children.filter((c) => c.url && ORG_ADMIN_ALLOWED_HREFS.has(c.url));
+      if (adminNodes.length > 0) {
+        return adminNodes
+          .map((node) => {
+            const IconComponent = (node.icon && ICON_MAP[node.icon]) || FolderTree;
 
-            if (filteredChildren.length === 0) return null;
+            if (node.children && node.children.length > 0) {
+              const adminChildren = node.children.filter(
+                (c) => Boolean(c.url && c.url.startsWith("/admin")),
+              );
+
+              const filteredChildren = isSuperAdmin
+                ? adminChildren
+                : adminChildren.filter((c) => c.url && ORG_ADMIN_ALLOWED_HREFS.has(c.url));
+
+              if (filteredChildren.length === 0) return null;
+
+              return {
+                label: node.title,
+                icon: IconComponent,
+                children: filteredChildren.map((c) => ({
+                  label: c.title,
+                  href: c.url || "#",
+                  icon: (c.icon && ICON_MAP[c.icon]) || ChevronRight,
+                })),
+              };
+            }
+
+            if (!node.url || !node.url.startsWith("/admin")) {
+              return null;
+            }
+
+            if (!isSuperAdmin && !ORG_ADMIN_ALLOWED_HREFS.has(node.url)) {
+              return null;
+            }
 
             return {
               label: node.title,
+              href: node.url || "#",
               icon: IconComponent,
-              children: filteredChildren.map((c) => ({
-                label: c.title,
-                href: c.url || "#",
-                icon: (c.icon && ICON_MAP[c.icon]) || ChevronRight,
-              })),
             };
-          }
-
-          if (!isSuperAdmin && node.url && !ORG_ADMIN_ALLOWED_HREFS.has(node.url)) {
-            return null;
-          }
-
-          return {
-            label: node.title,
-            href: node.url || "#",
-            icon: IconComponent,
-          };
-        })
-        .filter(Boolean) as AdminMenuItem[];
+          })
+          .filter(Boolean) as AdminMenuItem[];
+      }
     }
 
     if (isSuperAdmin) {
@@ -314,7 +337,7 @@ export default function AdminSidebar() {
 
   const handleSignOut = () => {
     clearStoredTokens();
-    router.replace("/admin/login");
+    router.replace("/login");
   };
 
   const isItemActive = (href: string) => {
@@ -369,7 +392,7 @@ export default function AdminSidebar() {
           >
             <div className="relative h-8 w-8">
               <Image
-                src="/images/logo.png"
+                src="/logo.svg"
                 alt="Realbiz Logo"
                 fill
                 sizes="32px"
@@ -410,7 +433,7 @@ export default function AdminSidebar() {
         {/* NAVIGATION ITEMS */}
         <nav className="flex-1 overflow-y-auto px-2.5 py-3 sm:px-3">
           <div className="space-y-1">
-            {visibleMenuGroups.map((group) => {
+            {visibleMenuGroups.map((group, idx) => {
               // SINGLE NAV ITEM (No children)
               if ("href" in group) {
                 const active = isItemActive(group.href);
@@ -418,7 +441,7 @@ export default function AdminSidebar() {
 
                 return (
                   <Link
-                    key={group.href}
+                    key={`item-${idx}-${group.href}`}
                     href={group.href}
                     onClick={() => setMobileOpen(false)}
                     className="block"
@@ -472,7 +495,7 @@ export default function AdminSidebar() {
 
               return (
                 <motion.div
-                  key={group.label}
+                  key={`group-${idx}-${group.label}`}
                   className="space-y-0.5"
                   initial={false}
                 >
@@ -529,13 +552,13 @@ export default function AdminSidebar() {
                             aria-hidden
                             className="absolute top-1 bottom-1 left-4 w-px bg-slate-200"
                           />
-                          {group.children.map((child) => {
+                          {group.children.map((child, cIdx) => {
                             const active = isItemActive(child.href);
                             const ChildIcon = child.icon;
 
                             return (
                               <Link
-                                key={child.href}
+                                key={`child-${idx}-${cIdx}-${child.href}`}
                                 href={child.href}
                                 onClick={() => setMobileOpen(false)}
                                 className="block"

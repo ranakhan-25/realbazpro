@@ -186,3 +186,21 @@
     background-color: #475569;
   }
 }
+
+/* Realbiz Purple Button & Accent Utilities */
+.bg-brand-purple {
+  background-color: #6D4AFF !important;
+  color: #ffffff !important;
+}
+.bg-brand-purple:hover {
+  background-color: #5B3BE0 !important;
+}
+.bg-brand-purple:active {
+  background-color: #4F32C7 !important;
+}
+.text-brand-purple {
+  color: #6D4AFF !important;
+}
+.border-brand-purple {
+  border-color: #6D4AFF !important;
+}

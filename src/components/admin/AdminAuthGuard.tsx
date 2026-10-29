@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
@@ -33,37 +34,39 @@ export default function AdminAuthGuard({ children }: { children: ReactNode }) {
 
     if (!token) {
       clearStoredTokens();
-      router.replace("/admin/login");
+      router.replace("/login");
       return;
     }
 
     const isSuperAdmin = Boolean(
       user?.isSuperUser === true ||
-        user?.role === "super-admin" ||
-        (Array.isArray(user?.roles) && user.roles.includes("super-admin"))
+      user?.role === "super-admin" ||
+      (Array.isArray(user?.roles) && user.roles.includes("super-admin")),
     );
 
     const isOrgAdmin = Boolean(
       user?.isOrgAdmin === true ||
-        user?.role === "org-admin" ||
-        (Array.isArray(user?.roles) && user.roles.includes("org-admin"))
+      user?.role === "org-admin" ||
+      (Array.isArray(user?.roles) && user.roles.includes("org-admin")),
     );
 
     // Verify user has any administrative standing
     if (user && !isSuperAdmin && !isOrgAdmin) {
       clearStoredTokens();
-      router.replace("/admin/login");
+      router.replace("/login");
       return;
     }
 
     // Role-based anti-sneak route protection for Super Admin exclusive views
     if (!isSuperAdmin) {
       const isRestricted = SUPER_ADMIN_ONLY_PREFIXES.some((prefix) =>
-        pathname.startsWith(prefix)
+        pathname.startsWith(prefix),
       );
 
       if (isRestricted) {
-        toast.error("Access restricted: Requires Super Administrator privileges");
+        toast.error(
+          "Access restricted: Requires Super Administrator privileges",
+        );
         router.replace("/admin/dashboard");
         return;
       }
@@ -77,7 +80,9 @@ export default function AdminAuthGuard({ children }: { children: ReactNode }) {
       <div className="grid min-h-screen place-items-center bg-[#F8FAFC] text-sm text-slate-500">
         <div className="flex flex-col items-center gap-2">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
-          <p className="text-xs font-medium text-slate-500">Verifying admin session and permissions...</p>
+          <p className="text-xs font-medium text-slate-500">
+            Verifying admin session and permissions...
+          </p>
         </div>
       </div>
     );
