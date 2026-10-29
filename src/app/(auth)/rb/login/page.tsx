@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 "use client";
 
 import Link from "next/link";
@@ -82,11 +83,7 @@ function RegularLoginPage() {
     try {
       const session = await loginUniversalSession(cleanIdentifier, password);
 
-      setStoredTokens(
-        session.accessToken,
-        session.refreshToken,
-        session.user,
-      );
+      setStoredTokens(session.accessToken, session.refreshToken, session.user);
 
       router.replace("/dashboard");
     } catch (err: any) {
@@ -309,12 +306,12 @@ function RegularLoginPage() {
                 ← Return to main site
               </Link>
 
-              <Link
+              {/* <Link
                 href="/login"
                 className="text-xs font-medium text-blue-600 transition hover:text-blue-800"
               >
                 Super Admin Login →
-              </Link>
+              </Link> */}
             </div>
           </div>
         </div>
@@ -325,8 +322,8 @@ function RegularLoginPage() {
 
 export default function LoginPage() {
   return (
-    <SiteShell>
+    // <SiteShell>
       <RegularLoginPage />
-    </SiteShell>
+    // </SiteShell>
   );
 }
