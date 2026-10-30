@@ -32,6 +32,7 @@ interface ModuleTreeBuilderModalProps {
   onClose: () => void;
   onSuccess?: (savedModule: ModuleTreeNode) => void;
   initialModule?: ModuleTreeNode | null;
+  initialFeatureIndex?: number | null;
 }
 
 export default function ModuleTreeBuilderModal({
@@ -39,6 +40,7 @@ export default function ModuleTreeBuilderModal({
   onClose,
   onSuccess,
   initialModule,
+  initialFeatureIndex,
 }: ModuleTreeBuilderModalProps) {
   // Modal View Mode: "edit" or "preview"
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
@@ -76,12 +78,27 @@ export default function ModuleTreeBuilderModal({
       setDescription(initialModule?.description || "");
       setDisplayOrder(initialModule?.displayOrder || 1);
       setIsActive(initialModule?.isActive ?? true);
-      setFeatures(initialModule?.features ? [...initialModule.features] : []);
-      setIsDraftingFeature(false);
-      setEditingIndex(null);
+      const featList = initialModule?.features ? [...initialModule.features] : [];
+      setFeatures(featList);
+
+      if (
+        typeof initialFeatureIndex === "number" &&
+        featList[initialFeatureIndex]
+      ) {
+        const target = featList[initialFeatureIndex];
+        setDraftName(target.name);
+        setDraftCode(target.code);
+        setDraftRoute(target.routePath || "");
+        setDraftAction(target.actionType || "read");
+        setEditingIndex(initialFeatureIndex);
+        setIsDraftingFeature(true);
+      } else {
+        setIsDraftingFeature(false);
+        setEditingIndex(null);
+      }
       setActiveTab("edit");
     }
-  }, [isOpen, initialModule]);
+  }, [isOpen, initialModule, initialFeatureIndex]);
 
   if (!isOpen) return null;
 
@@ -203,7 +220,7 @@ export default function ModuleTreeBuilderModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
       <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-6 py-4">
