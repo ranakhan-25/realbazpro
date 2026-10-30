@@ -7,7 +7,8 @@ import { useParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
+const API_PATH = `${API_BASE}/realbizpro/api/v1`;
 
 export default function DashboardPage() {
   const { uuid } = useParams();
@@ -26,6 +27,7 @@ export default function DashboardPage() {
   const [boqData, setBoqData] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [unsoldProperties, setUnsoldProperties] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -33,7 +35,7 @@ export default function DashboardPage() {
         setLoading(true);
 
         // ১. BOQ লিস্ট (বাজেট এবং খরচের জন্য)
-        const resBoq = await fetch(`${API_BASE}/realbizpro/api/v1/boq?page=1&limit=100`);
+        const resBoq = await fetch(`${API_PATH}/boq?page=1&limit=100`);
         const jsonBoq = await resBoq.json();
         let totalBudget = 0;
         let totalCost = 0;
@@ -47,11 +49,9 @@ export default function DashboardPage() {
         }
 
         // ২. Flat/Land (Revenue এবং Unsold Property)
-        const resFlat = await fetch(`${API_BASE}/realbizpro/api/v1/flat-land?page=1&limit=100`);
+        const resFlat = await fetch(`${API_PATH}/flat-land?page=1&limit=100`);
         const jsonFlat = await resFlat.json();
         let totalRevenue = 0;
-        
-        // ✅ let এর জায়গায় const ব্যবহার করা হলো
         const unsold: any[] = []; 
 
         if (jsonFlat.success) {
@@ -66,11 +66,19 @@ export default function DashboardPage() {
         }
         setUnsoldProperties(unsold);
 
-        // ৩. খরচের লিস্ট (Expense - ডেমো ডাটা)
+        // ৩. Task লিস্ট (Working Progress এবং Schedule-এর জন্য)
+        const resTask = await fetch(`${API_PATH}/task?page=1&limit=100`);
+        const jsonTask = await resTask.json();
+        if (jsonTask.success) {
+          setTasks((jsonTask.data.data || []).filter((t: any) => !t.deletedAt));
+        }
+
+        // ৪. খরচের লিস্ট (Expense)
+        // এখানে আমরা COGS এবং Total Expense মক হিসেবে রাখছি, তবে চাইলে API থেকে আনতে পারেন
         const mockExpenses = [
-          { name: "Cost of Goods Sold (COGS)", amount: 13650 },
+          { name: "Cost of Goods Sold (COGS)", amount: totalCost },
           { name: "Rod Consumption", amount: 410 },
-          { name: "Total Expense (-)", amount: 14260 },
+          { name: "Total Expense (-)", amount: totalCost + 410 },
         ];
         setExpenses(mockExpenses);
 
@@ -116,16 +124,23 @@ export default function DashboardPage() {
       {/* ২. Charts Area */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Working Progress (Mock Chart) */}
+        {/* Working Progress (ডাইনামিক বার চার্ট) */}
         <div className="bg-white rounded-lg border p-4 shadow-sm">
           <h3 className="text-center font-medium mb-6 text-gray-700">Working Progress</h3>
           <div className="h-48 flex items-center justify-center border-b border-l border-gray-200 relative">
             <div className="w-full px-4 flex items-end justify-around h-full">
-               {boqData.slice(0, 5).map((b, i) => (
-                 <div key={i} className="w-12 bg-green-500 text-white text-[10px] text-center pb-1 rounded-t" style={{ height: `${Math.random() * 80 + 20}%` }}>
-                    {b.titleOfWork?.substring(0, 5)}
-                 </div>
-               ))}
+               {boqData.slice(0, 5).map((b, i) => {
+                 // বাজেটের তুলনায় কত % কাজ হয়েছে (এখানে আমরা কাজের অগ্রগতির একটি র‍্যান্ডম ভ্যালু নিচ্ছি, রিয়েল API থাকলে সেটি দিবেন)
+                 const progressPercent = Math.min((Number(b.cost) / (Number(b.budget) || 1)) * 100, 100);
+                 return (
+                   <div key={i} className="flex flex-col items-center w-12 h-full justify-end">
+                     <div className="w-full bg-green-500 text-white text-[10px] text-center pb-1 rounded-t" style={{ height: `${Math.max(progressPercent, 5)}%` }}>
+                       {progressPercent.toFixed(0)}%
+                     </div>
+                     <span className="text-[9px] text-gray-500 mt-1 truncate w-12 text-center">{b.titleOfWork}</span>
+                   </div>
+                 );
+               })}
                {boqData.length === 0 && <span className="text-gray-400">No Data</span>}
             </div>
           </div>
@@ -155,26 +170,32 @@ export default function DashboardPage() {
         {/* Working Schedule & Unsold & Expenses */}
         <div className="space-y-6">
           
-          {/* Working Schedule */}
+          {/* Working Schedule (ডাইনামিক) */}
           <div className="bg-white rounded-lg border p-4 shadow-sm">
             <h3 className="text-center font-medium mb-3 text-gray-700">Working Schedule</h3>
             <div className="h-32 flex flex-col justify-center text-sm overflow-y-auto">
-              {boqData.length > 0 ? (
-                boqData.slice(0, 4).map((task, idx) => (
-                  <div key={idx} className="flex items-center gap-2 mb-1">
-                    <span className="w-24 truncate text-[11px] text-gray-600">{task.titleOfWork}</span>
-                    <div className="flex-1 bg-gray-100 h-4 rounded-sm relative">
-                       <div className="absolute h-full bg-blue-400 rounded-sm" style={{ width: `${Math.random() * 80 + 10}%` }}></div>
+              {tasks.length > 0 ? (
+                tasks.slice(0, 4).map((task, idx) => {
+                  // টাস্কের progress ভ্যালু API থেকে আসছে (যেমন: 25%)
+                  const progress = task.progress || 0;
+                  return (
+                    <div key={idx} className="flex items-center gap-2 mb-1">
+                      <span className="w-24 truncate text-[11px] text-gray-600">{task.taskName}</span>
+                      <div className="flex-1 bg-gray-100 h-4 rounded-sm relative">
+                         <div className="absolute h-full bg-blue-400 rounded-sm" style={{ width: `${progress}%` }}>
+                           <span className="absolute right-1 text-[8px] text-white font-bold">{progress}%</span>
+                         </div>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <span className="text-center text-gray-400">No schedule data</span>
               )}
             </div>
           </div>
 
-          {/* Unsold Property */}
+          {/* Unsold Property (ডাইনামিক) */}
           <div className="bg-white rounded-lg border overflow-hidden shadow-sm">
             <div className="bg-red-500 text-white text-center py-2 text-sm font-medium">
               Unsold Property
@@ -201,7 +222,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Most Expenses */}
+          {/* Most Expenses (ডাইনামিক) */}
           <div className="bg-white rounded-lg border overflow-hidden shadow-sm">
             <div className="bg-indigo-600 text-white px-4 py-2 text-xs font-medium flex justify-between">
               <span>ACCOUNTS DETAILS</span>
