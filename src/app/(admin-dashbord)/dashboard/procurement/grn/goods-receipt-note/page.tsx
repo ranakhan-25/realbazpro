@@ -1080,9 +1080,9 @@ export default function GoodsReceiptNoteList() {
 
                           {/* Deleted Mode Badge */}
                           {recordsTab === "deleted" ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold text-white bg-rose-500 shadow-2xs select-none">
-                              Deleted
-                            </span>
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900 select-none">
+                                Soft Delete
+                              </span>
                           ) : row.already_billed ? (
                             /* Already Billed / Locked */
                             <span

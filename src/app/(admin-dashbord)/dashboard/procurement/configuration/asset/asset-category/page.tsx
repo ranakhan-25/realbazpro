@@ -13,7 +13,6 @@ import {
   ChevronsUpDown,
   X,
   RefreshCw,
-  RotateCcw,
   Loader2,
   AlertCircle,
   Eye,
@@ -135,8 +134,6 @@ export default function AssetCategoryPage() {
     type: "success" | "info" | "error";
   } | null>(null);
   const [deleteTarget, setDeleteTarget] =
-    useState<BackendAssetCategory | null>(null);
-  const [restoreTarget, setRestoreTarget] =
     useState<BackendAssetCategory | null>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
@@ -418,31 +415,6 @@ export default function AssetCategoryPage() {
   };
 
   // -------------------------------------------------------------
-  // Restore Handler (PATCH /:uuid/restore)
-  // -------------------------------------------------------------
-  const handleRestoreConfirm = async () => {
-    if (!restoreTarget) return;
-    setIsActionLoading(true);
-    try {
-      await procurementAssetCategoryApi.restoreAssetCategory(
-        restoreTarget.uuid,
-      );
-      showToast(
-        `Asset category "${restoreTarget.name}" restored to active list!`,
-        "success",
-      );
-      setRestoreTarget(null);
-      if (isDetailsOpen && detailsItem?.uuid === restoreTarget.uuid) {
-        setIsDetailsOpen(false);
-      }
-      await loadCategories();
-    } catch (err: unknown) {
-      const msg = parseApiError(err, "Failed to restore asset category");
-      showToast(msg, "error");
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
 
   // Pagination calculation
   const displayFrom =
@@ -593,7 +565,6 @@ export default function AssetCategoryPage() {
               <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
               <span>
                 Viewing soft-deleted asset categories in <strong>Recycle Bin</strong>.
-                Click <strong>Restore</strong> on any category to reactivate it.
               </span>
             </div>
             <button
@@ -847,21 +818,16 @@ export default function AssetCategoryPage() {
                                 {/* Delete Button */}
                                 <button
                                   onClick={() => setDeleteTarget(item)}
-                                  title="Soft Delete Category"
+                                  title="Delete Category"
                                   className="w-8 h-8 rounded-md bg-[#EF4444] hover:bg-[#dc2626] text-white flex items-center justify-center shadow-xs transition-transform duration-100 hover:scale-105 active:scale-95 cursor-pointer"
                                 >
                                   <Trash2 className="w-4 h-4 stroke-[2]" />
                                 </button>
                               </>
                             ) : (
-                              /* Restore Button in Deleted Mode */
-                              <button
-                                onClick={() => setRestoreTarget(item)}
-                                title="Restore Category"
-                                className="w-8 h-8 rounded-md bg-[#10B981] hover:bg-[#059669] text-white flex items-center justify-center shadow-xs transition-transform duration-100 hover:scale-105 active:scale-95 cursor-pointer"
-                              >
-                                <RotateCcw className="w-4 h-4 stroke-[2.5]" />
-                              </button>
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900 select-none">
+                                Soft Delete
+                              </span>
                             )}
                           </div>
                         </td>
@@ -1242,7 +1208,7 @@ export default function AssetCategoryPage() {
                 {deleteTarget.name}
               </strong>
               ? It will be moved to the <strong>Deleted List</strong> where it can
-              be restored at any time.
+              be deleted.
             </p>
             <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
@@ -1269,46 +1235,6 @@ export default function AssetCategoryPage() {
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* RESTORE CONFIRMATION DIALOG                               */}
-      {/* ========================================================= */}
-      {restoreTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 max-w-sm w-full space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              Confirm Category Restoration
-            </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-300">
-              Are you sure you want to restore{" "}
-              <strong className="text-slate-900 dark:text-white">
-                {restoreTarget.name}
-              </strong>{" "}
-              back to the <strong>Active List</strong>?
-            </p>
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                disabled={isActionLoading}
-                onClick={() => setRestoreTarget(null)}
-                className="px-4 py-2 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs text-slate-700 dark:text-slate-200 font-medium transition-colors cursor-pointer disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isActionLoading}
-                onClick={handleRestoreConfirm}
-                className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {isActionLoading && (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                )}
-                <span>{isActionLoading ? "Restoring..." : "Restore"}</span>
-              </button>
-            </div>
           </div>
-        </div>
-      )}
-    </div>
   );
 }
