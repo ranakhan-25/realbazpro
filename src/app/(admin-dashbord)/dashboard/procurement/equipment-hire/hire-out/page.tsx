@@ -17,7 +17,6 @@ import {
   CheckCircle2,
   Loader2,
   Printer,
-  RotateCcw,
   Truck,
   FileText,
   Calendar,
@@ -108,7 +107,6 @@ export default function HireOutPage() {
   // Modal States
   const [viewItem, setViewItem] = useState<BackendHireOut | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BackendHireOut | null>(null);
-  const [restoreTarget, setRestoreTarget] = useState<BackendHireOut | null>(null);
 
   // Notification Toast State
   const [toast, setToast] = useState<{
@@ -152,12 +150,22 @@ export default function HireOutPage() {
         setTotalRecords(res.meta?.total || (res.data ? res.data.length : 0));
         setTotalPages(res.meta?.totalPages || 1);
         setActiveCount(res.meta?.total || (res.data ? res.data.length : 0));
+
+        procurementHireOutApi
+          .getTrash({ page: 1, limit: 1 })
+          .then((tRes) => setDeletedCount(tRes.meta?.total || 0))
+          .catch(() => {});
       } else {
         const res = await procurementHireOutApi.getTrash(params);
         setHireOuts(res.data || []);
         setTotalRecords(res.meta?.total || (res.data ? res.data.length : 0));
         setTotalPages(res.meta?.totalPages || 1);
         setDeletedCount(res.meta?.total || (res.data ? res.data.length : 0));
+
+        procurementHireOutApi
+          .list({ page: 1, limit: 1 })
+          .then((aRes) => setActiveCount(aRes.meta?.total || 0))
+          .catch(() => {});
       }
     } catch (err: unknown) {
       const msg = parseApiError(err, "Failed to load hire-out records");
@@ -212,26 +220,6 @@ export default function HireOutPage() {
       await fetchHireOuts();
     } catch (err) {
       const msg = parseApiError(err, "Failed to delete hire-out record");
-      showToast(msg, "error");
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
-  // Confirm Restore
-  const handleConfirmRestore = async () => {
-    if (!restoreTarget) return;
-    setIsActionLoading(true);
-    try {
-      await procurementHireOutApi.restore(restoreTarget.uuid);
-      showToast(
-        `Hire-out #${restoreTarget.hire_out_no} restored to active list`,
-        "success"
-      );
-      setRestoreTarget(null);
-      await fetchHireOuts();
-    } catch (err) {
-      const msg = parseApiError(err, "Failed to restore hire-out record");
       showToast(msg, "error");
     } finally {
       setIsActionLoading(false);
@@ -522,7 +510,7 @@ export default function HireOutPage() {
                         <p className="text-[12.5px] text-slate-400 leading-normal">
                           {activeTab === "active"
                             ? "There are currently no active equipment hire-out records."
-                            : "Trash is clean. Any soft-deleted records will appear here and can be restored."}
+                            : "Trash is clean. Any soft-deleted records will appear here."}
                         </p>
                       </div>
                     </td>
@@ -620,17 +608,10 @@ export default function HireOutPage() {
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           ) : (
-                            /* Restore Button (Deleted records) */
-                            <button
-                              type="button"
-                              onClick={() => setRestoreTarget(row)}
-                              aria-label="Restore"
-                              title="Restore to active records"
-                              className="flex items-center justify-center w-8 h-8 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white transition-colors cursor-pointer"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900 select-none">
+                                Soft Delete
+                              </span>
+                            )}
                         </div>
                       </td>
                     </tr>
@@ -864,7 +845,7 @@ export default function HireOutPage() {
               </span>
               ? It will be moved to the{" "}
               <span className="font-semibold text-rose-600">Deleted</span> tab where
-              it can be restored anytime.
+              it will be moved to deleted records.
             </p>
             <div className="flex items-center justify-end gap-2.5">
               <button
@@ -889,49 +870,6 @@ export default function HireOutPage() {
         </div>
       )}
 
-      {/* =========================================================================
-          RESTORE CONFIRMATION MODAL
-          ========================================================================= */}
-      {restoreTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 text-emerald-600 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                <RotateCcw className="w-5 h-5 text-emerald-600" />
-              </div>
-              <h3 className="text-[16px] font-bold text-slate-800">
-                Restore Hire Out Record
-              </h3>
-            </div>
-            <p className="text-[13px] text-slate-600 mb-5 leading-relaxed">
-              Restore hire-out record{" "}
-              <span className="font-bold text-slate-800 font-mono">
-                #{restoreTarget.hire_out_no}
-              </span>{" "}
-              back to the Active list?
-            </p>
-            <div className="flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                disabled={isActionLoading}
-                onClick={() => setRestoreTarget(null)}
-                className="px-4 py-2 rounded-xl text-[13px] font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isActionLoading}
-                onClick={handleConfirmRestore}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-200 cursor-pointer"
-              >
-                {isActionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>Restore Record</span>
-              </button>
-            </div>
           </div>
-        </div>
-      )}
-    </div>
   );
 }
