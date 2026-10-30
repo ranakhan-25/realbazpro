@@ -11,7 +11,29 @@ interface Project {
   name: string;
   code: string;
   status: string;
+  startDate?: string | null;
+  endDate?: string | null;
 }
+
+// ✅ Duration Calculation Function
+const calculateDuration = (startDate?: string | null, endDate?: string | null) => {
+  if (!startDate || !endDate) return "N/A";
+  
+  const start = new Date(startDate).getTime();
+  const end = new Date(endDate).getTime();
+  
+  if (isNaN(start) || isNaN(end)) return "N/A";
+  
+  const diff = end - start;
+  if (diff < 0) return "Invalid Dates";
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  
+  return `${days} Day : ${hours} Hour : ${minutes} Minute : ${seconds} Second`;
+};
 
 export default function ProjectDetailsLayout({
   children,
@@ -60,8 +82,10 @@ export default function ProjectDetailsLayout({
     <div className="min-h-screen bg-gray-50">
       {/* Top Header */}
       <div className="bg-white border-b px-6 py-3 flex items-center justify-between">
+        
+        {/* ✅ এখানে ডাইনামিক ডিউরেশন বসানো হলো */}
         <div className="text-sm text-red-500 font-medium">
-          NaN Day : NaN Hour : NaN Minute: NaN Second
+          {calculateDuration(project?.startDate, project?.endDate)}
         </div>
 
         <h1 className="text-xl font-semibold text-gray-800">
