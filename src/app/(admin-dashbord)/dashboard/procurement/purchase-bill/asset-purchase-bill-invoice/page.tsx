@@ -874,7 +874,7 @@ const AssetPurchaseBillInvoiceList: React.FC = () => {
                         </span>
                         <span className="text-[12px] text-slate-400">
                           {recordsTab === "deleted"
-                            ? "Soft-deleted bills will appear in this tab where they can be restored"
+                            ? "Soft-deleted bills will appear in this tab"
                             : "Click 'New Asset Purchase Bill/Invoice' to create your first record"}
                         </span>
                       </div>
@@ -976,10 +976,10 @@ const AssetPurchaseBillInvoiceList: React.FC = () => {
                               </button>
                             </>
                           ) : (
-                            <span className="text-[11px] font-medium text-rose-500 px-2 py-0.5 rounded bg-rose-50 border border-rose-200">
-                              Soft-Deleted
-                            </span>
-                          )}
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900 select-none">
+                                Soft Delete
+                              </span>
+                            )}
                         </div>
                       </td>
                     </tr>

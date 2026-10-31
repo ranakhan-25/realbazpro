@@ -85,7 +85,6 @@ export default function LaborTypeListPage() {
   const [isLoadingDetails, setIsLoadingDetails] = useState<boolean>(false);
   const [editTarget, setEditTarget] = useState<BackendLaborType | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BackendLaborType | null>(null);
-  const [restoreTarget, setRestoreTarget] = useState<BackendLaborType | null>(null);
 
   // Form State
   const [formName, setFormName] = useState<string>("");
@@ -377,29 +376,6 @@ export default function LaborTypeListPage() {
         (err as { response?: { data?: { message?: string } } })?.response?.data
           ?.message ||
         (err instanceof Error ? err.message : "Failed to delete labor type");
-      showToast(errMsg, "error");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Handle Restore (PATCH /{uuid}/restore)
-  const handleConfirmRestore = async () => {
-    if (!restoreTarget) return;
-    setIsSubmitting(true);
-    try {
-      await procurementLaborTypeApi.restoreLaborType(restoreTarget.uuid);
-      setRestoreTarget(null);
-      showToast(`Labor type "${restoreTarget.name}" restored successfully`, "success");
-      fetchLaborTypes();
-      refreshBadgeCounts();
-      fetchDropdowns();
-    } catch (err: unknown) {
-      console.error("Restore labor type failed:", err);
-      const errMsg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ||
-        (err instanceof Error ? err.message : "Failed to restore labor type");
       showToast(errMsg, "error");
     } finally {
       setIsSubmitting(false);
@@ -810,7 +786,7 @@ export default function LaborTypeListPage() {
                           </p>
                           <p className="text-xs text-[#6B7280] dark:text-slate-400 max-w-sm mx-auto">
                             {recordsTab === "deleted"
-                              ? "Soft-deleted labor types will be archived here and can be restored at any time."
+                              ? "Soft-deleted labor types will be archived here."
                               : searchInput || statusFilter
                               ? "Try adjusting your search query or reset the filters."
                               : "Click '+ Add New Type' to register your first labor classification."}
@@ -886,17 +862,10 @@ export default function LaborTypeListPage() {
                           </button>
 
                           {recordsTab === "deleted" ? (
-                            /* Restore Button (Green tint at rest: bg #ECFDF3, border #A6F4C5, icon #039855) */
-                            <button
-                              type="button"
-                              onClick={() => setRestoreTarget(item)}
-                              title="Restore Labor Type"
-                              aria-label="Restore Labor Type"
-                              className="w-8 h-8 rounded-lg bg-[#ECFDF3] border border-[#A6F4C5] text-[#039855] flex items-center justify-center hover:bg-[#D1FADF] hover:text-[#027A48] hover:shadow-[0_1px_2px_rgba(16,24,40,0.08)] active:bg-[#A6F4C5] transition-all duration-140 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
-                            >
-                              <RotateCcw className="w-4 h-4 stroke-[1.75]" />
-                            </button>
-                          ) : (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900 select-none">
+                                Soft Delete
+                              </span>
+                            ) : (
                             <>
                               {/* Edit Button (Purple tint at rest: bg #F4F1FF, border #DDD6FE, icon #6D4AFF) */}
                               <button
@@ -1364,7 +1333,7 @@ export default function LaborTypeListPage() {
                 <span className="font-semibold text-[#111827] dark:text-slate-200">
                   &quot;{deleteTarget.name}&quot;
                 </span>
-                ? It will be soft-deleted and moved to the Deleted tab where you can restore it anytime.
+                ? It will be soft-deleted and moved to the Deleted tab when deleted.
               </p>
             </div>
 
@@ -1390,51 +1359,6 @@ export default function LaborTypeListPage() {
         </div>
       )}
 
-      {/* =========================================================================
-          RESTORE CONFIRMATION MODAL (PATCH /{uuid}/restore)
-          ========================================================================= */}
-      {restoreTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-[#E5E7EB] dark:border-slate-800 shadow-[0_8px_24px_rgba(16,24,40,0.08)] w-full max-w-sm overflow-hidden p-5 space-y-4">
-            <div className="w-10 h-10 rounded-full bg-[#ECFDF3] text-[#039855] flex items-center justify-center">
-              <RotateCcw className="w-5 h-5 stroke-[1.75]" />
-            </div>
-
-            <div>
-              <h3 className="text-[15px] font-semibold text-[#111827] dark:text-white">
-                Restore Labor Type?
-              </h3>
-              <p className="text-xs text-[#6B7280] dark:text-slate-400 mt-1">
-                Restore{" "}
-                <span className="font-semibold text-[#111827] dark:text-slate-200">
-                  &quot;{restoreTarget.name}&quot;
-                </span>{" "}
-                back to active labor classifications?
-              </p>
-            </div>
-
-            <div className="pt-2 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setRestoreTarget(null)}
-                className="h-9 px-4 rounded-lg border border-[#E5E7EB] dark:border-slate-700 text-xs font-medium text-[#374151] dark:text-slate-300 hover:bg-[#F9FAFB] dark:hover:bg-slate-800 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={handleConfirmRestore}
-                style={{ backgroundColor: "#6D4AFF", color: "#FFFFFF" }}
-                className="h-9 px-4 rounded-lg text-xs font-medium text-white bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-xs font-medium cursor-pointer transition-colors shadow-xs flex items-center gap-1.5"
-              >
-                {isSubmitting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                <span>Restore</span>
-              </button>
-            </div>
           </div>
-        </div>
-      )}
-    </div>
   );
 }

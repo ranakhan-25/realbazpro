@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable prettier/prettier */
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -163,7 +162,11 @@ export default function OrgListPage() {
       setOrgs((prev) =>
         prev.map((o) =>
           o.uuid === org.uuid || o.id === org.id
-            ? { ...o, isLocked: nextLocked, status: nextLocked ? "suspended" : "active" }
+            ? {
+                ...o,
+                isLocked: nextLocked,
+                status: nextLocked ? "suspended" : "active",
+              }
             : o,
         ),
       );
@@ -196,7 +199,9 @@ export default function OrgListPage() {
 
   const handleUpdate = async (uuid: string, payload: any) => {
     setOrgs((prev) =>
-      prev.map((o) => (o.uuid === uuid || String(o.id) === uuid ? { ...o, ...payload } : o)),
+      prev.map((o) =>
+        o.uuid === uuid || String(o.id) === uuid ? { ...o, ...payload } : o,
+      ),
     );
   };
 
@@ -213,15 +218,23 @@ export default function OrgListPage() {
 
   // ৩. Search & Filter Logic
   const filteredOrgs = useMemo(() => {
+    const query = (searchQuery ?? "").trim().toLowerCase();
+
     return orgs.filter((org) => {
+      const name = String(org?.name ?? "").toLowerCase();
+      const email = String(org?.email ?? "").toLowerCase();
+      const slug = String(org?.slug ?? "").toLowerCase();
+
       const matchesSearch =
-        org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        org.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        org.slug.toLowerCase().includes(searchQuery.toLowerCase());
+        !query ||
+        name.includes(query) ||
+        email.includes(query) ||
+        slug.includes(query);
 
       const matchesStatus =
-        statusFilter === "all" || org.status === statusFilter;
-      const matchesPlan = planFilter === "all" || org.plan === planFilter;
+        statusFilter === "all" || String(org?.status ?? "") === statusFilter;
+      const matchesPlan =
+        planFilter === "all" || String(org?.plan ?? "") === planFilter;
 
       return matchesSearch && matchesStatus && matchesPlan;
     });
@@ -420,7 +433,8 @@ export default function OrgListPage() {
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
                             Expired
                           </span>
-                        ) : org.subscriptionStatus === "trial" || org.status === "trial" ? (
+                        ) : org.subscriptionStatus === "trial" ||
+                          org.status === "trial" ? (
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
                             Trial
                           </span>
@@ -439,9 +453,17 @@ export default function OrgListPage() {
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                                 : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
                             }`}
-                            title={org.isLocked ? "Unlock Organization" : "Lock Organization"}
+                            title={
+                              org.isLocked
+                                ? "Unlock Organization"
+                                : "Lock Organization"
+                            }
                           >
-                            {org.isLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                            {org.isLocked ? (
+                              <Unlock className="h-3.5 w-3.5" />
+                            ) : (
+                              <Lock className="h-3.5 w-3.5" />
+                            )}
                           </button>
                           <button
                             onClick={() => {

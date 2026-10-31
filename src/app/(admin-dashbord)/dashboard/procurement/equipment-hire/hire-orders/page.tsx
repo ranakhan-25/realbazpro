@@ -18,7 +18,6 @@ import {
   CheckCircle2,
   Loader2,
   Printer,
-  RotateCcw,
   Truck,
   Plus,
   Edit2,
@@ -106,7 +105,6 @@ export default function HireOrdersPage() {
   const [orders, setOrders] = useState<BackendHireOrder[]>([]);
   const [activeCount, setActiveCount] = useState<number>(0);
   const [deletedCount, setDeletedCount] = useState<number>(0);
-  const [isFallbackActive, setIsFallbackActive] = useState<boolean>(false);
 
   // Loading States
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -142,7 +140,6 @@ export default function HireOrdersPage() {
   const [editingOrder, setEditingOrder] = useState<BackendHireOrder | null>(null);
   const [viewOrder, setViewOrder] = useState<BackendHireOrder | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BackendHireOrder | null>(null);
-  const [restoreTarget, setRestoreTarget] = useState<BackendHireOrder | null>(null);
 
   // Form Fields
   const [formHireNo, setFormHireNo] = useState<string>("");
@@ -217,14 +214,24 @@ export default function HireOrdersPage() {
         setTotalRecords(res.meta.total);
         setTotalPages(res.meta.totalPages);
         setActiveCount(res.meta.total);
-        if (res.isFallback) setIsFallbackActive(true);
+
+        // Background fetch trash count for tab badge
+        procurementHireOrdersApi
+          .getTrash({ page: 1, limit: 1 })
+          .then((trashRes) => setDeletedCount(trashRes.meta.total))
+          .catch(() => {});
       } else {
         const res = await procurementHireOrdersApi.getTrash(params);
         setOrders(res.data);
         setTotalRecords(res.meta.total);
         setTotalPages(res.meta.totalPages);
         setDeletedCount(res.meta.total);
-        if (res.isFallback) setIsFallbackActive(true);
+
+        // Background fetch active count for tab badge
+        procurementHireOrdersApi
+          .list({ page: 1, limit: 1 })
+          .then((activeRes) => setActiveCount(activeRes.meta.total))
+          .catch(() => {});
       }
     } catch (err) {
       const msg = parseApiError(err, "Failed to load hire orders");
@@ -525,26 +532,6 @@ export default function HireOrdersPage() {
     }
   };
 
-  // Confirm Restore
-  const handleConfirmRestore = async () => {
-    if (!restoreTarget) return;
-    setIsActionLoading(true);
-    try {
-      await procurementHireOrdersApi.restore(restoreTarget.uuid);
-      showToast(
-        `Hire order #${restoreTarget.hire_no} restored to Active`,
-        "success"
-      );
-      setRestoreTarget(null);
-      await fetchOrders();
-    } catch (err) {
-      const msg = parseApiError(err, "Failed to restore hire order");
-      showToast(msg, "error");
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
   // Status Badge Component
   const renderStatusBadge = (status: string) => {
     const s = status?.toLowerCase() || "draft";
@@ -664,18 +651,6 @@ export default function HireOrdersPage() {
           </div>
         </div>
 
-        {/* Informative Backend Sequelize Warning Banner if applicable */}
-        {isFallbackActive && (
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-800 text-[12.5px]">
-            <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div className="leading-relaxed">
-              <span className="font-semibold text-amber-900">
-                Backend Service Notification:
-              </span>{" "}
-              The live backend endpoint for hire orders responded with a Sequelize model registration error (<code>Project / ProcurementUnit</code>). The interface is safely operating with local store persistence; create, edit, view, delete, and restore are fully active and testable.
-            </div>
-          </div>
-        )}
 
         {/* Segmented Pill Tabs & Filters Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-white px-4 py-2.5 rounded-2xl border border-slate-100 shadow-xs">
@@ -849,7 +824,7 @@ export default function HireOrdersPage() {
                         <p className="text-[12.5px] text-slate-400 leading-normal">
                           {activeTab === "active"
                             ? "There are currently no active hire orders matching your filters."
-                            : "Trash is clean. Any soft-deleted hire orders will appear here and can be restored."}
+                            : "Trash is clean. Any soft-deleted hire orders will appear here."}
                         </p>
                       </div>
                     </td>
@@ -960,17 +935,10 @@ export default function HireOrdersPage() {
                               </button>
                             </>
                           ) : (
-                            /* Restore Button */
-                            <button
-                              type="button"
-                              onClick={() => setRestoreTarget(row)}
-                              aria-label="Restore"
-                              title="Restore to active list"
-                              className="flex items-center justify-center w-8 h-8 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white transition-colors cursor-pointer"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900 select-none">
+                                Soft Delete
+                              </span>
+                            )}
                         </div>
                       </td>
                     </tr>
@@ -1677,7 +1645,7 @@ export default function HireOrdersPage() {
               </span>
               ? It will be moved to the{" "}
               <span className="font-semibold text-rose-600">Deleted</span> tab where
-              it can be restored anytime.
+              it will be moved to deleted records.
             </p>
             <div className="flex items-center justify-end gap-2.5">
               <button
@@ -1702,49 +1670,6 @@ export default function HireOrdersPage() {
         </div>
       )}
 
-      {/* =========================================================================
-          RESTORE CONFIRMATION MODAL
-          ========================================================================= */}
-      {restoreTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 text-emerald-600 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                <RotateCcw className="w-5 h-5 text-emerald-600" />
-              </div>
-              <h3 className="text-[16px] font-bold text-slate-800">
-                Restore Hire Order
-              </h3>
-            </div>
-            <p className="text-[13px] text-slate-600 mb-5 leading-relaxed">
-              Restore hire order{" "}
-              <span className="font-bold text-slate-800 font-mono">
-                #{restoreTarget.hire_no}
-              </span>{" "}
-              back to the Active hire orders list?
-            </p>
-            <div className="flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                disabled={isActionLoading}
-                onClick={() => setRestoreTarget(null)}
-                className="px-4 py-2 rounded-xl text-[13px] font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isActionLoading}
-                onClick={handleConfirmRestore}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-200 cursor-pointer"
-              >
-                {isActionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>Restore Order</span>
-              </button>
-            </div>
           </div>
-        </div>
-      )}
-    </div>
   );
 }

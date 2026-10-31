@@ -49,6 +49,7 @@ const ACRONYMS: Record<string, string> = {
 };
 
 export function slugToLabel(slug: string) {
+  if (slug === "sub-category") return "Sub-Category";
   return slug
     .split("-")
     .map((w) => ACRONYMS[w] ?? w.charAt(0).toUpperCase() + w.slice(1))

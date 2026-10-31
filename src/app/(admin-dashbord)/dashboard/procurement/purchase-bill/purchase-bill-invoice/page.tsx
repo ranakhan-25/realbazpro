@@ -1809,11 +1809,8 @@ export default function PurchaseBillInvoicePage() {
                                 <Trash2 className="w-4 h-4 stroke-[1.75]" />
                               </button>
                             ) : (
-                              <span
-                                title="Backend Swagger has no restore endpoint for purchase bills"
-                                className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#FEF2F2] text-[#B42318] border border-[#FECACA]"
-                              >
-                                Deleted
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900 select-none">
+                                Soft Delete
                               </span>
                             )}
                           </div>

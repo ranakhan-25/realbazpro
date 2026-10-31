@@ -12,7 +12,6 @@ import {
   ChevronUp,
   X,
   RefreshCw,
-  RotateCcw,
   Loader2,
   AlertCircle,
   FolderTree,
@@ -158,9 +157,6 @@ export default function CategoryPage() {
     type: "success" | "info" | "error";
   } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BackendCategory | null>(
-    null,
-  );
-  const [restoreTarget, setRestoreTarget] = useState<BackendCategory | null>(
     null,
   );
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -478,28 +474,6 @@ export default function CategoryPage() {
     }
   };
 
-  // -------------------------------------------------------------
-  // Restore
-  // -------------------------------------------------------------
-  const handleRestoreConfirm = async () => {
-    if (!restoreTarget) return;
-    setIsActionLoading(true);
-    try {
-      await procurementCategoryApi.restoreCategory(restoreTarget.uuid);
-      showToast(
-        `Category "${restoreTarget.name}" restored to active list!`,
-        "success",
-      );
-      setRestoreTarget(null);
-      await loadCategories();
-    } catch (err: unknown) {
-      const msg = parseApiError(err, "Failed to restore category");
-      showToast(msg, "error");
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
   // Sort Handler
   const handleSort = (field: "createdAt" | "name" | "code" | "type") => {
     if (sortField === field) {
@@ -701,9 +675,7 @@ export default function CategoryPage() {
               <Trash2 className="w-4 h-4 text-rose-500 shrink-0" />
               <span>
                 <strong>Deleted Mode:</strong> Showing all soft-deleted
-                categories ({totalEntries} records). Click the green{" "}
-                <strong>Restore</strong> button on any row to return it to the
-                active list.
+                categories ({totalEntries} records).
               </span>
             </div>
             <button
@@ -1001,14 +973,9 @@ export default function CategoryPage() {
                                 </button>
                               </>
                             ) : (
-                              /* Restore Button */
-                              <button
-                                onClick={() => setRestoreTarget(item)}
-                                title="Restore Category"
-                                className="w-7 h-7 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center shadow-xs transition-transform duration-100 hover:scale-105 active:scale-95 cursor-pointer shrink-0"
-                              >
-                                <RotateCcw className="w-3.5 h-3.5 stroke-[2.5]" />
-                              </button>
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900 select-none">
+                                Soft Delete
+                              </span>
                             )}
                           </div>
                         </td>
@@ -1388,7 +1355,7 @@ export default function CategoryPage() {
               <strong className="text-slate-900 dark:text-white">
                 {deleteTarget.name}
               </strong>
-              ? You can restore it anytime from the{" "}
+              ? This will move it to the{" "}
               <span className="text-rose-600 font-semibold">
                 Deleted Categories
               </span>{" "}
@@ -1419,47 +1386,6 @@ export default function CategoryPage() {
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* RESTORE CONFIRMATION DIALOG                               */}
-      {/* ========================================================= */}
-      {restoreTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 max-w-sm w-full space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <RotateCcw className="w-4 h-4 text-emerald-500" />
-              <span>Confirm Restoration</span>
-            </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-300">
-              Are you sure you want to restore{" "}
-              <strong className="text-slate-900 dark:text-white">
-                {restoreTarget.name}
-              </strong>
-              ? This will return the category back to the active list.
-            </p>
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                disabled={isActionLoading}
-                onClick={() => setRestoreTarget(null)}
-                className="px-4 py-2 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs text-slate-700 dark:text-slate-200 font-medium transition-colors cursor-pointer disabled:opacity-60"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isActionLoading}
-                onClick={handleRestoreConfirm}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-60"
-              >
-                {isActionLoading && (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                )}
-                <span>Restore</span>
-              </button>
-            </div>
           </div>
-        </div>
-      )}
-    </div>
   );
 }

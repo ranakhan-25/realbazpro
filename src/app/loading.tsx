@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 
 // import Image from "next/image";
 // import img from "../assets/realbiz-logo.png";

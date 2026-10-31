@@ -63,10 +63,16 @@ export interface CreateRoleWithPermissionsPayload {
 export interface FeatureTreeNode {
   id: string;
   name: string;
+  code?: string;
+  routePath?: string;
+  actionType?: string;
+  displayOrder?: number;
   moduleId?: number;
   module?: {
     id: string;
     name: string;
+    code?: string;
+    pathRoute?: string;
     description?: string | null;
   };
   description?: string | null;
