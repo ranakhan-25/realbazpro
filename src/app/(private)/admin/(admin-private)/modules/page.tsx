@@ -171,6 +171,7 @@ export default function ModuleManagementPage() {
   // Tree Modal State
   const [isTreeModalOpen, setIsTreeModalOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<ModuleTreeNode | null>(null);
+  const [selectedFeatureIndex, setSelectedFeatureIndex] = useState<number | null>(null);
 
   // Collapsible Accordion State
   const [expandedModuleIds, setExpandedModuleIds] = useState<Record<string, boolean>>({
@@ -228,11 +229,20 @@ export default function ModuleManagementPage() {
 
   const handleOpenCreateModal = () => {
     setSelectedModule(null);
+    setSelectedFeatureIndex(null);
     setIsTreeModalOpen(true);
   };
 
   const handleOpenEditModal = (mod: ModuleTreeNode) => {
     setSelectedModule(mod);
+    setSelectedFeatureIndex(null);
+    setIsTreeModalOpen(true);
+    setActiveDropdownId(null);
+  };
+
+  const handleOpenEditFeatureModal = (mod: ModuleTreeNode, featureIndex: number) => {
+    setSelectedModule(mod);
+    setSelectedFeatureIndex(featureIndex);
     setIsTreeModalOpen(true);
     setActiveDropdownId(null);
   };
@@ -524,46 +534,36 @@ export default function ModuleManagementPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2 self-end md:self-center pl-10 md:pl-0">
+                    <div className="flex items-center gap-1.5 self-end md:self-center pl-10 md:pl-0">
                       <button
                         type="button"
                         onClick={() => handleOpenEditModal(mod)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition"
+                        title="Edit module information and features"
                       >
                         <Edit3 className="h-3.5 w-3.5 text-slate-500" />
-                        Edit Tree & Features
+                        Edit Module
                       </button>
 
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setActiveDropdownId(activeDropdownId === modKey ? null : modKey)}
-                          className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(mod)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50/60 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 shadow-sm transition"
+                        title="Add feature to this module"
+                      >
+                        <Plus className="h-3.5 w-3.5 text-indigo-600" />
+                        Add Feature
+                      </button>
 
-                        {activeDropdownId === modKey && (
-                          <div className="absolute right-0 top-full mt-1 w-44 rounded-xl border border-slate-200 bg-white py-1 shadow-lg z-20">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditModal(mod)}
-                              className="flex w-full items-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                            >
-                              <Plus className="h-3.5 w-3.5 text-slate-400" />
-                              Add Nested Feature
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteModule(mod)}
-                              className="flex w-full items-center gap-2 px-3.5 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 text-rose-400" />
-                              Delete Module
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteModule(mod)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-200 bg-rose-50/60 text-xs font-semibold text-rose-700 hover:bg-rose-100 shadow-sm transition"
+                        title="Delete module"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-rose-500" />
+                        Delete
+                      </button>
                     </div>
                   </div>
 
@@ -597,7 +597,7 @@ export default function ModuleManagementPage() {
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              {mod.features.map((feat) => {
+                              {mod.features.map((feat, featIdx) => {
                                 const actionColor =
                                   feat.actionType === "manage"
                                     ? "bg-purple-50 text-purple-700 border-purple-200"
@@ -641,15 +641,25 @@ export default function ModuleManagementPage() {
                                       </div>
                                     </div>
 
-                                    <button
-                                      type="button"
-                                      disabled={deletingFeatureId === (feat.id || feat.code)}
-                                      onClick={() => handleDeleteFeature(mod.id || mod.code, feat)}
-                                      className="h-7 w-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition disabled:opacity-50"
-                                      title="Delete feature"
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </button>
+                                    <div className="flex items-center gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenEditFeatureModal(mod, featIdx)}
+                                        className="h-8 w-8 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 bg-white flex items-center justify-center transition shadow-xs"
+                                        title="Edit this feature"
+                                      >
+                                        <Edit3 className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={deletingFeatureId === (feat.id || feat.code)}
+                                        onClick={() => handleDeleteFeature(mod.id || mod.code, feat)}
+                                        className="h-8 w-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 bg-white flex items-center justify-center transition shadow-xs disabled:opacity-50"
+                                        title="Delete feature"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
                                   </div>
                                 );
                               })}
@@ -671,6 +681,7 @@ export default function ModuleManagementPage() {
         isOpen={isTreeModalOpen}
         onClose={() => setIsTreeModalOpen(false)}
         initialModule={selectedModule}
+        initialFeatureIndex={selectedFeatureIndex}
         onSuccess={handleModalSuccess}
       />
     </div>

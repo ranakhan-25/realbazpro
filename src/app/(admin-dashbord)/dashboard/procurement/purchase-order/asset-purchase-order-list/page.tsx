@@ -28,7 +28,6 @@ import {
   Edit2,
   Loader2,
   AlertCircle,
-  ArchiveRestore,
   ExternalLink,
   Printer,
   RefreshCw,
@@ -210,8 +209,6 @@ export default function AssetPurchaseOrderPage() {
   );
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] =
-    useState<BackendAssetPurchaseOrder | null>(null);
-  const [restoreTarget, setRestoreTarget] =
     useState<BackendAssetPurchaseOrder | null>(null);
   const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
 
@@ -716,30 +713,6 @@ export default function AssetPurchaseOrderPage() {
       loadOrders();
     } catch (err: unknown) {
       const msg = parseApiError(err, "Failed to delete asset purchase order");
-      showToast(msg, "error");
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
-  // -------------------------------------------------------------
-  // Restore Handler
-  // -------------------------------------------------------------
-  const handleConfirmRestore = async () => {
-    if (!restoreTarget) return;
-    setIsActionLoading(true);
-    try {
-      const restored = await procurementAssetPurchaseOrderApi.restoreOrder(
-        restoreTarget.uuid,
-      );
-      showToast(
-        `Asset Purchase Order #${restored.code} restored successfully`,
-        "success",
-      );
-      setRestoreTarget(null);
-      loadOrders();
-    } catch (err: unknown) {
-      const msg = parseApiError(err, "Failed to restore asset purchase order");
       showToast(msg, "error");
     } finally {
       setIsActionLoading(false);
@@ -1376,15 +1349,9 @@ export default function AssetPurchaseOrderPage() {
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
 
-                              <button
-                                type="button"
-                                onClick={() => setRestoreTarget(order)}
-                                title="Restore Order"
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition-colors cursor-pointer"
-                              >
-                                <ArchiveRestore className="w-3 h-3" />
-                                <span>Restore</span>
-                              </button>
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900 select-none">
+                                Soft Delete
+                              </span>
                             </div>
                           )}
                         </td>
@@ -2431,7 +2398,7 @@ export default function AssetPurchaseOrderPage() {
                 <span className="font-bold text-indigo-600 dark:text-indigo-400">
                   ৳{formatCurrency(deleteTarget.grand_total)}
                 </span>
-                ? You can restore it later from the Deleted Orders tab.
+                ? It will be moved to the Deleted Orders tab.
               </div>
 
               <div className="flex items-center justify-end gap-2.5 pt-2">
@@ -2453,59 +2420,6 @@ export default function AssetPurchaseOrderPage() {
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   )}
                   <span>Delete Order</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* =========================================================================
-            MODAL 3: CONFIRM RESTORE MODAL
-            ========================================================================= */}
-        {restoreTarget && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-4">
-              <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
-                <div className="p-2.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60">
-                  <ArchiveRestore className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    Confirm Restoration
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    This order will be restored to Active Orders
-                  </p>
-                </div>
-              </div>
-
-              <div className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                Restore Asset Purchase Order{" "}
-                <span className="font-bold text-slate-900 dark:text-slate-100 font-mono">
-                  #{restoreTarget.code}
-                </span>{" "}
-                back to active status?
-              </div>
-
-              <div className="flex items-center justify-end gap-2.5 pt-2">
-                <button
-                  type="button"
-                  disabled={isActionLoading}
-                  onClick={() => setRestoreTarget(null)}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={isActionLoading}
-                  onClick={handleConfirmRestore}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50"
-                >
-                  {isActionLoading && (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  )}
-                  <span>Restore Order</span>
                 </button>
               </div>
             </div>

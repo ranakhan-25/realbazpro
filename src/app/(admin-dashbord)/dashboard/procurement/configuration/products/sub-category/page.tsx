@@ -13,7 +13,6 @@ import {
   ChevronsUpDown,
   X,
   RefreshCw,
-  RotateCcw,
   FolderTree,
   Eye,
   Loader2,
@@ -131,11 +130,8 @@ export default function SubCategoryPage() {
   );
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
 
-  // Delete & Restore Confirmation States
+  // Delete Confirmation State
   const [deleteTarget, setDeleteTarget] = useState<BackendSubCategory | null>(
-    null,
-  );
-  const [restoreTarget, setRestoreTarget] = useState<BackendSubCategory | null>(
     null,
   );
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -465,31 +461,6 @@ export default function SubCategoryPage() {
     }
   };
 
-  // -------------------------------------------------------------
-  // Restore Handler (PATCH /:uuid/restore)
-  // -------------------------------------------------------------
-  const handleRestoreConfirm = async () => {
-    if (!restoreTarget) return;
-    setIsActionLoading(true);
-    try {
-      await procurementSubCategoryApi.restoreSubCategory(restoreTarget.uuid);
-      showToast(
-        `Sub category "${restoreTarget.name}" restored to active list!`,
-        "success",
-      );
-      setRestoreTarget(null);
-      if (isDetailsOpen && detailsItem?.uuid === restoreTarget.uuid) {
-        setIsDetailsOpen(false);
-      }
-      await loadSubCategories();
-    } catch (err: unknown) {
-      const msg = parseApiError(err, "Failed to restore sub category");
-      showToast(msg, "error");
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
   // Pagination calculation
   const displayFrom =
     totalEntries === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1;
@@ -710,9 +681,7 @@ export default function SubCategoryPage() {
               <Trash2 className="w-4 h-4 text-rose-500 shrink-0" />
               <span>
                 <strong>Deleted Mode:</strong> Showing all soft-deleted
-                sub-categories ({totalEntries} records). Click the green{" "}
-                <strong>Restore</strong> button on any row to restore it to the
-                active list.
+                sub-categories ({totalEntries} records).
               </span>
             </div>
             <button
@@ -991,21 +960,16 @@ export default function SubCategoryPage() {
                                 {/* Coral/Red Delete Button */}
                                 <button
                                   onClick={() => setDeleteTarget(item)}
-                                  title="Soft Delete Sub Category"
+                                  title="Delete Sub Category"
                                   className="w-8 h-8 rounded-md bg-[#EF4444] hover:bg-[#dc2626] text-white flex items-center justify-center shadow-xs transition-transform duration-100 hover:scale-105 active:scale-95 cursor-pointer"
                                 >
                                   <Trash2 className="w-4 h-4 stroke-[2]" />
                                 </button>
                               </>
                             ) : (
-                              /* Restore Button in Deleted Mode */
-                              <button
-                                onClick={() => setRestoreTarget(item)}
-                                title="Restore Sub Category"
-                                className="w-8 h-8 rounded-md bg-[#10B981] hover:bg-[#059669] text-white flex items-center justify-center shadow-xs transition-transform duration-100 hover:scale-105 active:scale-95 cursor-pointer"
-                              >
-                                <RotateCcw className="w-4 h-4 stroke-[2.5]" />
-                              </button>
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900 select-none">
+                                Soft Delete
+                              </span>
                             )}
                           </div>
                         </td>
@@ -1384,15 +1348,9 @@ export default function SubCategoryPage() {
                       </button>
                     </>
                   ) : detailsItem?.deletedAt ? (
-                    <button
-                      onClick={() => {
-                        setRestoreTarget(detailsItem);
-                      }}
-                      className="px-3.5 py-1.5 bg-[#10B981] hover:bg-[#059669] text-white rounded-md text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Restore</span>
-                    </button>
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900 select-none">
+                                Soft Delete
+                              </span>
                   ) : null}
                 </div>
 
@@ -1423,7 +1381,7 @@ export default function SubCategoryPage() {
               <strong className="text-slate-900 dark:text-white">
                 {deleteTarget.name}
               </strong>
-              ? You can restore it anytime from the{" "}
+              ? This will move it to the{" "}
               <span className="text-rose-600 font-semibold">
                 Deleted Sub Categories
               </span>{" "}
@@ -1454,47 +1412,6 @@ export default function SubCategoryPage() {
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* DIALOG: CONFIRM RESTORE (PATCH /:uuid/restore)             */}
-      {/* ========================================================= */}
-      {restoreTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 max-w-sm w-full space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <RotateCcw className="w-4 h-4 text-emerald-500" />
-              <span>Confirm Restoration</span>
-            </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-300">
-              Are you sure you want to restore{" "}
-              <strong className="text-slate-900 dark:text-white">
-                {restoreTarget.name}
-              </strong>
-              ? This will return the sub-category back to the active list.
-            </p>
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                disabled={isActionLoading}
-                onClick={() => setRestoreTarget(null)}
-                className="px-4 py-2 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs text-slate-700 dark:text-slate-200 font-medium transition-colors cursor-pointer disabled:opacity-60"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isActionLoading}
-                onClick={handleRestoreConfirm}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-60"
-              >
-                {isActionLoading && (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                )}
-                <span>Restore</span>
-              </button>
-            </div>
           </div>
-        </div>
-      )}
-    </div>
   );
 }

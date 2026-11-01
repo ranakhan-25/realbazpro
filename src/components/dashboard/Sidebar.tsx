@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 "use client";
 
 import Link from "next/link";
@@ -116,8 +117,42 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
     ) {
       return currentAccessibleMod.menuTree;
     }
-    const rawTree = MENUS[module] || [];
-    return pruneTreeByAccess(rawTree, module, hasAccessToRoute);
+    if (module === "procurement") {
+      base = base.filter(
+        (n) => n.slug !== "approvals" && n.slug !== "vendors"
+      );
+      const eqNode = base.find((n) => n.slug === "equipment-hire");
+      const defaultEqNode = MENUS.procurement?.find((n) => n.slug === "equipment-hire");
+      if (eqNode && defaultEqNode?.children) {
+        eqNode.children = defaultEqNode.children;
+      } else if (!eqNode && defaultEqNode) {
+        base.push(defaultEqNode);
+      }
+
+      // Ensure configuration -> products has all 5 items: Category, Sub-Category, Brand, Unit, Item Entry
+      const configNode = base.find((n) => n.slug === "configuration");
+      const defaultConfigNode = MENUS.procurement?.find((n) => n.slug === "configuration");
+      if (configNode && defaultConfigNode?.children) {
+        const prodNode = configNode.children?.find((c) => c.slug === "products");
+        const defaultProdNode = defaultConfigNode.children?.find((c) => c.slug === "products");
+        if (prodNode && defaultProdNode?.children) {
+          prodNode.children = defaultProdNode.children;
+        } else if (!prodNode && defaultProdNode) {
+          configNode.children = [defaultProdNode, ...(configNode.children || [])];
+        }
+
+        const assetNode = configNode.children?.find((c) => c.slug === "asset");
+        const defaultAssetNode = defaultConfigNode.children?.find((c) => c.slug === "asset");
+        if (assetNode && defaultAssetNode?.children) {
+          assetNode.children = defaultAssetNode.children;
+        } else if (!assetNode && defaultAssetNode) {
+          configNode.children = [...(configNode.children || []), defaultAssetNode];
+        }
+      } else if (!configNode && defaultConfigNode) {
+        base.unshift(defaultConfigNode);
+      }
+    }
+    return base;
   }, [currentAccessibleMod, module, hasAccessToRoute]);
 
   const tree = useMemo(() => filterTree(permittedTree, q), [permittedTree, q]);

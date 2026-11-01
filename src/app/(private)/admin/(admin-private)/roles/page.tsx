@@ -24,6 +24,7 @@ import {
   createRoleWithPermissions,
   updateRole,
   deleteRole,
+  assignPermissionsBulk,
   type Role,
 } from "@/services/roleService";
 
@@ -85,14 +86,21 @@ export default function RolesPage() {
   const handleSaveRole = async (payload: RolePermissionSavePayload) => {
     try {
       if (editingRole && editingRole.id) {
-        // Update
+        // Update basic role details
         await updateRole(editingRole.id, {
           name: payload.roleName,
           description: payload.description,
         });
+        // Update role permissions across entitled modules
+        if (Array.isArray(payload.permissionIds)) {
+          await assignPermissionsBulk(
+            editingRole.id,
+            payload.permissionIds.map(Number),
+          );
+        }
         toast.success(`Role '${payload.roleName}' updated successfully`);
       } else {
-        // Create new role with permissions across all modules
+        // Create new role with permissions across entitled modules
         await createRoleWithPermissions({
           name: payload.roleName,
           description: payload.description,
