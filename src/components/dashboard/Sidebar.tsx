@@ -46,7 +46,9 @@ function pruneTreeByAccess(
   if (!nodes || !nodes.length) return [];
   const out: MenuNode[] = [];
   for (const n of nodes) {
-    const kids = n.children ? pruneTreeByAccess(n.children, moduleKey, hasAccess) : undefined;
+    const kids = n.children
+      ? pruneTreeByAccess(n.children, moduleKey, hasAccess)
+      : undefined;
     const selfAllowed = hasAccess(moduleKey, n.path);
     if (selfAllowed || (kids && kids.length > 0)) {
       out.push({
@@ -86,10 +88,16 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
 
   const displayModules = useMemo(() => {
     if (accessibleModules && accessibleModules.length > 0) {
-      return accessibleModules.map((m) => ({
-        key: m.key as ModuleKey,
-        label: m.name,
-      }));
+      const unique = new Map<string, { key: ModuleKey; label: string }>();
+      for (const m of accessibleModules) {
+        const key = String(m.key ?? "").trim();
+        if (!key || unique.has(key.toLowerCase())) continue;
+        unique.set(key.toLowerCase(), {
+          key: key as ModuleKey,
+          label: m.name,
+        });
+      }
+      return [...unique.values()];
     }
     return MODULES;
   }, [accessibleModules]);
@@ -103,12 +111,11 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
   }, [accessibleModules, module]);
 
   const permittedTree = useMemo(() => {
-    let base: MenuNode[] = [];
-    if (currentAccessibleMod?.menuTree && currentAccessibleMod.menuTree.length > 0) {
-      base = currentAccessibleMod.menuTree;
-    } else {
-      const rawTree = MENUS[module] || [];
-      base = pruneTreeByAccess(rawTree, module, hasAccessToRoute);
+    if (
+      currentAccessibleMod?.menuTree &&
+      currentAccessibleMod.menuTree.length > 0
+    ) {
+      return currentAccessibleMod.menuTree;
     }
     if (module === "procurement") {
       base = base.filter(
