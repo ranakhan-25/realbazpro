@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import {
   getUserAccess,
   AccessibleModuleItem,
@@ -20,11 +26,31 @@ interface UserAccessContextType {
   refreshAccess: () => Promise<void>;
 }
 
-const UserAccessContext = createContext<UserAccessContextType | undefined>(undefined);
+const UserAccessContext = createContext<UserAccessContextType | undefined>(
+  undefined,
+);
 
-export function UserAccessProvider({ children }: { children: React.ReactNode }) {
+function dedupeByKey<T extends { key?: string }>(items: T[] = []): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = String(item?.key ?? "")
+      .trim()
+      .toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export function UserAccessProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [user, setUser] = useState<UserAccessProfile | null>(null);
-  const [accessibleModules, setAccessibleModules] = useState<AccessibleModuleItem[]>([]);
+  const [accessibleModules, setAccessibleModules] = useState<
+    AccessibleModuleItem[]
+  >([]);
   const [entitledModuleKeys, setEntitledModuleKeys] = useState<string[]>([]);
   const [allAllowedPaths, setAllAllowedPaths] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,12 +62,24 @@ export function UserAccessProvider({ children }: { children: React.ReactNode }) 
       setError(null);
       const data: UserAccessResponse = await getUserAccess();
       setUser(data.user);
-      setAccessibleModules(data.accessibleModules || []);
-      setEntitledModuleKeys(data.entitledModuleKeys || []);
-      setAllAllowedPaths(data.allAllowedPaths || []);
-    } catch (err: any) {
-      console.warn("Could not load user access entitlements:", err?.message || err);
-      setError(err?.message || "Failed to load access configuration");
+      setAccessibleModules(dedupeByKey(data.accessibleModules || []));
+      setEntitledModuleKeys([
+        ...new Set(
+          (data.entitledModuleKeys || []).map((k) =>
+            String(k).trim().toLowerCase(),
+          ),
+        ),
+      ]);
+      setAllAllowedPaths([
+        ...new Set((data.allAllowedPaths || []).map((p) => String(p).trim())),
+      ]);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to load access configuration";
+      console.warn("Could not load user access entitlements:", message);
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -78,7 +116,10 @@ export function UserAccessProvider({ children }: { children: React.ReactNode }) 
       const cleanRoute = routePath.toLowerCase().replace(/^\/+|\/+$/g, "");
       return mod.allowedRoutes.some((r) => {
         const cleanAllowed = r.toLowerCase().replace(/^\/+|\/+$/g, "");
-        return cleanRoute === cleanAllowed || cleanRoute.startsWith(`${cleanAllowed}/`);
+        return (
+          cleanRoute === cleanAllowed ||
+          cleanRoute.startsWith(`${cleanAllowed}/`)
+        );
       });
     },
     [user, accessibleModules, hasAccessToModule],
