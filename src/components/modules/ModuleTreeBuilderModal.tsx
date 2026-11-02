@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Plus,
   Trash2,
@@ -19,8 +19,10 @@ import {
   ChevronRight,
   Database,
   Layout,
+  FolderKanban,
 } from "lucide-react";
 import { toast } from "sonner";
+import ModuleHierarchicalTree from "./ModuleHierarchicalTree";
 import {
   saveModuleTree,
   type FeatureNode,
@@ -33,6 +35,7 @@ interface ModuleTreeBuilderModalProps {
   onSuccess?: (savedModule: ModuleTreeNode) => void;
   initialModule?: ModuleTreeNode | null;
   initialFeatureIndex?: number | null;
+  initialParentGroup?: string | null;
 }
 
 export default function ModuleTreeBuilderModal({
@@ -41,6 +44,7 @@ export default function ModuleTreeBuilderModal({
   onSuccess,
   initialModule,
   initialFeatureIndex,
+  initialParentGroup,
 }: ModuleTreeBuilderModalProps) {
   // Modal View Mode: "edit" or "preview"
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
@@ -59,6 +63,7 @@ export default function ModuleTreeBuilderModal({
 
   // Inline "+" Staging Form State
   const [isDraftingFeature, setIsDraftingFeature] = useState(false);
+  const [draftGroup, setDraftGroup] = useState("");
   const [draftName, setDraftName] = useState("");
   const [draftCode, setDraftCode] = useState("");
   const [draftRoute, setDraftRoute] = useState("");
@@ -68,6 +73,18 @@ export default function ModuleTreeBuilderModal({
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Existing unique parent groups in this module
+  const existingGroups = useMemo(() => {
+    const set = new Set<string>();
+    features.forEach((f) => {
+      if (f.name?.includes("|")) {
+        const grp = f.name.split("|")[0].trim();
+        if (grp) set.add(grp);
+      }
+    });
+    return Array.from(set);
+  }, [features]);
 
   useEffect(() => {
     if (isOpen) {
@@ -86,24 +103,41 @@ export default function ModuleTreeBuilderModal({
         featList[initialFeatureIndex]
       ) {
         const target = featList[initialFeatureIndex];
-        setDraftName(target.name);
+        if (target.name?.includes("|")) {
+          const parts = target.name.split("|").map((p) => p.trim());
+          setDraftGroup(parts[0]);
+          setDraftName(parts.slice(1).join(" | "));
+        } else {
+          setDraftGroup("");
+          setDraftName(target.name);
+        }
         setDraftCode(target.code);
         setDraftRoute(target.routePath || "");
         setDraftAction(target.actionType || "read");
         setEditingIndex(initialFeatureIndex);
         setIsDraftingFeature(true);
+      } else if (initialParentGroup) {
+        setDraftGroup(initialParentGroup);
+        setDraftName("");
+        setDraftCode("");
+        setDraftRoute("");
+        setDraftAction("read");
+        setEditingIndex(null);
+        setIsDraftingFeature(true);
       } else {
         setIsDraftingFeature(false);
         setEditingIndex(null);
+        setDraftGroup("");
       }
       setActiveTab("edit");
     }
-  }, [isOpen, initialModule, initialFeatureIndex]);
+  }, [isOpen, initialModule, initialFeatureIndex, initialParentGroup]);
 
   if (!isOpen) return null;
 
-  const handleStartAdd = () => {
+  const handleStartAdd = (prefillGroup?: string) => {
     setEditingIndex(null);
+    setDraftGroup(prefillGroup || "");
     setDraftName("");
     setDraftCode("");
     setDraftRoute("");
@@ -118,6 +152,10 @@ export default function ModuleTreeBuilderModal({
     }
 
     const formattedCode = draftCode.trim().toUpperCase().replace(/\s+/g, "_");
+    const cleanItemName = draftName.replace(/^.*\|\s*/, "").trim();
+    const finalName = draftGroup.trim()
+      ? `${draftGroup.trim()} | ${cleanItemName}`
+      : cleanItemName;
 
     if (editingIndex !== null) {
       // Update existing
@@ -126,7 +164,7 @@ export default function ModuleTreeBuilderModal({
           idx === editingIndex
             ? {
                 ...item,
-                name: draftName.trim(),
+                name: finalName,
                 code: formattedCode,
                 routePath: draftRoute.trim() || undefined,
                 actionType: draftAction,
@@ -134,12 +172,12 @@ export default function ModuleTreeBuilderModal({
             : item,
         ),
       );
-      toast.success(`Feature "${draftName}" updated in tree`);
+      toast.success(`Feature "${finalName}" updated in tree`);
       setEditingIndex(null);
     } else {
       // Add new
       const newFeature: FeatureNode = {
-        name: draftName.trim(),
+        name: finalName,
         code: formattedCode,
         routePath: draftRoute.trim() || undefined,
         actionType: draftAction,
@@ -147,10 +185,11 @@ export default function ModuleTreeBuilderModal({
         isActive: true,
       };
       setFeatures((prev) => [...prev, newFeature]);
-      toast.success(`Added "${draftName}" to tree`);
+      toast.success(`Added "${finalName}" to tree`);
     }
 
     // Reset inline inputs
+    setDraftGroup("");
     setDraftName("");
     setDraftCode("");
     setDraftRoute("");
@@ -159,7 +198,14 @@ export default function ModuleTreeBuilderModal({
 
   const handleEditFeature = (index: number) => {
     const target = features[index];
-    setDraftName(target.name);
+    if (target.name?.includes("|")) {
+      const parts = target.name.split("|").map((p) => p.trim());
+      setDraftGroup(parts[0]);
+      setDraftName(parts.slice(1).join(" | "));
+    } else {
+      setDraftGroup("");
+      setDraftName(target.name);
+    }
     setDraftCode(target.code);
     setDraftRoute(target.routePath || "");
     setDraftAction(target.actionType || "read");
@@ -288,7 +334,7 @@ export default function ModuleTreeBuilderModal({
         <form onSubmit={handleSubmitTree} className="flex-1 overflow-y-auto p-6 space-y-6">
           {activeTab === "preview" ? (
             /* VISUAL ARCHITECTURE TREE PREVIEW */
-            <div className="space-y-6 py-2">
+            <div className="space-y-4 py-2">
               <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -306,99 +352,33 @@ export default function ModuleTreeBuilderModal({
                 </p>
               </div>
 
-              {/* Tree Diagram */}
-              <div className="relative pl-6 space-y-6">
-                {/* ROOT MODULE NODE */}
-                <div className="relative flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30">
-                    <Layers className="h-6 w-6" />
-                  </div>
-                  <div className="flex-1 rounded-2xl border-2 border-indigo-500/40 bg-indigo-50/50 dark:bg-indigo-950/20 p-4 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                          Root Module
-                        </span>
-                        <span className="rounded-md bg-indigo-600 text-white font-mono text-xs px-2 py-0.5 font-bold">
-                          {moduleCode || "MODULE_CODE"}
-                        </span>
-                      </div>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                        {isActive ? "Active" : "Disabled"}
-                      </span>
-                    </div>
-                    <h4 className="text-base font-bold text-slate-900 dark:text-white mt-1">
-                      {moduleName || "Untitled Module"}
-                    </h4>
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600 dark:text-slate-400 mt-2 font-mono">
-                      <span>Path: {pathRoute || "None"}</span>
-                      <span>Order: #{displayOrder}</span>
-                      <span>Icon: {icon}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* SVG STEM CONNECTOR */}
-                <div className="relative pl-6 ml-6 border-l-2 border-dashed border-indigo-300 dark:border-indigo-800 space-y-4 pt-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Nested Features & Actions ({features.length})
-                  </span>
-
-                  {features.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-6 text-center text-xs text-slate-400">
-                      No nested features attached. Switch to Configuration tab to add features.
-                    </div>
-                  ) : (
-                    features.map((feat, idx) => {
-                      const actionBadgeColor =
-                        feat.actionType === "manage" || feat.actionType === "admin"
-                          ? "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border-purple-200"
-                          : feat.actionType === "write"
-                          ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200"
-                          : feat.actionType === "delete"
-                          ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border-rose-200"
-                          : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200";
-
-                      return (
-                        <div
-                          key={idx}
-                          className="relative flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xs hover:border-indigo-300 transition"
-                        >
-                          {/* Branch indicator */}
-                          <div className="absolute -left-6 top-1/2 -mt-px w-6 border-t-2 border-dashed border-indigo-300 dark:border-indigo-800" />
-
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono text-xs font-bold">
-                              {idx + 1}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-slate-900 dark:text-white">
-                                  {feat.name}
-                                </span>
-                                <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                  {feat.code}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 font-mono">
-                                <span>Route: {feat.routePath || "None (Inline)"}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md border ${actionBadgeColor}`}
-                            >
-                              {feat.actionType || "read"}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
+              <ModuleHierarchicalTree
+                module={{
+                  id: initialModule?.id,
+                  name: moduleName,
+                  code: moduleCode,
+                  pathRoute,
+                  icon,
+                  description,
+                  displayOrder,
+                  isActive,
+                  features,
+                }}
+                variant="visual-cards"
+                primaryColor="#4F46E5"
+                onAddFeature={(_mod, groupName) => {
+                  setActiveTab("edit");
+                  handleStartAdd(groupName);
+                }}
+                onEditFeature={(_mod, idx) => {
+                  setActiveTab("edit");
+                  handleEditFeature(idx);
+                }}
+                onDeleteFeature={(_mod, feat) => {
+                  const idx = features.findIndex((f) => (f.id ? f.id === feat.id : f.code === feat.code));
+                  if (idx !== -1) handleDeleteFeature(idx);
+                }}
+              />
             </div>
           ) : (
             /* CONFIGURATION EDIT TAB */
@@ -496,7 +476,7 @@ export default function ModuleTreeBuilderModal({
                   {!isDraftingFeature && (
                     <button
                       type="button"
-                      onClick={handleStartAdd}
+                      onClick={() => handleStartAdd()}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:bg-indigo-100 transition"
                     >
                       <Plus className="h-3.5 w-3.5" />
@@ -521,7 +501,22 @@ export default function ModuleTreeBuilderModal({
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                      <div>
+                        <input
+                          type="text"
+                          list="existing-groups-list"
+                          placeholder="Parent Group (e.g. Lead)"
+                          value={draftGroup}
+                          onChange={(e) => setDraftGroup(e.target.value)}
+                          className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <datalist id="existing-groups-list">
+                          {existingGroups.map((g) => (
+                            <option key={g} value={g} />
+                          ))}
+                        </datalist>
+                      </div>
                       <div>
                         <input
                           type="text"
