@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Plus, Trash2, X, ArrowUpDown, FileText, Copy } from "lucide-react";
+import toast, { Toaster } from "react-hot-toast";
+import { ChevronDown, Plus, Trash2, X, ArrowUpDown, FileText, Copy, Pencil, RotateCcw } from "lucide-react";
 
 export interface ChequeRangeItem {
   id: number;
+  uuid: string;
   cashBank: string;
   name: string;
   fromNumber: number;
@@ -16,14 +18,10 @@ export interface ChequeRangeItem {
 
 export default function ChequeRangePage() {
   // Main Data State (API ready)
-  const [items, setItems] = useState<ChequeRangeItem[]>([
-    { id: 1, cashBank: "-", name: "Mohin", fromNumber: 4, toNumber: 6, numberOfCheque: 3, addedBy: "Admin" },
-    { id: 2, cashBank: "-", name: "Mohin", fromNumber: 2, toNumber: 5, numberOfCheque: 4, addedBy: "Admin" },
-    { id: 3, cashBank: "-", name: "11201", fromNumber: 11201, toNumber: 11300, numberOfCheque: 100, addedBy: "Admin" },
-    { id: 4, cashBank: "-", name: "101-110", fromNumber: 101, toNumber: 110, numberOfCheque: 10, addedBy: "Admin" },
-    { id: 5, cashBank: "-", name: "200-220", fromNumber: 200, toNumber: 220, numberOfCheque: 21, addedBy: "Admin" },
-    { id: 6, cashBank: "-", name: "Trust bank check book q", fromNumber: 911, toNumber: 920, numberOfCheque: 10, addedBy: "Admin" },
-  ]);
+  const [items, setItems] = useState<ChequeRangeItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [editingUuid, setEditingUuid] = useState("");
 
   // Table Filter & Search States
   const [cashBankFilter, setCashBankFilter] = useState("");
@@ -37,12 +35,70 @@ export default function ChequeRangePage() {
   const [modalFromNumber, setModalFromNumber] = useState("");
   const [modalToNumber, setModalToNumber] = useState("");
 
+  const unwrapRecords = (result: Record<string, unknown>): Record<string, unknown>[] => {
+    const nested = result.data as Record<string, unknown> | unknown[] | undefined;
+    if (Array.isArray(nested)) return nested as Record<string, unknown>[];
+    if (nested && typeof nested === "object") {
+      const data = nested.data;
+      if (Array.isArray(data)) return data as Record<string, unknown>[];
+      const items = nested.items;
+      if (Array.isArray(items)) return items as Record<string, unknown>[];
+    }
+    if (Array.isArray(result.items)) return result.items as Record<string, unknown>[];
+    return [];
+  };
+
+  const requestJson = async (url: string, method = "GET", payload?: unknown) => {
+    const response = await fetch(url, {
+      method,
+      headers: payload ? { "Content-Type": "application/json", Accept: "application/json" } : { Accept: "application/json" },
+      body: payload ? JSON.stringify(payload) : undefined,
+      cache: "no-store",
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.success === false) {
+      throw new Error(result.message || result.error || `Request failed (${response.status}).`);
+    }
+    return result;
+  };
+
+  const fetchItems = async () => {
+    setLoading(true);
+    try {
+      const result = await requestJson("/api/backend/cheque-ranges");
+      const records = unwrapRecords(result);
+      setItems(records.map((record, index) => ({
+        id: index + 1,
+        uuid: String(record.uuid ?? record.id ?? ""),
+        cashBank: String(record.cashBank ?? record.bank ?? "-"),
+        name: String(record.name ?? ""),
+        fromNumber: Number(record.fromNumber ?? record.from_number ?? 0),
+        toNumber: Number(record.toNumber ?? record.to_number ?? 0),
+        numberOfCheque: Number(record.numberOfCheque ?? record.number_of_cheque ?? Math.max(0, Number(record.toNumber ?? record.to_number ?? 0) - Number(record.fromNumber ?? record.from_number ?? 0) + 1)),
+        addedBy: String(record.addedBy ?? record.createdBy ?? "—"),
+      })));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Cheque ranges could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchItems();
+  }, []);
+
   // Add Item Submit Handler (Simulate API Call)
-  const handleModalSubmit = (e: React.FormEvent) => {
+  const handleModalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const fromNum = parseInt(modalFromNumber, 10) || 0;
     const toNum = parseInt(modalToNumber, 10) || 0;
     const chequeCount = Math.max(0, toNum - fromNum + 1);
+
+    if (!modalName.trim() || fromNum <= 0 || toNum < fromNum) {
+      toast.error("Enter a name and a valid cheque number range.");
+      return;
+    }
 
     const payload = {
       cashBank: modalChartOfAccount || "-",
@@ -52,13 +108,25 @@ export default function ChequeRangePage() {
       numberOfCheque: chequeCount,
       addedBy: "Admin",
     };
-
-    console.log("Create Cheque Range API Payload:", payload);
-
-    // Update local state
-    setItems((prev) => [...prev, { id: prev.length + 1, ...payload }]);
-
-    // Reset Form & Close Modal
+    setSubmitting(true);
+    try {
+      const url = editingUuid
+        ? `/api/backend/cheque-ranges/${encodeURIComponent(editingUuid)}`
+        : "/api/backend/cheque-ranges";
+      try {
+        await requestJson(url, editingUuid ? "PATCH" : "POST", payload);
+      } catch (error) {
+        if (!editingUuid) throw error;
+        await requestJson(url, "PUT", payload);
+      }
+      toast.success(editingUuid ? "Cheque range updated successfully." : "Cheque range created successfully.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Cheque range could not be saved.");
+    } finally {
+      setSubmitting(false);
+      setEditingUuid("");
+      await fetchItems();
+    }
     setModalChartOfAccount("");
     setModalName("");
     setModalFromNumber("");
@@ -67,9 +135,42 @@ export default function ChequeRangePage() {
   };
 
   // Delete Item Handler (Simulate API Delete)
-  const handleDeleteItem = (id: number) => {
-    console.log("Delete API Request for ID:", id);
-    setItems((prev) => prev.filter((item) => item.id !== id));
+  const handleDeleteItem = async (item: ChequeRangeItem) => {
+    if (!item.uuid || !confirm(`Delete cheque range ${item.name}?`)) return;
+    try {
+      await requestJson(`/api/backend/cheque-ranges/${encodeURIComponent(item.uuid)}`, "DELETE");
+      toast.success("Cheque range deleted successfully.");
+      await fetchItems();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Cheque range could not be deleted.");
+    }
+  };
+
+  const handleEditItem = async (item: ChequeRangeItem) => {
+    if (!item.uuid) return;
+    try {
+      const result = await requestJson(`/api/backend/cheque-ranges/${encodeURIComponent(item.uuid)}`);
+      const record = (result.data?.data ?? result.data ?? result) as Record<string, unknown>;
+      setEditingUuid(item.uuid);
+      setModalChartOfAccount(String(record.cashBank ?? record.bank ?? ""));
+      setModalName(String(record.name ?? item.name));
+      setModalFromNumber(String(record.fromNumber ?? record.from_number ?? item.fromNumber));
+      setModalToNumber(String(record.toNumber ?? record.to_number ?? item.toNumber));
+      setIsModalOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Cheque range could not be loaded.");
+    }
+  };
+
+  const handleRestoreItem = async (item: ChequeRangeItem) => {
+    if (!item.uuid) return;
+    try {
+      await requestJson(`/api/backend/cheque-ranges/${encodeURIComponent(item.uuid)}/restore`, "PATCH");
+      toast.success("Cheque range restored successfully.");
+      await fetchItems();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Cheque range could not be restored.");
+    }
   };
 
   // Search Filtered Data
@@ -82,6 +183,7 @@ export default function ChequeRangePage() {
 
   return (
     <div className="w-full max-w-full overflow-x-hidden min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 p-3 text-xs flex flex-col justify-between">
+      <Toaster position="top-right" />
       <div>
         {/* Top Header & Breadcrumb */}
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -100,7 +202,14 @@ export default function ChequeRangePage() {
           {/* Add Button */}
           <button
             type="button"
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setEditingUuid("");
+              setModalChartOfAccount("");
+              setModalName("");
+              setModalFromNumber("");
+              setModalToNumber("");
+              setIsModalOpen(true);
+            }}
             className="flex items-center gap-1 px-3 py-1.5 bg-[#635BFF] hover:bg-indigo-700 text-white font-medium rounded transition-colors shadow-xs cursor-pointer text-xs"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -230,11 +339,27 @@ export default function ChequeRangePage() {
                     <td className="px-2 py-2 text-center">
                       <button
                         type="button"
-                        onClick={() => handleDeleteItem(item.id)}
+                        onClick={() => void handleDeleteItem(item)}
                         className="p-1 rounded bg-[#EF5350] hover:bg-red-600 text-white transition-colors cursor-pointer"
                         title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleEditItem(item)}
+                        className="ml-1 p-1 rounded bg-indigo-500 hover:bg-indigo-600 text-white transition-colors cursor-pointer"
+                        title="Edit"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleRestoreItem(item)}
+                        className="ml-1 p-1 rounded bg-emerald-500 hover:bg-emerald-600 text-white transition-colors cursor-pointer"
+                        title="Restore"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
                       </button>
                     </td>
                   </tr>
@@ -367,9 +492,10 @@ export default function ChequeRangePage() {
                 </button>
                 <button
                   type="submit"
+                  disabled={submitting}
                   className="px-5 py-1.5 rounded bg-[#635BFF] hover:bg-indigo-700 text-white font-medium text-xs transition-colors cursor-pointer shadow-xs"
                 >
-                  Submit
+                  {submitting ? "Saving..." : editingUuid ? "Update" : "Submit"}
                 </button>
               </div>
             </form>

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { 
   ChevronRight, 
   Search, 
@@ -8,10 +9,13 @@ import {
   Pencil, 
   Trash2, 
   Calendar,
+  Eye,
+  RotateCcw,
   X
 } from 'lucide-react';
 
 interface AssetListItem {
+  uuid: string;
   sl: number;
   name: string;
   location: string;
@@ -29,35 +33,15 @@ export default function AssetManagementSystem() {
   const [activeTab, setActiveTab] = useState<'Asset' | 'Depreciation Board' | 'Movement History' | 'Revaluations History'>('Asset');
 
   // Edit State
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingUuid, setEditingUuid] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [viewAsset, setViewAsset] = useState<Record<string, unknown> | null>(null);
 
   // Asset List State
   const [entries, setEntries] = useState('10');
   const [searchQuery, setSearchQuery] = useState('');
-  const [assets, setAssets] = useState<AssetListItem[]>([
-    {
-      sl: 1,
-      name: 'Office Laptop',
-      location: 'Head Office',
-      acquisitionDate: '01 Dec 2025',
-      originalValue: 5000,
-      method: 'Straight Line',
-      bookValue: 5000,
-      depreciableValue: 5000,
-      status: 'Running'
-    },
-    {
-      sl: 2,
-      name: 'AC Machine',
-      location: 'Branch Office',
-      acquisitionDate: '01 Nov 2025',
-      originalValue: 26000,
-      method: 'Straight Line',
-      bookValue: 26000,
-      depreciableValue: 26000,
-      status: 'Running'
-    }
-  ]);
+  const [assets, setAssets] = useState<AssetListItem[]>([]);
 
   // Dropdown options state (so users can add new items via '+' buttons)
   const [itemList, setItemList] = useState<string[]>(['Office Laptop', 'AC Machine', 'Office Printer', 'Conference Table']);
@@ -73,6 +57,7 @@ export default function AssetManagementSystem() {
   const [originalValue, setOriginalValue] = useState<number | ''>(5000);
   const [acquisitionDate, setAcquisitionDate] = useState('12/01/2025');
   const [project, setProject] = useState('Select a project');
+  const [location, setLocation] = useState('');
   const [notDepreciableValue, setNotDepreciableValue] = useState(0);
   
   // Depreciation Method
@@ -90,13 +75,54 @@ export default function AssetManagementSystem() {
     a.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const normalizeArray = (value: unknown): Record<string, unknown>[] => {
+    if (Array.isArray(value)) return value as Record<string, unknown>[];
+    if (!value || typeof value !== 'object') return [];
+    for (const nested of Object.values(value)) {
+      const found = normalizeArray(nested);
+      if (found.length) return found;
+    }
+    return [];
+  };
+
+  const fetchAssets = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/backend/assets', { headers: { accept: 'application/json' } });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Assets could not be loaded.');
+      const rows = normalizeArray(result.data);
+      setAssets(rows.map((asset, index) => ({
+        uuid: String(asset.uuid ?? ''),
+        sl: index + 1,
+        name: String(asset.itemName ?? ''),
+        location: String(asset.location ?? ''),
+        acquisitionDate: String(asset.acquisitionDate ?? '').slice(0, 10),
+        originalValue: Number(asset.originalValue ?? 0),
+        method: String(asset.method ?? 'Straight Line'),
+        bookValue: Number(asset.bookValue ?? asset.originalValue ?? 0),
+        depreciableValue: Number(asset.depreciableValue ?? 0),
+        status: String(asset.status ?? 'Running'),
+      })));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Assets could not be loaded.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAssets();
+  }, []);
+
   // Open New Asset Form
   const handleOpenNewAssetForm = () => {
-    setEditingId(null);
+    setEditingUuid('');
     setItemName('Select Item');
     setOriginalValue('');
     setAcquisitionDate('12/01/2025');
     setProject('Select a project');
+    setLocation('');
     setNotDepreciableValue(0);
     setMethod('Straight Line');
     setDuration('2');
@@ -107,78 +133,152 @@ export default function AssetManagementSystem() {
   };
 
   // Edit Asset from Table Action
-  const handleEditAsset = (item: AssetListItem) => {
-    setEditingId(item.sl);
-    setItemName(item.name);
-    setOriginalValue(item.originalValue);
-    setAcquisitionDate(item.acquisitionDate);
-    setMethod(item.method);
-    setProject('Sheba Eyecon Tower');
-    setActiveView('details');
+  const handleViewAsset = async (item: AssetListItem) => {
+    try {
+      const response = await fetch(`/api/backend/assets/${encodeURIComponent(item.uuid)}`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Asset details could not be loaded.');
+      const detail = result.data?.data ?? result.data ?? result;
+      setViewAsset(detail && typeof detail === 'object' ? detail as Record<string, unknown> : null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Asset details could not be loaded.');
+    }
+  };
+
+  const handleEditAsset = async (item: AssetListItem) => {
+    try {
+      const response = await fetch(`/api/backend/assets/${encodeURIComponent(item.uuid)}`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Asset could not be loaded.');
+      const asset = result.data?.data ?? result.data ?? result;
+      if (!asset || typeof asset !== 'object') throw new Error('Asset details were invalid.');
+      const record = asset as Record<string, unknown>;
+      setEditingUuid(item.uuid);
+      setItemName(String(record.itemName ?? item.name));
+      if (!itemList.includes(String(record.itemName ?? item.name))) {
+        setItemList((current) => [...current, String(record.itemName ?? item.name)]);
+      }
+      setLocation(String(record.location ?? item.location));
+      setOriginalValue(Number(record.originalValue ?? item.originalValue));
+      setAcquisitionDate(String(record.acquisitionDate ?? item.acquisitionDate).slice(0, 10));
+      setProject(String(record.project ?? 'Select a project'));
+      setNotDepreciableValue(Number(record.notDepreciableValue ?? 0));
+      setMethod(String(record.method ?? item.method));
+      setDuration(String(record.duration ?? '2'));
+      setComputation(String(record.computation ?? 'Select'));
+      setExpenseAccount(String(record.expenseAccount ?? 'Select Account'));
+      setVoucherNo(String(record.voucherNo ?? 'Select Voucher No'));
+      setActiveView('details');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Asset could not be loaded for editing.');
+    }
   };
 
   // Delete Asset from Table Action
-  const handleDeleteAsset = (sl: number) => {
-    if (confirm('Are you sure you want to delete this asset?')) {
-      setAssets(assets.filter(a => a.sl !== sl));
+  const handleDeleteAsset = (item: AssetListItem) => {
+    toast((notification) => (
+      <div className="flex items-center gap-3">
+        <span>Delete {item.name}?</span>
+        <button type="button" onClick={async () => {
+          toast.dismiss(notification.id);
+          const loadingToast = toast.loading('Deleting asset...');
+          try {
+            const response = await fetch(`/api/backend/assets/${encodeURIComponent(item.uuid)}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Asset could not be deleted.');
+            toast.success('Asset deleted successfully.', { id: loadingToast });
+            await fetchAssets();
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Asset could not be deleted.', { id: loadingToast });
+          }
+        }} className="rounded bg-red-600 px-2 py-1 text-xs text-white">Delete</button>
+        <button type="button" onClick={() => toast.dismiss(notification.id)} className="rounded bg-slate-200 px-2 py-1 text-xs text-slate-700">Cancel</button>
+      </div>
+    ), { duration: 8000 });
+  };
+
+  const handleRestoreAsset = async (uuid: string) => {
+    const loadingToast = toast.loading('Restoring asset...');
+    try {
+      const response = await fetch(`/api/backend/assets/${encodeURIComponent(uuid)}/restore`, { method: 'PATCH' });
+      const result = await response.json();
+      if (!response.ok || result.success === false) throw new Error(result.message || 'Asset could not be restored.');
+      toast.success('Asset restored successfully.', { id: loadingToast });
+      setViewAsset(null);
+      await fetchAssets();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Asset could not be restored.', { id: loadingToast });
     }
   };
 
   // Save Asset (Create / Update)
-  const handleSaveAsset = () => {
+  const handleSaveAsset = async () => {
     if (itemName === 'Select Item' || !itemName) {
-      alert('Please select a valid Item Name.');
+      toast.error('Please select a valid Item Name.');
+      return;
+    }
+
+    const numericDuration = Number(duration);
+    if (!Number.isFinite(numericDuration) || !Number.isInteger(numericDuration) || numericDuration < 0) {
+      toast.error('Duration must be a non-negative whole number.');
       return;
     }
 
     const numericValue = typeof originalValue === 'number' ? originalValue : 0;
-
-    if (editingId !== null) {
-      setAssets(assets.map(a => a.sl === editingId ? {
-        ...a,
-        name: itemName,
-        originalValue: numericValue,
-        bookValue: numericValue,
-        depreciableValue: numericValue,
-        method: method,
-        acquisitionDate: acquisitionDate
-      } : a));
-      alert('Asset updated successfully!');
-    } else {
-      const newAsset: AssetListItem = {
-        sl: assets.length + 1,
-        name: itemName,
-        location: 'Head Office',
-        acquisitionDate: acquisitionDate,
-        originalValue: numericValue,
-        method: method,
-        bookValue: numericValue,
-        depreciableValue: numericValue,
-        status: 'Running'
-      };
-      setAssets([...assets, newAsset]);
-      alert('New asset saved successfully!');
+    const bookValue = Math.max(0, numericValue - notDepreciableValue);
+    const payload = {
+      itemName,
+      location,
+      acquisitionDate: /^\d{4}-\d{2}-\d{2}$/.test(acquisitionDate) ? acquisitionDate : acquisitionDate.includes('/') ? acquisitionDate.split('/').reverse().join('-') : acquisitionDate,
+      originalValue: numericValue,
+      notDepreciableValue,
+      bookValue,
+      depreciableValue: Math.max(0, numericValue - notDepreciableValue),
+      method,
+      duration: numericDuration,
+      computation,
+      project: project === 'Select a project' ? '' : project,
+      expenseAccount: expenseAccount === 'Select Account' ? '' : expenseAccount,
+      voucherNo: voucherNo === 'Select Voucher No' ? '' : voucherNo,
+      status: 'Running',
+      addedBy: 'Admin',
+      addedById: 'admin',
+    };
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/backend/assets${editingUuid ? `/${encodeURIComponent(editingUuid)}` : ''}`, {
+        method: editingUuid ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok || result.success === false) throw new Error(result.message || 'Asset could not be saved.');
+      toast.success(editingUuid ? 'Asset updated successfully.' : 'New asset saved successfully.');
+      setEditingUuid('');
+      setActiveView('list');
+      await fetchAssets();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Asset could not be saved.');
+    } finally {
+      setIsSaving(false);
     }
-
-    setActiveView('list');
   };
 
   // Handle Dynamic Modal Submit (+)
   const handleModalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!dynamicInputVal.trim()) {
-      alert('Please enter a value');
+      toast.error('Please enter a value');
       return;
     }
 
     if (modalType === 'item') {
       setItemList([...itemList, dynamicInputVal]);
       setItemName(dynamicInputVal);
-      alert(`New Item "${dynamicInputVal}" added successfully!`);
+      toast.success(`New Item "${dynamicInputVal}" added successfully!`);
     } else if (modalType === 'project') {
       setProjectList([...projectList, dynamicInputVal]);
       setProject(dynamicInputVal);
-      alert(`New Project "${dynamicInputVal}" added successfully!`);
+      toast.success(`New Project "${dynamicInputVal}" added successfully!`);
     }
 
     setDynamicInputVal('');
@@ -288,8 +388,15 @@ export default function AssetManagementSystem() {
                             <Pencil className="w-4 h-4" />
                           </button>
                           {/* Delete Action Button */}
+                          <button
+                            onClick={() => handleViewAsset(item)}
+                            className="bg-sky-600 hover:bg-sky-700 text-white p-2 rounded shadow transition"
+                            title="View Asset"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
                           <button 
-                            onClick={() => handleDeleteAsset(item.sl)} 
+                            onClick={() => handleDeleteAsset(item)} 
                             className="bg-rose-600 hover:bg-rose-700 text-white p-2 rounded shadow transition"
                             title="Delete Asset"
                           >
@@ -326,7 +433,7 @@ export default function AssetManagementSystem() {
               <ChevronRight className="w-5 h-5 text-slate-400" />
               <span onClick={() => setActiveView('list')} className="hover:text-blue-600 cursor-pointer">Asset List</span>
               <ChevronRight className="w-5 h-5 text-slate-400" />
-              <span className="font-semibold text-slate-900">{editingId !== null ? 'Edit Asset' : 'New Asset'}</span>
+              <span className="font-semibold text-slate-900">{editingUuid ? 'Edit Asset' : 'New Asset'}</span>
             </div>
 
             <div className="flex items-center space-x-2">
@@ -410,6 +517,17 @@ export default function AssetManagementSystem() {
                   </div>
 
                   <div>
+                    <label className="block text-slate-700 font-medium mb-1.5">Location</label>
+                    <input
+                      type="text"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="Enter asset location"
+                      className="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-white focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
                     <label className="block text-slate-700 font-medium mb-1.5">Acquisition Date</label>
                     <div className="relative">
                       <input 
@@ -468,10 +586,12 @@ export default function AssetManagementSystem() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
                       <div className="sm:col-span-2">
                         <label className="block text-slate-700 font-medium mb-1.5">Duration</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
                           value={duration} 
-                          onChange={(e) => setDuration(e.target.value)}
+                          onChange={(e) => setDuration(e.target.value === '' ? '' : String(Math.max(0, Math.trunc(Number(e.target.value)))))}
                           className="w-full border border-slate-300 rounded-lg px-4 py-2.5 bg-white focus:outline-none focus:border-purple-500"
                         />
                       </div>
@@ -552,9 +672,10 @@ export default function AssetManagementSystem() {
             <div className="flex items-center space-x-4 pt-6 border-t border-slate-200">
               <button 
                 onClick={handleSaveAsset}
+                disabled={isSaving}
                 className="bg-[#6b58e8] hover:bg-[#5844d0] text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow transition"
               >
-                Save
+                {isSaving ? 'Saving...' : 'Save'}
               </button>
               <button 
                 onClick={() => setActiveView('list')}
@@ -564,6 +685,33 @@ export default function AssetManagementSystem() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {viewAsset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <h3 className="font-bold text-slate-900">Asset Details</h3>
+              <button type="button" onClick={() => setViewAsset(null)} className="text-slate-400 hover:text-slate-700"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="grid max-h-[65vh] grid-cols-1 gap-3 overflow-y-auto p-5 sm:grid-cols-2">
+              {Object.entries(viewAsset).map(([key, value]) => (
+                <div key={key} className="rounded border border-slate-200 p-3">
+                  <div className="text-xs font-medium text-slate-500">{key}</div>
+                  <div className="break-words text-sm text-slate-900">{value === null || value === undefined ? '—' : typeof value === 'object' ? JSON.stringify(value) : String(value)}</div>
+                </div>
+              ))}
+            </div>
+            {typeof viewAsset.uuid === 'string' && (
+              <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-3">
+                <button type="button" onClick={() => handleRestoreAsset(viewAsset.uuid as string)} className="flex items-center gap-1 rounded bg-emerald-600 px-4 py-2 text-sm text-white">
+                  <RotateCcw className="h-4 w-4" /> Restore
+                </button>
+                <button type="button" onClick={() => setViewAsset(null)} className="rounded bg-slate-200 px-4 py-2 text-sm text-slate-700">Close</button>
+              </div>
+            )}
           </div>
         </div>
       )}
