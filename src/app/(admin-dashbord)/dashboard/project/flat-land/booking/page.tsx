@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Plus, X, Loader2, Edit3, Trash2, Eye, Printer, ArrowLeft } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { Plus, X, Loader2, Edit3, Trash2, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
@@ -21,27 +21,28 @@ interface Booking {
   id: string;
   uuid: string;
   code: string;
-  date: string;
+  bookingDate: string;
   projectId: string;
-  customerId: string;
+  flatLandId: string;
   customerName: string;
-  flatLandNo: string;
-  propertyType: string;
-  projectType: string;
-  siteName: string;
   salesBy: string;
-  collectionOfficer: string;
-  attachment: string;
-  totalAmount: number;
+  rate: number;
+  otherCost: number;
+  parking: number;
+  utilityCharge: number;
+  discount: number;
+  subtotal: number;
+  grandTotal: number;
   paid: number;
   due: number;
   status: string;
-  installments: Installment[];
+  attachment?: string;
+  installments?: Installment[];
   paymentMethod?: string;
   chequeNo?: string;
-  bookingMoney?: number;
   termsAndConditions?: string;
   project?: { name: string; uuid: string };
+  flatLand?: { flatLandNo: string; uuid: string };
 }
 
 export default function FlatLandShareBookingPage() {
@@ -50,6 +51,15 @@ export default function FlatLandShareBookingPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   
+  // ✅ Filter State
+  const [filters, setFilters] = useState({
+    startDate: "",
+    endDate: "",
+    salesBy: "",
+    team: "",
+    project: "",
+  });
+
   // View States (1 = List, 2 = Step 1 Form, 3 = Step 2 Form)
   const [viewMode, setViewMode] = useState<1 | 2 | 3>(1);
   const [editingItem, setEditingItem] = useState<Booking | null>(null);
@@ -59,9 +69,13 @@ export default function FlatLandShareBookingPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
   const [projectTypes, setProjectTypes] = useState<any[]>([]);
-  const [salesPersons, setSalesPersons] = useState<any[]>([]); // Assuming API exists or default list
-  const [collectionOfficers, setCollectionOfficers] = useState<any[]>([]); // Assuming API exists or default list
+  const [salesPersons, setSalesPersons] = useState<any[]>([]);
+  const [collectionOfficers, setCollectionOfficers] = useState<any[]>([]);
   const [flatsOrLands, setFlatsOrLands] = useState<any[]>([]);
+  
+  // ✅ API Dropdowns
+  const [teams, setTeams] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>([]);
 
   // Customer Modal State
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -85,7 +99,10 @@ export default function FlatLandShareBookingPage() {
     projectId: "",
     customerId: "",
     customerName: "",
-    flatLandNo: "",
+    flatLandId: "", 
+    flatLandNo: "", 
+    itemId: "",        
+    itemName: "",      
     projectType: "",
     siteName: "",
     salesBy: "",
@@ -113,8 +130,10 @@ export default function FlatLandShareBookingPage() {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      // Note: Assuming API endpoint is /flat-land-offers
-      const res = await fetch(`${API_PATH}/flat-land-offers`);
+      const token = localStorage.getItem("accessToken");
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      const res = await fetch(`${API_PATH}/flat-land-bookings?page=1&limit=100`, { headers });
       const json = await res.json();
       if (json.success) {
         setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
@@ -128,24 +147,46 @@ export default function FlatLandShareBookingPage() {
 
   const fetchDropdowns = async () => {
     try {
-      const resCus = await fetch(`${API_PATH}/customer-account?status=active`);
+      const token = localStorage.getItem("accessToken");
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const resCus = await fetch(`${API_PATH}/customer-account?status=active`, { headers });
       const jsonCus = await resCus.json();
-      if (jsonCus.success) setCustomers(jsonCus.data.data || jsonCus.data || []);
+      if (jsonCus.success) setCustomers(jsonCus.data?.data || jsonCus.data || []);
 
-      const resProj = await fetch(`${API_PATH}/project`);
+      const resProj = await fetch(`${API_PATH}/project`, { headers });
       const jsonProj = await resProj.json();
-      if (jsonProj.success) setProjects(jsonProj.data.data || jsonProj.data || []);
+      if (jsonProj.success) setProjects(jsonProj.data?.data || jsonProj.data || []);
 
-      const resSite = await fetch(`${API_PATH}/project-sites`);
+      const resSite = await fetch(`${API_PATH}/project-sites`, { headers });
       const jsonSite = await resSite.json();
-      if (jsonSite.success) setSites(jsonSite.data.data || jsonSite.data || []);
+      if (jsonSite.success) setSites(jsonSite.data?.data || jsonSite.data || []);
 
-      const resType = await fetch(`${API_PATH}/project-type`);
+      const resType = await fetch(`${API_PATH}/project-type`, { headers });
       const jsonType = await resType.json();
-      if (jsonType.success) setProjectTypes(jsonType.data.data || jsonType.data || []);
+      if (jsonType.success) setProjectTypes(jsonType.data?.data || jsonType.data || []);
 
-      // Mocking Sales & Collection Officers based on screenshot
-      setSalesPersons([{ uuid: "1", name: "Md.Nayon" }, { uuid: "2", name: "Md.Kawsar" }]);
+      const resUsers = await fetch(`${API_PATH}/crm/configuration/teams/dropdown/users`, { headers });
+      const jsonUsers = await resUsers.json();
+      if (jsonUsers.success) {
+        const userData = jsonUsers.data?.users || jsonUsers.data?.data || jsonUsers.data || [];
+        setSalesPersons(Array.isArray(userData) ? userData : []);
+      }
+
+      const resTeams = await fetch(`${API_PATH}/crm/configuration/teams/dropdown`, { headers });
+      const jsonTeams = await resTeams.json();
+      if (jsonTeams.success) setTeams(jsonTeams.data || []);
+
+      const resItems = await fetch(`${API_PATH}/item`, { headers });
+      const jsonItems = await resItems.json();
+      if (jsonItems.success) setItems(jsonItems.data?.data || jsonItems.data || []);
+
+      const resFlats = await fetch(`${API_PATH}/flat-land/flats?page=1&limit=100`, { headers });
+      const jsonFlats = await resFlats.json();
+      if (jsonFlats.success) {
+        setFlatsOrLands(jsonFlats.data?.data || jsonFlats.data || []);
+      }
+
       setCollectionOfficers([
         { uuid: "c1", name: "Ujjal Howlader" },
         { uuid: "c2", name: "Md.Nayon" },
@@ -174,66 +215,134 @@ export default function FlatLandShareBookingPage() {
   // ====================== STEP 1 SAVE & NEXT ======================
   const handleSaveAndNext = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.projectId || !formData.customerId) {
-      toast.error("Project and Customer are required");
+    if (!formData.projectId || !formData.customerId || !formData.flatLandId) {
+      toast.error("Project, Flat/Land, and Customer are required");
       return;
     }
-    setViewMode(3); // Go to Step 2
+    setViewMode(3); 
   };
 
-  // ====================== FINAL SUBMIT (STEP 2) ======================
+  // ====================== FINAL SUBMIT (POST / PUT) ======================
   const handleFinalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const payload = {
       projectId: formData.projectId,
-      title: `Booking for ${formData.flatLandNo}`,
+      flatLandId: formData.flatLandId, 
       code: formData.bookingNo,
-      recordDate: formData.date,
-      amount: formData.grandTotal,
-      status: "active",
-      description: formData.termsAndConditions || "",
-      details: {
-        customerId: formData.customerId,
-        customerName: formData.customerName,
-        flatLandNo: formData.flatLandNo,
-        projectType: formData.projectType,
-        siteName: formData.siteName,
-        salesBy: formData.salesBy,
-        collectionOfficer: formData.collectionOfficer,
-        attachment: formData.attachment,
-        rate: formData.rate,
-        parkingCost: formData.parkingCost,
-        otherCost: formData.otherCost,
-        utilityCharge: formData.utilityCharge,
-        discount: formData.discount,
-        subtotal: formData.subtotal,
-        grandTotal: formData.grandTotal,
-        dueAmount: formData.dueAmount,
-        bookingMoney: formData.bookingMoney,
-        paymentMethod: formData.paymentMethod,
-        chequeNo: formData.chequeNo,
-        installments: formData.installments,
-      }
+      bookingDate: formData.date,
+      customerName: formData.customerName,
+      salesBy: formData.salesBy,
+      rate: Number(formData.rate),
+      otherCost: Number(formData.otherCost),
+      parking: Number(formData.parkingCost), 
+      utilityCharge: Number(formData.utilityCharge),
+      discount: Number(formData.discount),
+      subtotal: Number(formData.subtotal),
+      grandTotal: Number(formData.grandTotal),
+      paid: Number(formData.bookingMoney), 
+      due: Number(formData.dueAmount),     
+      attachment: formData.attachment || null,
+      status: "Pending",
     };
 
     try {
-      const res = await fetch(`${API_PATH}/flat-land-offers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const token = localStorage.getItem("accessToken");
+      const isEdit = !!editingItem;
+      
+      // ✅ এডিট হলে PUT, নতুন হলে POST
+      const url = isEdit 
+        ? `${API_PATH}/flat-land-bookings/${editingItem.uuid}` 
+        : `${API_PATH}/flat-land-bookings`;
+      const method = isEdit ? "PUT" : "POST";
+      
+      const res = await fetch(url, {
+        method,
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(payload),
       });
+
+      const json = await res.json(); 
+
       if (res.ok) {
-        toast.success("Booking Created Successfully!");
+        toast.success(isEdit ? "Booking Updated Successfully!" : "Booking Created Successfully!");
         setViewMode(1);
         setEditingItem(null);
         fetchBookings();
       } else {
-        toast.error("Failed to create booking");
+        console.error("API Error:", json);
+        toast.error(json.message || "Failed to save booking");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Network Error");
+    }
+  };
+
+  // ====================== DELETE BOOKING ======================
+  const handleDelete = async (uuid: string) => {
+    if (!window.confirm("Are you sure you want to delete this booking?")) return;
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      const res = await fetch(`${API_PATH}/flat-land-bookings/${uuid}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      const json = await res.json();
+      if (res.ok || json.success) {
+        toast.success("Deleted successfully!");
+        // লিস্ট থেকে ডেটা সরিয়ে দেওয়া
+        setDataList((prev) => prev.filter((item) => item.uuid !== uuid));
+      } else {
+        toast.error(json.message || "Failed to delete");
       }
     } catch (err) {
       toast.error("Network Error");
     }
+  };
+
+  // ====================== OPEN EDIT ======================
+  const handleEdit = (item: Booking) => {
+    setEditingItem(item);
+    
+    // কাস্টমার আইডি বের করা (যদি API থেকে না আসে)
+    const matchedCustomer = customers.find(c => c.customerName === item.customerName);
+
+    setFormData({
+      date: item.bookingDate || new Date().toISOString().split("T")[0],
+      bookingNo: item.code || `Booking-${Math.floor(10000000 + Math.random() * 90000000)}`,
+      projectId: item.projectId || "",
+      customerId: matchedCustomer?.uuid || "", 
+      customerName: item.customerName || "",
+      flatLandId: item.flatLandId || "",
+      flatLandNo: item.flatLand?.flatLandNo || "",
+      itemId: "", // API রেসপন্সে না থাকলে ফাঁকা থাকবে
+      itemName: "", 
+      projectType: "", 
+      siteName: "", 
+      salesBy: item.salesBy || "",
+      collectionOfficer: "", 
+      attachment: item.attachment || "",
+      rate: Number(item.rate) || 0,
+      parkingCost: Number(item.parking) || 0,
+      otherCost: Number(item.otherCost) || 0,
+      utilityCharge: Number(item.utilityCharge) || 0,
+      discount: Number(item.discount) || 0,
+      subtotal: Number(item.subtotal) || 0,
+      grandTotal: Number(item.grandTotal) || 0,
+      dueAmount: Number(item.due) || 0,
+      bookingMoney: Number(item.paid) || 0,
+      paymentMethod: item.paymentMethod || "",
+      chequeNo: item.chequeNo || "",
+      termsAndConditions: item.termsAndConditions || "",
+      installments: item.installments || [],
+    });
+    setViewMode(2); 
   };
 
   // ====================== INSTALLMENT HANDLERS ======================
@@ -280,6 +389,7 @@ export default function FlatLandShareBookingPage() {
     e.preventDefault();
     setIsCustomerSubmitting(true);
     try {
+      const token = localStorage.getItem("accessToken");
       const payload = {
         customerCode: newCustomer.customerCode,
         customerName: newCustomer.customerName,
@@ -294,7 +404,10 @@ export default function FlatLandShareBookingPage() {
       };
       const res = await fetch(`${API_PATH}/customer-account`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(payload),
       });
       if (res.ok) {
@@ -311,6 +424,38 @@ export default function FlatLandShareBookingPage() {
     }
   };
 
+  // ====================== CLIENT-SIDE FILTERING ======================
+  const filteredData = useMemo(() => {
+    return dataList.filter((item: any) => {
+      const matchesSearch = !search || 
+        item.customerName?.toLowerCase().includes(search.toLowerCase()) ||
+        item.code?.toLowerCase().includes(search.toLowerCase());
+
+      const matchesSalesBy = !filters.salesBy || item.salesBy === filters.salesBy;
+      const matchesProject = !filters.project || item.projectId === filters.project;
+
+      let matchesDate = true;
+      if (filters.startDate || filters.endDate) {
+        const rawDate = item.bookingDate;
+        if (rawDate) {
+          const itemDate = new Date(rawDate).getTime();
+          if (filters.startDate) {
+            const startDate = new Date(filters.startDate).getTime();
+            if (itemDate < startDate) matchesDate = false;
+          }
+          if (filters.endDate) {
+            const endDate = new Date(filters.endDate).getTime();
+            if (itemDate > endDate) matchesDate = false;
+          }
+        }
+      }
+
+      const matchesTeam = !filters.team || item.team === filters.team;
+
+      return matchesSearch && matchesSalesBy && matchesProject && matchesDate && matchesTeam;
+    });
+  }, [dataList, search, filters]);
+
   // ====================== RENDER VIEWS ======================
   
   // 1. LIST VIEW
@@ -324,35 +469,38 @@ export default function FlatLandShareBookingPage() {
           </button>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white p-4 border rounded shadow-sm mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 bg-white p-4 border rounded mb-4 shadow-sm">
           <div>
-            <label className="block text-xs text-gray-600 mb-1">Select Date</label>
-            <input type="text" placeholder="1 October, 2026 - 31 October, 2026" className="w-full border rounded px-3 py-2 text-sm" />
+            <label className="block text-xs text-gray-600 mb-1">Select Start Date</label>
+            <input type="date" value={filters.startDate} onChange={(e) => setFilters({ ...filters, startDate: e.target.value })} className="w-full border rounded px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Select End Date</label>
+            <input type="date" value={filters.endDate} onChange={(e) => setFilters({ ...filters, endDate: e.target.value })} className="w-full border rounded px-3 py-2 text-sm" />
           </div>
           <div>
             <label className="block text-xs text-gray-600 mb-1">Sales By</label>
-            <select className="w-full border rounded px-3 py-2 text-sm">
-              <option>Select value</option>
+            <select value={filters.salesBy} onChange={(e) => setFilters({ ...filters, salesBy: e.target.value })} className="w-full border rounded px-3 py-2 text-sm">
+              <option value="">Select value</option>
               {salesPersons.map(s => <option key={s.uuid} value={s.name}>{s.name}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs text-gray-600 mb-1">Team</label>
-            <select className="w-full border rounded px-3 py-2 text-sm">
-              <option>Select value</option>
+            <select value={filters.team} onChange={(e) => setFilters({ ...filters, team: e.target.value })} className="w-full border rounded px-3 py-2 text-sm">
+              <option value="">Select value</option>
+              {teams.map(t => <option key={t.uuid} value={t.name}>{t.name}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs text-gray-600 mb-1">Project</label>
-            <select className="w-full border rounded px-3 py-2 text-sm">
-              <option>Select Project</option>
+            <select value={filters.project} onChange={(e) => setFilters({ ...filters, project: e.target.value })} className="w-full border rounded px-3 py-2 text-sm">
+              <option value="">Select Project</option>
               {projects.map(p => <option key={p.uuid} value={p.uuid}>{p.name}</option>)}
             </select>
           </div>
         </div>
 
-        {/* Table */}
         <div className="bg-white p-4 border rounded shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <div className="flex gap-2">
@@ -378,24 +526,32 @@ export default function FlatLandShareBookingPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {dataList.length === 0 ? (
+                  {filteredData.length === 0 ? (
                     <tr><td colSpan={14} className="text-center py-8 text-gray-500">No data available in table</td></tr>
                   ) : (
-                    dataList.map((item, index) => (
+                    filteredData.map((item, index) => (
                       <tr key={item.uuid} className="hover:bg-gray-50">
                         <td className="px-3 py-2">{index + 1}</td>
-                        <td className="px-3 py-2">{item.date}</td>
+                        <td className="px-3 py-2">{item.bookingDate}</td>
                         <td className="px-3 py-2">{item.code}</td>
                         <td className="px-3 py-2">{item.project?.name || "N/A"}</td>
-                        <td className="px-3 py-2 text-indigo-600">{item.flatLandNo}</td>
+                        <td className="px-3 py-2 text-indigo-600">{item.flatLand?.flatLandNo || "-"}</td>
                         <td className="px-3 py-2 text-indigo-600">{item.customerName}</td>
-                        <td className="px-3 py-2">{item.totalAmount}</td>
+                        <td className="px-3 py-2">{item.rate}</td>
+                        <td className="px-3 py-2">{item.parking}</td>
+                        <td className="px-3 py-2">{item.utilityCharge}</td>
+                        <td className="px-3 py-2 font-bold">{item.grandTotal}</td>
                         <td className="px-3 py-2">{item.paid}</td>
                         <td className="px-3 py-2">{item.due}</td>
                         <td className="px-3 py-2">{item.salesBy}</td>
                         <td className="px-3 py-2 flex gap-1">
-                          <button className="bg-teal-400 text-white p-1.5 rounded hover:bg-teal-500"><Edit3 className="w-3.5 h-3.5" /></button>
-                          <button className="bg-red-500 text-white p-1.5 rounded hover:bg-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                          {/* ✅ Edit & Delete Buttons */}
+                          <button onClick={() => handleEdit(item)} className="bg-teal-500 text-white p-1.5 rounded hover:bg-teal-600">
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => handleDelete(item.uuid)} className="bg-red-500 text-white p-1.5 rounded hover:bg-red-600">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -414,8 +570,10 @@ export default function FlatLandShareBookingPage() {
     return (
       <div className="min-h-screen bg-gray-50 p-6 font-sans text-gray-800">
         <div className="flex justify-between items-center mb-4">
-          <div className="text-sm text-gray-500">Home &gt; Flat/Land/Share &gt; Flat/Land/Share Booking</div>
-          <button onClick={() => setViewMode(1)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm">Flat/Land/Share Booking list</button>
+          <div className="text-sm text-gray-500">
+            {editingItem ? "Edit Booking" : "Home > Flat/Land/Share > Flat/Land/Share Booking"}
+          </div>
+          <button onClick={() => { setViewMode(1); setEditingItem(null); }} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm">Flat/Land/Share Booking list</button>
         </div>
 
         <div className="flex gap-6">
@@ -438,10 +596,31 @@ export default function FlatLandShareBookingPage() {
                       {projects.map(p => <option key={p.uuid} value={p.uuid}>{p.name}</option>)}
                     </select>
                   </div>
+                  
                   <div className="flex items-center gap-4">
                     <label className="w-1/3 text-right text-sm">Flat/Land/Share No</label>
-                    <input type="text" value={formData.flatLandNo} onChange={e => setFormData({ ...formData, flatLandNo: e.target.value })} className="w-2/3 border rounded px-3 py-1.5 text-sm" placeholder="Select Flat/Land/Share No" />
+                    <select required value={formData.flatLandId} onChange={e => {
+                      const selectedFlat = flatsOrLands.find(f => f.uuid === e.target.value);
+                      setFormData({ ...formData, flatLandId: e.target.value, flatLandNo: selectedFlat?.flatLandNo || "" });
+                    }} className="w-2/3 border rounded px-3 py-1.5 text-sm">
+                      <option value="">Select Flat/Land</option>
+                      {flatsOrLands.map(f => (
+                        <option key={f.uuid} value={f.uuid}>{f.flatLandNo}</option>
+                      ))}
+                    </select>
                   </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <label className="w-1/3 text-right text-sm">Item</label>
+                    <select value={formData.itemId} onChange={e => {
+                        const selectedItem = items.find(i => i.uuid === e.target.value);
+                        setFormData({ ...formData, itemId: e.target.value, itemName: selectedItem?.itemName || "" });
+                      }} className="w-2/3 border rounded px-3 py-1.5 text-sm">
+                      <option value="">Select Item</option>
+                      {items.map(it => <option key={it.uuid} value={it.uuid}>{it.itemName} {it.brand ? `(${it.brand})` : ""}</option>)}
+                    </select>
+                  </div>
+
                   <div className="flex items-center gap-4">
                     <label className="w-1/3 text-right text-sm">Attachment</label>
                     <input type="file" className="w-2/3 border rounded px-3 py-1 text-sm" onChange={e => setFormData({ ...formData, attachment: e.target.files?.[0]?.name || "" })} />
@@ -519,6 +698,87 @@ export default function FlatLandShareBookingPage() {
             </div>
           </div>
         </div>
+
+        {/* Customer Modal */}
+        {isCustomerModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg w-full max-w-4xl shadow-xl max-h-[90vh] flex flex-col">
+              <div className="flex justify-between items-center p-4 border-b bg-gray-50">
+                <h2 className="text-lg font-bold">Customer Add</h2>
+                <button onClick={() => setIsCustomerModalOpen(false)}><X className="w-5 h-5 text-gray-500" /></button>
+              </div>
+              <div className="p-4 overflow-y-auto flex-1">
+                <form onSubmit={handleCreateCustomer} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Code <span className="text-red-500">*</span></label>
+                      <input type="text" value={newCustomer.customerCode} readOnly className="w-full border rounded px-3 py-1.5 text-sm bg-gray-100" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Name <span className="text-red-500">*</span></label>
+                      <input type="text" value={newCustomer.customerName} onChange={e => setNewCustomer({...newCustomer, customerName: e.target.value})} required className="w-full border rounded px-3 py-1.5 text-sm" placeholder="Name" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Mobile <span className="text-red-500">*</span></label>
+                      <input type="text" value={newCustomer.mobileNo} onChange={e => setNewCustomer({...newCustomer, mobileNo: e.target.value})} required className="w-full border rounded px-3 py-1.5 text-sm" placeholder="Mobile" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">E-mail</label>
+                      <input type="email" value={newCustomer.email} onChange={e => setNewCustomer({...newCustomer, email: e.target.value})} className="w-full border rounded px-3 py-1.5 text-sm" placeholder="E-mail" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">NID</label>
+                      <input type="text" value={newCustomer.nidOrPassport} onChange={e => setNewCustomer({...newCustomer, nidOrPassport: e.target.value})} className="w-full border rounded px-3 py-1.5 text-sm" placeholder="NID" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Address</label>
+                      <input type="text" value={newCustomer.address} onChange={e => setNewCustomer({...newCustomer, address: e.target.value})} className="w-full border rounded px-3 py-1.5 text-sm" placeholder="Address" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Chart Of Groups*</label>
+                      <input type="text" value={newCustomer.chartOfGroups} onChange={e => setNewCustomer({...newCustomer, chartOfGroups: e.target.value})} className="w-full border rounded px-3 py-1.5 text-sm" placeholder="Select One Option" />
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <div className="bg-indigo-500 text-white px-3 py-1 font-bold rounded-t">Nominee Details</div>
+                    <div className="border border-t-0 p-3 rounded-b bg-gray-50">
+                      {newCustomer.nominees.map((nom, idx) => (
+                        <div key={idx} className="grid grid-cols-5 gap-2 mb-2 items-end">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Nominee Name</label>
+                            <input type="text" value={nom.name} onChange={e => updateNominee(idx, "name", e.target.value)} className="w-full border rounded px-2 py-1 text-sm" placeholder="Nominee Name" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Nominee NID</label>
+                            <input type="text" value={nom.nid} onChange={e => updateNominee(idx, "nid", e.target.value)} className="w-full border rounded px-2 py-1 text-sm" placeholder="Nominee NID" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Relation</label>
+                            <input type="text" value={nom.relation} onChange={e => updateNominee(idx, "relation", e.target.value)} className="w-full border rounded px-2 py-1 text-sm" placeholder="Relation" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Percentage</label>
+                            <input type="text" value={nom.percentage} onChange={e => updateNominee(idx, "percentage", e.target.value)} className="w-full border rounded px-2 py-1 text-sm" placeholder="Percentage" />
+                          </div>
+                          <button type="button" onClick={() => removeNominee(idx)} className="bg-red-500 text-white p-1.5 rounded hover:bg-red-600 h-[32px] flex items-center justify-center"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      ))}
+                      <button type="button" onClick={handleAddNominee} className="bg-indigo-500 text-white px-3 py-1 rounded text-sm flex items-center gap-1 mt-2"><Plus className="w-4 h-4"/> Add Nominee</button>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-4 mt-4 border-t">
+                    <button type="button" onClick={() => setIsCustomerModalOpen(false)} className="bg-gray-400 text-white px-6 py-2 rounded text-sm">Close</button>
+                    <button type="submit" disabled={isCustomerSubmitting} className="bg-indigo-600 text-white px-6 py-2 rounded text-sm flex items-center gap-2">
+                      {isCustomerSubmitting && <Loader2 className="w-4 h-4 animate-spin" />} Submit
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -529,7 +789,7 @@ export default function FlatLandShareBookingPage() {
       <div className="min-h-screen bg-gray-50 p-6 font-sans text-gray-800">
         <div className="flex justify-between items-center mb-4">
           <button onClick={() => setViewMode(2)} className="bg-indigo-600 text-white px-4 py-2 rounded text-sm flex items-center gap-1"><ArrowLeft className="w-4 h-4"/> Previous</button>
-          <button onClick={() => setViewMode(1)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm">Flat/Land/Share Booking list</button>
+          <button onClick={() => { setViewMode(1); setEditingItem(null); }} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm">Flat/Land/Share Booking list</button>
         </div>
 
         <div className="bg-white p-6 rounded shadow-sm border mb-6">
@@ -557,7 +817,6 @@ export default function FlatLandShareBookingPage() {
         </div>
 
         <div className="flex gap-6">
-          {/* Left Column: Installments */}
           <div className="flex-1 bg-white p-4 rounded shadow-sm border">
             <div className="flex gap-4 items-center mb-4">
               <label className="text-sm">Payment Schedule</label>
@@ -610,7 +869,6 @@ export default function FlatLandShareBookingPage() {
             </table>
           </div>
 
-          {/* Right Column: Payment Info */}
           <div className="w-1/3 bg-white p-4 rounded shadow-sm border">
             <div className="space-y-2 text-sm mb-6">
               <div className="flex justify-between items-center"><span>Rate</span><input type="number" value={formData.rate} onChange={e => setFormData({...formData, rate: Number(e.target.value)})} className="border rounded px-2 py-1 w-1/2 text-right" /></div>
@@ -632,7 +890,6 @@ export default function FlatLandShareBookingPage() {
           </div>
         </div>
 
-        {/* Terms & Conditions */}
         <div className="bg-white p-4 rounded shadow-sm border mt-6">
           <h3 className="font-bold mb-2">Terms & Conditions</h3>
           <div className="border rounded bg-white">
@@ -642,120 +899,14 @@ export default function FlatLandShareBookingPage() {
         </div>
 
         <div className="flex justify-center mt-6">
-          <button onClick={handleFinalSubmit} className="bg-green-500 text-white px-8 py-2 rounded shadow hover:bg-green-600">Submit</button>
+          {/* ✅ এডিট এবং নতুন বুকিং এর জন্য ডাইনামিক বাটন */}
+          <button onClick={handleFinalSubmit} className="bg-green-500 text-white px-8 py-2 rounded shadow hover:bg-green-600">
+            {editingItem ? "Update Booking" : "Submit"}
+          </button>
         </div>
       </div>
     );
   }
 
-  // CUSTOMER MODAL
-  return (
-    <div>
-      {isCustomerModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-4xl shadow-xl max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center p-4 border-b bg-gray-50">
-              <h2 className="text-lg font-bold">Customer Add</h2>
-              <button onClick={() => setIsCustomerModalOpen(false)}><X className="w-5 h-5 text-gray-500" /></button>
-            </div>
-            <div className="p-4 overflow-y-auto flex-1">
-              <form onSubmit={handleCreateCustomer} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Code <span className="text-red-500">*</span></label>
-                    <input type="text" value={newCustomer.customerCode} readOnly className="w-full border rounded px-3 py-1.5 text-sm bg-gray-100" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Name <span className="text-red-500">*</span></label>
-                    <input type="text" value={newCustomer.customerName} onChange={e => setNewCustomer({...newCustomer, customerName: e.target.value})} required className="w-full border rounded px-3 py-1.5 text-sm" placeholder="Name" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Mobile <span className="text-red-500">*</span></label>
-                    <input type="text" value={newCustomer.mobileNo} onChange={e => setNewCustomer({...newCustomer, mobileNo: e.target.value})} required className="w-full border rounded px-3 py-1.5 text-sm" placeholder="Mobile" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">E-mail</label>
-                    <input type="email" value={newCustomer.email} onChange={e => setNewCustomer({...newCustomer, email: e.target.value})} className="w-full border rounded px-3 py-1.5 text-sm" placeholder="E-mail" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">NID</label>
-                    <input type="text" value={newCustomer.nidOrPassport} onChange={e => setNewCustomer({...newCustomer, nidOrPassport: e.target.value})} className="w-full border rounded px-3 py-1.5 text-sm" placeholder="NID" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Address</label>
-                    <input type="text" value={newCustomer.address} onChange={e => setNewCustomer({...newCustomer, address: e.target.value})} className="w-full border rounded px-3 py-1.5 text-sm" placeholder="Address" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Buyer Reference</label>
-                    <input type="text" className="w-full border rounded px-3 py-1.5 text-sm" placeholder="Buyer Reference" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Credit Limit</label>
-                    <input type="text" className="w-full border rounded px-3 py-1.5 text-sm" placeholder="Credit Limit" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Due Date</label>
-                    <input type="date" className="w-full border rounded px-3 py-1.5 text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Opening Balance</label>
-                    <input type="text" className="w-full border rounded px-3 py-1.5 text-sm" placeholder="Opening Balance" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Image</label>
-                    <input type="file" className="w-full border rounded px-3 py-1 text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Chart Of Groups*</label>
-                    <input type="text" value={newCustomer.chartOfGroups} onChange={e => setNewCustomer({...newCustomer, chartOfGroups: e.target.value})} className="w-full border rounded px-3 py-1.5 text-sm" placeholder="Select One Option" />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 mt-4">
-                  <input type="checkbox" />
-                  <label className="text-sm">Create User</label>
-                </div>
-
-                {/* Nominee Details */}
-                <div className="mt-6">
-                  <div className="bg-indigo-500 text-white px-3 py-1 font-bold rounded-t">Nominee Details</div>
-                  <div className="border border-t-0 p-3 rounded-b bg-gray-50">
-                    {newCustomer.nominees.map((nom, idx) => (
-                      <div key={idx} className="grid grid-cols-5 gap-2 mb-2 items-end">
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">Nominee Name</label>
-                          <input type="text" value={nom.name} onChange={e => updateNominee(idx, "name", e.target.value)} className="w-full border rounded px-2 py-1 text-sm" placeholder="Nominee Name" />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">Nominee NID</label>
-                          <input type="text" value={nom.nid} onChange={e => updateNominee(idx, "nid", e.target.value)} className="w-full border rounded px-2 py-1 text-sm" placeholder="Nominee NID" />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">Relation</label>
-                          <input type="text" value={nom.relation} onChange={e => updateNominee(idx, "relation", e.target.value)} className="w-full border rounded px-2 py-1 text-sm" placeholder="Relation" />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">Percentage</label>
-                          <input type="text" value={nom.percentage} onChange={e => updateNominee(idx, "percentage", e.target.value)} className="w-full border rounded px-2 py-1 text-sm" placeholder="Percentage" />
-                        </div>
-                        <button type="button" onClick={() => removeNominee(idx)} className="bg-red-500 text-white p-1.5 rounded hover:bg-red-600 h-[32px] flex items-center justify-center"><Trash2 className="w-4 h-4" /></button>
-                      </div>
-                    ))}
-                    <button type="button" onClick={handleAddNominee} className="bg-indigo-500 text-white px-3 py-1 rounded text-sm flex items-center gap-1 mt-2"><Plus className="w-4 h-4"/> Add Nominee</button>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4 mt-4 border-t">
-                  <button type="button" onClick={() => setIsCustomerModalOpen(false)} className="bg-gray-400 text-white px-6 py-2 rounded text-sm">Close</button>
-                  <button type="submit" disabled={isCustomerSubmitting} className="bg-indigo-600 text-white px-6 py-2 rounded text-sm flex items-center gap-2">
-                    {isCustomerSubmitting && <Loader2 className="w-4 h-4 animate-spin" />} Submit
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  return null;
 }
