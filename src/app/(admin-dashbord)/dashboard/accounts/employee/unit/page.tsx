@@ -1,350 +1,523 @@
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+import React, { useState, useEffect } from "react";
+import {
+  Search,
+  Plus,
+  Edit3,
+  Trash2,
+  X,
+  Check,
+  Loader2,
+  Package,
+} from "lucide-react";
 
-import React, { useState } from "react";
-import { Plus, Pencil, Trash2, ArrowUpDown, X } from "lucide-react";
-
-// API থেকে আসা ডেটার TypeScript Interface
-interface UnitItem {
-  id: number;
-  sl: number;
+// ---------- Types ----------
+export interface Unit {
+  id: number | string;
+  uuid: string;
   name: string;
+  status: string;
 }
 
-// API যুক্ত করার আগ পর্যন্ত মক ডাটা (Mock Data)
-const initialUnitData: UnitItem[] = [
-  { id: 1, sl: 1, name: "Software Development" },
-  { id: 2, sl: 2, name: "Head Office" },
-  { id: 3, sl: 3, name: "Site" },
-  { id: 4, sl: 4, name: "Architecture" },
-  { id: 5, sl: 5, name: "General" },
-  { id: 6, sl: 6, name: "Marketing" },
-  { id: 7, sl: 7, name: "Servicing" },
-];
+// ---------- API helpers ----------
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
 
-export default function UnitListPage() {
-  // Main States
-  const [units, setUnits] = useState<UnitItem[]>(initialUnitData);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [entriesPerPage, setEntriesPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+async function handleRes(res: Response, action: string) {
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg =
+      json?.message || json?.error || `Failed to ${action} (${res.status})`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+  return json;
+}
 
-  // Modal & Form States
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingUnit, setEditingUnit] = useState<UnitItem | null>(null);
-  const [unitName, setUnitName] = useState("");
+async function fetchUnits(): Promise<{ data: Unit[]; meta: any }> {
+  const url = `${API_BASE}/realbizpro/api/v1/unit?page=1&limit=100&skip=0&status=active&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
+  console.log("GET units →", url);
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+  });
+  const json = await handleRes(res, "fetch units");
+  console.log("GET units response →", json);
 
-  /* 
-    TODO: API Integration Example (Fetch Units)
-    useEffect(() => {
-      const fetchUnits = async () => {
-        try {
-          const res = await fetch('/api/units');
-          const data = await res.json();
-          setUnits(data);
-        } catch (error) {
-          console.error("Failed to fetch units", error);
-        }
-      };
-      fetchUnits();
-    }, []);
-  */
+  const mapped: Unit[] = (json?.data?.data || [])
+    .map((item: any) => ({
+      id: item.id ?? item.uuid,
+      uuid: item.uuid,
+      name: item.name || "",
+      status: item.status || "active",
+    }))
+    .filter((item: Unit) => item.status?.toLowerCase() === "active");
 
-  // Add Modal Open Handler
-  const handleOpenAddModal = () => {
-    setEditingUnit(null);
-    setUnitName("");
-    setIsModalOpen(true);
-  };
+  return { data: mapped, meta: json?.data?.meta };
+}
 
-  // Edit Modal Open Handler
-  const handleOpenEditModal = (unit: UnitItem) => {
-    setEditingUnit(unit);
-    setUnitName(unit.name);
-    setIsModalOpen(true);
-  };
+async function createUnit(payload: Record<string, any>) {
+  console.log("POST payload →", payload);
+  const res = await fetch(`${API_BASE}/realbizpro/api/v1/unit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json = await handleRes(res, "create unit");
+  console.log("POST response →", json);
+  return json;
+}
 
-  // Delete Handler (API Ready)
-  const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to delete this unit?")) {
-      /* TODO: API Delete Call Here
-         await fetch(`/api/units/${id}`, { method: 'DELETE' });
-      */
+async function updateUnit(uuid: string, payload: Record<string, any>) {
+  console.log("PATCH", uuid, "payload →", payload);
+  const res = await fetch(`${API_BASE}/realbizpro/api/v1/unit/${uuid}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json = await handleRes(res, "update unit");
+  console.log("PATCH response →", json);
+  return json;
+}
 
-      setUnits((prev) => prev.filter((item) => item.id !== id));
-    }
-  };
+async function softDeleteUnit(uuid: string) {
+  console.log("DELETE →", uuid);
+  const res = await fetch(`${API_BASE}/realbizpro/api/v1/unit/${uuid}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+  });
+  const json = await handleRes(res, "delete unit");
+  console.log("DELETE response →", json);
+  return json;
+}
 
-  // Form Submit Handler (Add & Edit - API Ready)
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!unitName.trim()) return;
-
-    if (editingUnit) {
-      /* TODO: API Edit/Update Call Here
-         await fetch(`/api/units/${editingUnit.id}`, { 
-           method: 'PUT', 
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ name: unitName }) 
-         });
-      */
-
-      // Edit State Update
-      setUnits((prev) =>
-        prev.map((item) =>
-          item.id === editingUnit.id ? { ...item, name: unitName.trim() } : item
-        )
-      );
-    } else {
-      /* TODO: API Add Call Here
-         await fetch('/api/units', { 
-           method: 'POST', 
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ name: unitName }) 
-         });
-      */
-
-      // Add New State Update
-      const newUnit: UnitItem = {
-        id: Date.now(),
-        sl: units.length + 1,
-        name: unitName.trim(),
-      };
-      setUnits((prev) => [...prev, newUnit]);
-    }
-
-    // Reset Form & Close Modal
-    setUnitName("");
-    setEditingUnit(null);
-    setIsModalOpen(false);
-  };
-
-  // Filter Units based on Search Input
-  const filteredUnits = units.filter((unit) =>
-    unit.name.toLowerCase().includes(searchTerm.toLowerCase())
+async function restoreUnit(uuid: string) {
+  console.log("PATCH restore →", uuid);
+  const res = await fetch(
+    `${API_BASE}/realbizpro/api/v1/unit/${uuid}/restore`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+    },
   );
+  const json = await handleRes(res, "restore unit");
+  console.log("RESTORE response →", json);
+  return json;
+}
+
+const toApiPayload = (data: { name: string }) => ({
+  name: data.name,
+  status: "active",
+});
+
+// ---------- Form Modal ----------
+function UnitFormModal({
+  title,
+  initialData,
+  onClose,
+  onSubmit,
+}: {
+  title: string;
+  initialData?: Unit;
+  onClose: () => void;
+  onSubmit: (data: { name: string }) => Promise<void>;
+}) {
+  const [name, setName] = useState(initialData?.name || "");
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      setFormError("Unit name is required");
+      return;
+    }
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      await onSubmit({ name });
+    } catch (err: any) {
+      setFormError(err?.message || "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-black text-slate-800 dark:text-slate-100 p-4 md:p-6 transition-colors duration-200">
-      {/* Top Header Section: Breadcrumb & Add Button */}
-      <div className="flex items-center justify-between mb-4">
-        <nav className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 font-medium">
-          <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
-            Home
-          </span>
-          <span>&gt;</span>
-          <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
-            Employee
-          </span>
-          <span>&gt;</span>
-          <span className="text-slate-400 dark:text-slate-500">Unit List</span>
-        </nav>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 overflow-y-auto">
+      <div className="bg-white border border-slate-200 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden my-8">
+        <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-100">
+          <h3 className="font-semibold text-slate-900 text-base flex items-center gap-2">
+            <Package className="w-4 h-4 text-indigo-600" />
+            {title}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-slate-600 hover:text-slate-800 border border-slate-300 hover:bg-slate-100 p-1 rounded-md transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
-        {/* Unit Add Button */}
-        <button
-          onClick={handleOpenAddModal}
-          className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-sm cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Unit Add
-        </button>
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Unit Name */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">
+              Unit Name <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              autoFocus
+              placeholder="Enter Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            />
+          </div>
+
+          {formError && (
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-lg text-xs">
+              {formError}
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="px-5 py-2 bg-slate-400 hover:bg-slate-500 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              Close
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center gap-1.5"
+            >
+              {submitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+              Submit
+            </button>
+          </div>
+        </form>
       </div>
+    </div>
+  );
+}
 
-      {/* Main Content Card */}
-      <div className="bg-white dark:bg-[#080d1a] rounded-xl shadow-lg border border-slate-200 dark:border-[#131c31] p-5 mb-6">
-        {/* Filter & Search Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+// ---------- Main Page ----------
+export default function UnitListPage() {
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetchUnits();
+      console.log("Loaded units →", res.data.length);
+      setUnits(res.data);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to load units");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const filteredUnits = units.filter((item) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  const totalPages =
+    Math.ceil(filteredUnits.length / entriesPerPage) || 1;
+  const startIndex = (currentPage - 1) * entriesPerPage;
+  const currentTableData = filteredUnits.slice(
+    startIndex,
+    startIndex + entriesPerPage,
+  );
+
+  const handleDelete = async (unit: Unit) => {
+    if (!confirm(`Delete unit "${unit.name}"?`)) return;
+
+    const uuidToDelete = unit.uuid || String(unit.id);
+    if (!uuidToDelete) {
+      alert("UUID is missing – cannot delete");
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await softDeleteUnit(uuidToDelete);
+
+      // Optimistic UI
+      setUnits((prev) =>
+        prev.filter(
+          (item) => (item.uuid || String(item.id)) !== uuidToDelete,
+        ),
+      );
+
+      if (currentTableData.length === 1 && currentPage > 1) {
+        setCurrentPage((p) => p - 1);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Delete failed. Please try again.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Optional: restore handler (future: "Show Deleted" toggle)
+  const handleRestore = async (uuid: string) => {
+    try {
+      setActionLoading(true);
+      await restoreUnit(uuid);
+      await loadData();
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Restore failed.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-white text-slate-900 p-4 sm:p-6 flex flex-col justify-between">
+      <div className="space-y-4">
+        {/* Breadcrumb & Top Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <div className="text-xs text-slate-500 flex items-center gap-1 mb-1">
+              <span>Home</span> / <span>Employee</span> /{" "}
+              <span className="text-indigo-600 font-medium">Unit List</span>
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+              Unit Management
+            </h1>
+          </div>
+
+          <button
+            onClick={() => setIsAddOpen(true)}
+            className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Unit Add
+          </button>
+        </div>
+
+        {/* Controls */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/70 p-3 rounded-xl border border-slate-200/60">
+          <div className="flex items-center gap-2 text-sm text-slate-600">
             <span>Show</span>
             <select
               value={entriesPerPage}
-              onChange={(e) => setEntriesPerPage(Number(e.target.value))}
-              className="bg-slate-50 dark:bg-[#030712] border border-slate-200 dark:border-[#1e293b] rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+              onChange={(e) => {
+                setEntriesPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="border border-slate-300 rounded-md px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value={10}>10</option>
-              <option value={20}>20</option>
+              <option value={25}>25</option>
               <option value={50}>50</option>
             </select>
             <span>entries</span>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
-            <span>Search:</span>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search..."
-              className="w-full sm:w-64 px-3 py-1.5 text-xs bg-slate-50 dark:bg-[#030712] border border-slate-200 dark:border-[#1e293b] rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-            />
-          </div>
-        </div>
-
-        {/* Responsive Table */}
-        <div className="overflow-x-auto border border-slate-200 dark:border-[#131c31] rounded-lg">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-indigo-600 dark:bg-[#030712] text-white dark:text-slate-300 font-semibold border-b border-indigo-700 dark:border-[#131c31] tracking-wider">
-                <th className="p-3 w-16">
-                  <div className="flex items-center gap-1">
-                    SL
-                    <ArrowUpDown className="w-3 h-3 text-indigo-200 dark:text-slate-500" />
-                  </div>
-                </th>
-                <th className="p-3">
-                  <div className="flex items-center gap-1">
-                    NAME
-                    <ArrowUpDown className="w-3 h-3 text-indigo-200 dark:text-slate-500" />
-                  </div>
-                </th>
-                <th className="p-3 text-center w-28">
-                  <div className="flex items-center justify-center gap-1">
-                    ACTION
-                    <ArrowUpDown className="w-3 h-3 text-indigo-200 dark:text-slate-500" />
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-[#131c31]/80 bg-white dark:bg-[#080d1a]">
-              {filteredUnits.length > 0 ? (
-                filteredUnits.map((item, index) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-slate-50 dark:hover:bg-[#0e1628] transition-colors"
-                  >
-                    <td className="p-3 text-slate-600 dark:text-slate-400 font-medium">
-                      {index + 1}
-                    </td>
-                    <td className="p-3 text-slate-800 dark:text-slate-200 font-medium">
-                      {item.name}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center justify-center gap-1.5">
-                        {/* EDIT BUTTON */}
-                        <button
-                          onClick={() => handleOpenEditModal(item)}
-                          className="p-1.5 rounded bg-cyan-500 hover:bg-cyan-600 text-white transition-colors shadow-sm cursor-pointer"
-                          title="Edit Unit"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* DELETE BUTTON */}
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="p-1.5 rounded bg-rose-500 hover:bg-rose-600 text-white transition-colors shadow-sm cursor-pointer"
-                          title="Delete Unit"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="p-4 text-center text-slate-500 dark:text-slate-400"
-                  >
-                    No units found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination Footer */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-4 text-xs text-slate-500 dark:text-slate-400">
-          <div>
-            Showing 1 to {filteredUnits.length} of {filteredUnits.length} entries
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              className="px-3 py-1.5 rounded border border-slate-200 dark:border-[#1e293b] text-slate-400 dark:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-900 disabled:opacity-40 cursor-not-allowed"
-              disabled
-            >
-              Previous
-            </button>
-            <button className="px-3 py-1.5 rounded bg-indigo-600 text-white font-medium">
-              1
-            </button>
-            <button
-              className="px-3 py-1.5 rounded border border-slate-200 dark:border-[#1e293b] text-slate-400 dark:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-900 disabled:opacity-40 cursor-not-allowed"
-              disabled
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* UNIT ADD / EDIT MODAL */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#080d1a] border border-slate-200 dark:border-[#131c31] rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-[#131c31]">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-                {editingUnit ? "Unit Edit" : "Unit Add"}
-              </h3>
-              <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setEditingUnit(null);
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <span className="text-sm text-slate-600">Search:</span>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
                 }}
-                className="w-7 h-7 flex items-center justify-center rounded border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+                placeholder="Search units..."
+                className="w-full pl-9 pr-3 py-1.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Loading / Error */}
+        {loading && (
+          <div className="flex items-center justify-center py-16 text-slate-500">
+            <Loader2 className="w-6 h-6 animate-spin mr-2" />
+            Loading units...
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg text-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={loadData} className="underline text-xs font-medium">
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Table */}
+        {!loading && !error && (
+          <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs bg-white">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr className="bg-indigo-500 text-white font-medium text-xs tracking-wider uppercase">
+                    <th className="py-3 px-4 w-20">SL</th>
+                    <th className="py-3 px-4">Name</th>
+                    <th className="py-3 px-4 text-center w-32">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {currentTableData.length > 0 ? (
+                    currentTableData.map((item, index) => (
+                      <tr
+                        key={item.uuid || item.id}
+                        className="hover:bg-slate-50/80 transition-colors"
+                      >
+                        <td className="py-3 px-4 font-medium text-slate-600">
+                          {startIndex + index + 1}
+                        </td>
+                        <td className="py-3 px-4 font-medium text-slate-900">
+                          {item.name || "—"}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="inline-flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => setEditingUnit(item)}
+                              title="Edit Unit"
+                              className="p-1.5 bg-cyan-400 hover:bg-cyan-500 text-white rounded-md transition-colors"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(item)}
+                              disabled={actionLoading}
+                              title="Delete Unit"
+                              className="p-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-md transition-colors disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="text-center py-10 text-slate-400 font-medium"
+                      >
+                        No matching records found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
 
-            {/* Modal Form */}
-            <form onSubmit={handleSubmit} className="p-5 space-y-5">
-              {/* Input Field */}
+            {/* Pagination */}
+            <div className="flex flex-col sm:flex-row items-center justify-between p-3 border-t border-slate-200 bg-white gap-2 text-xs text-slate-500">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Unit Name<span className="text-rose-500 ml-0.5">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter Name"
-                  value={unitName}
-                  onChange={(e) => setUnitName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-[#030712] border border-slate-200 dark:border-[#1e293b] rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
+                Showing {filteredUnits.length > 0 ? startIndex + 1 : 0} to{" "}
+                {Math.min(startIndex + entriesPerPage, filteredUnits.length)} of{" "}
+                {filteredUnits.length} entries
               </div>
-
-              {/* Modal Actions */}
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="inline-flex items-center gap-1">
                 <button
-                  type="button"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setEditingUnit(null);
-                  }}
-                  className="px-6 py-2 text-xs font-medium rounded bg-slate-400 dark:bg-slate-600 hover:bg-slate-500 dark:hover:bg-slate-500 text-white transition-colors cursor-pointer"
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-1 rounded border border-slate-200 ${
+                    currentPage === 1
+                      ? "bg-slate-50 text-slate-400 cursor-not-allowed"
+                      : "hover:bg-slate-50 text-slate-600"
+                  }`}
                 >
-                  Close
+                  Previous
                 </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1 rounded font-medium ${
+                        currentPage === page
+                          ? "border border-indigo-600 bg-indigo-600 text-white"
+                          : "border border-slate-200 hover:bg-slate-50 text-slate-600"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ),
+                )}
                 <button
-                  type="submit"
-                  className="px-6 py-2 text-xs font-medium rounded bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-sm cursor-pointer"
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(p + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className={`px-3 py-1 rounded border border-slate-200 ${
+                    currentPage === totalPages || totalPages === 0
+                      ? "bg-slate-50 text-slate-400 cursor-not-allowed"
+                      : "hover:bg-slate-50 text-slate-600"
+                  }`}
                 >
-                  {editingUnit ? "Update" : "Submit"}
+                  Next
                 </button>
               </div>
-            </form>
+            </div>
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* Add Modal */}
+      {isAddOpen && (
+        <UnitFormModal
+          title="Unit Add"
+          onClose={() => setIsAddOpen(false)}
+          onSubmit={async (data) => {
+            await createUnit(toApiPayload(data));
+            setIsAddOpen(false);
+            await loadData();
+          }}
+        />
       )}
 
-      {/* Page Footer */}
-      <footer className="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 dark:text-slate-600 border-t border-slate-200/60 dark:border-[#131c31] pt-4">
-        <div>2026 © Somikoron IT LTD</div>
-        <div>Design &amp; Developed by Somikoron IT LTD</div>
-      </footer>
+      {/* Edit Modal */}
+      {editingUnit && (
+        <UnitFormModal
+          title="Unit Add"
+          initialData={editingUnit}
+          onClose={() => setEditingUnit(null)}
+          onSubmit={async (data) => {
+            if (!editingUnit.uuid) throw new Error("UUID is missing");
+            await updateUnit(editingUnit.uuid, toApiPayload(data));
+            setEditingUnit(null);
+            await loadData();
+          }}
+        />
+      )}
     </div>
   );
 }

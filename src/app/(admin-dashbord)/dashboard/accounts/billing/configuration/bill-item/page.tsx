@@ -1,628 +1,927 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-  ChevronDown,
+  Home,
+  ChevronRight,
   Plus,
   ArrowLeft,
-  X,
   Edit,
   Trash2,
-  ArrowUpDown,
+  X,
+  Loader2,
+  Save,
 } from "lucide-react";
 
+// ==================== TYPES ====================
 export interface BillItem {
-  id: number;
+  id: number | string;
+  uuid: string;
   code: string;
   name: string;
   purchasePrice: number;
   salePrice: number;
   description: string;
-  category: string;
-  unit: string;
+  categoryId: string;
+  categoryName: string;
+  subCategoryId: string;
+  subCategoryName: string;
   brand: string;
+  unit: string;
+  projectId: string;
 }
 
-function ItemListPage() {
-  // Main Data State (API Ready)
-  const [items, setItems] = useState<BillItem[]>([
-    {
-      id: 1,
-      code: "P0006",
-      name: "cbv",
-      purchasePrice: 0,
-      salePrice: 0,
-      description: "",
-      category: "Sand",
-      unit: "Set",
-      brand: "ABC",
-    },
-    {
-      id: 2,
-      code: "P0005",
-      name: "hhh",
-      purchasePrice: 0,
-      salePrice: 0,
-      description: "",
-      category: "Cement",
-      unit: "Rft",
-      brand: "ABC",
-    },
-    {
-      id: 3,
-      code: "P0004",
-      name: "purch",
-      purchasePrice: 0,
-      salePrice: 0,
-      description: "",
-      category: "Rod",
-      unit: "Rft",
-      brand: "BSRM",
-    },
-    {
-      id: 4,
-      code: "P0003",
-      name: "purchase",
-      purchasePrice: 0,
-      salePrice: 0,
-      description: "",
-      category: "Rod",
-      unit: "Sft",
-      brand: "BSRM",
-    },
-    {
-      id: 5,
-      code: "P0002",
-      name: "grfg",
-      purchasePrice: 0,
-      salePrice: 0,
-      description: "",
-      category: "Cement",
-      unit: "Rft",
-      brand: "BBH",
-    },
-    {
-      id: 6,
-      code: "P0001",
-      name: "test",
-      purchasePrice: 0,
-      salePrice: 0,
-      description: "",
-      category: "Cement",
-      unit: "Bag",
-      brand: "Seven Rings",
-    },
-  ]);
+interface RelatedOption {
+  uuid: string;
+  name: string;
+  categoryId?: string;
+}
 
-  // Controls & Filter States
-  const [entriesPerPage, setEntriesPerPage] = useState(10);
+interface ProjectOption {
+  uuid: string;
+  name: string;
+}
+
+// ==================== API CONFIG ====================
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
+const API_PREFIX = "/realbizpro/api/v1";
+
+const BILL_ITEM_API = `${API_BASE_URL}${API_PREFIX}/project-billing/bill-items`;
+const CATEGORY_API = `${API_BASE_URL}${API_PREFIX}/category`;
+const SUB_CATEGORY_API = `${API_BASE_URL}${API_PREFIX}/billing-sub-category`;
+const PROJECT_API = `${API_BASE_URL}${API_PREFIX}/project`;
+
+// ==================== HELPERS ====================
+const generateItemCode = () => {
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `P${String(rand).padStart(4, "0")}`;
+};
+
+const toYMD = (d?: string | null) => {
+  if (!d) return new Date().toISOString().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  try {
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return new Date().toISOString().slice(0, 10);
+    return date.toISOString().slice(0, 10);
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+};
+
+// ==================== API PAYLOAD BUILDER ====================
+const toApiPayload = (data: {
+  projectId: string;
+  code: string;
+  name: string;
+  purchasePrice: string;
+  salePrice: string;
+  description: string;
+  categoryId: string;
+  subCategoryId: string;
+  brand: string;
+  unit: string;
+}) => ({
+  projectId: data.projectId,
+  title: data.name,
+  code: data.code,
+  recordDate: toYMD(new Date().toISOString()),
+  amount: Number(data.purchasePrice) || 0,
+  status: "active",
+  description: data.description || "",
+  details: {
+    purchasePrice: Number(data.purchasePrice) || 0,
+    salePrice: Number(data.salePrice) || 0,
+    categoryId: data.categoryId || "",
+    subCategoryId: data.subCategoryId || "",
+    brand: data.brand || "",
+    unit: data.unit || "",
+  },
+});
+
+// ==================== GENERIC OPTIONS FETCHER ====================
+async function fetchRelatedOptions(
+  endpoint: string,
+  label: string,
+): Promise<RelatedOption[]> {
+  try {
+    const query = new URLSearchParams({ page: "1", limit: "100" });
+    const res = await fetch(`${endpoint}?${query}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      console.warn(`Failed to fetch ${label}: ${res.status}`);
+      return [];
+    }
+    const json = await res.json();
+    const rows =
+      json?.data?.data ??
+      (Array.isArray(json?.data) ? json.data : null) ??
+      json?.rows ??
+      [];
+    return Array.isArray(rows)
+      ? rows
+          .filter((row: any) => row?.uuid)
+          .map((row: any) => ({
+            uuid: String(row.uuid),
+            name: String(
+              row.name ||
+                row.title ||
+                row.categoryName ||
+                row.subCategoryName ||
+                "Unnamed",
+            ),
+            categoryId: row.categoryId ? String(row.categoryId) : undefined,
+          }))
+      : [];
+  } catch (err) {
+    console.error(`fetchRelatedOptions(${label}) error:`, err);
+    return [];
+  }
+}
+
+async function fetchProjects(): Promise<ProjectOption[]> {
+  try {
+    const query = new URLSearchParams({ page: "1", limit: "100" });
+    const res = await fetch(`${PROJECT_API}?${query}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      console.warn(`Failed to fetch projects: ${res.status}`);
+      return [];
+    }
+    const json = await res.json();
+    const rows =
+      json?.data?.data ?? (Array.isArray(json?.data) ? json.data : null) ?? [];
+    return Array.isArray(rows)
+      ? rows
+          .filter((p: any) => p?.uuid)
+          .map((p: any) => ({
+            uuid: String(p.uuid),
+            name: String(p.name || p.projectName || p.code || "Unnamed"),
+          }))
+      : [];
+  } catch (err) {
+    console.error("fetchProjects error:", err);
+    return [];
+  }
+}
+
+// ==================== API FUNCTIONS ====================
+async function fetchBillItems(): Promise<BillItem[]> {
+  const query = new URLSearchParams({ page: "1", limit: "100" });
+  const res = await fetch(`${BILL_ITEM_API}?${query}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      err?.message || `Failed to fetch bill items: ${res.status}`,
+    );
+  }
+  const json = await res.json();
+  const rows = json?.data?.data ?? json?.data ?? [];
+
+  return Array.isArray(rows)
+    ? rows.map((item: any) => {
+        const details = item.details || {};
+        return {
+          id: item.id ?? item.uuid,
+          uuid: item.uuid,
+          projectId: item.projectId || item.project?.uuid || "",
+          code: item.code || "",
+          name: item.title || item.name || "",
+          purchasePrice: Number(details.purchasePrice ?? item.amount ?? 0),
+          salePrice: Number(details.salePrice ?? 0),
+          description: item.description || "",
+          categoryId: details.categoryId || item.categoryId || "",
+          categoryName:
+            item.category?.name ||
+            details.categoryName ||
+            details.categoryId ||
+            "",
+          subCategoryId: details.subCategoryId || item.subCategoryId || "",
+          subCategoryName:
+            item.subCategory?.name ||
+            details.subCategoryName ||
+            details.subCategoryId ||
+            "",
+          brand: details.brand || item.brand || "",
+          unit: details.unit || item.unit || "",
+        };
+      })
+    : [];
+}
+
+async function createBillItem(payload: Record<string, any>) {
+  console.log("POST payload →", payload);
+  const res = await fetch(BILL_ITEM_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    console.error("POST error →", err);
+    throw new Error(err?.message || "Create bill item failed");
+  }
+  return res.json();
+}
+
+async function updateBillItem(uuid: string, payload: Record<string, any>) {
+  console.log("PATCH", uuid, "payload →", payload);
+  const res = await fetch(`${BILL_ITEM_API}/${uuid}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    console.error("PATCH error →", err);
+    throw new Error(err?.message || "Update bill item failed");
+  }
+  return res.json();
+}
+
+async function deleteBillItem(uuid: string) {
+  const res = await fetch(`${BILL_ITEM_API}/${uuid}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || "Delete bill item failed");
+  }
+  return res.json().catch(() => ({}));
+}
+
+// ==================== MAIN PAGE ====================
+export default function BillItemListPage() {
+  const [billItems, setBillItems] = useState<BillItem[]>([]);
+  const [categories, setCategories] = useState<RelatedOption[]>([]);
+  const [subCategories, setSubCategories] = useState<RelatedOption[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [searchQuery, setSearchQuery] = useState("");
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Action Dropdown State
-  const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  // Modal States
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Modals
+  const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<BillItem | null>(null);
 
-  // Form Field States
-  const [category, setCategory] = useState("");
-  const [subCategory, setSubCategory] = useState("");
-  const [brand, setBrand] = useState("");
-  const [itemName, setItemName] = useState("");
-  const [unit, setUnit] = useState("");
-  const [purchasePrice, setPurchasePrice] = useState<string | number>("");
-  const [salePrice, setSalePrice] = useState<string | number>("");
-  const [description, setDescription] = useState("");
+  // Form
+  const [formData, setFormData] = useState({
+    projectId: "",
+    code: generateItemCode(),
+    name: "",
+    purchasePrice: "",
+    salePrice: "",
+    description: "",
+    categoryId: "",
+    subCategoryId: "",
+    brand: "",
+    unit: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Open Add Modal
-  const handleOpenAddModal = () => {
-    setEditingItem(null);
-    setCategory("");
-    setSubCategory("");
-    setBrand("");
-    setItemName("");
-    setUnit("");
-    setPurchasePrice("");
-    setSalePrice("");
-    setDescription("");
-    setIsModalOpen(true);
-  };
-
-  // Open Edit Modal
-  const handleOpenEditModal = (item: BillItem) => {
-    setEditingItem(item);
-    setCategory(item.category);
-    setSubCategory("");
-    setBrand(item.brand);
-    setItemName(item.name);
-    setUnit(item.unit);
-    setPurchasePrice(item.purchasePrice);
-    setSalePrice(item.salePrice);
-    setDescription(item.description);
-    setIsModalOpen(true);
-    setActiveDropdownId(null);
-  };
-
-  // Handle Form Submit (Add or Edit API integration point)
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (editingItem) {
-      const updatedPayload = {
-        name: itemName,
-        category: category || "General",
-        brand: brand || "Generic",
-        unit: unit || "Pcs",
-        purchasePrice: Number(purchasePrice) || 0,
-        salePrice: Number(salePrice) || 0,
-        description,
-      };
-      console.log("Edit Item API Payload:", editingItem.id, updatedPayload);
-
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === editingItem.id ? { ...item, ...updatedPayload } : item,
-        ),
-      );
-    } else {
-      const newPayload = {
-        id: items.length + 1,
-        code: `P000${items.length + 1}`,
-        name: itemName,
-        category: category || "General",
-        brand: brand || "Generic",
-        unit: unit || "Pcs",
-        purchasePrice: Number(purchasePrice) || 0,
-        salePrice: Number(salePrice) || 0,
-        description,
-      };
-      console.log("Create Item API Payload:", newPayload);
-
-      setItems((prev) => [newPayload, ...prev]);
+  // ==================== LOAD DATA ====================
+  const loadBillItems = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchBillItems();
+      setBillItems(data);
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || "Failed to load bill items");
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    setIsModalOpen(false);
-  };
+  useEffect(() => {
+    loadBillItems();
+    fetchRelatedOptions(CATEGORY_API, "categories")
+      .then(setCategories)
+      .catch((e) => console.error("categories:", e));
+    fetchRelatedOptions(SUB_CATEGORY_API, "sub categories")
+      .then(setSubCategories)
+      .catch((e) => console.error("sub categories:", e));
+    fetchProjects()
+      .then(setProjects)
+      .catch((e) => console.error("projects:", e));
+  }, [loadBillItems]);
 
-  // Handle Delete
-  const handleDelete = (id: number) => {
-    console.log("Delete Item API Request for ID:", id);
-    setItems((prev) => prev.filter((item) => item.id !== id));
-    setActiveDropdownId(null);
-  };
-
-  // Filtered Items for Search
-  const filteredItems = items.filter((item) => {
+  // ==================== FILTER ====================
+  const filtered = billItems.filter((item) => {
+    const q = searchQuery.toLowerCase();
     return (
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.brand.toLowerCase().includes(searchQuery.toLowerCase())
+      item.name.toLowerCase().includes(q) ||
+      item.code.toLowerCase().includes(q) ||
+      item.categoryName.toLowerCase().includes(q) ||
+      item.brand.toLowerCase().includes(q)
     );
   });
 
+  const totalPages = Math.ceil(filtered.length / entriesPerPage) || 1;
+  const startIndex = (currentPage - 1) * entriesPerPage;
+  const paginated = filtered.slice(startIndex, startIndex + entriesPerPage);
+
+  // ==================== FILTERED OPTIONS ====================
+  const filteredSubCategories = formData.categoryId
+    ? subCategories.filter(
+        (s) => !s.categoryId || s.categoryId === formData.categoryId,
+      )
+    : subCategories;
+
+  // ==================== RESET ====================
+  const resetForm = () => {
+    setFormData({
+      projectId: "",
+      code: generateItemCode(),
+      name: "",
+      purchasePrice: "",
+      salePrice: "",
+      description: "",
+      categoryId: "",
+      subCategoryId: "",
+      brand: "",
+      unit: "",
+    });
+    setFormError(null);
+  };
+
+  // ==================== OPEN ADD / EDIT ====================
+  const handleOpenAdd = () => {
+    resetForm();
+    setIsAddOpen(true);
+  };
+
+  const handleOpenEdit = (item: BillItem) => {
+    setEditingItem(item);
+    setFormData({
+      projectId: item.projectId || "",
+      code: item.code || "",
+      name: item.name || "",
+      purchasePrice: String(item.purchasePrice || ""),
+      salePrice: String(item.salePrice || ""),
+      description: item.description || "",
+      categoryId: item.categoryId || "",
+      subCategoryId: item.subCategoryId || "",
+      brand: item.brand || "",
+      unit: item.unit || "",
+    });
+    setFormError(null);
+  };
+
+  // ==================== CREATE ====================
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.projectId) {
+      setFormError("Project is required");
+      return;
+    }
+    if (!formData.name.trim()) {
+      setFormError("Item Name is required");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setFormError(null);
+
+      const payload = toApiPayload(formData);
+      await createBillItem(payload);
+
+      setIsAddOpen(false);
+      resetForm();
+      await loadBillItems();
+    } catch (err: any) {
+      setFormError(err?.message || "Create failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ==================== UPDATE ====================
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem?.uuid) return;
+
+    if (!formData.projectId) {
+      setFormError("Project is required");
+      return;
+    }
+    if (!formData.name.trim()) {
+      setFormError("Item Name is required");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setFormError(null);
+
+      const payload = toApiPayload(formData);
+      await updateBillItem(editingItem.uuid, payload);
+
+      setEditingItem(null);
+      resetForm();
+      await loadBillItems();
+    } catch (err: any) {
+      setFormError(err?.message || "Update failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ==================== DELETE ====================
+  const handleDelete = async (item: BillItem) => {
+    if (!item.uuid) return;
+    if (!confirm(`Delete bill item "${item.name}"?`)) return;
+    try {
+      setActionLoading(true);
+      await deleteBillItem(item.uuid);
+      setBillItems((prev) => prev.filter((c) => c.uuid !== item.uuid));
+    } catch (err: any) {
+      alert(err?.message || "Delete failed");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ==================== RENDER ====================
   return (
-    <div className="w-full max-w-full overflow-x-hidden min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 p-3 text-xs flex flex-col justify-between">
-      <div>
-        {/* Navigation & Header Buttons */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <nav className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 font-medium">
-            <Link
-              href="/"
-              className="text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
+    <div className="min-h-screen bg-slate-50 text-slate-900 p-4 sm:p-6 font-sans">
+      <div className="max-w-[1400px] mx-auto space-y-4">
+        {/* HEADER */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+            <div className="flex items-center gap-1 hover:text-indigo-600 cursor-pointer">
+              <Home className="w-3.5 h-3.5" />
               Home
-            </Link>
-            <span>&gt;</span>
-            <span className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 cursor-pointer">
-              Billing <ChevronDown className="w-3 h-3" />
-            </span>
-            <span>&gt;</span>
-            <span className="text-slate-400 font-normal truncate">
-              Item List
-            </span>
-          </nav>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-slate-600">Billing</span>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-indigo-600 font-semibold">Item List</span>
+          </div>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleOpenAddModal}
-              className="flex items-center gap-1 px-3 py-1.5 bg-[#635BFF] hover:bg-indigo-700 text-white font-medium rounded transition-colors shadow-xs cursor-pointer text-xs"
+              onClick={handleOpenAdd}
+              className="inline-flex items-center gap-1.5 bg-[#5949d6] hover:bg-[#4d3ec2] text-white text-xs font-semibold px-4 py-2 rounded shadow-sm transition-all cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-4 h-4" />
               Bill Item Add
             </button>
             <button
               type="button"
-              className="flex items-center gap-1 px-3 py-1.5 bg-[#2D4A43] hover:bg-[#233a34] text-white font-medium rounded transition-colors shadow-xs cursor-pointer text-xs"
+              onClick={() => window.history.back()}
+              className="inline-flex items-center gap-1.5 bg-[#1e7e34] hover:bg-[#155d27] text-white text-xs font-semibold px-4 py-2 rounded shadow-sm transition-all cursor-pointer"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
+              <ArrowLeft className="w-4 h-4" />
               Back to Previous
             </button>
           </div>
         </div>
 
-        {/* Table Header Controls (Show Entries & Search) */}
-        <div className="bg-white dark:bg-slate-900 rounded-t border border-b-0 border-slate-200 dark:border-slate-800 p-2.5 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
-            <span>Show</span>
-            <select
-              value={entriesPerPage}
-              onChange={(e) => setEntriesPerPage(Number(e.target.value))}
-              className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-0.5 outline-none"
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
-            <span>entries</span>
+        {/* ERROR */}
+        {error && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded text-xs flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={loadBillItems} className="underline text-xs">
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* TABLE CARD */}
+        <div className="bg-white rounded border border-slate-200 shadow-2xs">
+          <div className="flex flex-col sm:flex-row items-center justify-between p-3 gap-3">
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <span>Show</span>
+              <select
+                value={entriesPerPage}
+                onChange={(e) => {
+                  setEntriesPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <span>entries</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-600">Search:</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-56 px-3 py-1.5 text-xs border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-600 dark:text-slate-400">Search:</span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-0.5 outline-none focus:border-indigo-500"
-            />
-          </div>
-        </div>
-
-        {/* Table View */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-          <table className="w-full table-fixed text-left border-collapse text-xs">
-            <thead className="bg-[#635BFF] text-white font-semibold uppercase text-[10px] tracking-wider">
-              <tr>
-                <th className="w-[5%] px-2.5 py-2">
-                  <div className="flex items-center justify-between">
-                    ID <ArrowUpDown className="w-2.5 h-2.5 opacity-70" />
-                  </div>
-                </th>
-                <th className="w-[8%] px-2.5 py-2">
-                  <div className="flex items-center justify-between">
-                    CODE <ArrowUpDown className="w-2.5 h-2.5 opacity-70" />
-                  </div>
-                </th>
-                <th className="w-[14%] px-2.5 py-2">
-                  <div className="flex items-center justify-between">
-                    NAME <ArrowUpDown className="w-2.5 h-2.5 opacity-70" />
-                  </div>
-                </th>
-                <th className="w-[12%] px-2.5 py-2">
-                  <div className="flex items-center justify-between">
-                    PURCHASE PRICE{" "}
-                    <ArrowUpDown className="w-2.5 h-2.5 opacity-70" />
-                  </div>
-                </th>
-                <th className="w-[10%] px-2.5 py-2">
-                  <div className="flex items-center justify-between">
-                    SALE PRICE{" "}
-                    <ArrowUpDown className="w-2.5 h-2.5 opacity-70" />
-                  </div>
-                </th>
-                <th className="w-[15%] px-2.5 py-2">
-                  <div className="flex items-center justify-between">
-                    DESCRIPTION{" "}
-                    <ArrowUpDown className="w-2.5 h-2.5 opacity-70" />
-                  </div>
-                </th>
-                <th className="w-[12%] px-2.5 py-2">
-                  <div className="flex items-center justify-between">
-                    CATEGORY <ArrowUpDown className="w-2.5 h-2.5 opacity-70" />
-                  </div>
-                </th>
-                <th className="w-[8%] px-2.5 py-2">
-                  <div className="flex items-center justify-between">
-                    UNIT <ArrowUpDown className="w-2.5 h-2.5 opacity-70" />
-                  </div>
-                </th>
-                <th className="w-[10%] px-2.5 py-2">
-                  <div className="flex items-center justify-between">
-                    BRAND <ArrowUpDown className="w-2.5 h-2.5 opacity-70" />
-                  </div>
-                </th>
-                <th className="w-[6%] px-2 py-2 text-center">
-                  <div className="flex items-center justify-center">ACTION</div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-              {filteredItems.length > 0 ? (
-                filteredItems.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                  >
-                    <td className="px-2.5 py-2 text-slate-800 dark:text-slate-100">
-                      {item.id}
-                    </td>
-                    <td className="px-2.5 py-2 text-slate-700 dark:text-slate-300 truncate">
-                      {item.code}
-                    </td>
-                    <td className="px-2.5 py-2 text-slate-700 dark:text-slate-300 truncate font-medium">
-                      {item.name}
-                    </td>
-                    <td className="px-2.5 py-2 text-slate-700 dark:text-slate-300">
-                      {item.purchasePrice}
-                    </td>
-                    <td className="px-2.5 py-2 text-slate-700 dark:text-slate-300">
-                      {item.salePrice}
-                    </td>
-                    <td className="px-2.5 py-2 text-slate-700 dark:text-slate-300 truncate">
-                      {item.description || "-"}
-                    </td>
-                    <td className="px-2.5 py-2 text-slate-700 dark:text-slate-300 truncate">
-                      {item.category}
-                    </td>
-                    <td className="px-2.5 py-2 text-slate-700 dark:text-slate-300 truncate">
-                      {item.unit}
-                    </td>
-                    <td className="px-2.5 py-2 text-slate-700 dark:text-slate-300 truncate">
-                      {item.brand}
-                    </td>
-                    <td className="px-2 py-2 text-center relative">
-                      {/* Action Dropdown Trigger */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setActiveDropdownId(
-                            activeDropdownId === item.id ? null : item.id,
-                          )
-                        }
-                        className="p-1 rounded bg-[#00B5D8] hover:bg-cyan-600 text-white transition-colors cursor-pointer inline-flex items-center justify-center"
-                        title="Actions"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                      </button>
-
-                      {/* Action Dropdown Menu */}
-                      {activeDropdownId === item.id && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-10"
-                            onClick={() => setActiveDropdownId(null)}
-                          />
-                          <div className="absolute right-2 mt-1 w-28 bg-white dark:bg-slate-900 rounded-md shadow-lg border border-slate-200 dark:border-slate-800 z-20 py-1 text-left">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditModal(item)}
-                              className="w-full flex items-center gap-2 px-3 py-1.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs cursor-pointer"
-                            >
-                              <Edit className="w-3.5 h-3.5 text-indigo-500" />
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(item.id)}
-                              className="w-full flex items-center gap-2 px-3 py-1.5 text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="bg-[#5949d6] text-white font-semibold uppercase">
+                  <th className="py-2.5 px-3 w-12">ID</th>
+                  <th className="py-2.5 px-3">CODE</th>
+                  <th className="py-2.5 px-3">NAME</th>
+                  <th className="py-2.5 px-3 text-right">PURCHASE PRICE</th>
+                  <th className="py-2.5 px-3 text-right">SALE PRICE</th>
+                  <th className="py-2.5 px-3">DESCRIPTION</th>
+                  <th className="py-2.5 px-3">CATEGORY</th>
+                  <th className="py-2.5 px-3">UNIT</th>
+                  <th className="py-2.5 px-3">BRAND</th>
+                  <th className="py-2.5 px-3 text-center w-28">ACTION</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {loading ? (
+                  <tr>
+                    <td
+                      colSpan={10}
+                      className="text-center py-10 text-slate-400"
+                    >
+                      <Loader2 className="w-5 h-5 animate-spin mx-auto" />
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={10}
-                    className="px-3 py-4 text-center text-slate-400 italic"
-                  >
-                    No matching items found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination Footer */}
-        <div className="bg-white dark:bg-slate-900 rounded-b border border-t-0 border-slate-200 dark:border-slate-800 p-2.5 flex items-center justify-between text-slate-500 dark:text-slate-400 mb-4">
-          <div>
-            Showing 1 to {filteredItems.length} of {filteredItems.length}{" "}
-            entries
+                ) : paginated.length > 0 ? (
+                  paginated.map((item, index) => (
+                    <tr
+                      key={item.uuid || item.id}
+                      className="hover:bg-indigo-50/40 transition-colors"
+                    >
+                      <td className="py-2.5 px-3 font-medium text-slate-600">
+                        {startIndex + index + 1}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-700 font-mono">
+                        {item.code}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-700">
+                        {item.name}
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-slate-700">
+                        {item.purchasePrice}
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-slate-700">
+                        {item.salePrice}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-600 max-w-xs truncate">
+                        {item.description || "-"}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-700">
+                        {item.categoryName || "-"}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-700">
+                        {item.unit || "-"}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-700">
+                        {item.brand || "-"}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(item)}
+                            title="Edit"
+                            className="bg-cyan-400 hover:bg-cyan-500 text-white p-1.5 rounded transition-colors"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(item)}
+                            disabled={actionLoading}
+                            title="Delete"
+                            className="bg-rose-500 hover:bg-rose-600 text-white p-1.5 rounded transition-colors disabled:opacity-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={10}
+                      className="text-center py-10 text-slate-400 font-medium"
+                    >
+                      No bill items found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
 
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled
-              className="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              className="px-3 py-1 rounded bg-[#635BFF] text-white font-medium"
-            >
-              1
-            </button>
-            <button
-              type="button"
-              disabled
-              className="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
-            >
-              Next
-            </button>
+          <div className="flex flex-col sm:flex-row items-center justify-between p-3 border-t border-slate-200 gap-2 text-xs text-slate-500">
+            <div>
+              Showing {filtered.length === 0 ? 0 : startIndex + 1} to{" "}
+              {Math.min(startIndex + entriesPerPage, filtered.length)} of{" "}
+              {filtered.length} entries
+            </div>
+            <div className="inline-flex items-center gap-1">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1 rounded border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setCurrentPage(p)}
+                  className={`px-3 py-1 rounded font-semibold ${
+                    currentPage === p
+                      ? "bg-[#5949d6] text-white"
+                      : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                className="px-3 py-1 rounded border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* BILL ITEM ADD / EDIT MODAL */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-3">
-          <div className="bg-[#F3F2FF] dark:bg-slate-900 w-full max-w-4xl rounded-md shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-              <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
-                {editingItem ? "Edit Bill Item" : "Bill Item"}
+      {/* ==================== ADD MODAL ==================== */}
+      {isAddOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white w-full max-w-4xl rounded shadow-2xl border border-slate-200 overflow-hidden my-8">
+            <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-slate-200">
+              <h3 className="text-sm font-semibold text-slate-800">
+                Bill Item
               </h3>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer transition-colors"
+                onClick={() => setIsAddOpen(false)}
+                className="text-slate-400 hover:text-slate-600"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Modal Body / Form */}
-            <form onSubmit={handleFormSubmit} className="p-5 space-y-4">
-              {/* Row 1: Category, Sub Category, Brand */}
+            <form
+              onSubmit={handleCreateSubmit}
+              className="p-5 space-y-4 text-xs"
+            >
+              {/* ROW 1: Project, Category, Sub Category */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Project <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.projectId}
+                    onChange={(e) =>
+                      setFormData({ ...formData, projectId: e.target.value })
+                    }
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="">Select Project</option>
+                    {projects.map((p) => (
+                      <option key={p.uuid} value={p.uuid}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
                     Category
                   </label>
                   <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
+                    value={formData.categoryId}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        categoryId: e.target.value,
+                        subCategoryId: "",
+                      })
+                    }
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   >
                     <option value="">Select Category</option>
-                    <option value="Sand">Sand</option>
-                    <option value="Cement">Cement</option>
-                    <option value="Rod">Rod</option>
+                    {categories.map((c) => (
+                      <option key={c.uuid} value={c.uuid}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                  <label className="block font-medium text-slate-700 mb-1">
                     Sub Category
                   </label>
                   <select
-                    value={subCategory}
-                    onChange={(e) => setSubCategory(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
+                    value={formData.subCategoryId}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        subCategoryId: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   >
                     <option value="">Select Sub Category</option>
-                    <option value="Global Link City">Global Link City</option>
-                    <option value="Mega Project">Mega Project</option>
+                    {filteredSubCategories.map((s) => (
+                      <option key={s.uuid} value={s.uuid}>
+                        {s.name}
+                      </option>
+                    ))}
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                    Brand
-                  </label>
-                  <div className="flex items-center gap-1">
-                    <select
-                      value={brand}
-                      onChange={(e) => setBrand(e.target.value)}
-                      className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
-                    >
-                      <option value="">Select Brand</option>
-                      <option value="ABC">ABC</option>
-                      <option value="BSRM">BSRM</option>
-                      <option value="BBH">BBH</option>
-                      <option value="Seven Rings">Seven Rings</option>
-                    </select>
-                    <button
-                      type="button"
-                      className="px-2 py-1.5 bg-[#635BFF] hover:bg-indigo-700 text-white rounded cursor-pointer transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
                 </div>
               </div>
 
-              {/* Row 2: Item Name, Unit, Purchase Price */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* ROW 2: Brand, Item Name, Unit, Purchase Price */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                    Item Name <span className="text-red-500">*</span>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Brand
                   </label>
                   <input
                     type="text"
-                    placeholder="Item Name"
-                    required
-                    value={itemName}
-                    onChange={(e) => setItemName(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
+                    value={formData.brand}
+                    onChange={(e) =>
+                      setFormData({ ...formData, brand: e.target.value })
+                    }
+                    placeholder="Brand"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                    Unit
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Item Name <span className="text-rose-500">*</span>
                   </label>
-                  <select
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
-                  >
-                    <option value="">Select value</option>
-                    <option value="Set">Set</option>
-                    <option value="Rft">Rft</option>
-                    <option value="Sft">Sft</option>
-                    <option value="Bag">Bag</option>
-                  </select>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    placeholder="Item Name"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Unit
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.unit}
+                    onChange={(e) =>
+                      setFormData({ ...formData, unit: e.target.value })
+                    }
+                    placeholder="Unit"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
                     Purchase Price
                   </label>
                   <input
                     type="number"
-                    placeholder="Enter Purchase Price"
-                    value={purchasePrice}
-                    onChange={(e) => setPurchasePrice(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
+                    min="0"
+                    step="0.01"
+                    value={formData.purchasePrice}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        purchasePrice: e.target.value,
+                      })
+                    }
+                    placeholder="0"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
               </div>
 
-              {/* Row 3: Sale Price */}
+              {/* ROW 3: Sale Price, Code */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                  <label className="block font-medium text-slate-700 mb-1">
                     Sale Price
                   </label>
                   <input
                     type="number"
-                    placeholder="Sale Price"
-                    value={salePrice}
-                    onChange={(e) => setSalePrice(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
+                    min="0"
+                    step="0.01"
+                    value={formData.salePrice}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        salePrice: e.target.value,
+                      })
+                    }
+                    placeholder="0"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Code
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.code}
+                    onChange={(e) =>
+                      setFormData({ ...formData, code: e.target.value })
+                    }
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
               </div>
 
-              {/* Row 4: Description */}
+              {/* ROW 4: Description */}
               <div>
-                <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                <label className="block font-medium text-slate-700 mb-1">
                   Description
                 </label>
                 <textarea
-                  rows={4}
-                  placeholder="Enter any description here..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded p-2.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500 resize-none"
+                  rows={3}
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  placeholder="Enter description..."
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
                 />
               </div>
 
-              {/* Footer Modal Action Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200/60 dark:border-slate-800">
+              {formError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded">
+                  {formError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-1.5 rounded bg-slate-400 hover:bg-slate-500 text-white font-medium text-xs transition-colors cursor-pointer"
+                  onClick={() => setIsAddOpen(false)}
+                  className="px-5 py-2 bg-slate-500 hover:bg-slate-600 text-white rounded font-semibold"
                 >
                   Close
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-1.5 rounded bg-[#635BFF] hover:bg-indigo-700 text-white font-medium text-xs transition-colors cursor-pointer shadow-xs"
+                  disabled={submitting}
+                  className="px-6 py-2 bg-[#5949d6] hover:bg-[#4d3ec2] text-white rounded font-semibold disabled:opacity-50 flex items-center gap-1.5"
                 >
+                  {submitting ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
                   Submit
                 </button>
               </div>
@@ -631,13 +930,238 @@ function ItemListPage() {
         </div>
       )}
 
-      {/* Footer Branding */}
-      <footer className="flex items-center justify-between text-[9px] text-slate-400 pt-2 border-t border-slate-200 dark:border-slate-800">
-        <div>2026 © Somikoron IT LTD</div>
-        <div>Design &amp; Developed by Somikoron IT LTD</div>
-      </footer>
+      {/* ==================== EDIT MODAL ==================== */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white w-full max-w-4xl rounded shadow-2xl border border-slate-200 overflow-hidden my-8">
+            <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-slate-200">
+              <h3 className="text-sm font-semibold text-slate-800">
+                Edit Bill Item — {editingItem.name}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingItem(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="p-5 space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Project <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.projectId}
+                    onChange={(e) =>
+                      setFormData({ ...formData, projectId: e.target.value })
+                    }
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="">Select Project</option>
+                    {projects.map((p) => (
+                      <option key={p.uuid} value={p.uuid}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Category
+                  </label>
+                  <select
+                    value={formData.categoryId}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        categoryId: e.target.value,
+                        subCategoryId: "",
+                      })
+                    }
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map((c) => (
+                      <option key={c.uuid} value={c.uuid}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Sub Category
+                  </label>
+                  <select
+                    value={formData.subCategoryId}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        subCategoryId: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="">Select Sub Category</option>
+                    {filteredSubCategories.map((s) => (
+                      <option key={s.uuid} value={s.uuid}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Brand
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.brand}
+                    onChange={(e) =>
+                      setFormData({ ...formData, brand: e.target.value })
+                    }
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Item Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Unit
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.unit}
+                    onChange={(e) =>
+                      setFormData({ ...formData, unit: e.target.value })
+                    }
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Purchase Price
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.purchasePrice}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        purchasePrice: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Sale Price
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.salePrice}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        salePrice: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Code
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.code}
+                    onChange={(e) =>
+                      setFormData({ ...formData, code: e.target.value })
+                    }
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  rows={3}
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+                />
+              </div>
+
+              {formError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded">
+                  {formError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  className="px-5 py-2 bg-slate-500 hover:bg-slate-600 text-white rounded font-semibold"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-6 py-2 bg-[#5949d6] hover:bg-[#4d3ec2] text-white rounded font-semibold disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {submitting ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  Update
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-export default ItemListPage;
