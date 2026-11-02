@@ -67,7 +67,6 @@ export default function ModuleTreeBuilderModal({
   const [draftName, setDraftName] = useState("");
   const [draftCode, setDraftCode] = useState("");
   const [draftRoute, setDraftRoute] = useState("");
-  const [draftAction, setDraftAction] = useState("read");
 
   // Editing existing item index
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -76,14 +75,17 @@ export default function ModuleTreeBuilderModal({
 
   // Existing unique parent groups in this module
   const existingGroups = useMemo(() => {
-    const set = new Set<string>();
+    const map = new Map<string, string>();
     features.forEach((f) => {
       if (f.name?.includes("|")) {
         const grp = f.name.split("|")[0].trim();
-        if (grp) set.add(grp);
+        const key = grp.toLowerCase();
+        if (grp && !map.has(key)) {
+          map.set(key, grp.charAt(0).toUpperCase() + grp.slice(1));
+        }
       }
     });
-    return Array.from(set);
+    return Array.from(map.values());
   }, [features]);
 
   useEffect(() => {
@@ -113,7 +115,6 @@ export default function ModuleTreeBuilderModal({
         }
         setDraftCode(target.code);
         setDraftRoute(target.routePath || "");
-        setDraftAction(target.actionType || "read");
         setEditingIndex(initialFeatureIndex);
         setIsDraftingFeature(true);
       } else if (initialParentGroup) {
@@ -121,7 +122,6 @@ export default function ModuleTreeBuilderModal({
         setDraftName("");
         setDraftCode("");
         setDraftRoute("");
-        setDraftAction("read");
         setEditingIndex(null);
         setIsDraftingFeature(true);
       } else {
@@ -141,7 +141,6 @@ export default function ModuleTreeBuilderModal({
     setDraftName("");
     setDraftCode("");
     setDraftRoute("");
-    setDraftAction("read");
     setIsDraftingFeature(true);
   };
 
@@ -167,7 +166,8 @@ export default function ModuleTreeBuilderModal({
                 name: finalName,
                 code: formattedCode,
                 routePath: draftRoute.trim() || undefined,
-                actionType: draftAction,
+                actionType: "manage",
+                actions: item.actions && item.actions.length > 0 ? item.actions : ["read", "write", "update", "delete", "export", "manage"],
               }
             : item,
         ),
@@ -180,7 +180,8 @@ export default function ModuleTreeBuilderModal({
         name: finalName,
         code: formattedCode,
         routePath: draftRoute.trim() || undefined,
-        actionType: draftAction,
+        actionType: "manage",
+        actions: ["read", "write", "update", "delete", "export", "manage"],
         displayOrder: features.length + 1,
         isActive: true,
       };
@@ -208,7 +209,6 @@ export default function ModuleTreeBuilderModal({
     }
     setDraftCode(target.code);
     setDraftRoute(target.routePath || "");
-    setDraftAction(target.actionType || "read");
     setEditingIndex(index);
     setIsDraftingFeature(true);
   };
@@ -501,7 +501,7 @@ export default function ModuleTreeBuilderModal({
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <div>
                         <input
                           type="text"
@@ -544,26 +544,23 @@ export default function ModuleTreeBuilderModal({
                           className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
-                      <div>
-                        <select
-                          value={draftAction}
-                          onChange={(e) => setDraftAction(e.target.value)}
-                          className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                          <option value="read">read (View Only)</option>
-                          <option value="write">write (Create/Edit)</option>
-                          <option value="delete">delete (Removal)</option>
-                          <option value="manage">manage (Full Admin)</option>
-                          <option value="export">export (Reports)</option>
-                        </select>
-                      </div>
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-indigo-100 dark:border-indigo-900/40">
+                      <div className="flex items-center gap-1.5 text-[11px] text-indigo-700 dark:text-indigo-300">
+                        <span className="font-semibold">Enabled Capabilities:</span>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">READ</span>
+                        <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold text-[10px]">WRITE</span>
+                        <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-bold text-[10px]">DELETE</span>
+                        <span className="px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-[10px]">EXPORT</span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 ml-1">
+                          (Users & Orgs receive fine-grained Read/Write access in the Access Wizard)
+                        </span>
+                      </div>
                       <button
                         type="button"
                         onClick={handleConfirmFeature}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition"
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition self-end sm:self-auto"
                       >
                         <Check className="h-3.5 w-3.5" />
                         {editingIndex !== null ? "Update In Tree" : "Add To Tree"}
@@ -591,7 +588,7 @@ export default function ModuleTreeBuilderModal({
                           <th className="p-2.5">Feature Name</th>
                           <th className="p-2.5">Feature ID / Code</th>
                           <th className="p-2.5">Route Path</th>
-                          <th className="p-2.5">Type</th>
+                          <th className="p-2.5">Operations</th>
                           <th className="p-2.5 text-center w-24">Actions</th>
                         </tr>
                       </thead>
@@ -611,9 +608,17 @@ export default function ModuleTreeBuilderModal({
                               {feat.routePath || "—"}
                             </td>
                             <td className="p-2.5">
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                                {feat.actionType || "read"}
-                              </span>
+                              <div className="flex items-center gap-1">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                  READ
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                                  WRITE
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                  ALL
+                                </span>
+                              </div>
                             </td>
                             <td className="p-2.5 text-center">
                               <div className="flex items-center justify-center gap-1">

@@ -23,6 +23,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import UserForm from "@/components/modules/UserForm";
 import UserWizardModal from "@/components/modules/UserWizardModal";
+import UserModuleAccessModal from "@/components/modules/UserModuleAccessModal";
 import { getStoredUserProfile } from "@/lib/admin-auth/adminAuthStorage";
 import {
   deleteUser,
@@ -162,6 +163,7 @@ export default function UsersPage() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [moduleAccessUser, setModuleAccessUser] = useState<User | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [viewUser, setViewUser] = useState<User | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
@@ -276,6 +278,11 @@ export default function UsersPage() {
     setMenuUserId(null);
     setEditingUser(user);
     setFormOpen(true);
+  };
+
+  const openModuleAccess = (user: User) => {
+    setMenuUserId(null);
+    setModuleAccessUser(user);
   };
 
   const openView = async (user: User) => {
@@ -683,6 +690,12 @@ export default function UsersPage() {
                               Edit User
                             </MenuButton>
                             <MenuButton
+                              onClick={() => openModuleAccess(user)}
+                              icon={<ShieldCheck className="h-4 w-4 text-indigo-600" />}
+                            >
+                              Module & Feature Access
+                            </MenuButton>
+                            <MenuButton
                               onClick={() => openResetPassword(user)}
                               icon={<KeyRound className="h-4 w-4" />}
                             >
@@ -767,6 +780,13 @@ export default function UsersPage() {
       <UserWizardModal
         isOpen={wizardOpen}
         onClose={() => setWizardOpen(false)}
+        onSuccess={() => void loadUsers()}
+      />
+
+      <UserModuleAccessModal
+        isOpen={Boolean(moduleAccessUser)}
+        user={moduleAccessUser}
+        onClose={() => setModuleAccessUser(null)}
         onSuccess={() => void loadUsers()}
       />
 

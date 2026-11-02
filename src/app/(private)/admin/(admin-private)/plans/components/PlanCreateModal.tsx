@@ -11,10 +11,21 @@ interface Props {
   onCreate: (payload: any) => void;
 }
 
+const CURRENCY_PRESETS = [
+  { symbol: "$", label: "$ USD" },
+  { symbol: "৳", label: "৳ BDT" },
+  { symbol: "€", label: "€ EUR" },
+  { symbol: "£", label: "£ GBP" },
+  { symbol: "₹", label: "₹ INR" },
+  { symbol: "AED", label: "AED" },
+  { symbol: "SAR", label: "SAR" },
+];
+
 export default function PlanCreateModal({ isOpen, onClose, onCreate }: Props) {
   const { primaryColor } = useTheme();
   const brandColor = primaryColor || "#0000F2";
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currency, setCurrency] = useState("$");
 
   if (!isOpen) return null;
 
@@ -26,6 +37,7 @@ export default function PlanCreateModal({ isOpen, onClose, onCreate }: Props) {
       name: formData.get("name"),
       code: formData.get("code"),
       description: formData.get("description"),
+      currency: currency.trim() || "$",
       monthly_price: Number(formData.get("monthly_price")),
       yearly_price: Number(formData.get("yearly_price")),
       user_limit: Number(formData.get("user_limit")),
@@ -107,32 +119,87 @@ export default function PlanCreateModal({ isOpen, onClose, onCreate }: Props) {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Monthly Price ($) *
-                </label>
-                <input
-                  name="monthly_price"
-                  type="number"
-                  min="0"
-                  defaultValue="29"
-                  required
-                  className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono"
-                />
+              {/* Currency Sign / Symbol Selection */}
+              <div className="md:col-span-2 bg-slate-50 p-4 rounded-2xl border border-gray-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700">
+                      Currency Sign / Symbol *
+                    </label>
+                    <p className="text-[11px] text-gray-500">
+                      Select a standard preset or type your custom currency symbol/code below
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {CURRENCY_PRESETS.map((cur) => (
+                      <button
+                        key={cur.symbol}
+                        type="button"
+                        onClick={() => setCurrency(cur.symbol)}
+                        className={`text-xs px-2.5 py-1 rounded-lg font-medium transition ${
+                          currency === cur.symbol
+                            ? "bg-blue-600 text-white shadow-xs font-semibold"
+                            : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
+                        }`}
+                      >
+                        {cur.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="relative">
+                  <input
+                    name="currency"
+                    type="text"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    placeholder="e.g. $, ৳, €, USD, BDT"
+                    maxLength={10}
+                    required
+                    className="w-full bg-white border border-gray-200 p-2.5 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                  <span className="absolute right-3 top-2.5 text-xs text-gray-400 font-medium">
+                    Preview: {currency}99 /mo
+                  </span>
+                </div>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Yearly Price ($) *
+                  Monthly Price ({currency}) *
                 </label>
-                <input
-                  name="yearly_price"
-                  type="number"
-                  min="0"
-                  defaultValue="290"
-                  required
-                  className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono"
-                />
+                <div className="relative flex items-center">
+                  <span className="absolute left-3 text-sm font-semibold text-gray-400 select-none">
+                    {currency}
+                  </span>
+                  <input
+                    name="monthly_price"
+                    type="number"
+                    min="0"
+                    defaultValue="29"
+                    required
+                    className="w-full border border-gray-200 pl-8 pr-3 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Yearly Price ({currency}) *
+                </label>
+                <div className="relative flex items-center">
+                  <span className="absolute left-3 text-sm font-semibold text-gray-400 select-none">
+                    {currency}
+                  </span>
+                  <input
+                    name="yearly_price"
+                    type="number"
+                    min="0"
+                    defaultValue="290"
+                    required
+                    className="w-full border border-gray-200 pl-8 pr-3 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                  />
+                </div>
               </div>
 
               <div>

@@ -100,6 +100,24 @@ export interface BaseUserPayload {
   companyIds?: number[];
   orgId?: number;
   orgUuid?: string;
+  featureOverrides?: FeatureOverrideItem[];
+}
+
+export interface FeatureOverrideItem {
+  featureId: number;
+  isGranted?: boolean;
+  canView?: boolean;
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  canApprove?: boolean;
+}
+
+export interface UserFeatureAccessResponse {
+  userId: number;
+  userUuid?: string;
+  moduleIds: number[];
+  featureOverrides: FeatureOverrideItem[];
 }
 
 
@@ -856,6 +874,36 @@ export async function getMobileAuthEmployeeCodes(
       `/users/public/mobile-auth-employee-codes${queryString ? `?${queryString}` : ""}`,
     );
     return response.data;
+  } catch (err: any) {
+    handleAxiosError(err);
+  }
+}
+
+/* =========================================================
+   USER MODULE & FEATURE ACCESS
+========================================================= */
+
+export async function getUserFeatureAccess(
+  userIdOrUuid: string | number,
+): Promise<UserFeatureAccessResponse> {
+  try {
+    const res = await api.get(`/users/${userIdOrUuid}/feature-access`);
+    return res.data;
+  } catch (err: any) {
+    handleAxiosError(err);
+  }
+}
+
+export async function updateUserFeatureAccess(
+  userIdOrUuid: string | number,
+  payload: {
+    moduleIds?: number[];
+    featureOverrides?: FeatureOverrideItem[];
+  },
+): Promise<{ success: boolean; message: string; data: UserFeatureAccessResponse }> {
+  try {
+    const res = await api.put(`/users/${userIdOrUuid}/feature-access`, payload);
+    return res.data;
   } catch (err: any) {
     handleAxiosError(err);
   }

@@ -78,8 +78,14 @@ export function buildFeatureHierarchy(features: FeatureNode[]): HierarchicalFeat
       itemName = parts.slice(1).join("::");
     }
 
+    const uniqueFeatKey = feat.id
+      ? `feat-${feat.id}-${idx}`
+      : feat.code
+        ? `feat-${feat.code}-${idx}`
+        : `feat-${idx}`;
+
     const itemNode: HierarchicalFeatureGroup = {
-      key: `feat-${feat.id || feat.code || idx}`,
+      key: uniqueFeatKey,
       name: itemName || rawName,
       isGroup: false,
       feature: { ...feat, name: itemName || rawName },
@@ -88,17 +94,20 @@ export function buildFeatureHierarchy(features: FeatureNode[]): HierarchicalFeat
     };
 
     if (groupName) {
-      if (!groupMap.has(groupName)) {
+      // Normalize group key so "Configuration" and "configuration" merge into the same group
+      const normalizedGroupKey = groupName.toLowerCase().trim().replace(/\s+/g, "-");
+      if (!groupMap.has(normalizedGroupKey)) {
+        const displayName = groupName.charAt(0).toUpperCase() + groupName.slice(1);
         const newGroup: HierarchicalFeatureGroup = {
-          key: `group-${groupName.toLowerCase().replace(/\s+/g, "-")}`,
-          name: groupName,
+          key: `group-${normalizedGroupKey}`,
+          name: displayName,
           isGroup: true,
           children: [],
         };
-        groupMap.set(groupName, newGroup);
+        groupMap.set(normalizedGroupKey, newGroup);
         rootItems.push(newGroup);
       }
-      groupMap.get(groupName)!.children.push(itemNode);
+      groupMap.get(normalizedGroupKey)!.children.push(itemNode);
     } else {
       rootItems.push(itemNode);
     }

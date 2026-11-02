@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import OrgCreateModal from "./components/OrgCreateModal";
 import OrgEditModal from "./components/OrgEditModal";
 import OrgViewModal from "./components/OrgViewModal";
 import OrganizationWizardModal from "@/components/modules/OrganizationWizardModal";
 import {
+  getPaginatedOrganizations,
   getOrganizations,
   toggleOrganizationLock,
   type Organization,
@@ -119,33 +120,84 @@ export default function OrgListPage() {
 
   // Search, Filter & Pagination States
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [planFilter, setPlanFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
-  // ১. ডেটা ফেচ
-  const fetchOrgs = async () => {
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // ফিল্টার বা সার্চ পরিবর্তন হলে পেজ ১ এ ফিরে যাবে
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, statusFilter, planFilter]);
+
+  // ১. ডেটা ফেচ (Server-side Pagination)
+  const fetchOrgs = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getOrganizations();
-      if (!data || data.length === 0) {
-        setOrgs(DUMMY_ORGS);
+      const res = await getPaginatedOrganizations({
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+        search: debouncedSearch.trim() || undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        plan: planFilter !== "all" ? planFilter : undefined,
+      });
+
+      if (
+        !res.data ||
+        (res.data.length === 0 &&
+          res.meta.total === 0 &&
+          !debouncedSearch &&
+          statusFilter === "all" &&
+          planFilter === "all")
+      ) {
+        setOrgs(DUMMY_ORGS.slice(0, ITEMS_PER_PAGE));
+        setTotalItems(DUMMY_ORGS.length);
+        setTotalPages(Math.ceil(DUMMY_ORGS.length / ITEMS_PER_PAGE));
         setIsUsingDummy(true);
       } else {
-        setOrgs(data);
+        setOrgs(res.data);
+        setTotalItems(res.meta.total);
+        setTotalPages(res.meta.totalPages || 1);
         setIsUsingDummy(false);
       }
     } catch (error) {
-      setOrgs(DUMMY_ORGS);
+      // Fallback dummy simulation
+      const query = debouncedSearch.trim().toLowerCase();
+      const filtered = DUMMY_ORGS.filter((org) => {
+        const matchesSearch =
+          !query ||
+          org.name.toLowerCase().includes(query) ||
+          org.email.toLowerCase().includes(query) ||
+          org.slug.toLowerCase().includes(query);
+        const matchesStatus =
+          statusFilter === "all" || org.status === statusFilter;
+        const matchesPlan =
+          planFilter === "all" || org.plan === planFilter;
+        return matchesSearch && matchesStatus && matchesPlan;
+      });
+      const start = (currentPage - 1) * ITEMS_PER_PAGE;
+      setOrgs(filtered.slice(start, start + ITEMS_PER_PAGE));
+      setTotalItems(filtered.length);
+      setTotalPages(Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1);
       setIsUsingDummy(true);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, debouncedSearch, statusFilter, planFilter]);
 
   useEffect(() => {
     fetchOrgs();
-  }, []);
+  }, [fetchOrgs]);
 
   const handleToggleLock = async (org: any) => {
     const nextLocked = !org.isLocked;
@@ -159,17 +211,7 @@ export default function OrgListPage() {
         isLocked: nextLocked,
         lockReason: nextLocked ? "Suspended by Super Administrator" : undefined,
       });
-      setOrgs((prev) =>
-        prev.map((o) =>
-          o.uuid === org.uuid || o.id === org.id
-            ? {
-                ...o,
-                isLocked: nextLocked,
-                status: nextLocked ? "suspended" : "active",
-              }
-            : o,
-        ),
-      );
+      fetchOrgs();
       toast.success(`Organization ${nextLocked ? "locked" : "unlocked"}`);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to update lock state");
@@ -185,24 +227,14 @@ export default function OrgListPage() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Create failed");
-      const newOrg = await res.json();
-      setOrgs((prev) => [newOrg, ...prev]);
+      await fetchOrgs();
     } catch (error) {
-      const newOrg = {
-        ...payload,
-        uuid: Date.now().toString(),
-        created_at: new Date().toISOString(),
-      };
-      setOrgs((prev) => [newOrg, ...prev]);
+      await fetchOrgs();
     }
   };
 
   const handleUpdate = async (uuid: string, payload: any) => {
-    setOrgs((prev) =>
-      prev.map((o) =>
-        o.uuid === uuid || String(o.id) === uuid ? { ...o, ...payload } : o,
-      ),
-    );
+    await fetchOrgs();
   };
 
   const handleDelete = async (uuid: string) => {
@@ -210,48 +242,11 @@ export default function OrgListPage() {
     try {
       const res = await fetch(`/api/orgs/${uuid}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
-      setOrgs((prev) => prev.filter((o) => o.uuid !== uuid));
+      await fetchOrgs();
     } catch (error) {
-      setOrgs((prev) => prev.filter((o) => o.uuid !== uuid));
+      await fetchOrgs();
     }
   };
-
-  // ৩. Search & Filter Logic
-  const filteredOrgs = useMemo(() => {
-    const query = (searchQuery ?? "").trim().toLowerCase();
-
-    return orgs.filter((org) => {
-      const name = String(org?.name ?? "").toLowerCase();
-      const email = String(org?.email ?? "").toLowerCase();
-      const slug = String(org?.slug ?? "").toLowerCase();
-
-      const matchesSearch =
-        !query ||
-        name.includes(query) ||
-        email.includes(query) ||
-        slug.includes(query);
-
-      const matchesStatus =
-        statusFilter === "all" || String(org?.status ?? "") === statusFilter;
-      const matchesPlan =
-        planFilter === "all" || String(org?.plan ?? "") === planFilter;
-
-      return matchesSearch && matchesStatus && matchesPlan;
-    });
-  }, [orgs, searchQuery, statusFilter, planFilter]);
-
-  // ৪. Pagination Logic
-  const totalPages = Math.ceil(filteredOrgs.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedOrgs = filteredOrgs.slice(
-    startIndex,
-    startIndex + ITEMS_PER_PAGE,
-  );
-
-  // ফিল্টার পরিবর্তন হলে পেজ ১ এ ফিরে যাবে
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, statusFilter, planFilter]);
 
   return (
     <div className="min-h-screen bg-[#fafafa] font-sans">
@@ -365,7 +360,7 @@ export default function OrgListPage() {
                       Loading organizations...
                     </td>
                   </tr>
-                ) : paginatedOrgs.length === 0 ? (
+                ) : orgs.length === 0 ? (
                   <tr>
                     <td
                       colSpan={5}
@@ -381,7 +376,7 @@ export default function OrgListPage() {
                     </td>
                   </tr>
                 ) : (
-                  paginatedOrgs.map((org) => (
+                  orgs.map((org) => (
                     <tr
                       key={org.uuid}
                       className="hover:bg-gray-50/50 transition-colors group"
@@ -500,20 +495,20 @@ export default function OrgListPage() {
           </div>
 
           {/* Premium Pagination */}
-          {!isLoading && filteredOrgs.length > 0 && (
+          {!isLoading && totalItems > 0 && (
             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
               <span className="text-sm text-gray-500">
                 Showing{" "}
                 <span className="font-medium text-gray-900">
-                  {startIndex + 1}
+                  {(currentPage - 1) * ITEMS_PER_PAGE + 1}
                 </span>{" "}
                 to{" "}
                 <span className="font-medium text-gray-900">
-                  {Math.min(startIndex + ITEMS_PER_PAGE, filteredOrgs.length)}
+                  {Math.min(currentPage * ITEMS_PER_PAGE, totalItems)}
                 </span>{" "}
                 of{" "}
                 <span className="font-medium text-gray-900">
-                  {filteredOrgs.length}
+                  {totalItems}
                 </span>{" "}
                 results
               </span>
@@ -567,7 +562,7 @@ export default function OrgListPage() {
       <OrganizationWizardModal
         isOpen={isWizardOpen}
         onClose={() => setIsWizardOpen(false)}
-        onSuccess={(created) => setOrgs((prev) => [created, ...prev])}
+        onSuccess={() => fetchOrgs()}
       />
       <OrgCreateModal
         isOpen={isCreateOpen}

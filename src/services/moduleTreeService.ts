@@ -8,6 +8,7 @@ export interface FeatureNode {
   code: string;
   routePath?: string;
   actionType?: string;
+  actions?: string[];
   description?: string;
   displayOrder?: number;
   isActive?: boolean;

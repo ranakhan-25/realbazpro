@@ -101,19 +101,80 @@ export interface ToggleLockPayload {
   lockReason?: string;
 }
 
+export interface PaginatedResult<T> {
+  data: T[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext?: boolean;
+    hasPrev?: boolean;
+  };
+}
+
 export async function getOrganizations(params?: {
   status?: string;
   isLocked?: boolean;
   search?: string;
+  plan?: string;
+  all?: boolean;
 }): Promise<Organization[]> {
-  const response = await api.get<{ success?: boolean; data?: Organization[] } | Organization[]>(
+  const response = await api.get<any>(
+    "/system/organizations",
+    { params: { ...params, all: true } },
+  );
+  const res = response.data;
+  const inner = res?.data ?? res;
+  if (Array.isArray(inner)) {
+    return inner;
+  }
+  if (inner && Array.isArray(inner.data)) {
+    return inner.data;
+  }
+  return [];
+}
+
+export async function getPaginatedOrganizations(params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  isLocked?: boolean;
+  search?: string;
+  plan?: string;
+}): Promise<PaginatedResult<Organization>> {
+  const response = await api.get<any>(
     "/system/organizations",
     { params },
   );
-  if (Array.isArray(response.data)) {
-    return response.data;
+  const res = response.data;
+  const inner = res?.data ?? res;
+
+  if (inner && Array.isArray(inner.data) && inner.meta) {
+    return inner as PaginatedResult<Organization>;
   }
-  return response.data?.data || [];
+
+  const list = Array.isArray(inner)
+    ? inner
+    : Array.isArray(inner?.data)
+      ? inner.data
+      : [];
+  const page = Number(params?.page) || 1;
+  const limit = Number(params?.limit) || 10;
+  const total = list.length;
+  const totalPages = Math.ceil(total / limit) || 1;
+
+  return {
+    data: list,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
+  };
 }
 
 export async function getOrganization(id: string | number): Promise<Organization> {
