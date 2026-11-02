@@ -1,295 +1,652 @@
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Building2,
-  FileSpreadsheet,
-  FileText,
-  Plus,
   Search,
-  Pencil,
+  Plus,
+  Edit3,
   Trash2,
-  ArrowUpDown,
   X,
+  Check,
+  Loader2,
+  Building2,
 } from "lucide-react";
 
-// API থেকে আসা ডেটার TypeScript Interface
-interface Department {
-  id: number;
-  sl: number;
-  departmentHead: string;
-  departmentName: string;
+// ---------- Types ----------
+export interface Department {
+  id: number | string;
+  uuid: string;
+  name: string;
+  departmentHeadId: string;
+  departmentHeadName: string;
+  status: string;
 }
 
-// API যুক্ত করার আগ পর্যন্ত মক ডাটা (Mock Data)
-const initialDepartmentData: Department[] = [
-  { id: 1, sl: 1, departmentHead: "-", departmentName: "Business Development" },
-  { id: 2, sl: 2, departmentHead: "-", departmentName: "Sales & Marketing" },
-  { id: 3, sl: 3, departmentHead: "-", departmentName: "Store" },
-  { id: 4, sl: 4, departmentHead: "-", departmentName: "Customs" },
-  { id: 5, sl: 5, departmentHead: "-", departmentName: "Accounts" },
-  { id: 6, sl: 6, departmentHead: "-", departmentName: "Dop" },
-  { id: 7, sl: 7, departmentHead: "-", departmentName: "Chemical" },
-  { id: 8, sl: 8, departmentHead: "-", departmentName: "Mechanical" },
-  { id: 9, sl: 9, departmentHead: "-", departmentName: "Electrical" },
-  { id: 10, sl: 10, departmentHead: "-", departmentName: "Factory" },
-];
+interface OptionItem {
+  uuid: string;
+  name: string;
+  code?: string;
+}
 
-export default function DepartmentListPage() {
-  // API Integrated States
-  const [departments, setDepartments] = useState<Department[]>(initialDepartmentData);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [entriesPerPage, setEntriesPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+// ---------- API helpers ----------
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
 
-  // Modal State & Form Input States
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [departmentName, setDepartmentName] = useState("");
-  const [departmentHead, setDepartmentHead] = useState("");
+async function handleRes(res: Response, action: string) {
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg =
+      json?.message || json?.error || `Failed to ${action} (${res.status})`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+  return json;
+}
 
-  // New Department Submit Handler
-  const handleAddDepartment = (e: React.FormEvent) => {
+async function fetchDepartments(): Promise<{
+  data: Department[];
+  meta: any;
+}> {
+  const url = `${API_BASE}/realbizpro/api/v1/department?page=1&limit=100&skip=0&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
+  console.log("GET departments →", url);
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+  });
+  const json = await handleRes(res, "fetch departments");
+  console.log("GET departments response →", json);
+
+  const mapped: Department[] = (json?.data?.data || [])
+    .map((item: any) => ({
+      id: item.id ?? item.uuid,
+      uuid: item.uuid,
+      name: item.name || "",
+      departmentHeadId:
+        item.departmentHeadId || item.departmentHead?.uuid || "",
+      departmentHeadName:
+        item.departmentHead?.name || item.departmentHeadName || "",
+      status: item.status || "active",
+    }))
+    .filter((item: Department) => item.status?.toLowerCase() === "active");
+
+  return { data: mapped, meta: json?.data?.meta };
+}
+
+// ---------- EMPLOYEE dropdown (Department Head) ----------
+async function fetchEmployees(): Promise<OptionItem[]> {
+  try {
+    const url = `${API_BASE}/realbizpro/api/v1/employee-list?page=1&limit=100&status=active&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
+    console.log("GET employees →", url);
+
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      console.error("Employees fetch failed:", res.status, json);
+      return [];
+    }
+
+    console.log("Employees response →", json);
+    const list = json?.data?.data || [];
+    return list.map((e: any) => ({
+      uuid: e.uuid,
+      name: e.name || e.fullName || e.employeeCode || "Unnamed",
+      code: e.employeeCode || e.code,
+    }));
+  } catch (err) {
+    console.error("fetchEmployees error →", err);
+    return [];
+  }
+}
+
+async function createDepartment(payload: Record<string, any>) {
+  console.log("POST payload →", payload);
+  const res = await fetch(`${API_BASE}/realbizpro/api/v1/department`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json = await handleRes(res, "create department");
+  console.log("POST response →", json);
+  return json;
+}
+
+async function updateDepartment(uuid: string, payload: Record<string, any>) {
+  console.log("PATCH", uuid, "payload →", payload);
+  const res = await fetch(
+    `${API_BASE}/realbizpro/api/v1/department/${uuid}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+  );
+  const json = await handleRes(res, "update department");
+  console.log("PATCH response →", json);
+  return json;
+}
+
+async function softDeleteDepartment(uuid: string) {
+  console.log("DELETE →", uuid);
+  const res = await fetch(
+    `${API_BASE}/realbizpro/api/v1/department/${uuid}`,
+    {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    },
+  );
+  const json = await handleRes(res, "delete department");
+  console.log("DELETE response →", json);
+  return json;
+}
+
+async function restoreDepartment(uuid: string) {
+  console.log("PATCH restore →", uuid);
+  const res = await fetch(
+    `${API_BASE}/realbizpro/api/v1/department/${uuid}/restore`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+    },
+  );
+  const json = await handleRes(res, "restore department");
+  console.log("RESTORE response →", json);
+  return json;
+}
+
+const toApiPayload = (data: {
+  name: string;
+  departmentHeadId: string;
+}) => ({
+  name: data.name,
+  departmentHeadId: data.departmentHeadId || undefined,
+  status: "active",
+});
+
+// ---------- Form Modal ----------
+function DepartmentFormModal({
+  title,
+  initialData,
+  employees,
+  onClose,
+  onSubmit,
+}: {
+  title: string;
+  initialData?: Department;
+  employees: OptionItem[];
+  onClose: () => void;
+  onSubmit: (data: {
+    name: string;
+    departmentHeadId: string;
+  }) => Promise<void>;
+}) {
+  const [formData, setFormData] = useState({
+    name: initialData?.name || "",
+    departmentHeadId: initialData?.departmentHeadId || "",
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!departmentName.trim()) return;
-
-    const newId = departments.length + 1;
-    const newDepartment: Department = {
-      id: newId,
-      sl: newId,
-      departmentName: departmentName.trim(),
-      departmentHead: departmentHead.trim() ? departmentHead.trim() : "-",
-    };
-
-    setDepartments([...departments, newDepartment]);
-    setDepartmentName("");
-    setDepartmentHead("");
-    setIsModalOpen(false);
+    if (!formData.name.trim()) {
+      setFormError("Department name is required");
+      return;
+    }
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      await onSubmit(formData);
+    } catch (err: any) {
+      setFormError(err?.message || "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-black text-slate-800 dark:text-slate-100 p-4 md:p-6 transition-colors duration-200">
-      {/* Breadcrumb */}
-      <nav className="text-xs text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-2 font-medium">
-        <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">Home</span>
-        <span>&gt;</span>
-        <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">Employee</span>
-        <span>&gt;</span>
-        <span className="text-slate-400 dark:text-slate-500">Department List</span>
-      </nav>
-
-      {/* Main Content Card */}
-      <div className="bg-white dark:bg-[#080d1a] rounded-xl shadow-lg border border-slate-200 dark:border-[#131c31] p-5 mb-6">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-indigo-600/10 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-500/20">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Department List</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Manage company departments and department heads</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <button className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 dark:bg-emerald-950/20 hover:bg-emerald-50 dark:hover:bg-emerald-900/40 transition-colors">
-              <FileSpreadsheet className="w-4 h-4" />
-              Excel
-            </button>
-            <button className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border border-rose-500/30 text-rose-600 dark:text-rose-400 dark:bg-rose-950/20 hover:bg-rose-50 dark:hover:bg-rose-900/40 transition-colors">
-              <FileText className="w-4 h-4" />
-              PDF
-            </button>
-            
-            {/* Modal Open Trigger Button */}
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              Department Add
-            </button>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 overflow-y-auto">
+      <div className="bg-white border border-slate-200 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden my-8">
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-200">
+          <h3 className="font-semibold text-slate-900 text-base flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-indigo-600" />
+            {title}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-rose-500 hover:text-rose-600 bg-rose-50 hover:bg-rose-100 p-1.5 rounded-lg transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Filter & Search Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Department Head */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">
+              Department Head
+            </label>
+            <select
+              value={formData.departmentHeadId}
+              onChange={(e) =>
+                setFormData({ ...formData, departmentHeadId: e.target.value })
+              }
+              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            >
+              <option value="">Select value</option>
+              {employees.map((emp) => (
+                <option key={emp.uuid} value={emp.uuid}>
+                  {emp.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Department */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">
+              Department <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Department"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            />
+          </div>
+
+          {formError && (
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-lg text-xs">
+              {formError}
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="px-5 py-2 bg-slate-400 hover:bg-slate-500 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              Close
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center gap-1.5"
+            >
+              {submitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+              Submit
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Main Page ----------
+export default function DepartmentListPage() {
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [employees, setEmployees] = useState<OptionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingDept, setEditingDept] = useState<Department | null>(null);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [deptRes, employeeList] = await Promise.all([
+        fetchDepartments(),
+        fetchEmployees(),
+      ]);
+
+      console.log("Loaded departments →", deptRes.data.length);
+      console.log("Loaded employees →", employeeList.length);
+
+      // Resolve departmentHeadName from employees list if backend doesn't provide it
+      const resolvedDepts = deptRes.data.map((d) => ({
+        ...d,
+        departmentHeadName:
+          d.departmentHeadName ||
+          employeeList.find((e) => e.uuid === d.departmentHeadId)?.name ||
+          "",
+      }));
+
+      setDepartments(resolvedDepts);
+      setEmployees(employeeList);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to load departments");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const filteredDepartments = departments.filter(
+    (item) =>
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.departmentHeadName
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()),
+  );
+
+  const totalPages =
+    Math.ceil(filteredDepartments.length / entriesPerPage) || 1;
+  const startIndex = (currentPage - 1) * entriesPerPage;
+  const currentTableData = filteredDepartments.slice(
+    startIndex,
+    startIndex + entriesPerPage,
+  );
+
+  const handleDelete = async (dept: Department) => {
+    if (!confirm(`Delete department "${dept.name}"?`)) return;
+
+    const uuidToDelete = dept.uuid || String(dept.id);
+    if (!uuidToDelete) {
+      alert("UUID is missing – cannot delete");
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await softDeleteDepartment(uuidToDelete);
+
+      // Optimistic UI
+      setDepartments((prev) =>
+        prev.filter(
+          (item) => (item.uuid || String(item.id)) !== uuidToDelete,
+        ),
+      );
+
+      if (currentTableData.length === 1 && currentPage > 1) {
+        setCurrentPage((p) => p - 1);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Delete failed. Please try again.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Optional: restore handler (for future use with a "Show Deleted" toggle)
+  const handleRestore = async (uuid: string) => {
+    try {
+      setActionLoading(true);
+      await restoreDepartment(uuid);
+      await loadData();
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Restore failed.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-white text-slate-900 p-4 sm:p-6 flex flex-col justify-between">
+      <div className="space-y-4">
+        {/* Breadcrumb & Top Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <div className="text-xs text-slate-500 flex items-center gap-1 mb-1">
+              <span>Home</span> / <span>Employee</span> /{" "}
+              <span className="text-indigo-600 font-medium">
+                Department List
+              </span>
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+              Department Management
+            </h1>
+          </div>
+
+          <button
+            onClick={() => setIsAddOpen(true)}
+            className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Department Add
+          </button>
+        </div>
+
+        {/* Controls */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/70 p-3 rounded-xl border border-slate-200/60">
+          <div className="flex items-center gap-2 text-sm text-slate-600">
             <span>Show</span>
             <select
               value={entriesPerPage}
-              onChange={(e) => setEntriesPerPage(Number(e.target.value))}
-              className="bg-slate-50 dark:bg-[#030712] border border-slate-200 dark:border-[#1e293b] rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+              onChange={(e) => {
+                setEntriesPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="border border-slate-300 rounded-md px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value={10}>10</option>
-              <option value={20}>20</option>
+              <option value={25}>25</option>
               <option value={50}>50</option>
             </select>
             <span>entries</span>
           </div>
 
-          <div className="relative flex items-center gap-2">
-            <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">Search:</span>
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <span className="text-sm text-slate-600">Search:</span>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full sm:w-64 pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-[#030712] border border-slate-200 dark:border-[#1e293b] rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Search departments..."
+                className="w-full pl-9 pr-3 py-1.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
         </div>
 
-        {/* Responsive Table */}
-        <div className="overflow-x-auto border border-slate-200 dark:border-[#131c31] rounded-lg">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-indigo-600 dark:bg-[#030712] text-white dark:text-slate-300 font-semibold border-b border-indigo-700 dark:border-[#131c31] tracking-wider">
-                <th className="p-3 w-16">
-                  <div className="flex items-center gap-1">
-                    SL
-                    <ArrowUpDown className="w-3 h-3 text-indigo-200 dark:text-slate-500" />
-                  </div>
-                </th>
-                <th className="p-3">
-                  <div className="flex items-center gap-1">
-                    DEPARTMENT HEAD
-                    <ArrowUpDown className="w-3 h-3 text-indigo-200 dark:text-slate-500" />
-                  </div>
-                </th>
-                <th className="p-3">
-                  <div className="flex items-center gap-1">
-                    DEPARTMENT
-                    <ArrowUpDown className="w-3 h-3 text-indigo-200 dark:text-slate-500" />
-                  </div>
-                </th>
-                <th className="p-3 text-center w-28">
-                  <div className="flex items-center justify-center gap-1">
-                    ACTION
-                    <ArrowUpDown className="w-3 h-3 text-indigo-200 dark:text-slate-500" />
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-[#131c31]/80 bg-white dark:bg-[#080d1a]">
-              {departments.map((dept) => (
-                <tr key={dept.id} className="hover:bg-slate-50 dark:hover:bg-[#0e1628] transition-colors">
-                  <td className="p-3 text-slate-600 dark:text-slate-400 font-medium">{dept.sl}</td>
-                  <td className="p-3 text-slate-500 dark:text-slate-400">{dept.departmentHead}</td>
-                  <td className="p-3 font-medium text-slate-800 dark:text-slate-200">{dept.departmentName}</td>
-                  <td className="p-3">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <button 
-                        className="p-1.5 rounded bg-cyan-500 hover:bg-cyan-600 text-white transition-colors shadow-sm" 
-                        title="Edit Department"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button 
-                        className="p-1.5 rounded bg-rose-500 hover:bg-rose-600 text-white transition-colors shadow-sm" 
-                        title="Delete Department"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {/* Loading / Error */}
+        {loading && (
+          <div className="flex items-center justify-center py-16 text-slate-500">
+            <Loader2 className="w-6 h-6 animate-spin mr-2" />
+            Loading departments...
+          </div>
+        )}
 
-        {/* Pagination Footer */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-4 text-xs text-slate-500 dark:text-slate-400">
-          <div>Showing 1 to {departments.length} of {departments.length} entries</div>
-          <div className="flex items-center gap-1">
-            <button className="px-3 py-1.5 rounded border border-slate-200 dark:border-[#1e293b] text-slate-400 dark:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-900 disabled:opacity-40" disabled>
-              Previous
-            </button>
-            <button className="px-3 py-1.5 rounded bg-indigo-600 text-white font-medium">1</button>
-            <button className="px-3 py-1.5 rounded border border-slate-200 dark:border-[#1e293b] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900">
-              Next
+        {error && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg text-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={loadData} className="underline text-xs font-medium">
+              Retry
             </button>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* --- Department Add Modal --- */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#080d1a] border border-slate-200 dark:border-[#131c31] rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-[#131c31] bg-slate-50/50 dark:bg-[#030712]/50">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Add New Department</h3>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        {/* Table */}
+        {!loading && !error && (
+          <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs bg-white">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr className="bg-indigo-500 text-white font-medium text-xs tracking-wider uppercase">
+                    <th className="py-3 px-4 w-20">SL</th>
+                    <th className="py-3 px-4">Department Head</th>
+                    <th className="py-3 px-4">Department</th>
+                    <th className="py-3 px-4 text-center w-32">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {currentTableData.length > 0 ? (
+                    currentTableData.map((item, index) => {
+                      // Lookup head name: prefer backend value, fallback to employee list
+                      const headName =
+                        item.departmentHeadName ||
+                        employees.find(
+                          (e) => e.uuid === item.departmentHeadId,
+                        )?.name ||
+                        "";
+                      return (
+                        <tr
+                          key={item.uuid || item.id}
+                          className="hover:bg-slate-50/80 transition-colors"
+                        >
+                          <td className="py-3 px-4 font-medium text-slate-600">
+                            {startIndex + index + 1}
+                          </td>
+                          <td className="py-3 px-4 font-medium text-slate-900">
+                            {headName}
+                          </td>
+                          <td className="py-3 px-4 text-slate-700">
+                            {item.name || "—"}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="inline-flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => setEditingDept(item)}
+                                title="Edit Department"
+                                className="p-1.5 bg-cyan-400 hover:bg-cyan-500 text-white rounded-md transition-colors"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(item)}
+                                disabled={actionLoading}
+                                title="Delete Department"
+                                className="p-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-md transition-colors disabled:opacity-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="text-center py-10 text-slate-400 font-medium"
+                      >
+                        No matching records found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
 
-            {/* Modal Form */}
-            <form onSubmit={handleAddDepartment} className="p-5 space-y-4">
+            {/* Pagination */}
+            <div className="flex flex-col sm:flex-row items-center justify-between p-3 border-t border-slate-200 bg-white gap-2 text-xs text-slate-500">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Department Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Human Resources"
-                  value={departmentName}
-                  onChange={(e) => setDepartmentName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-[#030712] border border-slate-200 dark:border-[#1e293b] rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
+                Showing {filteredDepartments.length > 0 ? startIndex + 1 : 0} to{" "}
+                {Math.min(
+                  startIndex + entriesPerPage,
+                  filteredDepartments.length,
+                )}{" "}
+                of {filteredDepartments.length} entries
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Department Head (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. John Doe"
-                  value={departmentHead}
-                  onChange={(e) => setDepartmentHead(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-[#030712] border border-slate-200 dark:border-[#1e293b] rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
-              </div>
-
-              {/* Modal Actions */}
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="inline-flex items-center gap-1">
                 <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-[#1e293b] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-1 rounded border border-slate-200 ${
+                    currentPage === 1
+                      ? "bg-slate-50 text-slate-400 cursor-not-allowed"
+                      : "hover:bg-slate-50 text-slate-600"
+                  }`}
                 >
-                  Cancel
+                  Previous
                 </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1 rounded font-medium ${
+                        currentPage === page
+                          ? "border border-indigo-600 bg-indigo-600 text-white"
+                          : "border border-slate-200 hover:bg-slate-50 text-slate-600"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ),
+                )}
                 <button
-                  type="submit"
-                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-sm"
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(p + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className={`px-3 py-1 rounded border border-slate-200 ${
+                    currentPage === totalPages || totalPages === 0
+                      ? "bg-slate-50 text-slate-400 cursor-not-allowed"
+                      : "hover:bg-slate-50 text-slate-600"
+                  }`}
                 >
-                  Save Department
+                  Next
                 </button>
               </div>
-            </form>
+            </div>
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* Add Modal */}
+      {isAddOpen && (
+        <DepartmentFormModal
+          title="Department"
+          employees={employees}
+          onClose={() => setIsAddOpen(false)}
+          onSubmit={async (data) => {
+            await createDepartment(toApiPayload(data));
+            setIsAddOpen(false);
+            await loadData();
+          }}
+        />
       )}
 
-      {/* Page Footer */}
-      <footer className="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 dark:text-slate-600 border-t border-slate-200/60 dark:border-[#131c31] pt-4">
-        <div>2026 © Somikoron IT LTD</div>
-        <div>Design &amp; Developed by Somikoron IT LTD</div>
-      </footer>
+      {/* Edit Modal */}
+      {editingDept && (
+        <DepartmentFormModal
+          title="Department"
+          initialData={editingDept}
+          employees={employees}
+          onClose={() => setEditingDept(null)}
+          onSubmit={async (data) => {
+            if (!editingDept.uuid) throw new Error("UUID is missing");
+            await updateDepartment(editingDept.uuid, toApiPayload(data));
+            setEditingDept(null);
+            await loadData();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -130,7 +130,6 @@ export default function AllPartyPage() {
   const [viewParty, setViewParty] = useState<BackendParty | null>(null);
   const [editParty, setEditParty] = useState<BackendParty | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BackendParty | null>(null);
-  const [restoreTarget, setRestoreTarget] = useState<BackendParty | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -175,7 +174,6 @@ export default function AllPartyPage() {
         setViewParty(null);
         setEditParty(null);
         setDeleteTarget(null);
-        setRestoreTarget(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -514,7 +512,7 @@ export default function AllPartyPage() {
   };
 
   // ---------------------------------------------------------------------------
-  // Delete / Restore Handlers
+  // Delete Handler
   // ---------------------------------------------------------------------------
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -529,25 +527,6 @@ export default function AllPartyPage() {
         err?.response?.data?.message ||
         err?.message ||
         "Failed to delete party.";
-      showToast(msg, "error");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const confirmRestore = async () => {
-    if (!restoreTarget) return;
-    setIsSubmitting(true);
-    try {
-      await procurementPartyApi.restore(restoreTarget.uuid);
-      showToast(`Party #${restoreTarget.code} restored successfully`, "success");
-      setRestoreTarget(null);
-      await loadParties();
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Failed to restore party.";
       showToast(msg, "error");
     } finally {
       setIsSubmitting(false);
@@ -1139,19 +1118,12 @@ export default function AllPartyPage() {
                             <Eye className="w-4 h-4 stroke-[1.75]" />
                           </button>
 
-                          {/* Edit or Restore */}
+                          {/* Actions */}
                           {recordsTab === "deleted" ? (
-                            /* Restore (Green tint at rest) */
-                            <button
-                              type="button"
-                              onClick={() => setRestoreTarget(party)}
-                              title="Restore Party"
-                              aria-label="Restore Party"
-                              className="w-8 h-8 rounded-lg bg-[#ECFDF3] border border-[#A6F4C5] text-[#039855] flex items-center justify-center hover:bg-[#D1FADF] hover:text-[#027A48] hover:shadow-[0_1px_2px_rgba(16,24,40,0.08)] active:bg-[#A6F4C5] transition-all duration-140 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
-                            >
-                              <RotateCcw className="w-4 h-4 stroke-[1.75]" />
-                            </button>
-                          ) : (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900 select-none">
+                                Soft Delete
+                              </span>
+                            ) : (
                             <>
                               {/* Edit (Purple tint at rest) */}
                               <button
@@ -2355,65 +2327,6 @@ export default function AllPartyPage() {
         </div>
       )}
 
-      {/* =========================================================================
-          RESTORE CONFIRMATION MODAL
-          ========================================================================= */}
-      {restoreTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-[0_8px_24px_rgba(16,24,40,0.08)] w-full max-w-sm p-6 space-y-4">
-            <div className="flex items-center gap-3 text-emerald-600">
-              <div className="p-2.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/40">
-                <RotateCcw className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Restore Party
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Return this record back to active parties.
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-600 dark:text-slate-300">
-              Are you sure you want to restore{" "}
-              <span className="font-semibold text-slate-900 dark:text-slate-100">
-                {restoreTarget.name}
-              </span>{" "}
-              (
-              <span className="font-mono text-xs font-semibold tabular-nums">
-                #{restoreTarget.code}
-              </span>
-              )?
-            </p>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setRestoreTarget(null)}
-                className="h-9 px-4 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300/90 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 shadow-[0_1px_2px_rgba(16,24,40,0.04)] active:translate-y-[0.5px] cursor-pointer transition-all duration-140 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={confirmRestore}
-                className="h-9 px-4 rounded-lg text-xs font-medium text-white bg-emerald-600 border border-emerald-700 hover:bg-emerald-700 hover:border-emerald-800 active:bg-emerald-800 active:translate-y-[0.5px] disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-[inset_0_1px_0_0_rgba(255,255,255,0.24),0_1px_2px_0_rgba(16,185,129,0.20)] hover:shadow-[0_2px_4px_rgba(16,185,129,0.25)] transition-all duration-140 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-1"
-              >
-                {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>Confirm Restore</span>
-              </button>
-            </div>
           </div>
-        </div>
-      )}
-
-      {/* Footer matching ERP */}
-      <footer className="mt-auto px-6 py-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex flex-wrap justify-between items-center gap-2">
-        <span>2026 © Somikoron IT LTD</span>
-        <span>Design &amp; Developed by Somikoron IT LTD</span>
-      </footer>
-    </div>
   );
 }

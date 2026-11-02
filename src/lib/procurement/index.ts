@@ -80,4 +80,6 @@ export * from "./procurementHireInApi";
 export * from "./procurementHireOutApi";
 export * from "./procurementEquipmentOnSiteApi";
 export * from "./procurementGrnVsInvoiceApi";
+export * from "./procurementWorkOrderMeasurementsApi";
+export * from "./procurementWorkBillsApi";
 export { getAuthenticatedUserId } from "./procurementAssetCategoryApi";

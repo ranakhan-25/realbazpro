@@ -1097,9 +1097,9 @@ export default function ProcurementBoqListPage() {
                               </button>
                             </>
                           ) : (
-                            <span className="text-[11px] font-medium text-rose-500 px-2 py-0.5 rounded bg-rose-50 border border-rose-200">
-                              Soft-Deleted
-                            </span>
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900 select-none">
+                                Soft Delete
+                              </span>
                           )}
                         </div>
                       </td>

@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 "use client";
 
 import { useEffect, useState, useMemo } from "react";

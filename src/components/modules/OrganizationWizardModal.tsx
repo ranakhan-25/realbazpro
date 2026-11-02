@@ -18,6 +18,7 @@ import {
   MapPin,
   Sparkles,
   Check,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getPlans, type Plan } from "@/services/planService";
@@ -40,6 +41,7 @@ export default function OrganizationWizardModal({
   onSuccess,
 }: OrganizationWizardModalProps) {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [conflictError, setConflictError] = useState<{ step: 1 | 2; message: string } | null>(null);
 
   // Available Data
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -289,7 +291,6 @@ export default function OrganizationWizardModal({
       if (onSuccess) onSuccess(created);
       onClose();
     } catch (err: any) {
-      console.error("Failed to create organization:", err);
       const resData = err.response?.data;
       let errorMsg = "Failed to create organization";
 
@@ -318,6 +319,21 @@ export default function OrganizationWizardModal({
       } else if (err.message) {
         errorMsg = err.message;
       }
+
+      if (err.response?.status === 409) {
+        console.warn("Organization onboarding conflict (409):", errorMsg);
+        const lowerMsg = errorMsg.toLowerCase();
+        if (lowerMsg.includes("organization code") || lowerMsg.includes("code")) {
+          setConflictError({ step: 1, message: errorMsg });
+          setCurrentStep(1);
+        } else {
+          setConflictError({ step: 2, message: errorMsg });
+          setCurrentStep(2);
+        }
+      } else {
+        console.error("Failed to create organization:", err);
+      }
+
       toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
@@ -419,6 +435,16 @@ export default function OrganizationWizardModal({
           {/* STEP 1: ORGANIZATION & SUBSCRIPTION PLAN */}
           {currentStep === 1 && (
             <div className="space-y-6">
+              {conflictError && conflictError.step === 1 && (
+                <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-start gap-3 text-amber-900 dark:text-amber-200 text-xs">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <p className="font-semibold text-amber-950 dark:text-amber-100">Organization Conflict</p>
+                    <p>{conflictError.message}</p>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-4">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-indigo-600" />
@@ -449,8 +475,15 @@ export default function OrganizationWizardModal({
                       required
                       placeholder="e.g. ORG_ACME"
                       value={orgCode}
-                      onChange={(e) => setOrgCode(e.target.value.toUpperCase())}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                      onChange={(e) => {
+                        setOrgCode(e.target.value.toUpperCase());
+                        if (conflictError?.step === 1) setConflictError(null);
+                      }}
+                      className={`w-full px-3 py-2 rounded-xl border ${
+                        conflictError?.step === 1
+                          ? "border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/20"
+                          : "border-slate-200 dark:border-slate-700"
+                      } bg-white dark:bg-slate-800 text-sm font-mono focus:ring-2 focus:ring-indigo-500/20 outline-none`}
                     />
                   </div>
 
@@ -604,6 +637,16 @@ export default function OrganizationWizardModal({
           {/* STEP 2: ORG ADMIN CREDENTIALS */}
           {currentStep === 2 && (
             <div className="space-y-5">
+              {conflictError && conflictError.step === 2 && (
+                <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-start gap-3 text-amber-900 dark:text-amber-200 text-xs">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <p className="font-semibold text-amber-950 dark:text-amber-100">Admin Account Conflict</p>
+                    <p>{conflictError.message}</p>
+                  </div>
+                </div>
+              )}
+
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <User className="h-4 w-4 text-indigo-600" />
                 Organization Administrator Credentials
@@ -637,8 +680,15 @@ export default function OrganizationWizardModal({
                     required
                     placeholder="e.g. sabbir_admin"
                     value={adminUsername}
-                    onChange={(e) => setAdminUsername(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                    onChange={(e) => {
+                      setAdminUsername(e.target.value);
+                      if (conflictError?.step === 2) setConflictError(null);
+                    }}
+                    className={`w-full px-3 py-2 rounded-xl border ${
+                      conflictError?.step === 2
+                        ? "border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/20"
+                        : "border-slate-200 dark:border-slate-700"
+                    } bg-white dark:bg-slate-800 text-sm font-mono focus:ring-2 focus:ring-indigo-500/20 outline-none`}
                   />
                 </div>
 
@@ -651,8 +701,15 @@ export default function OrganizationWizardModal({
                     required
                     placeholder="admin@acme.com"
                     value={adminEmail}
-                    onChange={(e) => setAdminEmail(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                    onChange={(e) => {
+                      setAdminEmail(e.target.value);
+                      if (conflictError?.step === 2) setConflictError(null);
+                    }}
+                    className={`w-full px-3 py-2 rounded-xl border ${
+                      conflictError?.step === 2
+                        ? "border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/20"
+                        : "border-slate-200 dark:border-slate-700"
+                    } bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none`}
                   />
                 </div>
 
