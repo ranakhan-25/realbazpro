@@ -79,6 +79,13 @@ function filterTree(nodes: MenuNode[], q: string): MenuNode[] {
   return out;
 }
 
+function cloneTree(nodes: MenuNode[] | undefined): MenuNode[] {
+  return (nodes ?? []).map((node) => ({
+    ...node,
+    children: node.children ? cloneTree(node.children) : undefined,
+  }));
+}
+
 export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -117,6 +124,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
     ) {
       return currentAccessibleMod.menuTree;
     }
+    let base = cloneTree(MENUS[module]);
     if (module === "procurement") {
       base = base.filter(
         (n) => n.slug !== "approvals" && n.slug !== "vendors"

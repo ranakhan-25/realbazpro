@@ -1,16 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, X, ChevronsLeft, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 interface AccountItem {
   id: string;
+  accountId: string;
   account: string;
   amount: number;
   note: string;
 }
 
 export default function ExpenseAddPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const editUuid = searchParams.get("uuid");
+  const API_BASE = "/api/backend";
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [accounts, setAccounts] = useState<Array<{ uuid?: string; id?: string; name?: string }>>([]);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -20,7 +30,7 @@ export default function ExpenseAddPage() {
   const [titleOfWork, setTitleOfWork] = useState("");
   const [task, setTask] = useState("");
   const [site, setSite] = useState("");
-  const [date, setDate] = useState("13/09/2026");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [voucherNo, setVoucherNo] = useState("EXP00003");
   const [selectedAccount, setSelectedAccount] = useState("");
   const [amount, setAmount] = useState<string>("");
@@ -42,16 +52,94 @@ export default function ExpenseAddPage() {
   const [modalAccountName, setModalAccountName] = useState("");
   const [modalDefaultModule, setModalDefaultModule] = useState("");
 
+  useEffect(() => {
+    const loadAccounts = async () => {
+      setIsLoadingAccounts(true);
+      try {
+        const response = await fetch(`${API_BASE}/chart-of-accounts`, {
+          headers: { accept: "application/json" },
+        });
+        const result = await response.json();
+        if (!response.ok || result.success === false) {
+          throw new Error(result.message || "Chart of accounts could not be loaded.");
+        }
+        const findArray = (value: unknown): unknown[] | null => {
+          if (Array.isArray(value)) return value;
+          if (!value || typeof value !== "object") return null;
+          for (const nested of Object.values(value)) {
+            const found = findArray(nested);
+            if (found) return found;
+          }
+          return null;
+        };
+        const payload = findArray(result) ?? [];
+        if (Array.isArray(payload)) {
+          setAccounts(payload.filter(
+            (account): account is { uuid?: string; id?: string; name?: string } =>
+              Boolean(account) && typeof account === "object",
+          ));
+        }
+      } catch (error) {
+        console.error("Failed to load chart of accounts", error);
+        setAccounts([]);
+        toast.error(error instanceof Error ? error.message : "Chart of accounts could not be loaded.");
+      } finally {
+        setIsLoadingAccounts(false);
+      }
+    };
+    loadAccounts();
+  }, []);
+
+  useEffect(() => {
+    if (!editUuid) return;
+    const loadExpense = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/expenses/${editUuid}`);
+        const result = await response.json();
+        const expense = result.data?.data ?? result.data ?? {};
+        setProjectType(expense.projectType ?? "");
+        setProject(expense.project ?? "");
+        setTitleOfWork(expense.titleOfWork ?? "");
+        setTask(expense.task ?? "");
+        setSite(expense.site ?? "");
+        setDate(expense.date?.slice(0, 10) ?? "");
+        setVoucherNo(expense.voucherNo ?? "");
+        setContact(expense.contact ?? "");
+        setCashBank(expense.cashOrBank ?? "");
+        setChequeNo(expense.chequeNo ?? "");
+        setComment(expense.comment ?? "");
+        setItems((expense.items ?? []).map((item: { accountId?: string; amount?: number | string; note?: string }, index: number) => ({
+          id: String(item.accountId ?? index),
+          accountId: String(item.accountId ?? ""),
+          account: String(item.accountId ?? ""),
+          amount: Number(item.amount ?? 0),
+          note: item.note ?? "",
+        })));
+      } catch (error) {
+        console.error("Failed to load expense", error);
+      }
+    };
+    loadExpense();
+  }, [editUuid]);
+
   // Add Item to Table
   const handleAddItem = () => {
-    if (!selectedAccount || !amount || parseFloat(amount) <= 0) {
-      alert("Please select an account and enter a valid amount.");
+    if (amount.trim() === "" || !Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+      toast.error("Please enter a valid amount greater than zero.");
+      return;
+    }
+    if (!selectedAccount.trim()) {
+      toast.error("Please select a chart of account.");
       return;
     }
 
+    const selectedAccountData = accounts.find(
+      (account) => String(account.uuid ?? account.id ?? "") === selectedAccount,
+    );
     const newItem: AccountItem = {
       id: `TXN-${Date.now().toString().slice(-4)}`,
-      account: selectedAccount,
+      accountId: selectedAccount,
+      account: selectedAccountData?.name ?? selectedAccount,
       amount: parseFloat(amount),
       note: note || "-",
     };
@@ -60,6 +148,7 @@ export default function ExpenseAddPage() {
     setSelectedAccount("");
     setAmount("");
     setNote("");
+    toast.success("Account item added.");
   };
 
   // Remove Item from Table
@@ -71,8 +160,13 @@ export default function ExpenseAddPage() {
   const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
 
   // Handle Main Submit
-  const handleSubmitExpense = (e: React.FormEvent) => {
+  const handleSubmitExpense = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!items.length) {
+      toast.error("Please add at least one account item.");
+      return;
+    }
+
     const payload = {
       projectType,
       project,
@@ -81,16 +175,39 @@ export default function ExpenseAddPage() {
       site,
       date,
       voucherNo,
-      items,
       contact,
-      cashBank,
+      cashOrBank: cashBank,
       chequeNo,
       totalAmount,
       comment,
-      attachment: attachment ? attachment.name : null,
+      attachmentUrl: attachment?.name ?? "",
+      items: items.map((item) => ({
+        accountId: item.accountId,
+        amount: item.amount,
+        note: item.note === "-" ? "" : item.note,
+      })),
+      addedBy: "Admin",
+      addedById: "admin",
     };
-    console.log("Expense Form Submitted:", payload);
-    alert("Expense added successfully!");
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`${API_BASE}/expenses${editUuid ? `/${editUuid}` : ""}`, {
+        method: editUuid ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json", accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || "Expense could not be saved.");
+      }
+      toast.success(editUuid ? "Expense updated successfully!" : "Expense added successfully!");
+      router.push("/dashboard/accounts/voucher/expense");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Expense could not be saved.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Handle Modal Submit
@@ -102,7 +219,7 @@ export default function ExpenseAddPage() {
       modalAccountName,
       modalDefaultModule,
     });
-    alert("New Account Added Successfully!");
+    toast.success("New Account Added Successfully!");
     setIsModalOpen(false);
 
     // Reset Modal Form
@@ -131,7 +248,8 @@ export default function ExpenseAddPage() {
         </nav>
 
         <button
-          onClick={() => alert("Navigating to Expense List...")}
+          type="button"
+          onClick={() => router.push("/dashboard/accounts/voucher/expense")}
           className="flex items-center gap-1 px-3 py-1.5 text-xs md:text-sm font-semibold rounded-md bg-[#635BFF] hover:bg-indigo-700 text-white transition-all shadow-sm cursor-pointer"
         >
           <ChevronsLeft className="w-4 h-4" />
@@ -259,10 +377,17 @@ export default function ExpenseAddPage() {
                 onChange={(e) => setSelectedAccount(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
-                <option value="">Select Chart Of Account_id</option>
-                <option value="Office Allowance">Office Allowance</option>
-                <option value="Site Maintenance">Site Maintenance</option>
-                <option value="Electrical Materials">Electrical Materials</option>
+                <option value="">
+                  {isLoadingAccounts ? "Loading accounts..." : "Select Chart Of Account"}
+                </option>
+                {accounts.map((account, index) => (
+                  <option
+                    key={String(account.uuid ?? account.id ?? index)}
+                    value={String(account.uuid ?? account.id ?? "")}
+                  >
+                    {account.name ?? `Account ${index + 1}`}
+                  </option>
+                ))}
               </select>
               <button
                 type="button"
@@ -283,6 +408,8 @@ export default function ExpenseAddPage() {
               </label>
               <input
                 type="number"
+                min="0.01"
+                step="0.01"
                 placeholder="Amount"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
@@ -440,9 +567,10 @@ export default function ExpenseAddPage() {
         <div className="flex justify-center pt-3">
           <button
             type="submit"
+            disabled={isSubmitting}
             className="px-8 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium text-sm rounded-lg transition-colors cursor-pointer shadow-sm"
           >
-            Submit
+            {isSubmitting ? "Saving..." : editUuid ? "Update Expense" : "Submit Expense"}
           </button>
         </div>
       </form>

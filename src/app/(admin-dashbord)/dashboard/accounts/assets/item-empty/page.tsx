@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import {
   ChevronDown,
   Search,
@@ -9,24 +10,22 @@ import {
   X,
   Pencil,
   Trash2,
+  Eye,
 } from 'lucide-react';
-
-// ডামি ডেটা (Dummy Data)
-const initialDummyData = [
-  { id: 1, code: 'AST-001', name: 'Office Laptop', category: 'Electronics', unit: 'Pcs', brand: 'Dell', price: 1200, group: 'Asset' },
-  { id: 2, code: 'AST-002', name: 'AC Machine', category: 'Electronics', unit: 'Pcs', brand: 'Samsung', price: 800, group: 'Asset' },
-  { id: 3, code: 'AST-003', name: 'Office Printer', category: 'Stationery', unit: 'Pcs', brand: 'HP', price: 350, group: 'Expense' },
-  { id: 4, code: 'AST-004', name: 'Conference Table', category: 'Furniture', unit: 'Pcs', brand: 'Local', price: 500, group: 'Asset' },
-];
 
 export default function AssetItemList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
-  const [assets, setAssets] = useState(initialDummyData);
+  const [assets, setAssets] = useState<Array<{ id: number; uuid: string; code: string; category: string; brand: string; name: string; unit: string; price: number; group: string; location: string; acquisitionDate: string; method: string; bookValue: number; depreciableValue: number; status: string }>>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedItem, setSelectedItem] = useState<(typeof assets)[number] | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
     id: 0,
+    uuid: '',
     code: '',
     category: '',
     brand: '',
@@ -36,18 +35,64 @@ export default function AssetItemList() {
     group: ''
   });
 
+  const normalizeArray = (value: unknown): Record<string, unknown>[] => {
+    if (Array.isArray(value)) return value as Record<string, unknown>[];
+    if (!value || typeof value !== 'object') return [];
+    for (const nested of Object.values(value)) {
+      const found = normalizeArray(nested);
+      if (found.length) return found;
+    }
+    return [];
+  };
+
+  const fetchItems = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/backend/item-entry', { headers: { accept: 'application/json' } });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Item entries could not be loaded.');
+      const rows = normalizeArray(result.data);
+      setAssets(rows.map((item, index) => ({
+        id: Number(item.id ?? index + 1),
+        uuid: String(item.uuid ?? ''),
+        code: String(item.code ?? `AST-${String(index + 1).padStart(3, '0')}`),
+        category: String(item.category ?? 'Asset'),
+        brand: String(item.brand ?? '—'),
+        name: String(item.itemName ?? item.name ?? ''),
+        unit: String(item.unit ?? 'Pcs'),
+        price: Number(item.originalValue ?? item.price ?? 0),
+        group: String(item.group ?? 'Asset'),
+        location: String(item.location ?? ''),
+        acquisitionDate: String(item.acquisitionDate ?? '').slice(0, 10),
+        method: String(item.method ?? ''),
+        bookValue: Number(item.bookValue ?? 0),
+        depreciableValue: Number(item.depreciableValue ?? 0),
+        status: String(item.status ?? ''),
+      })));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Item entries could not be loaded.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
   // Add Button Click
   const handleAddClick = () => {
     setModalMode('add');
-    setFormData({ id: 0, code: '', category: '', brand: '', name: '', unit: '', price: '', group: '' });
+    setFormData({ id: 0, uuid: '', code: '', category: '', brand: '', name: '', unit: '', price: '', group: '' });
     setIsModalOpen(true);
   };
 
   // Edit Button Click
-  const handleEditClick = (item: any) => {
+  const handleEditClick = (item: (typeof assets)[number]) => {
     setModalMode('edit');
     setFormData({
       id: item.id,
+      uuid: item.uuid,
       code: item.code,
       category: item.category,
       brand: item.brand,
@@ -66,39 +111,106 @@ export default function AssetItemList() {
   };
 
   // Submit Form (Add or Update)
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (modalMode === 'edit') {
-      // Update existing record
-      setAssets((prev) =>
-        prev.map((item) =>
-          item.id === formData.id
-            ? { ...item, ...formData, price: Number(formData.price) }
-            : item
-        )
-      );
-    } else {
-      // Add new record
-      const newId = assets.length > 0 ? Math.max(...assets.map(a => a.id)) + 1 : 1;
-      const newAsset = {
-        ...formData,
-        id: newId,
-        code: `AST-00${newId}`,
-        price: Number(formData.price) || 0,
-      };
-      setAssets([...assets, newAsset]);
+    if (!formData.category || !formData.brand || !formData.name.trim() || !formData.unit || !formData.price || !formData.group) {
+      toast.error('Please fill in required fields (*)');
+      return;
     }
-    
-    setIsModalOpen(false);
+    const price = Number(formData.price || 0);
+    if (!Number.isFinite(price) || price < 0) {
+      toast.error('Purchase price must be a valid non-negative number.');
+      return;
+    }
+    const payload = {
+      itemName: formData.name.trim(),
+      location: String(formData.category || ''),
+      acquisitionDate: new Date().toISOString().slice(0, 10),
+      originalValue: price,
+      method: String(formData.brand || ''),
+      bookValue: price,
+      depreciableValue: price,
+      status: formData.group || 'Running',
+    };
+    setIsSaving(true);
+    try {
+      const uuid = modalMode === 'edit' ? String(formData.uuid || '') : '';
+      if (uuid === '' && modalMode === 'edit') {
+        throw new Error('This item has no valid UUID.');
+      }
+      const response = await fetch(`/api/backend/item-entry${uuid ? `/${encodeURIComponent(uuid)}` : ''}`, {
+        method: uuid ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok || result.success === false) throw new Error(result.message || 'Item entry could not be saved.');
+      toast.success(modalMode === 'edit' ? 'Item entry updated successfully.' : 'Item entry created successfully.');
+      setIsModalOpen(false);
+      await fetchItems();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Item entry could not be saved.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Delete Handler
-  const handleDelete = (id: number) => {
-    if (window.confirm('Are you sure you want to delete this item?')) {
-      setAssets(assets.filter((asset) => asset.id !== id));
+  const handleDelete = (item: (typeof assets)[number]) => {
+    toast((notification) => (
+      <div className="flex items-center gap-3">
+        <span>Delete {item.name}?</span>
+        <button type="button" onClick={async () => {
+          toast.dismiss(notification.id);
+          const loadingToast = toast.loading('Deleting item...');
+          try {
+            const response = await fetch(`/api/backend/item-entry/${encodeURIComponent(item.uuid)}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Item entry could not be deleted.');
+            toast.success('Item entry deleted successfully.', { id: loadingToast });
+            await fetchItems();
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Item entry could not be deleted.', { id: loadingToast });
+          }
+        }} className="rounded bg-red-500 px-2 py-1 text-xs text-white">Delete</button>
+        <button type="button" onClick={() => toast.dismiss(notification.id)} className="rounded bg-slate-200 px-2 py-1 text-xs text-slate-700">Cancel</button>
+      </div>
+    ), { duration: 8000 });
+  };
+
+  const handleView = async (item: (typeof assets)[number]) => {
+    if (!item.uuid) {
+      toast.error('This item has no valid UUID.');
+      return;
+    }
+    const loadingToast = toast.loading('Loading item details...');
+    try {
+      const response = await fetch(`/api/backend/item-entry/${encodeURIComponent(item.uuid)}`, {
+        headers: { accept: 'application/json' },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Item details could not be loaded.');
+      const data = result.data?.data ?? result.data ?? result;
+      setSelectedItem({
+        ...item,
+        location: String(data.location ?? item.location ?? ''),
+        acquisitionDate: String(data.acquisitionDate ?? item.acquisitionDate ?? '').slice(0, 10),
+        method: String(data.method ?? item.method ?? ''),
+        bookValue: Number(data.bookValue ?? item.bookValue ?? 0),
+        depreciableValue: Number(data.depreciableValue ?? item.depreciableValue ?? 0),
+        status: String(data.status ?? item.status ?? ''),
+      });
+      toast.dismiss(loadingToast);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Item details could not be loaded.', { id: loadingToast });
     }
   };
+
+  const filteredAssets = assets.filter((item) =>
+    [item.id, item.code, item.name, item.category, item.brand, item.unit]
+      .join(' ')
+      .toLowerCase()
+      .includes(searchTerm.trim().toLowerCase()),
+  );
 
   return (
     <div className="min-h-screen bg-[#f4f7f6] p-4 md:p-6 font-sans text-sm text-[#333]">
@@ -124,7 +236,13 @@ export default function AssetItemList() {
           <button className="bg-[#e34949] hover:bg-[#c93b3b] text-white px-4 py-1.5 rounded text-sm flex items-center transition">
             PDF
           </button>
-          <button className="bg-[#17b5c5] hover:bg-[#1399a7] text-white p-2 rounded transition">
+          <button
+            type="button"
+            onClick={fetchItems}
+            disabled={isLoading}
+            className="bg-[#17b5c5] hover:bg-[#1399a7] disabled:opacity-60 text-white p-2 rounded transition"
+            title="Refresh"
+          >
             <RefreshCcw className="w-4 h-4" />
           </button>
         </div>
@@ -149,7 +267,10 @@ export default function AssetItemList() {
             <div className="relative">
               <input
                 type="text"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
                 className="border border-gray-300 rounded px-3 py-1 outline-none focus:border-[#6b58e8] w-48 pl-8"
+                placeholder="Search items"
               />
               <Search className="w-4 h-4 text-gray-400 absolute left-2 top-1.5" />
             </div>
@@ -176,14 +297,14 @@ export default function AssetItemList() {
               </tr>
             </thead>
             <tbody className="text-gray-700 text-sm">
-              {assets.length === 0 ? (
+              {filteredAssets.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-6 text-gray-500">
                     No data available in table
                   </td>
                 </tr>
               ) : (
-                assets.map((item) => (
+                filteredAssets.map((item) => (
                   <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
                     <td className="p-3 border-r border-gray-100 font-medium">{item.id}</td>
                     <td className="p-3 border-r border-gray-100">{item.code}</td>
@@ -194,6 +315,13 @@ export default function AssetItemList() {
                     <td className="p-3 border-r border-gray-100">{item.price.toFixed(2)}</td>
                     <td className="p-3 flex items-center justify-center space-x-2">
                       <button
+                        onClick={() => handleView(item)}
+                        className="bg-gray-600 hover:bg-gray-700 text-white p-1.5 rounded transition"
+                        title="View"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => handleEditClick(item)}
                         className="bg-blue-500 hover:bg-blue-600 text-white p-1.5 rounded transition"
                         title="Edit"
@@ -201,7 +329,7 @@ export default function AssetItemList() {
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => handleDelete(item)}
                         className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded transition"
                         title="Delete"
                       >
@@ -218,7 +346,7 @@ export default function AssetItemList() {
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between mt-4 text-gray-600 gap-3">
           <div>
-            Showing 1 to {assets.length} of {assets.length} entries
+            Showing {filteredAssets.length === 0 ? 0 : 1} to {filteredAssets.length} of {filteredAssets.length} entries
           </div>
           <div className="flex space-x-2">
             <button className="px-3 py-1.5 bg-[#f8f9fa] border border-gray-200 rounded text-gray-400 cursor-not-allowed">
@@ -359,6 +487,7 @@ export default function AssetItemList() {
                     <input
                       type="number"
                       step="0.01"
+                      min="0"
                       name="price"
                       value={formData.price}
                       onChange={handleInputChange}
@@ -404,13 +533,44 @@ export default function AssetItemList() {
                 </button>
                 <button
                   type="submit"
+                  disabled={isSaving}
                   className="px-5 py-2 bg-[#6b58e8] hover:bg-[#5844d0] text-white rounded font-medium transition"
                 >
-                  {modalMode === 'edit' ? 'Update' : 'Submit'}
+                  {isSaving ? 'Saving...' : modalMode === 'edit' ? 'Update' : 'Submit'}
                 </button>
               </div>
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {selectedItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded bg-white shadow-lg">
+            <div className="flex items-center justify-between border-b px-6 py-4">
+              <h2 className="text-base font-semibold text-gray-800">Item Details</h2>
+              <button type="button" onClick={() => setSelectedItem(null)} className="rounded bg-gray-100 p-1 text-gray-500">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-4 px-6 py-5 text-sm">
+              <div><span className="text-gray-500">Name:</span> <strong>{selectedItem.name || '-'}</strong></div>
+              <div><span className="text-gray-500">Code:</span> {selectedItem.code || '-'}</div>
+              <div><span className="text-gray-500">Category:</span> {selectedItem.category || '-'}</div>
+              <div><span className="text-gray-500">Brand:</span> {selectedItem.brand || '-'}</div>
+              <div><span className="text-gray-500">Unit:</span> {selectedItem.unit || '-'}</div>
+              <div><span className="text-gray-500">Price:</span> {selectedItem.price.toFixed(2)}</div>
+              <div><span className="text-gray-500">Location:</span> {selectedItem.location || '-'}</div>
+              <div><span className="text-gray-500">Status:</span> {selectedItem.status || '-'}</div>
+              <div><span className="text-gray-500">Method:</span> {selectedItem.method || '-'}</div>
+              <div><span className="text-gray-500">Acquired:</span> {selectedItem.acquisitionDate || '-'}</div>
+            </div>
+            <div className="flex justify-end border-t px-6 py-4">
+              <button type="button" onClick={() => setSelectedItem(null)} className="rounded bg-gray-500 px-5 py-2 text-white">
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
