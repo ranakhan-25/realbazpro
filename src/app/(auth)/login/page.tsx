@@ -113,8 +113,8 @@ export default function SuperAdminLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-100/80 px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
       {/* Main Container */}
       <div className="w-full max-w-6xl overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl lg:grid lg:grid-cols-2">
-        {/* LEFT SIDE - IMAGE SLIDER WITH HERMES THEME */}
-        <div className="relative hidden min-h-[640px] overflow-hidden lg:block bg-[#060814]">
+        {/* LEFT SIDE - IMAGE SLIDER WITH VIBRANT ENTERPRISE VISUALS */}
+        <div className="relative hidden min-h-[640px] overflow-hidden lg:block bg-slate-900">
           <AnimatePresence initial={false} mode="sync">
             <motion.div
               key={currentSlide}
@@ -130,10 +130,11 @@ export default function SuperAdminLoginPage() {
               <img
                 src={slide.image}
                 alt={slide.title}
-                className="h-full w-full object-cover opacity-60"
+                className="h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-[#060814]/70" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#060814] via-[#060814]/40 to-transparent" />
+              {/* Soft directional gradients so the photograph stays completely clear and vibrant */}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-transparent to-transparent" />
             </motion.div>
           </AnimatePresence>
 
@@ -146,7 +147,7 @@ export default function SuperAdminLoginPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.4 }}
-                className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/20 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white backdrop-blur-md"
+                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/40 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white backdrop-blur-md shadow-sm"
               >
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#00D2FF]" />
                 {slide.badge}
@@ -155,7 +156,7 @@ export default function SuperAdminLoginPage() {
 
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white backdrop-blur-md transition hover:bg-white hover:text-slate-900"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-black/40 px-3.5 py-2 text-xs font-semibold text-white backdrop-blur-md transition hover:bg-white hover:text-slate-900 shadow-sm"
             >
               ← Portal Home
             </Link>
@@ -176,15 +177,15 @@ export default function SuperAdminLoginPage() {
                 }}
                 className="max-w-xl"
               >
-                <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#00D2FF]">
+                <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#00D2FF] font-bold drop-shadow-sm">
                   RealBiz Super Governance
                 </p>
 
-                <h2 className="text-2xl font-black leading-tight tracking-tight text-white xl:text-3xl">
+                <h2 className="text-2xl font-black leading-tight tracking-tight text-white xl:text-3xl drop-shadow-md">
                   {slide.title}
                 </h2>
 
-                <p className="mt-3 max-w-lg text-xs leading-relaxed text-slate-300">
+                <p className="mt-3 max-w-lg text-xs leading-relaxed text-slate-200 drop-shadow-sm">
                   {slide.description}
                 </p>
               </motion.div>
@@ -203,8 +204,8 @@ export default function SuperAdminLoginPage() {
                   <span
                     className={`block h-1.5 rounded-full transition-all duration-500 ${
                       currentSlide === index
-                        ? "w-8 bg-[#0000F2]"
-                        : "w-3 bg-white/30 group-hover:bg-white/60"
+                        ? "w-8 bg-[#0000F2] shadow-sm shadow-blue-500/50"
+                        : "w-3 bg-white/40 group-hover:bg-white/70"
                     }`}
                   />
                 </button>
@@ -212,7 +213,7 @@ export default function SuperAdminLoginPage() {
             </div>
 
             {/* Footer Metadata */}
-            <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-[10px] uppercase tracking-wider text-slate-400">
+            <div className="mt-6 flex items-center justify-between border-t border-white/15 pt-4 text-[10px] uppercase tracking-wider text-slate-300">
               <span>Hermes Security Architecture</span>
               <span>Central Admin Console</span>
             </div>
@@ -222,6 +223,17 @@ export default function SuperAdminLoginPage() {
         {/* RIGHT SIDE - LOGIN FORM */}
         <div className="flex min-h-[640px] flex-col justify-center bg-white p-8 sm:p-12">
           <div className="mx-auto w-full max-w-md">
+            {/* RealBiz Brand Logo */}
+            <div className="mb-6">
+              <Link href="/" className="inline-block" aria-label="RealBiz Home">
+                <img
+                  src="/logo.svg"
+                  alt="RealBiz Pro"
+                  className="h-10 w-auto object-contain"
+                />
+              </Link>
+            </div>
+
             {/* Form Header */}
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">

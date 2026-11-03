@@ -141,26 +141,26 @@ export default function UniversalDashboardPage() {
 
   return (
     <div className="space-y-8 p-6 md:p-8 max-w-7xl mx-auto">
-      {/* Top Banner / Hero - Hermes Palette */}
-      <div className="relative overflow-hidden rounded-3xl bg-[#060814] border border-[#1E293B] p-8 text-white shadow-2xl">
-        {/* Glow Effects */}
-        <div className="absolute right-0 top-0 -mt-10 -mr-10 h-72 w-72 rounded-full bg-[#0000F2]/20 blur-3xl" />
-        <div className="absolute left-1/3 bottom-0 -mb-10 h-56 w-56 rounded-full bg-[#00D2FF]/15 blur-3xl" />
+      {/* Top Banner / Hero - Enterprise Theme Matching RealBiz Palette */}
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-gradient-to-br from-white via-slate-50/70 to-blue-50/40 p-7 sm:p-8 text-slate-900 shadow-sm">
+        {/* Subtle Brand Ambient Glows */}
+        <div className="absolute right-0 top-0 -mt-10 -mr-10 h-72 w-72 rounded-full bg-blue-500/5 blur-3xl pointer-events-none" />
+        <div className="absolute left-1/3 bottom-0 -mb-10 h-56 w-56 rounded-full bg-cyan-500/5 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3.5 py-1 text-xs font-semibold text-blue-300 backdrop-blur-md">
-              <Sparkles className="h-3.5 w-3.5 text-blue-400" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/90 px-3.5 py-1 text-xs font-semibold text-blue-700 shadow-xs">
+              <Sparkles className="h-3.5 w-3.5 text-blue-600" />
               <span>Universal Workspace Hub</span>
               <span className="h-1 w-1 rounded-full bg-blue-400" />
-              <span className="text-[10px] uppercase tracking-wider text-slate-300">Hermes Core</span>
+              <span className="text-[10px] uppercase tracking-wider text-blue-600/80">RealBiz Core</span>
             </div>
 
-            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-white">
+            <h1 className="text-2xl font-black tracking-tight sm:text-3xl lg:text-4xl text-slate-900">
               Welcome, {user?.name || "Workspace Member"}
             </h1>
 
-            <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
               Your centralized launchpad for all operational enterprise modules. Select a workspace below to manage workflows, records, transactions, and performance metrics.
             </p>
           </div>
@@ -169,18 +169,18 @@ export default function UniversalDashboardPage() {
             {(user?.isSuperUser || user?.isOrgAdmin) && (
               <Link
                 href="/admin/dashboard"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0000F2] hover:bg-[#0000F2]/90 border border-blue-400/30 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-900/30 transition backdrop-blur-md active:scale-95"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0000F2] hover:bg-blue-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm shadow-blue-500/20 transition active:scale-95"
               >
                 <ShieldCheck className="h-4 w-4 text-white" />
                 <span>Admin Governance</span>
               </Link>
             )}
 
-            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-right backdrop-blur-sm">
+            <div className="rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-left sm:text-right shadow-xs">
               <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Tenant Context
               </span>
-              <span className="font-semibold text-sm text-white">
+              <span className="font-bold text-sm text-slate-900">
                 {user?.orgName || (user?.isSuperUser ? "Global Enterprise" : "Main Organization")}
               </span>
             </div>
@@ -188,32 +188,32 @@ export default function UniversalDashboardPage() {
         </div>
 
         {/* Quick summary strip */}
-        <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 border-t border-white/10 pt-6">
-          <div>
-            <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+        <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 border-t border-slate-200/80 pt-6">
+          <div className="rounded-xl bg-white/80 p-3 border border-slate-100 shadow-2xs">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               Assigned Authority
             </span>
-            <p className="text-base font-bold text-white mt-0.5">{roleTitle}</p>
+            <p className="text-base font-bold text-slate-900 mt-0.5">{roleTitle}</p>
           </div>
-          <div>
-            <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+          <div className="rounded-xl bg-white/80 p-3 border border-slate-100 shadow-2xs">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               Security Level
             </span>
-            <p className="text-base font-bold text-white mt-0.5">Tier {user?.roleLevel ?? 4}</p>
+            <p className="text-base font-bold text-slate-900 mt-0.5">Tier {user?.roleLevel ?? 4}</p>
           </div>
-          <div>
-            <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+          <div className="rounded-xl bg-white/80 p-3 border border-slate-100 shadow-2xs">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               Entitled Workspaces
             </span>
-            <p className="text-base font-bold text-emerald-400 mt-0.5">
+            <p className="text-base font-bold text-emerald-600 mt-0.5">
               {accessibleModules.length} Operational Modules
             </p>
           </div>
-          <div>
-            <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+          <div className="rounded-xl bg-white/80 p-3 border border-slate-100 shadow-2xs">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               Access Governance
             </span>
-            <p className="text-base font-bold text-blue-400 mt-0.5">Verified Tenant RBAC</p>
+            <p className="text-base font-bold text-[#0000F2] mt-0.5">Verified Tenant RBAC</p>
           </div>
         </div>
       </div>
