@@ -168,53 +168,53 @@ const navItems: NavItem[] = [
     children: [
       {
         label: "Category",
-        href: "/dashboard/project/billing/configuration/category",
+        href: "/dashboard/accounts/billing/configuration/category",
       },
       {
         label: "Sub Category",
-        href: "/dashboard/project/billing/configuration/sub-category",
+        href: "/dashboard/accounts/billing/configuration/sub-category",
       },
       {
         label: "Bill Item",
-        href: "/dashboard/project/billing/configuration/bill-item",
+        href: "/dashboard/accounts/billing/configuration/bill-item",
       },
       {
         label: "Service Work Name",
-        href: "/dashboard/project/billing/configuration/service-work-name",
+        href: "/dashboard/accounts/billing/configuration/service-work-name",
       },
       {
         label: "BOQ Title",
-        href: "/dashboard/project/billing/configuration/boq-title",
+        href: "/dashboard/accounts/billing/configuration/boq-title",
       },
       {
         label: "Bill Invoice",
-        href: "/dashboard/project/billing/bill-invoice",
+        href: "/dashboard/accounts/billing/bill-invoice",
       },
       {
         label: "Contractor Bill",
-        href: "/dashboard/project/billing/contractor-bill",
+        href: "/dashboard/accounts/billing/contractor-bill",
       },
       {
         label: "Labour Work Bill",
-        href: "/dashboard/project/billing/labour-work-bill",
+        href: "/dashboard/accounts/billing/labour-work-bill",
       },
-      { label: "Work Order", href: "/dashboard/project/billing/work-order" },
+      { label: "Work Order", href: "/dashboard/accounts/billing/work-order" },
       {
         label: "Contractor Work Order",
-        href: "/dashboard/project/billing/contractor-work-order",
+        href: "/dashboard/accounts/billing/contractor-work-order",
       },
       {
         label: "Period Billing",
-        href: "/dashboard/project/billing/period-billing",
+        href: "/dashboard/accounts/billing/period-billing",
       },
       {
         label: "Adjustment Billing",
-        href: "/dashboard/project/billing/adjustment-billing",
+        href: "/dashboard/accounts/billing/adjustment-billing",
       },
-      { label: "Quote", href: "/dashboard/project/billing/quote" },
+      { label: "Quote", href: "/dashboard/accounts/billing/quote" },
       {
         label: "Labour Work Bill Report",
-        href: "/dashboard/project/billing/labour-work-bill-report",
+        href: "/dashboard/accounts/billing/labour-worker-bill-report",
       },
     ],
   },
