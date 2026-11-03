@@ -124,11 +124,11 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
       const rawTree = MENUS[module] || [];
       base = pruneTreeByAccess(rawTree, module, hasAccessToRoute);
     }
-    let base = pruneTreeByAccess(
-      MENUS[module],
-      module,
-      hasAccessToRoute,
-    );
+    // let base = pruneTreeByAccess(
+    //   MENUS[module],
+    //   module,
+    //   hasAccessToRoute,
+    // );
     if (module === "procurement") {
       base = base.filter(
         (n) => n.slug !== "approvals" && n.slug !== "vendors"
