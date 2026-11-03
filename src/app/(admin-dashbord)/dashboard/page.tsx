@@ -4,16 +4,23 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Activity,
+  ArrowRight,
+  Boxes,
   Briefcase,
   Building2,
   CalendarCheck2,
+  CheckCircle2,
+  ChevronRight,
   Coins,
   Compass,
   CreditCard,
+  ExternalLink,
   FileCheck2,
   FolderKanban,
-  LayoutDashboard,
   Layers,
+  LayoutDashboard,
+  Loader2,
   Package,
   Receipt,
   ShieldCheck,
@@ -23,9 +30,6 @@ import {
   UserCheck,
   Users,
   Warehouse,
-  ArrowRight,
-  ExternalLink,
-  Loader2,
 } from "lucide-react";
 import { useUserAccess } from "@/context/UserAccessContext";
 
@@ -137,16 +141,19 @@ export default function UniversalDashboardPage() {
 
   return (
     <div className="space-y-8 p-6 md:p-8 max-w-7xl mx-auto">
-      {/* Top Banner / Hero */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-xl">
-        <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
-        <div className="absolute left-1/2 bottom-0 -mb-10 h-48 w-48 rounded-full bg-emerald-500/10 blur-2xl" />
+      {/* Top Banner / Hero - Hermes Palette */}
+      <div className="relative overflow-hidden rounded-3xl bg-[#060814] border border-[#1E293B] p-8 text-white shadow-2xl">
+        {/* Glow Effects */}
+        <div className="absolute right-0 top-0 -mt-10 -mr-10 h-72 w-72 rounded-full bg-[#0000F2]/20 blur-3xl" />
+        <div className="absolute left-1/3 bottom-0 -mb-10 h-56 w-56 rounded-full bg-[#00D2FF]/15 blur-3xl" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1 text-xs font-semibold text-white backdrop-blur-md">
-              <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3.5 py-1 text-xs font-semibold text-blue-300 backdrop-blur-md">
+              <Sparkles className="h-3.5 w-3.5 text-blue-400" />
               <span>Universal Workspace Hub</span>
+              <span className="h-1 w-1 rounded-full bg-blue-400" />
+              <span className="text-[10px] uppercase tracking-wider text-slate-300">Hermes Core</span>
             </div>
 
             <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-white">
@@ -154,7 +161,7 @@ export default function UniversalDashboardPage() {
             </h1>
 
             <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Your centralized launchpad for all operational enterprise modules. Select a workspace below to begin managing workflows, records, and performance metrics.
+              Your centralized launchpad for all operational enterprise modules. Select a workspace below to manage workflows, records, transactions, and performance metrics.
             </p>
           </div>
 
@@ -162,14 +169,14 @@ export default function UniversalDashboardPage() {
             {(user?.isSuperUser || user?.isOrgAdmin) && (
               <Link
                 href="/admin/dashboard"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2.5 text-xs font-semibold text-white transition backdrop-blur-md"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0000F2] hover:bg-[#0000F2]/90 border border-blue-400/30 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-900/30 transition backdrop-blur-md active:scale-95"
               >
-                <ShieldCheck className="h-4 w-4 text-blue-400" />
+                <ShieldCheck className="h-4 w-4 text-white" />
                 <span>Admin Governance</span>
               </Link>
             )}
 
-            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-right">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-right backdrop-blur-sm">
               <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Tenant Context
               </span>
@@ -206,10 +213,127 @@ export default function UniversalDashboardPage() {
             <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
               Access Governance
             </span>
-            <p className="text-base font-bold text-blue-400 mt-0.5">Verified RBAC</p>
+            <p className="text-base font-bold text-blue-400 mt-0.5">Verified Tenant RBAC</p>
           </div>
         </div>
       </div>
+
+      {/* ENTERPRISE WORKFLOW & ONBOARDING TIMELINE */}
+      <section className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-slate-50/50 to-blue-50/20 p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 pb-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
+              <Sparkles className="h-3 w-3 text-blue-600" />
+              <span>Operational Lifecycle Roadmap</span>
+            </div>
+            <h2 className="text-base font-bold text-slate-900 mt-1">
+              Organization Flow of Work & Execution Pipeline
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Follow the end-to-end operational sequence to set up master records, delegate duties, and run daily workflows.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-slate-400">Readiness:</span>
+            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
+              System Ready
+            </span>
+          </div>
+        </div>
+
+        {/* 5-Step Cards */}
+        <div className="mt-5 grid grid-cols-1 md:grid-cols-5 gap-3.5">
+          {[
+            {
+              step: "01",
+              title: "Organization Profile",
+              desc: "Set tenant branding, currency, address, and localized fiscal settings",
+              href: user?.isSuperUser || user?.isOrgAdmin ? "/admin/web-settings" : "#",
+              btnText: "Configure",
+              icon: Building2,
+              badge: "Identity",
+            },
+            {
+              step: "02",
+              title: "Roles & Scopes",
+              desc: "Define organizational roles and granular feature authorization",
+              href: user?.isSuperUser || user?.isOrgAdmin ? "/admin/roles" : "#",
+              btnText: "Manage Roles",
+              icon: ShieldCheck,
+              badge: "RBAC Scoped",
+            },
+            {
+              step: "03",
+              title: "Team Onboarding",
+              desc: "Invite project engineers, accountants, sales agents, and managers",
+              href: user?.isSuperUser || user?.isOrgAdmin ? "/admin/users" : "#",
+              btnText: "Team Directory",
+              icon: Users,
+              badge: "Staffing",
+            },
+            {
+              step: "04",
+              title: "Master Configuration",
+              desc: "Seed Chart of Accounts, Projects, Lead Pipelines & Warehouses",
+              href: accessibleModules.length > 0 ? `/dashboard/${accessibleModules[0].key}/dashboard` : "/dashboard",
+              btnText: "Open Modules",
+              icon: FolderKanban,
+              badge: "Master Data",
+            },
+            {
+              step: "05",
+              title: "Daily Operations",
+              desc: "Process vouchers, purchase requisitions, BOQ milestones & payroll",
+              href: "/dashboard",
+              btnText: "Workspaces",
+              icon: Activity,
+              badge: "Live Execution",
+            },
+          ].map((item) => {
+            const StepIcon = item.icon;
+            return (
+              <div
+                key={item.step}
+                className="group relative flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-4 transition-all hover:border-blue-400 hover:shadow-md hover:-translate-y-0.5"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-blue-600">
+                      Step {item.step}
+                    </span>
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
+                      {item.badge}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-[#0000F2] group-hover:text-white transition">
+                      <StepIcon className="h-4 w-4" />
+                    </div>
+                    <h3 className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition truncate">
+                      {item.title}
+                    </h3>
+                  </div>
+
+                  <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                    {item.desc}
+                  </p>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-100">
+                  <Link
+                    href={item.href}
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-[#0000F2] hover:text-white transition active:scale-95 shadow-sm"
+                  >
+                    <span>{item.btnText}</span>
+                    <ChevronRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {/* Modules Section Header */}
       <div className="flex items-center justify-between">
@@ -257,7 +381,7 @@ export default function UniversalDashboardPage() {
               <div
                 key={mod.key}
                 onClick={() => router.push(targetRoute)}
-                className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-xl hover:border-slate-300 hover:-translate-y-1 cursor-pointer"
+                className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm transition-all duration-200 hover:shadow-xl hover:shadow-blue-500/5 hover:border-[#0000F2]/40 hover:-translate-y-1 cursor-pointer"
               >
                 <div>
                   {/* Top Bar inside card */}
@@ -280,7 +404,7 @@ export default function UniversalDashboardPage() {
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                       {meta.category}
                     </span>
-                    <h3 className="text-lg font-bold text-slate-900 mt-0.5 group-hover:text-blue-600 transition">
+                    <h3 className="text-lg font-bold text-slate-900 mt-0.5 group-hover:text-[#0000F2] transition">
                       {mod.name}
                     </h3>
                   </div>
@@ -301,7 +425,7 @@ export default function UniversalDashboardPage() {
                     </span>
                   </div>
 
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 group-hover:translate-x-0.5 transition">
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-[#0000F2] group-hover:translate-x-1 transition-transform">
                     <span>Enter Workspace</span>
                     <ArrowRight className="h-3.5 w-3.5" />
                   </span>

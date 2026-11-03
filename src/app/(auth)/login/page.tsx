@@ -6,47 +6,47 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ShieldCheck, Loader2, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, Loader2, ArrowRight, Sparkles } from "lucide-react";
 
 import { loginAdminSession } from "@/lib/admin-auth/adminAuthApi";
 import {
   getStoredAccessToken,
   setStoredTokens,
 } from "@/lib/admin-auth/adminAuthStorage";
-import { SiteShell } from "@/components/site/SiteNav";
 
 const slides = [
   {
     image:
       "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1400&q=90",
-    badge: "REALBIZ OS",
-    title: "Command center for high-performance teams.",
+    badge: "HERMES ENTERPRISE",
+    title: "Governance & multi-tenant command console.",
     description:
-      "Streamline your pipeline, analyze operational metrics, and scale growth securely from a unified workspace.",
+      "Control enterprise organizations, manage module entitlements, configure tenant-isolated RBAC, and monitor platform health.",
   },
   {
     image:
       "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1400&q=90",
-    badge: "SMART OPERATIONS",
-    title: "Manage your entire business from one place.",
+    badge: "PLATFORM ARCHITECTURE",
+    title: "Isolated tenant hierarchies with zero-leak access.",
     description:
-      "Connect sales, projects, finance, customers, vendors, and daily operations in one powerful workspace.",
+      "Role-based authorization and modular micro-features kept strictly in-sync between backend services and UI clients.",
   },
   {
     image:
       "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1400&q=90",
-    badge: "BUSINESS INTELLIGENCE",
-    title: "Make smarter decisions with real-time insights.",
+    badge: "TELEMETRY & OPERATIONS",
+    title: "Real-time auditing and active tenant oversight.",
     description:
-      "Monitor business performance, analyze costs, track cash flow, and turn your data into actionable decisions.",
+      "Monitor tenant registrations, audit subscription quotas, and manage enterprise security from one central location.",
   },
 ];
 
-function SuperAdminLoginPage() {
+export default function SuperAdminLoginPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -110,11 +110,11 @@ function SuperAdminLoginPage() {
   const slide = slides[currentSlide];
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-8 text-zinc-900 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen items-center justify-center bg-slate-100/80 px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
       {/* Main Container */}
-      <div className="w-full max-w-6xl overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm lg:grid lg:grid-cols-2">
-        {/* LEFT SIDE - IMAGE SLIDER */}
-        <div className="relative hidden min-h-[680px] overflow-hidden lg:block">
+      <div className="w-full max-w-6xl overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl lg:grid lg:grid-cols-2">
+        {/* LEFT SIDE - IMAGE SLIDER WITH HERMES THEME */}
+        <div className="relative hidden min-h-[640px] overflow-hidden lg:block bg-[#060814]">
           <AnimatePresence initial={false} mode="sync">
             <motion.div
               key={currentSlide}
@@ -130,10 +130,10 @@ function SuperAdminLoginPage() {
               <img
                 src={slide.image}
                 alt={slide.title}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover opacity-60"
               />
-              <div className="absolute inset-0 bg-black/35" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/10" />
+              <div className="absolute inset-0 bg-[#060814]/70" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#060814] via-[#060814]/40 to-transparent" />
             </motion.div>
           </AnimatePresence>
 
@@ -142,24 +142,23 @@ function SuperAdminLoginPage() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={`badge-${currentSlide}`}
-                initial={{ opacity: 0, x: 30 }}
+                initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.4 }}
-                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/20 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white backdrop-blur-md"
+                className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/20 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white backdrop-blur-md"
               >
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#00D2FF]" />
                 {slide.badge}
               </motion.div>
             </AnimatePresence>
 
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-black/20 px-3.5 py-2 text-xs font-medium text-white backdrop-blur-md transition hover:bg-white hover:text-zinc-900"
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white backdrop-blur-md transition hover:bg-white hover:text-slate-900"
             >
-              ← Back
-            </button>
+              ← Portal Home
+            </Link>
           </div>
 
           {/* Bottom Content */}
@@ -167,32 +166,32 @@ function SuperAdminLoginPage() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentSlide}
-                initial={{ opacity: 0, x: 60 }}
+                initial={{ opacity: 0, x: 40 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
+                exit={{ opacity: 0, x: -30 }}
                 transition={{
-                  duration: 0.55,
-                  delay: 0.12,
+                  duration: 0.5,
+                  delay: 0.1,
                   ease: [0.16, 1, 0.3, 1],
                 }}
                 className="max-w-xl"
               >
-                <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">
-                  RealBiz Admin Platform
+                <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#00D2FF]">
+                  RealBiz Super Governance
                 </p>
 
-                <h2 className="font-sans text-3xl font-semibold leading-tight tracking-tight text-white xl:text-4xl">
+                <h2 className="text-2xl font-black leading-tight tracking-tight text-white xl:text-3xl">
                   {slide.title}
                 </h2>
 
-                <p className="mt-4 max-w-lg text-sm leading-relaxed text-white/75">
+                <p className="mt-3 max-w-lg text-xs leading-relaxed text-slate-300">
                   {slide.description}
                 </p>
               </motion.div>
             </AnimatePresence>
 
             {/* Slider Indicators */}
-            <div className="mt-8 flex items-center gap-2">
+            <div className="mt-6 flex items-center gap-2">
               {slides.map((_, index) => (
                 <button
                   key={index}
@@ -202,10 +201,10 @@ function SuperAdminLoginPage() {
                   className="group py-2"
                 >
                   <span
-                    className={`block h-1 rounded-full transition-all duration-500 ${
+                    className={`block h-1.5 rounded-full transition-all duration-500 ${
                       currentSlide === index
-                        ? "w-10 bg-white"
-                        : "w-4 bg-white/35 group-hover:bg-white/60"
+                        ? "w-8 bg-[#0000F2]"
+                        : "w-3 bg-white/30 group-hover:bg-white/60"
                     }`}
                   />
                 </button>
@@ -213,38 +212,43 @@ function SuperAdminLoginPage() {
             </div>
 
             {/* Footer Metadata */}
-            <div className="mt-7 flex items-center justify-between border-t border-white/15 pt-5 text-[10px] uppercase tracking-wider text-white/50">
-              <span>Enterprise Grade Security</span>
-              <span>RealBiz Admin Portal</span>
+            <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-[10px] uppercase tracking-wider text-slate-400">
+              <span>Hermes Security Architecture</span>
+              <span>Central Admin Console</span>
             </div>
           </div>
         </div>
 
         {/* RIGHT SIDE - LOGIN FORM */}
-        <div className="flex min-h-[680px] flex-col justify-center bg-white p-8 sm:p-12">
+        <div className="flex min-h-[640px] flex-col justify-center bg-white p-8 sm:p-12">
           <div className="mx-auto w-full max-w-md">
             {/* Form Header */}
             <div className="space-y-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
+              <div className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                <ShieldCheck className="h-4 w-4 text-[#0000F2]" />
+                <span>Super Administrator Access</span>
+              </div>
+
+              <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
                 Super Admin Login
               </h1>
 
-              <p className="text-sm text-zinc-600">
-                Enter your credentials to access the platform administrative console.
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Enter your administrative credentials to manage tenant organizations, module policies, and roles.
               </p>
             </div>
 
-            {/* Quick Fill Info (Visible only on Super Admin Login) */}
-            <div className="mt-6 flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+            {/* Quick Fill Info */}
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 Quick Fill:
               </span>
               <button
                 type="button"
                 onClick={handleUseSuperAdmin}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition active:scale-95 shadow-sm"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-[#0000F2] hover:bg-blue-100 hover:border-blue-300 transition active:scale-95 shadow-sm"
               >
-                <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
+                <Sparkles className="h-3.5 w-3.5 text-[#0000F2]" />
                 Super Admin Demo
               </button>
             </div>
@@ -256,16 +260,16 @@ function SuperAdminLoginPage() {
                 <div className="flex items-center justify-between">
                   <label
                     htmlFor="email"
-                    className="text-xs font-medium uppercase tracking-wider text-zinc-500"
+                    className="text-xs font-semibold uppercase tracking-wider text-slate-600"
                   >
                     Email or Username
                   </label>
                   <button
                     type="button"
                     onClick={handleUseSuperAdmin}
-                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-800"
+                    className="text-[11px] font-bold text-[#0000F2] hover:underline"
                   >
-                    Fill Super Admin
+                    Fill Admin
                   </button>
                 </div>
 
@@ -275,29 +279,39 @@ function SuperAdminLoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isSubmitting}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-50"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#0000F2] focus:ring-2 focus:ring-[#0000F2]/20 disabled:cursor-not-allowed disabled:bg-slate-50"
                   placeholder="admin@admin.com"
                 />
               </div>
 
-              {/* Password */}
+              {/* Password with Eye Toggle */}
               <div className="space-y-1.5">
                 <label
                   htmlFor="password"
-                  className="text-xs font-medium uppercase tracking-wider text-zinc-500"
+                  className="text-xs font-semibold uppercase tracking-wider text-slate-600"
                 >
                   Password
                 </label>
 
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isSubmitting}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-50"
-                  placeholder="••••••••"
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isSubmitting}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 pr-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#0000F2] focus:ring-2 focus:ring-[#0000F2]/20 disabled:cursor-not-allowed disabled:bg-slate-50"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((p) => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </div>
               </div>
 
               {/* Error */}
@@ -305,17 +319,17 @@ function SuperAdminLoginPage() {
                 <motion.div
                   initial={{ opacity: 0, y: -5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-600"
+                  className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600"
                 >
                   {error}
                 </motion.div>
               ) : null}
 
-              {/* Login Button */}
+              {/* Login Button with Hermes Accent */}
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0000F2] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition hover:bg-[#0000F2]/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? (
                   <>
@@ -332,17 +346,17 @@ function SuperAdminLoginPage() {
             </form>
 
             {/* Bottom Links */}
-            <div className="mt-8 flex items-center justify-between border-t border-zinc-200 pt-6">
+            <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-6">
               <Link
                 href="/"
-                className="text-xs font-medium text-zinc-600 transition hover:text-zinc-950"
+                className="text-xs font-semibold text-slate-500 transition hover:text-slate-900"
               >
                 ← Return to main site
               </Link>
 
               <Link
                 href="/rb/login"
-                className="text-xs font-medium text-blue-600 transition hover:text-blue-800"
+                className="text-xs font-bold text-[#0000F2] transition hover:underline"
               >
                 Regular Workspace Login →
               </Link>
@@ -351,13 +365,5 @@ function SuperAdminLoginPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <SiteShell>
-      <SuperAdminLoginPage />
-     </SiteShell> 
   );
 }

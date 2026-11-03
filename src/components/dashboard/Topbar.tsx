@@ -7,6 +7,8 @@ import {
   LogOut,
   Menu,
   Moon,
+  PanelLeft,
+  PanelLeftClose,
   Search,
   Sun,
   User,
@@ -15,6 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { initials, logout, type Session } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
+import { useSidebar } from "@/context/SidebarContext";
 
 const FALLBACK_PRIMARY = "#2ed573";
 
@@ -31,6 +34,7 @@ export function Topbar({
 }) {
   const { theme, toggle, primaryColor } = useTheme();
   const brandColor = primaryColor || FALLBACK_PRIMARY;
+  const { isCollapsed, toggleCollapse } = useSidebar();
 
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -56,7 +60,22 @@ export function Topbar({
         <Menu className="h-5 w-5" />
       </button>
 
-      <Logo to="/dashboard" />
+      <div className="flex items-center gap-2">
+        <Logo to="/dashboard" />
+        <button
+          type="button"
+          onClick={toggleCollapse}
+          className="hidden lg:flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition ml-1"
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {isCollapsed ? (
+            <PanelLeft className="h-4 w-4" />
+          ) : (
+            <PanelLeftClose className="h-4 w-4" />
+          )}
+        </button>
+      </div>
 
       {/* Search */}
       <div className="relative ml-2 hidden max-w-md flex-1 md:block">
