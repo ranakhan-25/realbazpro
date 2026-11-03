@@ -63,4 +63,23 @@ export const adminMenuService = {
     const res = await api.delete(`/system/admin-menus/${id}`);
     return res.data?.data || res.data;
   },
+
+  syncFromModules: async (
+    moduleId?: string | number
+  ): Promise<{
+    success: boolean;
+    syncedModules: number;
+    createdCount: number;
+    updatedCount: number;
+    message: string;
+  }> => {
+    const params: Record<string, any> = {};
+    if (moduleId && moduleId !== "admin" && moduleId !== "all") {
+      params.moduleId = moduleId;
+    }
+    const res = await api.post("/system/admin-menus/sync-from-modules", {}, {
+      params,
+    });
+    return res.data?.data || res.data;
+  },
 };

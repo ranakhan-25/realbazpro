@@ -113,6 +113,7 @@ export default function MenusPage() {
   // Common UI State
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
+  const [syncing, setSyncing] = useState<boolean>(false);
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [selectedKey, setSelectedKey] = useState<number | null>(null);
 
@@ -483,6 +484,22 @@ export default function MenusPage() {
     }
   };
 
+  // Sync sidebar navigation from system module features
+  const handleSyncFromModules = async () => {
+    try {
+      setSyncing(true);
+      const res = await adminMenuService.syncFromModules(
+        selectedModuleScope === "admin" ? undefined : selectedModuleScope
+      );
+      message.success(res.message || "Sidebar menus successfully synced from module features");
+      await loadAdminMenus();
+    } catch {
+      message.error("Failed to sync navigation from module features");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   // Submit Add / Edit Form
   const onFinish = async (values: any) => {
     try {
@@ -650,6 +667,16 @@ export default function MenusPage() {
                   loading={loading}
                 >
                   Refresh
+                </Button>
+
+                <Button
+                  icon={<SwapOutlined />}
+                  size="middle"
+                  onClick={handleSyncFromModules}
+                  loading={syncing}
+                  title="Synchronize sidebar navigation links with module features from the database"
+                >
+                  Sync from Modules
                 </Button>
               </div>
 
