@@ -216,36 +216,218 @@ export default function AdminDashboardPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.07, duration: 0.35 }}
               whileHover={{ y: -2 }}
-              className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:shadow-md"
+              className="group relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm transition-all hover:border-blue-400 hover:shadow-md hover:shadow-blue-500/5"
             >
               <div
-                className="absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-[0.07] transition-transform duration-500 group-hover:scale-150"
-                style={{ backgroundColor: stat.color }}
+                className="absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-[0.06] transition-transform duration-500 group-hover:scale-150"
+                style={{ backgroundColor: stat.color || primaryColor }}
               />
 
               <div className="relative flex items-start justify-between">
                 <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-xl ${stat.bg} ${stat.text} transition-all`}
+                  className={`flex h-11 w-11 items-center justify-center rounded-xl ${stat.bg} ${stat.text} shadow-sm transition-all group-hover:scale-105`}
                 >
-                  <Icon className="h-4.5 w-4.5" />
+                  <Icon className="h-5 w-5" />
                 </div>
                 {stat.change ? (
-                  <span className="flex items-center gap-0.5 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
+                  <span className="flex items-center gap-0.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-700">
                     {stat.change}
                   </span>
                 ) : null}
               </div>
 
-              <p className="relative mt-4 text-xs font-medium text-slate-500">
+              <p className="relative mt-4 text-xs font-semibold text-slate-500">
                 {stat.title}
               </p>
-              <h2 className="relative mt-0.5 text-2xl font-bold tracking-tight text-slate-900">
+              <h2 className="relative mt-1 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
                 {stat.value}
               </h2>
             </motion.div>
           );
         })}
       </div>
+
+      {/* ENTERPRISE WORKFLOW LIFECYCLE & ONBOARDING TIMELINE */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-slate-50/50 to-blue-50/20 p-5 shadow-sm sm:p-6"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 pb-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
+              <Sparkles className="h-3 w-3 text-blue-600" />
+              <span>{isOrgAdmin ? "Tenant Operating Lifecycle" : "Platform Architecture & Operations Flow"}</span>
+            </div>
+            <h2 className="text-base font-bold text-slate-900 mt-1">
+              {isOrgAdmin ? "Organization Setup & Growth Pipeline" : "Multi-Tenant Deployment & Provisioning Pipeline"}
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Sequential end-to-end flow for configuring organizations, entitling modules, assigning roles, and deploying staff.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-slate-400">Step Progression:</span>
+            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
+              100% Operational
+            </span>
+          </div>
+        </div>
+
+        {/* 5-Step Workflow Cards */}
+        <div className="mt-5 grid grid-cols-1 md:grid-cols-5 gap-3.5">
+          {(isOrgAdmin
+            ? [
+                {
+                  step: "01",
+                  title: "Company Profile",
+                  desc: "Set tenant branding, timezone, contact & tax info",
+                  href: "/admin/web-settings",
+                  btnText: "Configure",
+                  icon: Building2,
+                  badge: "Base Profile",
+                },
+                {
+                  step: "02",
+                  title: "Custom Roles",
+                  desc: "Create isolated organizational roles & policies",
+                  href: "/admin/roles",
+                  btnText: "Manage Roles",
+                  icon: ShieldCheck,
+                  badge: "RBAC Scoped",
+                },
+                {
+                  step: "03",
+                  title: "Team Onboarding",
+                  desc: "Invite managers, engineers & accountants",
+                  onClick: () => setWizardOpen(true),
+                  btnText: "Launch Wizard",
+                  icon: UserPlus,
+                  badge: "Quick Invite",
+                },
+                {
+                  step: "04",
+                  title: "Module Setup",
+                  desc: "Configure Chart of Accounts, Projects & Leads",
+                  href: "/dashboard",
+                  btnText: "Open Hub",
+                  icon: Boxes,
+                  badge: "ERP Data",
+                },
+                {
+                  step: "05",
+                  title: "Live Operations",
+                  desc: "Process transactions, BOQ, invoices & payroll",
+                  href: "/dashboard",
+                  btnText: "Workspaces",
+                  icon: Activity,
+                  badge: "Execution",
+                },
+              ]
+            : [
+                {
+                  step: "01",
+                  title: "Tenant Entity",
+                  desc: "Provision enterprise organization & domain quota",
+                  href: "/admin/orgs",
+                  btnText: "Organizations",
+                  icon: Building2,
+                  badge: "Tenant Setup",
+                },
+                {
+                  step: "02",
+                  title: "Module Entitlements",
+                  desc: "Grant CRM, Projects, Accounts & HRM features",
+                  href: "/admin/modules",
+                  btnText: "Entitlements",
+                  icon: FileKey2,
+                  badge: "Permissions",
+                },
+                {
+                  step: "03",
+                  title: "Tenant Role Isolation",
+                  desc: "System vs. Org-isolated role governance",
+                  href: "/admin/roles",
+                  btnText: "Governance",
+                  icon: KeyRound,
+                  badge: "Strict RBAC",
+                },
+                {
+                  step: "04",
+                  title: "Org Admin Access",
+                  desc: "Assign primary tenant administrator credentials",
+                  href: "/admin/users",
+                  btnText: "Accounts",
+                  icon: UserCheck,
+                  badge: "Admin Auth",
+                },
+                {
+                  step: "05",
+                  title: "Global Operations",
+                  desc: "Monitor system health, activity logs & subscriptions",
+                  href: "/admin/plans",
+                  btnText: "Subscription Plans",
+                  icon: Boxes,
+                  badge: "Live Telemetry",
+                },
+              ]
+          ).map((item, idx) => {
+            const StepIcon = item.icon;
+            return (
+              <div
+                key={item.step}
+                className="group relative flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-4 transition-all hover:border-blue-400 hover:shadow-md hover:-translate-y-0.5"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-blue-600">
+                      Phase {item.step}
+                    </span>
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
+                      {item.badge}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition">
+                      <StepIcon className="h-4 w-4" />
+                    </div>
+                    <h3 className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition truncate">
+                      {item.title}
+                    </h3>
+                  </div>
+
+                  <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                    {item.desc}
+                  </p>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-100">
+                  {item.onClick ? (
+                    <button
+                      type="button"
+                      onClick={item.onClick}
+                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-[11px] font-bold text-blue-700 hover:bg-blue-600 hover:text-white transition active:scale-95 shadow-sm"
+                    >
+                      <span>{item.btnText}</span>
+                      <ChevronRight className="h-3 w-3" />
+                    </button>
+                  ) : (
+                    <Link
+                      href={item.href!}
+                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-blue-600 hover:text-white transition active:scale-95 shadow-sm"
+                    >
+                      <span>{item.btnText}</span>
+                      <ChevronRight className="h-3 w-3" />
+                    </Link>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </motion.section>
 
       {/* CHARTS ROW */}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.7fr_1fr]">
