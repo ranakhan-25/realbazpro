@@ -43,6 +43,7 @@ import {
 } from "@/lib/admin-auth/adminAuthStorage";
 import { useTheme } from "@/lib/theme";
 import { adminMenuService, AdminMenuItemNode } from "@/services/adminMenuService";
+import { useSidebar } from "@/context/SidebarContext";
 
 // Map Lucide icons by string identifier
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -352,12 +353,13 @@ export default function AdminSidebar() {
       .filter(Boolean) as AdminMenuItem[];
   }, [dynamicMenuTree, isSuperAdmin]);
 
+  const { isCollapsed, toggleCollapse, isMobileOpen, setMobileOpen } =
+    useSidebar();
+
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     "System Management": true,
     "Authentication & Access": true,
   });
-
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   const toggleGroup = (label: string) => {
     setOpenGroups((prev) => ({
@@ -396,7 +398,7 @@ export default function AdminSidebar() {
 
       {/* BACKDROP FOR MOBILE */}
       <AnimatePresence>
-        {mobileOpen && (
+        {isMobileOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -410,29 +412,43 @@ export default function AdminSidebar() {
 
       {/* SIDEBAR CONTAINER */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 ease-out md:translate-x-0 ${
-          mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
-        }`}
+        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col border-r border-slate-200/80 bg-white transition-all duration-300 ease-in-out md:translate-x-0 ${
+          isCollapsed ? "w-20" : "w-64"
+        } ${isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"}`}
       >
         {/* LOGO & BRAND HEADER */}
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 px-4">
+        <div
+          className={`flex h-16 shrink-0 items-center border-b border-slate-200/80 transition-all duration-300 ${
+            isCollapsed ? "justify-center px-2" : "justify-between px-4"
+          }`}
+        >
           <Link
             href="/admin/dashboard"
             onClick={() => setMobileOpen(false)}
             className="flex items-center"
             aria-label="Realbiz Admin"
           >
-            <div className="relative h-9 w-36">
-              <Image
-                src="/logo.svg"
-                alt="Realbiz Logo"
-                fill
-                sizes="144px"
-                className="object-contain object-left"
-                priority
-              />
-            </div>
+            {isCollapsed ? (
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-md shadow-blue-500/20 font-black text-sm transition-transform hover:scale-105"
+                style={{ backgroundColor: primaryColor || "#0000F2" }}
+              >
+                RB
+              </div>
+            ) : (
+              <div className="relative h-9 w-36">
+                <Image
+                  src="/logo.svg"
+                  alt="Realbiz Logo"
+                  fill
+                  sizes="144px"
+                  className="object-contain object-left"
+                  priority
+                />
+              </div>
+            )}
           </Link>
+
           <button
             type="button"
             onClick={() => setMobileOpen(false)}
@@ -453,51 +469,65 @@ export default function AdminSidebar() {
                 const Icon = group.icon;
 
                 return (
-                  <Link
-                    key={`item-${idx}-${group.href}`}
-                    href={group.href}
-                    onClick={() => setMobileOpen(false)}
-                    className="block"
-                  >
-                    <motion.div
-                      whileHover={{ x: active ? 0 : 2 }}
-                      whileTap={{ scale: 0.985 }}
-                      className="relative flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all"
-                      style={
-                        active
-                          ? {
-                              backgroundColor: primaryColor,
-                              color: "#ffffff",
-                              boxShadow: `0 1px 2px ${primaryColor}33`,
-                            }
-                          : { color: "#475569" }
-                      }
-                      onMouseEnter={(e) => {
-                        if (!active) {
-                          e.currentTarget.style.backgroundColor = `${primaryColor}0D`;
-                          e.currentTarget.style.color = primaryColor;
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!active) {
-                          e.currentTarget.style.backgroundColor = "";
-                          e.currentTarget.style.color = "#475569";
-                        }
-                      }}
+                  <div key={`item-${idx}-${group.href}`} className="relative group">
+                    <Link
+                      href={group.href}
+                      onClick={() => setMobileOpen(false)}
+                      className="block"
                     >
-                      <Icon
-                        size={17}
-                        className="shrink-0"
-                        strokeWidth={active ? 2.2 : 1.8}
-                      />
-                      <span className="min-w-0 flex-1 truncate">
+                      <motion.div
+                        whileHover={{ x: active || isCollapsed ? 0 : 2 }}
+                        whileTap={{ scale: 0.985 }}
+                        className={`relative flex min-h-10 w-full items-center rounded-lg text-[13px] font-medium transition-all ${
+                          isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2"
+                        }`}
+                        style={
+                          active
+                            ? {
+                                backgroundColor: primaryColor,
+                                color: "#ffffff",
+                                boxShadow: `0 1px 2px ${primaryColor}33`,
+                              }
+                            : { color: "#475569" }
+                        }
+                        onMouseEnter={(e) => {
+                          if (!active) {
+                            e.currentTarget.style.backgroundColor = `${primaryColor}0D`;
+                            e.currentTarget.style.color = primaryColor;
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!active) {
+                            e.currentTarget.style.backgroundColor = "";
+                            e.currentTarget.style.color = "#475569";
+                          }
+                        }}
+                      >
+                        <Icon
+                          size={18}
+                          className="shrink-0"
+                          strokeWidth={active ? 2.2 : 1.8}
+                        />
+                        {!isCollapsed && (
+                          <>
+                            <span className="min-w-0 flex-1 truncate">
+                              {group.label}
+                            </span>
+                            {active && (
+                              <ChevronRight size={14} className="shrink-0" />
+                            )}
+                          </>
+                        )}
+                      </motion.div>
+                    </Link>
+
+                    {/* Tooltip in collapsed mode */}
+                    {isCollapsed && (
+                      <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 z-50 rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
                         {group.label}
-                      </span>
-                      {active && (
-                        <ChevronRight size={14} className="shrink-0" />
-                      )}
-                    </motion.div>
-                  </Link>
+                      </div>
+                    )}
+                  </div>
                 );
               }
 
@@ -505,6 +535,55 @@ export default function AdminSidebar() {
               const isOpen = openGroups[group.label] ?? false;
               const hasActiveChild = isGroupActive(group.children);
               const GroupIcon = group.icon;
+
+              if (isCollapsed) {
+                // In collapsed rail mode, clicking group auto-expands the sidebar & opens this group
+                return (
+                  <div key={`group-${idx}-${group.label}`} className="relative group">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toggleCollapse();
+                        if (!isOpen) toggleGroup(group.label);
+                      }}
+                      className="flex min-h-10 w-full items-center justify-center rounded-lg py-2.5 text-[13px] font-medium transition-colors"
+                      style={
+                        hasActiveChild
+                          ? {
+                              backgroundColor: `${primaryColor}14`,
+                              color: primaryColor,
+                              boxShadow: `inset 0 0 0 1.5px ${primaryColor}40`,
+                            }
+                          : { color: "#475569" }
+                      }
+                      onMouseEnter={(e) => {
+                        if (!hasActiveChild) {
+                          e.currentTarget.style.backgroundColor = "#F8FAFC";
+                          e.currentTarget.style.color = primaryColor;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!hasActiveChild) {
+                          e.currentTarget.style.backgroundColor = "";
+                          e.currentTarget.style.color = "#475569";
+                        }
+                      }}
+                      title={group.label}
+                    >
+                      <GroupIcon
+                        size={18}
+                        className="shrink-0"
+                        strokeWidth={hasActiveChild ? 2.2 : 1.8}
+                      />
+                    </button>
+
+                    <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 z-50 rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
+                      {group.label}
+                      <span className="ml-1.5 text-[10px] text-slate-300">({group.children.length})</span>
+                    </div>
+                  </div>
+                );
+              }
 
               return (
                 <motion.div
@@ -629,56 +708,74 @@ export default function AdminSidebar() {
 
         {/* BOTTOM ACTIONS */}
         <div className="shrink-0 border-t border-slate-200 bg-white p-2.5 pb-[max(12px,env(safe-area-inset-bottom))] sm:p-3">
-          <Link
-            href="/admin/settings"
-            onClick={() => setMobileOpen(false)}
-            className="block"
-          >
-            <motion.div
-              whileHover={{ x: 2 }}
-              whileTap={{ scale: 0.985 }}
-              className="flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all"
-              style={
-                pathname.startsWith("/admin/settings")
-                  ? {
-                      backgroundColor: primaryColor,
-                      color: "#ffffff",
-                      boxShadow: `0 1px 2px ${primaryColor}33`,
-                    }
-                  : { color: "#475569" }
-              }
-              onMouseEnter={(e) => {
-                if (!pathname.startsWith("/admin/settings")) {
-                  e.currentTarget.style.backgroundColor = `${primaryColor}0D`;
-                  e.currentTarget.style.color = primaryColor;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!pathname.startsWith("/admin/settings")) {
-                  e.currentTarget.style.backgroundColor = "";
-                  e.currentTarget.style.color = "#475569";
-                }
-              }}
+          <div className="relative group">
+            <Link
+              href="/admin/settings"
+              onClick={() => setMobileOpen(false)}
+              className="block"
             >
-              <Settings size={17} className="shrink-0" />
-              <span className="min-w-0 truncate">Settings</span>
-            </motion.div>
-          </Link>
+              <motion.div
+                whileHover={{ x: isCollapsed ? 0 : 2 }}
+                whileTap={{ scale: 0.985 }}
+                className={`flex min-h-10 items-center rounded-lg text-[13px] font-medium transition-all ${
+                  isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2"
+                }`}
+                style={
+                  pathname.startsWith("/admin/settings")
+                    ? {
+                        backgroundColor: primaryColor,
+                        color: "#ffffff",
+                        boxShadow: `0 1px 2px ${primaryColor}33`,
+                      }
+                    : { color: "#475569" }
+                }
+                onMouseEnter={(e) => {
+                  if (!pathname.startsWith("/admin/settings")) {
+                    e.currentTarget.style.backgroundColor = `${primaryColor}0D`;
+                    e.currentTarget.style.color = primaryColor;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!pathname.startsWith("/admin/settings")) {
+                    e.currentTarget.style.backgroundColor = "";
+                    e.currentTarget.style.color = "#475569";
+                  }
+                }}
+              >
+                <Settings size={18} className="shrink-0" />
+                {!isCollapsed && <span className="min-w-0 truncate">Settings</span>}
+              </motion.div>
+            </Link>
+            {isCollapsed && (
+              <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 z-50 rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
+                Settings
+              </div>
+            )}
+          </div>
 
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="block w-full text-left"
-          >
-            <motion.div
-              whileHover={{ x: 2 }}
-              whileTap={{ scale: 0.985 }}
-              className="mt-1 flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-500 transition-colors hover:bg-red-50 hover:text-red-500"
+          <div className="relative group mt-1">
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="block w-full text-left"
             >
-              <LogOut size={17} className="shrink-0" />
-              <span className="min-w-0 truncate">Sign Out</span>
-            </motion.div>
-          </button>
+              <motion.div
+                whileHover={{ x: isCollapsed ? 0 : 2 }}
+                whileTap={{ scale: 0.985 }}
+                className={`flex min-h-10 items-center rounded-lg text-[13px] font-medium text-slate-500 transition-colors hover:bg-red-50 hover:text-red-500 ${
+                  isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2"
+                }`}
+              >
+                <LogOut size={18} className="shrink-0" />
+                {!isCollapsed && <span className="min-w-0 truncate">Sign Out</span>}
+              </motion.div>
+            </button>
+            {isCollapsed && (
+              <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 z-50 rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
+                Sign Out
+              </div>
+            )}
+          </div>
         </div>
       </aside>
     </>

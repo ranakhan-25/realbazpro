@@ -5,9 +5,13 @@ import {
   Bell,
   ChevronDown,
   LogOut,
+  PanelLeftClose,
+  PanelLeft,
   Search,
   ShieldCheck,
   User,
+  Menu as MenuIcon,
+  Sparkles,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,10 +23,12 @@ import {
   type AdminUserProfile,
 } from "@/lib/admin-auth/adminAuthStorage";
 import { logoutAdminSession } from "@/lib/admin-auth/adminAuthApi";
+import { useSidebar } from "@/context/SidebarContext";
 
 export default function AdminTopbar() {
   const router = useRouter();
   const { primaryColor } = useTheme();
+  const { isCollapsed, toggleCollapse, toggleMobile } = useSidebar();
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -33,10 +39,6 @@ export default function AdminTopbar() {
   useEffect(() => {
     setCurrentUser(getStoredUserProfile());
   }, []);
-
-  /* =====================================================
-     CLOSE DROPDOWN ON OUTSIDE CLICK
-  ====================================================== */
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -49,24 +51,15 @@ export default function AdminTopbar() {
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
-  /* =====================================================
-     PROFILE
-  ====================================================== */
-
   const handleProfile = () => {
     setProfileOpen(false);
     router.push("/admin/profile");
   };
-
-  /* =====================================================
-     LOGOUT
-  ====================================================== */
 
   const handleSignOut = async () => {
     try {
@@ -83,559 +76,181 @@ export default function AdminTopbar() {
 
   return (
     <header
-      className="
-        fixed
-        top-0
-        right-0
-        z-30
-        flex
-        h-16
-        w-full
-        items-center
-        border-b
-        border-slate-200
-        bg-white/95
-        px-4
-        shadow-sm
-        backdrop-blur-xl
-
-        sm:px-5
-        md:h-[60px]
-        md:px-6
-        lg:h-[68px]
-        lg:px-7
-      "
+      className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur-md transition-all sm:px-6 lg:px-8"
       style={
         {
-          "--primary-color": primaryColor,
+          "--primary-color": primaryColor || "#0000F2",
         } as React.CSSProperties
       }
     >
-      {/* =====================================================
-          LEFT / SEARCH
-      ====================================================== */}
-
-      <div className="flex min-w-0 flex-1 items-center">
-        {/* Desktop / Tablet Search */}
-        <div
-          className="
-            relative
-            hidden
-            left-60
-            w-full
-            max-w-[300px]
-            sm:block
-            md:max-w-[270px]
-            lg:max-w-[300px]
-          "
+      {/* LEFT SECTION: COLLAPSE TOGGLE & SEARCH */}
+      <div className="flex min-w-0 items-center gap-3">
+        {/* Desktop Collapse Toggle */}
+        <button
+          type="button"
+          onClick={toggleCollapse}
+          className="hidden h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus:outline-none lg:flex"
+          title={isCollapsed ? "Expand Sidebar (Ctrl+B)" : "Collapse Sidebar (Ctrl+B)"}
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <Search
-            size={17}
-            strokeWidth={1.8}
-            className="
-              absolute
-              left-3
-              top-1/2
-              -translate-y-1/2
-            "
-          />
+          {isCollapsed ? (
+            <PanelLeft className="h-4 w-4 text-slate-700" />
+          ) : (
+            <PanelLeftClose className="h-4 w-4 text-slate-700" />
+          )}
+        </button>
 
+        {/* Mobile Menu Trigger */}
+        <button
+          type="button"
+          onClick={toggleMobile}
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 lg:hidden"
+          aria-label="Open mobile navigation"
+        >
+          <MenuIcon className="h-4 w-4" />
+        </button>
+
+        {/* Search Input (No Left Offset Hack) */}
+        <div className="relative hidden w-72 sm:block md:w-80">
+          <Search
+            size={16}
+            strokeWidth={1.8}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
           <input
             type="search"
-            placeholder="Search anything..."
+            placeholder="Search commands, users, modules…"
             aria-label="Search"
-            className="
-              h-10
-              w-full
-              rounded-lg
-              border
-              pl-10
-              pr-4
-              text-sm
-              outline-none
-              transition-all
-
-              focus:border-[var(--primary-color)]
-              focus:bg-white
-              focus:ring-4
-              focus:ring-[var(--primary-color)]/10
-            "
+            className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[var(--primary-color)] focus:bg-white focus:ring-2 focus:ring-[var(--primary-color)]/10"
           />
         </div>
 
-        {/* =================================================
-            MOBILE SEARCH BUTTON
-        ================================================== */}
-
+        {/* Mobile Search Button */}
         <motion.button
           type="button"
           whileTap={{ scale: 0.94 }}
           onClick={() => setSearchOpen((prev) => !prev)}
           aria-label="Open search"
-          aria-expanded={searchOpen}
-          className="
-            flex
-            h-10
-            w-10
-            shrink-0
-            items-center
-            justify-center
-            rounded-lg
-            border
-            border-slate-200
-            bg-slate-50
-            text-slate-500
-            transition
-
-            hover:bg-slate-100
-
-            dark:border-slate-700
-            dark:bg-slate-900
-            dark:text-slate-400
-            dark:hover:bg-slate-800
-
-            sm:hidden
-          "
-          style={{
-            color: searchOpen ? primaryColor : undefined,
-          }}
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition hover:bg-slate-100 sm:hidden"
         >
-          <Search size={18} strokeWidth={1.8} />
+          <Search size={16} strokeWidth={1.8} />
         </motion.button>
 
-        {/* =================================================
-            MOBILE SEARCH INPUT
-        ================================================== */}
-
+        {/* Mobile Search Input Overlay */}
         <AnimatePresence>
           {searchOpen && (
             <motion.div
-              initial={{
-                opacity: 0,
-                width: 0,
-              }}
-              animate={{
-                opacity: 1,
-                width: "100%",
-              }}
-              exit={{
-                opacity: 0,
-                width: 0,
-              }}
-              transition={{
-                duration: 0.2,
-              }}
-              className="
-                relative
-                ml-2
-                min-w-0
-                overflow-hidden
-                sm:hidden
-              "
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "200px" }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.2 }}
+              className="relative overflow-hidden sm:hidden"
             >
-              <Search
-                size={16}
-                strokeWidth={1.8}
-                className="
-                  absolute
-                  left-3
-                  top-1/2
-                  -translate-y-1/2
-                  text-slate-400
-                  dark:text-slate-500
-                "
-              />
-
               <input
                 type="search"
                 autoFocus
                 placeholder="Search..."
-                aria-label="Search"
-                className="
-                  h-10
-                  w-full
-                  rounded-lg
-                  border
-                  border-slate-200
-                  bg-slate-50
-                  pl-9
-                  pr-3
-                  text-sm
-                  text-slate-700
-                  placeholder:text-slate-400
-                  outline-none
-
-                  focus:border-[var(--primary-color)]
-                  focus:bg-white
-                  focus:ring-4
-                  focus:ring-[var(--primary-color)]/10
-
-                  dark:border-slate-700
-                  dark:bg-slate-900
-                  dark:text-slate-200
-                  dark:placeholder:text-slate-500
-                "
+                className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:ring-2 focus:ring-[var(--primary-color)]/20"
               />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* =====================================================
-          RIGHT ACTIONS
-      ====================================================== */}
+      {/* RIGHT SECTION: ENVIRONMENT BADGE, NOTIFICATIONS, PROFILE */}
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        {/* Governance / Status Badge */}
+        <div className="hidden items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50/80 px-3 py-1 text-[11px] font-semibold text-blue-700 md:inline-flex">
+          <Sparkles className="h-3 w-3 text-blue-600" />
+          <span>Super Admin Console</span>
+        </div>
 
-      <div
-        className="
-          ml-auto
-          flex
-          shrink-0
-          items-center
-          gap-1
-          sm:gap-2
-          md:gap-3
-          lg:gap-4
-        "
-      >
-        {/* =================================================
-            NOTIFICATION
-        ================================================== */}
-
-        <motion.button
+        {/* Notifications */}
+        <button
           type="button"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
           aria-label="Notifications"
-          className="
-            relative
-            flex
-            h-9
-            w-9
-            shrink-0
-            items-center
-            justify-center
-            rounded-lg
-            text-slate-500
-            transition-colors
-
-            hover:bg-slate-100
-            hover:text-[var(--primary-color)]
-
-            dark:text-slate-400
-            dark:hover:bg-slate-800
-
-            sm:h-10
-            sm:w-10
-          "
         >
-          <Bell size={18} strokeWidth={1.8} />
-
-          {/* Notification Dot */}
+          <Bell size={16} strokeWidth={1.8} />
           <span
-            className="
-              absolute
-              right-1.5
-              top-1.5
-              h-2
-              w-2
-              rounded-full
-              ring-2
-              ring-white
-              dark:ring-slate-950
-            "
-            style={{
-              backgroundColor: primaryColor,
-            }}
+            className="absolute right-2 top-2 h-2 w-2 rounded-full ring-2 ring-white"
+            style={{ backgroundColor: primaryColor || "#0000F2" }}
           />
-        </motion.button>
+        </button>
 
-        {/* Divider */}
-        <div
-          className="
-            h-6
-            w-px
-            shrink-0
-            bg-slate-200
-            dark:bg-slate-700
-            sm:h-7
-          "
-        />
-
-        {/* =================================================
-            PROFILE WRAPPER
-        ================================================== */}
-
-        <div ref={profileRef} className="relative shrink-0">
-          {/* =================================================
-              PROFILE BUTTON
-          ================================================== */}
-
+        {/* User Profile Dropdown */}
+        <div className="relative" ref={profileRef}>
           <motion.button
             type="button"
-            whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setProfileOpen((prev) => !prev)}
-            aria-label="Open administrator menu"
+            className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-1.5 pr-2.5 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
             aria-expanded={profileOpen}
-            className="
-              flex
-              shrink-0
-              items-center
-              gap-1.5
-              rounded-lg
-              px-1
-              py-1
-              transition
-
-              hover:bg-slate-50
-
-              dark:hover:bg-slate-900
-
-              sm:gap-2
-              md:gap-2.5
-            "
           >
-            {/* Avatar */}
             <div
-              className="
-                flex
-                h-9
-                w-9
-                shrink-0
-                items-center
-                justify-center
-                rounded-full
-
-                sm:h-10
-                sm:w-10
-              "
-              style={{
-                backgroundColor: `${primaryColor}18`,
-                color: primaryColor,
-              }}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white"
+              style={{ backgroundColor: primaryColor || "#0000F2" }}
             >
-              <ShieldCheck size={18} strokeWidth={1.9} />
+              <ShieldCheck size={16} strokeWidth={2.2} />
             </div>
 
-            {/* Profile Information */}
-            <div
-              className="
-                hidden
-                min-w-0
-                text-left
-                sm:block
-              "
-            >
-              <p
-                className="
-                  max-w-[110px]
-                  truncate
-                  text-xs
-                  font-semibold
-                  leading-4
-                  text-slate-800
-                  dark:text-slate-100
-
-                  md:max-w-[140px]
-                  md:text-[13px]
-                "
-              >
+            <div className="hidden text-left sm:block">
+              <p className="max-w-[120px] truncate text-xs font-bold leading-tight text-slate-800">
                 {currentUser?.name || "Super Admin"}
               </p>
-
-              <p
-                className="
-                  max-w-[110px]
-                  truncate
-                  text-[10px]
-                  leading-4
-                  text-slate-400
-                  dark:text-slate-500
-
-                  md:max-w-[140px]
-                  md:text-[11px]
-                "
-              >
-                {currentUser?.role || (currentUser?.isSuperUser ? "Super Administrator" : "Administrator")}
+              <p className="max-w-[120px] truncate text-[10px] text-slate-400">
+                {currentUser?.isSuperUser ? "Super User" : "Administrator"}
               </p>
             </div>
 
-            {/* Chevron */}
-            <motion.div
-              animate={{
-                rotate: profileOpen ? 180 : 0,
-              }}
-              transition={{
-                duration: 0.2,
-              }}
-              className="shrink-0"
-            >
-              <ChevronDown
-                size={15}
-                strokeWidth={1.8}
-                className="
-                  text-slate-400
-                  dark:text-slate-500
-                "
-              />
-            </motion.div>
+            <ChevronDown
+              size={14}
+              className={`text-slate-400 transition-transform duration-200 ${
+                profileOpen ? "rotate-180" : ""
+              }`}
+            />
           </motion.button>
 
-          {/* =================================================
-              PROFILE DROPDOWN
-          ================================================== */}
-
+          {/* Dropdown Menu */}
           <AnimatePresence>
             {profileOpen && (
               <motion.div
-                initial={{
-                  opacity: 0,
-                  y: -8,
-                  scale: 0.96,
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                  scale: 1,
-                }}
-                exit={{
-                  opacity: 0,
-                  y: -8,
-                  scale: 0.96,
-                }}
-                transition={{
-                  duration: 0.18,
-                  ease: "easeOut",
-                }}
-                className="
-                  absolute
-                  right-0
-                  top-[calc(100%+10px)]
-                  z-50
-                  w-[190px]
-                  overflow-hidden
-                  rounded-xl
-                  border
-                  border-slate-200
-                  bg-white
-                  p-1.5
-                  shadow-xl
-
-                  dark:border-slate-700
-                  dark:bg-slate-900
-
-                  sm:w-[200px]
-                "
+                initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                transition={{ duration: 0.15 }}
+                className="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10"
               >
-                {/* =================================================
-                    PROFILE MENU
-                ================================================== */}
+                <div className="border-b border-slate-100 px-3 py-2.5">
+                  <p className="text-xs font-bold text-slate-900">
+                    {currentUser?.name || "Administrator"}
+                  </p>
+                  <p className="truncate text-[11px] text-slate-500">
+                    {currentUser?.email || "admin@realbiz.com"}
+                  </p>
+                </div>
 
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleProfile}
-                  className="
-                    group
-                    flex
-                    w-full
-                    items-center
-                    gap-3
-                    rounded-lg
-                    px-3
-                    py-2.5
-                    text-left
-                    text-sm
-                    font-medium
-                    text-slate-700
-                    transition-all
-
-                    hover:bg-[var(--primary-color)]
-                    hover:text-white
-
-                    dark:text-slate-200
-                    dark:hover:bg-[var(--primary-color)]
-                    dark:hover:text-white
-                  "
-                >
-                  <span
-                    className="
-                      flex
-                      h-8
-                      w-8
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-lg
-                      bg-slate-100
-                      transition-all
-
-                      group-hover:bg-white/20
-
-                      dark:bg-slate-800
-                      dark:group-hover:bg-white/20
-                    "
+                <div className="py-1">
+                  <button
+                    type="button"
+                    onClick={handleProfile}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
                   >
-                    <User size={16} strokeWidth={1.8} />
-                  </span>
+                    <User size={15} className="text-slate-400" />
+                    <span>Account Profile</span>
+                  </button>
+                </div>
 
-                  <span>Profile</span>
-                </motion.button>
-
-                {/* =================================================
-                    LOGOUT MENU
-                ================================================== */}
-
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleSignOut}
-                  className="
-                    group
-                    flex
-                    w-full
-                    items-center
-                    gap-3
-                    rounded-lg
-                    px-3
-                    py-2.5
-                    text-left
-                    text-sm
-                    font-medium
-                    text-slate-700
-                    transition-all
-
-                    hover:bg-[var(--primary-color)]
-                    hover:text-white
-
-                    dark:text-slate-200
-                    dark:hover:bg-[var(--primary-color)]
-                    dark:hover:text-white
-                  "
-                >
-                  <span
-                    className="
-                      flex
-                      h-8
-                      w-8
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-lg
-                      bg-slate-100
-                      transition-all
-
-                      group-hover:bg-white/20
-
-                      dark:bg-slate-800
-                      dark:group-hover:bg-white/20
-                    "
+                <div className="border-t border-slate-100 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50"
                   >
-                    <LogOut size={16} strokeWidth={1.8} />
-                  </span>
-
-                  <span>Logout</span>
-                </motion.button>
+                    <LogOut size={15} />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
