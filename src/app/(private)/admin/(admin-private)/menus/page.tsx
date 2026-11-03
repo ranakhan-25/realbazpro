@@ -477,8 +477,9 @@ export default function MenusPage() {
       message.success("Hierarchy order successfully updated and saved");
       setReorderDirty(false);
       loadAdminMenus();
-    } catch {
-      message.error("Failed to save reordered hierarchy");
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || err?.message || "Failed to save reordered hierarchy";
+      message.error(errMsg);
     } finally {
       setSaving(false);
     }
@@ -493,8 +494,9 @@ export default function MenusPage() {
       );
       message.success(res.message || "Sidebar menus successfully synced from module features");
       await loadAdminMenus();
-    } catch {
-      message.error("Failed to sync navigation from module features");
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || err?.message || "Failed to sync navigation from module features";
+      message.error(errMsg);
     } finally {
       setSyncing(false);
     }
@@ -551,8 +553,9 @@ export default function MenusPage() {
         handleAddNew();
         loadTenantMenus();
       }
-    } catch {
-      message.error("Failed to save menu item");
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || err?.message || "Failed to save menu item";
+      message.error(errMsg);
     } finally {
       setSaving(false);
     }
@@ -573,8 +576,9 @@ export default function MenusPage() {
         handleAddNew();
         loadTenantMenus();
       }
-    } catch {
-      message.error("Failed to delete item");
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || err?.message || "Failed to delete item";
+      message.error(errMsg);
     } finally {
       setSaving(false);
     }
