@@ -28,6 +28,7 @@ import {
   type FeatureNode,
   type ModuleTreeNode,
 } from "@/services/moduleTreeService";
+import { formatApiErrorMessage } from "@/lib/api";
 
 interface ModuleTreeBuilderModalProps {
   isOpen: boolean;
@@ -238,8 +239,11 @@ export default function ModuleTreeBuilderModal({
         displayOrder: Number(displayOrder) || 1,
         isActive,
         features: features.map((f, idx) => ({
+          id: f.id ? Number(f.id) : undefined,
+          uuid: f.uuid,
+          moduleId: initialModule?.id ? Number(initialModule.id) : undefined,
           name: f.name.trim(),
-          code: f.code.trim().toUpperCase().replace(/\s+/g, "_"),
+          code: (f.code || `FEAT_${idx + 1}`).trim().toUpperCase().replace(/\s+/g, "_"),
           routePath: f.routePath?.trim() || undefined,
           actionType: f.actionType || "read",
           displayOrder: idx + 1,
@@ -259,7 +263,12 @@ export default function ModuleTreeBuilderModal({
       onClose();
     } catch (err: any) {
       console.error("Save module tree failed", err);
-      toast.error(err.response?.data?.message || "Failed to save module tree hierarchy");
+      const detailedMessage =
+        formatApiErrorMessage(err) ||
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to save module tree hierarchy";
+      toast.error(detailedMessage);
     } finally {
       setIsSubmitting(false);
     }

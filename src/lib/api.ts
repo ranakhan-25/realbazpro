@@ -45,9 +45,89 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
+export function formatApiErrorMessage(error: any): string {
+  if (!error) return "An unexpected error occurred.";
+  const data = error.response?.data;
+  if (!data) return error.message || "An unexpected network error occurred.";
+
+  const detailMessages: string[] = [];
+
+  const genericMessages = new Set([
+    "validation failed",
+    "validation error",
+    "bad request",
+    "an error occurred",
+    "error",
+  ]);
+
+  if (Array.isArray(data.message)) {
+    detailMessages.push(...data.message.filter(Boolean).map(String));
+  } else if (
+    typeof data.message === "string" &&
+    data.message.trim() &&
+    !genericMessages.has(data.message.trim().toLowerCase())
+  ) {
+    detailMessages.push(data.message.trim());
+  }
+
+  if (Array.isArray(data.errors) && data.errors.length > 0) {
+    const parseErrors = (errs: any[], prefix = "") => {
+      for (const item of errs) {
+        const fieldName = prefix
+          ? `${prefix}.${item.field || item.property || item.path || ""}`
+          : (item.field || item.property || item.path || "");
+
+        // 1. class-validator format (array of strings)
+        if (Array.isArray(item.errors) && item.errors.length > 0) {
+          const joined = item.errors.join(", ");
+          detailMessages.push(fieldName ? `${fieldName}: ${joined}` : joined);
+        }
+        // 2. Sequelize / PostgreSQL format ({ field, message, value })
+        else if (typeof item.message === "string" && item.message.trim()) {
+          const valStr =
+            item.value !== undefined && item.value !== null && String(item.value).trim()
+              ? ` ("${item.value}")`
+              : "";
+          const msg = item.message.trim();
+          detailMessages.push(
+            fieldName && !msg.toLowerCase().includes(fieldName.toLowerCase())
+              ? `${fieldName}: ${msg}${valStr}`
+              : `${msg}${valStr}`,
+          );
+        }
+
+        if (Array.isArray(item.children) && item.children.length > 0) {
+          parseErrors(item.children, fieldName);
+        }
+      }
+    };
+    parseErrors(data.errors);
+  }
+
+  if (detailMessages.length > 0) {
+    return Array.from(new Set(detailMessages)).join("; ");
+  }
+
+  if (typeof data.message === "string" && data.message.trim()) {
+    return data.message.trim();
+  }
+
+  if (data.error && typeof data.error === "string") {
+    return data.error;
+  }
+
+  return error.message || "Validation failed";
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    if (error?.response?.data) {
+      const formatted = formatApiErrorMessage(error);
+      if (formatted) {
+        error.response.data.message = formatted;
+      }
+    }
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {

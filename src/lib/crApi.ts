@@ -1,5 +1,6 @@
 import axios from "axios";
 import { showAlert } from "./swal";
+import { formatApiErrorMessage } from "./api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002/realbizpro/api/v1";
 
@@ -9,6 +10,37 @@ const crClient = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+crClient.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const token =
+      localStorage.getItem("admin_access_token") ||
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("token");
+    if (token) {
+      if (config.headers?.set) {
+        config.headers.set("Authorization", `Bearer ${token}`);
+      } else {
+        config.headers = config.headers || {};
+        config.headers["Authorization"] = `Bearer ${token}`;
+      }
+    }
+  }
+  return config;
+});
+
+crClient.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    if (error?.response?.data) {
+      const formatted = formatApiErrorMessage(error);
+      if (formatted) {
+        error.response.data.message = formatted;
+      }
+    }
+    return Promise.reject(error);
+  },
+);
 
 export const crApi = {
   // Setups & Policies
