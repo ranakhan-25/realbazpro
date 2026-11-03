@@ -94,6 +94,10 @@ export default function MenusPage() {
   // Admin Sidebar Role Target: "super-admin" vs "org-admin" vs "all"
   const [adminRole, setAdminRole] = useState<string>("super-admin");
 
+  // Target Dashboard / Module Scope: "admin" (Admin Dashboard sidebar) or numeric moduleId (Projects, Inventory, CRM, etc.)
+  const [selectedModuleScope, setSelectedModuleScope] = useState<string | number>("admin");
+  const [modulesList, setModulesList] = useState<Array<{ id: number; name: string; description?: string }>>([]);
+
   // Admin Menu items state
   const [adminMenuItems, setAdminMenuItems] = useState<AdminMenuItemNode[]>([]);
   const [adminTreeData, setAdminTreeData] = useState<DataNode[]>([]);
@@ -156,16 +160,55 @@ export default function MenusPage() {
   const loadAdminMenus = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await adminMenuService.getMenuTree(adminRole);
+      const data = await adminMenuService.getMenuTree(adminRole, selectedModuleScope);
       setAdminMenuItems(data);
       setAdminTreeData(buildAdminTreeNodes(data));
       setReorderDirty(false);
     } catch {
-      message.error("Failed to load admin dashboard sidebar menus");
+      message.error("Failed to load navigation menus");
     } finally {
       setLoading(false);
     }
-  }, [adminRole]);
+  }, [adminRole, selectedModuleScope]);
+
+  // Load modules list on mount for the dropdown selector
+  useEffect(() => {
+    adminMenuService
+      .getModulesDropdown()
+      .then((data) => {
+        setModulesList(data || []);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Compute selected module display name
+  const currentModuleName = useMemo(() => {
+    if (selectedModuleScope === "admin") return "Admin Dashboard";
+    const found = modulesList.find((m) => String(m.id) === String(selectedModuleScope));
+    return found ? found.name : `Module #${selectedModuleScope}`;
+  }, [selectedModuleScope, modulesList]);
+
+  // Grouped options for the Dashboard / Module selector
+  const moduleSelectOptions = useMemo(() => {
+    return [
+      {
+        label: "System Dashboards",
+        options: [
+          {
+            label: "🛡️ Admin Dashboard (Super Admin Navigation)",
+            value: "admin",
+          },
+        ],
+      },
+      {
+        label: "Application Modules (Operations)",
+        options: modulesList.map((m) => ({
+          label: `📦 ${m.name}`,
+          value: m.id,
+        })),
+      },
+    ];
+  }, [modulesList]);
 
   // Load organizations for tenant public menus
   useEffect(() => {
@@ -207,7 +250,7 @@ export default function MenusPage() {
     } else {
       loadTenantMenus();
     }
-  }, [menuScope, adminRole, selectedOrgId]);
+  }, [menuScope, adminRole, selectedModuleScope, selectedOrgId]);
 
   // When selectedMenuId changes in tenant-website scope
   useEffect(() => {
@@ -452,15 +495,16 @@ export default function MenusPage() {
           role: values.role || "all",
           order: Number(values.orderIndex) || 1,
           parentId: values.parentId === 0 ? null : Number(values.parentId),
+          moduleId: selectedModuleScope === "admin" ? null : Number(selectedModuleScope),
           isVisible: values.isVisible,
         };
 
         if (editingItem) {
           await adminMenuService.updateMenuItem(editingItem.id, payload);
-          message.success("Admin menu item updated");
+          message.success("Menu item updated");
         } else {
           await adminMenuService.createMenuItem(payload);
-          message.success("Admin menu item created");
+          message.success("Menu item created");
         }
         handleAddNew();
         loadAdminMenus();
@@ -485,7 +529,7 @@ export default function MenusPage() {
           message.success("Navigation item updated");
         } else {
           await tenantCmsService.createMenuItem(payload);
-          message.success("Navigation item added");
+          message.success("Navigation item created");
         }
         handleAddNew();
         loadTenantMenus();
@@ -503,7 +547,7 @@ export default function MenusPage() {
       setSaving(true);
       if (menuScope === "admin-sidebar") {
         await adminMenuService.deleteMenuItem(id);
-        message.success("Admin menu item deleted");
+        message.success("Menu item deleted");
         handleAddNew();
         loadAdminMenus();
       } else {
@@ -531,7 +575,7 @@ export default function MenusPage() {
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Visual Drag and Drop CMS to customize the Admin Dashboard sidebar and Tenant Public Websites.
+            Visual Drag and Drop CMS to customize the Admin Dashboard sidebar, Application Modules, and Tenant Public Websites.
           </p>
         </div>
 
@@ -548,7 +592,7 @@ export default function MenusPage() {
           <Radio.Button value="admin-sidebar">
             <Space orientation="horizontal">
               <ApartmentOutlined />
-              <span>Admin Dashboard Sidebar</span>
+              <span>Dashboard & Modules Navigation</span>
             </Space>
           </Radio.Button>
           <Radio.Button value="tenant-website">
@@ -560,27 +604,45 @@ export default function MenusPage() {
         </Radio.Group>
       </div>
 
-      {/* SCOPE 1: ADMIN DASHBOARD SIDEBAR CMS */}
+      {/* SCOPE 1: DASHBOARD & MODULE NAVIGATION CMS */}
       {menuScope === "admin-sidebar" && (
         <div className="space-y-4">
-          {/* Top Controls: Role selector and Actions */}
+          {/* Top Controls: Target Menu / Module selector, Role selector and Actions */}
           <Card size="small" style={{ borderColor: BORDER_COLOR }}>
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex orientation-row items-center gap-3">
-                <span className="text-xs font-semibold text-slate-700">Target Role View:</span>
-                <Select
-                  value={adminRole}
-                  onChange={(val) => {
-                    setAdminRole(val);
-                    handleAddNew();
-                  }}
-                  style={{ width: 220 }}
-                  options={[
-                    { label: "Super Admin Sidebar", value: "super-admin" },
-                    { label: "Organization Admin Sidebar", value: "org-admin" },
-                    { label: "All Configured Menus", value: "all" },
-                  ]}
-                />
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-700">Target Menu / Module:</span>
+                  <Select
+                    showSearch
+                    optionFilterProp="label"
+                    value={selectedModuleScope}
+                    onChange={(val) => {
+                      setSelectedModuleScope(val);
+                      handleAddNew();
+                    }}
+                    style={{ minWidth: 320 }}
+                    options={moduleSelectOptions}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-700">Role View:</span>
+                  <Select
+                    value={adminRole}
+                    onChange={(val) => {
+                      setAdminRole(val);
+                      handleAddNew();
+                    }}
+                    style={{ width: 160 }}
+                    options={[
+                      { label: "Super Admin", value: "super-admin" },
+                      { label: "Org Admin", value: "org-admin" },
+                      { label: "All Roles", value: "all" },
+                    ]}
+                  />
+                </div>
+
                 <Button
                   icon={<ReloadOutlined />}
                   size="middle"
@@ -623,7 +685,7 @@ export default function MenusPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold flex items-center gap-1.5">
                       <DragOutlined className="text-blue-600" />
-                      Sidebar Hierarchy Preview (Drag & Drop)
+                      {currentModuleName} Hierarchy ({adminMenuItems.length})
                     </span>
                     <Tooltip title="Drag items up or down to reorder, or drop onto another item to nest as child submenu">
                       <span className="text-[11px] text-slate-400 cursor-pointer">
@@ -640,7 +702,7 @@ export default function MenusPage() {
                     <Spin description="Loading navigation tree..." />
                   </div>
                 ) : adminTreeData.length === 0 ? (
-                  <Empty description="No sidebar menus configured for this role" />
+                  <Empty description={`No navigation menus configured for ${currentModuleName}`} />
                 ) : (
                   <div className="space-y-2">
                     <div className="p-2 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-600 flex items-center justify-between">
@@ -672,8 +734,8 @@ export default function MenusPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold">
                       {editingItem
-                        ? `Edit: ${editingItem.name}`
-                        : "Add New Sidebar Navigation Link / Group"}
+                        ? `Edit: ${editingItem.title}`
+                        : `Add New Link / Group (${currentModuleName})`}
                     </span>
                     {editingItem && (
                       <Popconfirm
@@ -720,7 +782,13 @@ export default function MenusPage() {
                         label="Navigation Route URL (Leave empty for parent group header)"
                         name="url"
                       >
-                        <Input placeholder="e.g. /admin/audit, /admin/plans" />
+                        <Input
+                          placeholder={
+                            selectedModuleScope === "admin"
+                              ? "e.g. /admin/audit, /admin/plans, /admin/users"
+                              : "e.g. /dashboard/crm/lead/lead-list, /dashboard/projects/summary"
+                          }
+                        />
                       </Form.Item>
                     </Col>
                   </Row>
