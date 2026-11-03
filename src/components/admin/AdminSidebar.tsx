@@ -30,8 +30,6 @@ import {
   Bell,
   Sliders,
   FolderTree,
-  PanelLeftClose,
-  PanelLeft,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -450,17 +448,6 @@ export default function AdminSidebar() {
               </div>
             )}
           </Link>
-
-          {!isCollapsed && (
-            <button
-              type="button"
-              onClick={toggleCollapse}
-              className="hidden h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition lg:flex"
-              title="Collapse sidebar"
-            >
-              <PanelLeftClose size={16} />
-            </button>
-          )}
 
           <button
             type="button"
