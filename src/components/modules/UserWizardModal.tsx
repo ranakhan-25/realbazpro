@@ -26,9 +26,17 @@ import {
   getUserFormDropdowns,
   type CreateUserPayload,
   type User as UserModel,
+  type FeatureOverrideItem,
 } from "@/services/userService";
 import { getOrganizations, type Organization } from "@/services/organizationService";
 import { getStoredUserProfile } from "@/lib/admin-auth/adminAuthStorage";
+import {
+  getModuleTree,
+  type ModuleTreeNode,
+} from "@/services/moduleTreeService";
+import ModuleFeatureAccessTreeSelector, {
+  type FeaturePermissionState,
+} from "./ModuleFeatureAccessTreeSelector";
 
 interface UserWizardModalProps {
   isOpen: boolean;
@@ -50,7 +58,7 @@ export default function UserWizardModal({
   onSuccess,
 }: UserWizardModalProps) {
   const { primaryColor } = useTheme();
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // STEP 1: Identity & Credentials
   const [firstName, setFirstName] = useState("");
@@ -76,6 +84,14 @@ export default function UserWizardModal({
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
   const [loadingOrgs, setLoadingOrgs] = useState(false);
 
+  // STEP 4: Module & Feature Access
+  const [modules, setModules] = useState<ModuleTreeNode[]>([]);
+  const [loadingModules, setLoadingModules] = useState(false);
+  const [selectedModuleIds, setSelectedModuleIds] = useState<(number | string)[]>([]);
+  const [featurePermissions, setFeaturePermissions] = useState<
+    Record<string | number, FeaturePermissionState>
+  >({});
+
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -87,11 +103,24 @@ export default function UserWizardModal({
       setCurrentStep(1);
       setErrorMessage("");
       loadRoles();
+      loadModules();
       if (profile?.isSuperUser) {
         loadOrganizations();
       }
     }
   }, [isOpen]);
+
+  const loadModules = async () => {
+    try {
+      setLoadingModules(true);
+      const tree = await getModuleTree();
+      setModules(tree || []);
+    } catch (err: any) {
+      console.warn("Could not load module tree for wizard:", err);
+    } finally {
+      setLoadingModules(false);
+    }
+  };
 
   const loadOrganizations = async () => {
     try {
@@ -178,6 +207,8 @@ export default function UserWizardModal({
       setCurrentStep(3);
     } else if (currentStep === 3) {
       setCurrentStep(4);
+    } else if (currentStep === 4) {
+      setCurrentStep(5);
     }
   };
 
@@ -203,6 +234,22 @@ export default function UserWizardModal({
         ? (selectedOrgId ? Number(selectedOrgId) : undefined)
         : (profile?.orgId ? Number(profile.orgId) : undefined);
 
+      const overrides: FeatureOverrideItem[] = Object.entries(featurePermissions).map(
+        ([featureId, state]) => ({
+          featureId: Number(featureId),
+          isGranted: state.isGranted,
+          canView: state.canView,
+          canCreate: state.canCreate,
+          canEdit: state.canEdit,
+          canDelete: state.canDelete,
+          canApprove: state.canApprove,
+        }),
+      );
+
+      const numModuleIds = selectedModuleIds
+        .map((id) => Number(id))
+        .filter((id) => !isNaN(id));
+
       const payload: CreateUserPayload = {
         name: `${firstName} ${lastName}`.trim(),
         firstName: firstName.trim(),
@@ -212,6 +259,8 @@ export default function UserWizardModal({
         phone: phone.trim() ? phone.trim() : undefined,
         password,
         roleIds: [Number(selectedRoleId)],
+        moduleIds: numModuleIds,
+        featureOverrides: overrides,
         isActive,
         userType: "Office",
         orgId: finalOrgId,
@@ -231,8 +280,8 @@ export default function UserWizardModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-3 sm:p-5 overflow-y-auto">
+      <div className="relative w-full max-w-4xl rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-8 max-h-[92vh] flex flex-col">
         {/* MODAL HEADER */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
           <div className="flex items-center gap-3">
@@ -245,7 +294,7 @@ export default function UserWizardModal({
             <div>
               <h2 className="text-lg font-bold text-slate-900">User Creation Wizard</h2>
               <p className="text-xs text-slate-500">
-                Create and provision a new team member with level-aware authorization
+                Create and provision a new team member with level-aware authorization and module entitlements
               </p>
             </div>
           </div>
@@ -265,7 +314,8 @@ export default function UserWizardModal({
               { num: 1, label: "Identity" },
               { num: 2, label: "Role & Level" },
               { num: 3, label: "Workplace" },
-              { num: 4, label: "Review" },
+              { num: 4, label: "Module Access" },
+              { num: 5, label: "Review" },
             ].map((step, idx) => {
               const active = currentStep === step.num;
               const completed = currentStep > step.num;
@@ -289,7 +339,7 @@ export default function UserWizardModal({
                   >
                     {step.label}
                   </span>
-                  {idx < 3 ? <ChevronRight className="h-4 w-4 text-slate-300 hidden sm:inline ml-1" /> : null}
+                  {idx < 4 ? <ChevronRight className="h-4 w-4 text-slate-300 hidden sm:inline ml-1" /> : null}
                 </div>
               );
             })}
@@ -305,7 +355,7 @@ export default function UserWizardModal({
         ) : null}
 
         {/* MODAL BODY */}
-        <div className="p-6">
+        <div className="p-6 flex-1 overflow-y-auto">
           {/* STEP 1: CREDENTIALS */}
           {currentStep === 1 ? (
             <div className="space-y-4">
@@ -588,8 +638,43 @@ export default function UserWizardModal({
             </div>
           ) : null}
 
-          {/* STEP 4: REVIEW & CONFIRM */}
+          {/* STEP 4: MODULE & FEATURE ACCESS ENTITLEMENTS */}
           {currentStep === 4 ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                    Module & Feature Access Entitlements
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Grant workspace access and configure granular Read, Write, and Execution privileges for this user.
+                  </p>
+                </div>
+              </div>
+
+              {loadingModules ? (
+                <div className="py-16 text-center text-xs text-slate-400">
+                  <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent mb-2" />
+                  Loading module tree...
+                </div>
+              ) : (
+                <ModuleFeatureAccessTreeSelector
+                  modules={modules}
+                  selectedModuleIds={selectedModuleIds}
+                  featurePermissions={featurePermissions}
+                  onChange={(updatedMods, updatedPerms) => {
+                    setSelectedModuleIds(updatedMods);
+                    setFeaturePermissions(updatedPerms);
+                  }}
+                  primaryColor={primaryColor}
+                />
+              )}
+            </div>
+          ) : null}
+
+          {/* STEP 5: REVIEW & CONFIRM */}
+          {currentStep === 5 ? (
             <div className="space-y-4">
               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 space-y-4">
                 <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
@@ -637,6 +722,15 @@ export default function UserWizardModal({
                         : profile?.orgName || `Org #${profile?.orgId || "Current"}`}
                     </p>
                   </div>
+                  <div className="col-span-2 pt-2 border-t border-slate-200">
+                    <span className="text-slate-400 uppercase font-semibold text-[10px]">
+                      Module & Feature Entitlements
+                    </span>
+                    <p className="font-bold text-indigo-700 mt-0.5">
+                      {selectedModuleIds.length} modules selected &bull;{" "}
+                      {Object.values(featurePermissions).filter((p) => p.isGranted).length} features granted
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -649,7 +743,7 @@ export default function UserWizardModal({
                       ? organizations.find((o) => String(o.id) === String(selectedOrgId))?.name || "the chosen Organization"
                       : profile?.orgName || `Organization ID ${profile?.orgId}`}
                   </strong>{" "}
-                  with isolated tenant workspace and automatic entitlement inheritance.
+                  with selected module permissions and isolated tenant boundaries.
                 </span>
               </div>
             </div>
@@ -671,7 +765,7 @@ export default function UserWizardModal({
             <div />
           )}
 
-          {currentStep < 4 ? (
+          {currentStep < 5 ? (
             <button
               type="button"
               onClick={handleNext}

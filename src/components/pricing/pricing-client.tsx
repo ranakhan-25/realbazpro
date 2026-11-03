@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { Check, HelpCircle, ChevronDown, Sparkles } from "lucide-react";
 import { useLanguage } from "@/lib/language";
 import { AnimatedHeading } from "@/components/home/animated-heading";
+import { getPlans, type Plan } from "@/services/planService";
 
 type Billing = "monthly" | "yearly";
 
@@ -13,58 +14,138 @@ export function PricingClient() {
   const { t } = useLanguage();
   const [billing, setBilling] = useState<Billing>("monthly");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [dbPlans, setDbPlans] = useState<Plan[]>([]);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    getPlans({ status: "active" })
+      .then((data) => {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setDbPlans(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to load active pricing plans for homepage:", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingPlans(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const customPriceLabel = t("pricing.custom") || "Custom";
 
-  const PLANS = [
-    {
-      name: t("pricing.starter.name"),
-      monthly: "৳2900",
-      yearly: "৳2900",
-      yearlyNote: "$24/mo billed yearly",
-      description: t("pricing.starter.description"),
-      features: [
-        t("pricing.starter.f1"),
-        t("pricing.starter.f2"),
-        t("pricing.starter.f3"),
-        t("pricing.starter.f4"),
-      ],
-      cta: t("pricing.starter.cta"),
-      highlighted: false,
-    },
-    {
-      name: t("pricing.growth.name"),
-      monthly: "৳7900",
-      yearly: "৳7900",
-      yearlyNote: t("pricing.growth.note"),
-      description: t("pricing.growth.description"),
-      features: [
-        t("pricing.growth.f1"),
-        t("pricing.growth.f2"),
-        t("pricing.growth.f3"),
-        t("pricing.growth.f4"),
-        t("pricing.growth.f5"),
-      ],
-      cta: t("pricing.growth.cta"),
-      highlighted: true,
-    },
-    {
-      name: t("pricing.enterprise.name"),
-      monthly: customPriceLabel,
-      yearly: customPriceLabel,
-      yearlyNote: t("pricing.enterprise.note"),
-      description: t("pricing.enterprise.description"),
-      features: [
-        t("pricing.enterprise.f1"),
-        t("pricing.enterprise.f2"),
-        t("pricing.enterprise.f3"),
-        t("pricing.enterprise.f4"),
-        t("pricing.enterprise.f5"),
-      ],
-      cta: t("pricing.enterprise.cta"),
-      highlighted: false,
-    },
-  ];
+  const DEFAULT_PLANS = useMemo(
+    () => [
+      {
+        id: "starter",
+        name: t("pricing.starter.name"),
+        monthly: "$29",
+        yearly: "$290",
+        yearlyNote: "$24/mo billed yearly",
+        description: t("pricing.starter.description"),
+        features: [
+          t("pricing.starter.f1"),
+          t("pricing.starter.f2"),
+          t("pricing.starter.f3"),
+          t("pricing.starter.f4"),
+        ],
+        cta: t("pricing.starter.cta"),
+        highlighted: false,
+        isFree: false,
+      },
+      {
+        id: "growth",
+        name: t("pricing.growth.name"),
+        monthly: "$79",
+        yearly: "$790",
+        yearlyNote: t("pricing.growth.note"),
+        description: t("pricing.growth.description"),
+        features: [
+          t("pricing.growth.f1"),
+          t("pricing.growth.f2"),
+          t("pricing.growth.f3"),
+          t("pricing.growth.f4"),
+          t("pricing.growth.f5"),
+        ],
+        cta: t("pricing.growth.cta"),
+        highlighted: true,
+        isFree: false,
+      },
+      {
+        id: "enterprise",
+        name: t("pricing.enterprise.name"),
+        monthly: customPriceLabel,
+        yearly: customPriceLabel,
+        yearlyNote: t("pricing.enterprise.note"),
+        description: t("pricing.enterprise.description"),
+        features: [
+          t("pricing.enterprise.f1"),
+          t("pricing.enterprise.f2"),
+          t("pricing.enterprise.f3"),
+          t("pricing.enterprise.f4"),
+          t("pricing.enterprise.f5"),
+        ],
+        cta: t("pricing.enterprise.cta"),
+        highlighted: false,
+        isFree: false,
+      },
+    ],
+    [t, customPriceLabel],
+  );
+
+  const activePlans = useMemo(() => {
+    if (dbPlans && dbPlans.length > 0) {
+      return dbPlans.map((p) => {
+        const cur = p.currency || "$";
+        const isTrial = Number(p.monthlyPrice) === 0 && Number(p.yearlyPrice) === 0;
+        const monthlyText = isTrial ? "Free" : `${cur}${p.monthlyPrice}`;
+        const yearlyText = isTrial ? "Free" : `${cur}${p.yearlyPrice}`;
+        const yearlyNote = isTrial
+          ? `${p.durationDays || 14}-day evaluation`
+          : Number(p.yearlyPrice) > 0
+            ? `${cur}${Math.round(Number(p.yearlyPrice) / 12)}/mo billed yearly`
+            : `${cur}${p.monthlyPrice}/mo`;
+
+        const limitsFeatures = [
+          `${p.maxUsers} Users allowed`,
+          `${p.maxProjects} Active Projects`,
+          `${p.maxStorageMb ? Math.round(p.maxStorageMb / 1024) : 10} GB Cloud Storage`,
+        ];
+
+        let extraFeatures: string[] = [];
+        if (Array.isArray(p.features) && p.features.length > 0) {
+          extraFeatures = p.features.slice(0, 3).map((f) => {
+            const str = String(f);
+            return str
+              .replace(/[-_]/g, " ")
+              .replace(/\b\w/g, (c) => c.toUpperCase());
+          });
+        }
+
+        const isHighlighted =
+          p.code?.toUpperCase() === "PRO" || p.code?.toUpperCase() === "STARTER";
+
+        return {
+          id: p.id || p.uuid,
+          name: p.name,
+          monthly: monthlyText,
+          yearly: yearlyText,
+          yearlyNote,
+          description: p.description || "Robust cloud real estate management tools",
+          features: [...limitsFeatures, ...extraFeatures],
+          cta: isTrial ? "Start Free Trial" : "Get Started Now",
+          highlighted: isHighlighted,
+          isFree: isTrial,
+        };
+      });
+    }
+
+    return DEFAULT_PLANS;
+  }, [dbPlans, DEFAULT_PLANS]);
 
   const FAQS = [
     { question: t("pricing.faq1.q"), answer: t("pricing.faq1.a") },
@@ -138,8 +219,16 @@ export function PricingClient() {
           </motion.div>
 
           {/* Pricing Cards */}
-          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-            {PLANS.map((plan, index) => (
+          <div
+            className={`mt-12 grid grid-cols-1 gap-6 ${
+              activePlans.length === 4
+                ? "sm:grid-cols-2 lg:grid-cols-4"
+                : activePlans.length === 2
+                  ? "md:grid-cols-2 max-w-4xl mx-auto"
+                  : "md:grid-cols-3"
+            }`}
+          >
+            {activePlans.map((plan, index) => (
               <motion.div
                 key={plan.name}
                 initial={{ opacity: 0, y: 16 }}
@@ -174,7 +263,7 @@ export function PricingClient() {
                       {billing === "monthly" ? plan.monthly : plan.yearly}
                     </motion.span>
                   </AnimatePresence>
-                  {plan.monthly !== customPriceLabel && (
+                  {plan.monthly !== customPriceLabel && !plan.isFree && (
                     <span className="text-[13px] text-muted-foreground">
                       {billing === "monthly" ? t("pricing.perMonth") : t("pricing.perYear")}
                     </span>

@@ -118,6 +118,7 @@ export default function PlanListPage() {
         name: payload.name,
         code: payload.code,
         description: payload.description,
+        currency: payload.currency || "$",
         monthlyPrice: Number(payload.monthly_price || payload.monthlyPrice) || 0,
         yearlyPrice: Number(payload.yearly_price || payload.yearlyPrice) || 0,
         maxUsers: Number(payload.user_limit || payload.maxUsers) || 5,
@@ -143,6 +144,7 @@ export default function PlanListPage() {
         name: payload.name,
         code: payload.code,
         description: payload.description,
+        currency: payload.currency || "$",
         monthlyPrice: Number(payload.monthly_price || payload.monthlyPrice),
         yearlyPrice: Number(payload.yearly_price || payload.yearlyPrice),
         maxUsers: Number(payload.user_limit || payload.maxUsers),
@@ -334,14 +336,14 @@ export default function PlanListPage() {
                 <div className="px-5 pt-4 pb-3">
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-extrabold text-gray-900">
-                      ${plan.monthlyPrice ?? plan.monthly_price ?? 0}
+                      {plan.currency || "$"}{plan.monthlyPrice ?? plan.monthly_price ?? 0}
                     </span>
                     <span className="text-sm text-gray-500 font-medium">
                       /mo
                     </span>
                   </div>
                   <p className="text-xs text-gray-400 mt-1">
-                    ${plan.yearlyPrice ?? plan.yearly_price ?? 0} billed yearly
+                    {plan.currency || "$"}{plan.yearlyPrice ?? plan.yearly_price ?? 0} billed yearly
                   </p>
                 </div>
 

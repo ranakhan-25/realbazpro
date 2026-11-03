@@ -119,6 +119,21 @@ export const defaultMenuGroups: AdminMenuItem[] = [
         href: "/admin/organization",
         icon: User,
       },
+      {
+        label: "Permissions",
+        href: "/admin/permissions",
+        icon: KeyRound,
+      },
+      {
+        label: "Features",
+        href: "/admin/features",
+        icon: FileCog,
+      },
+      {
+        label: "Modules",
+        href: "/admin/modules",
+        icon: Boxes,
+      },
     ],
   },
   {
@@ -134,21 +149,6 @@ export const defaultMenuGroups: AdminMenuItem[] = [
         label: "Roles",
         href: "/admin/roles",
         icon: ShieldCheck,
-      },
-      {
-        label: "Permissions",
-        href: "/admin/permissions",
-        icon: KeyRound,
-      },
-      {
-        label: "Features",
-        href: "/admin/features",
-        icon: FileCog,
-      },
-      {
-        label: "Modules",
-        href: "/admin/modules",
-        icon: Boxes,
       },
     ],
   },
@@ -253,7 +253,7 @@ export default function AdminSidebar() {
       });
 
       if (adminNodes.length > 0) {
-        return adminNodes
+        const mapped = adminNodes
           .map((node) => {
             const IconComponent = (node.icon && ICON_MAP[node.icon]) || FolderTree;
 
@@ -294,6 +294,37 @@ export default function AdminSidebar() {
             };
           })
           .filter(Boolean) as AdminMenuItem[];
+
+        const sysGroup = mapped.find(
+          (g) => "children" in g && g.label === "System Management",
+        ) as AdminNavGroup | undefined;
+        const authGroup = mapped.find(
+          (g) => "children" in g && g.label === "Authentication & Access",
+        ) as AdminNavGroup | undefined;
+
+        if (authGroup && sysGroup) {
+          const authOnly = new Set(["Users", "Roles"]);
+          const keepInAuth: AdminNavItem[] = [];
+          const moveToSys: AdminNavItem[] = [];
+
+          authGroup.children.forEach((item) => {
+            if (authOnly.has(item.label)) {
+              keepInAuth.push(item);
+            } else {
+              moveToSys.push(item);
+            }
+          });
+
+          authGroup.children = keepInAuth;
+
+          moveToSys.forEach((moved) => {
+            if (!sysGroup.children.some((c) => c.href === moved.href)) {
+              sysGroup.children.push(moved);
+            }
+          });
+        }
+
+        return mapped;
       }
     }
 
@@ -388,36 +419,18 @@ export default function AdminSidebar() {
           <Link
             href="/admin/dashboard"
             onClick={() => setMobileOpen(false)}
-            className="flex items-center gap-3"
+            className="flex items-center"
+            aria-label="Realbiz Admin"
           >
-            <div className="relative h-8 w-8">
+            <div className="relative h-9 w-36">
               <Image
                 src="/logo.svg"
                 alt="Realbiz Logo"
                 fill
-                sizes="32px"
-                className="object-contain"
+                sizes="144px"
+                className="object-contain object-left"
                 priority
               />
-            </div>
-            <div className="leading-tight">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-semibold tracking-tight text-slate-900">
-                  Realbiz
-                </span>
-                <span
-                  className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
-                  style={{
-                    backgroundColor: `${primaryColor}14`,
-                    color: primaryColor,
-                  }}
-                >
-                  Admin
-                </span>
-              </div>
-              <p className="text-[11px] font-normal text-slate-500">
-                {isSuperAdmin ? "Super Admin Console" : "Org Admin Portal"}
-              </p>
             </div>
           </Link>
           <button

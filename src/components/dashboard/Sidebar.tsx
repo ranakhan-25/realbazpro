@@ -95,16 +95,10 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
 
   const displayModules = useMemo(() => {
     if (accessibleModules && accessibleModules.length > 0) {
-      const unique = new Map<string, { key: ModuleKey; label: string }>();
-      for (const m of accessibleModules) {
-        const key = String(m.key ?? "").trim();
-        if (!key || unique.has(key.toLowerCase())) continue;
-        unique.set(key.toLowerCase(), {
-          key: key as ModuleKey,
-          label: m.name,
-        });
-      }
-      return [...unique.values()];
+      return accessibleModules.map((m) => ({
+        key: m.key as ModuleKey,
+        label: m.name,
+      }));
     }
     return MODULES;
   }, [accessibleModules]);
@@ -118,11 +112,15 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
   }, [accessibleModules, module]);
 
   const permittedTree = useMemo(() => {
+    let base: MenuNode[] = [];
     if (
       currentAccessibleMod?.menuTree &&
       currentAccessibleMod.menuTree.length > 0
     ) {
-      return currentAccessibleMod.menuTree;
+      base = currentAccessibleMod.menuTree;
+    } else {
+      const rawTree = MENUS[module] || [];
+      base = pruneTreeByAccess(rawTree, module, hasAccessToRoute);
     }
     let base = pruneTreeByAccess(
       MENUS[module],
@@ -195,11 +193,20 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
       style={depth > 0 ? { borderColor: `${brandColor}33` } : undefined}
     >
       {nodes.map((n) => {
+        const cleanNodePath = n.path
+          .replace(/^\//, "")
+          .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+        const cleanActivePath = activePath
+          .replace(/^\//, "")
+          .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
         const isActive =
+          cleanNodePath === cleanActivePath ||
           n.path === activePath ||
-          (!activePath && (n.slug === "dashboard" || n.path === "dashboard"));
-        const isAncestor = activePath.startsWith(n.path + "/");
-        const isOpen = !!q || expanded.has(n.path);
+          (!cleanActivePath && (n.slug === "dashboard" || cleanNodePath === "dashboard"));
+        const isAncestor = Boolean(
+          cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")
+        );
+        const isOpen = !!q || expanded.has(n.path) || expanded.has(cleanNodePath);
         const Icon = module === "lams" ? LAMS_ICONS[n.slug] : null;
 
         if (n.children?.length) {
@@ -248,14 +255,16 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           );
         }
 
+        const href = n.path.startsWith("/")
+          ? n.path
+          : n.path.startsWith("http")
+            ? n.path
+            : `/dashboard/${module}/${n.path}`;
+
         return (
           <li key={n.path}>
             <Link
-              href={
-                n.path
-                  ? `/dashboard/${module}/${n.path}`
-                  : `/dashboard/${module}`
-              }
+              href={href}
               onClick={onClose}
               className={cn(
                 "group flex items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition",

@@ -20,7 +20,8 @@ export type ModuleKey =
   | "cr"
   | "lams"
   | "procurement"
-  | "all";
+  | "all"
+  | (string & {});
 
 export const MODULES: { key: ModuleKey; label: string }[] = [
   { key: "project", label: "Project" },
@@ -615,7 +616,14 @@ export const MENUS: Record<ModuleKey, MenuNode[]> = {
 };
 
 export function isModuleKey(v: string): v is ModuleKey {
-  return MODULES.some((m) => m.key === v);
+  return Boolean(
+    v &&
+      typeof v === "string" &&
+      v.trim().length > 0 &&
+      v !== "admin" &&
+      v !== "api" &&
+      v !== "_next"
+  );
 }
 
 export function moduleLabel(key: ModuleKey) {
@@ -635,5 +643,5 @@ export function findNode(
     }
     return undefined;
   };
-  return walk(MENUS[module]);
+  return walk(MENUS[module] || []);
 }
