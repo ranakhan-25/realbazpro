@@ -49,6 +49,9 @@ export default function SuperAdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // State to track if the user clicked the Demo/Regular login buttons
+  const [isDemoFilled, setIsDemoFilled] = useState(false);
 
   const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -89,7 +92,13 @@ export default function SuperAdminLoginPage() {
         session.user,
       );
 
-      router.replace("/admin/dashboard");
+      // Redirect logic: if isDemoFilled is true (fleek_bd used), go to /dashboard. Otherwise go to /admin/dashboard
+      if (isDemoFilled) {
+        router.replace("/dashboard");
+      } else {
+        router.replace("/admin/dashboard");
+      }
+      
     } catch (err) {
       setError(
         err instanceof Error
@@ -101,10 +110,18 @@ export default function SuperAdminLoginPage() {
     }
   };
 
-  const handleUseSuperAdmin = () => {
-    setEmail("admin@admin.com");
-    setPassword("12345678");
+  // Shared function for BOTH "Super Admin Demo" and "Regular Workspace Login"
+  const handleFillDemoCredentials = () => {
+    setEmail("fleek_bd");
+    setPassword("Password@123");
     setError("");
+    setIsDemoFilled(true); // Turns button green and enables /dashboard redirect
+  };
+
+  // Reset green state if user manually edits the fields
+  const handleInputChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setter(e.target.value);
+    setIsDemoFilled(false);
   };
 
   const slide = slides[currentSlide];
@@ -250,18 +267,26 @@ export default function SuperAdminLoginPage() {
               </p>
             </div>
 
-            {/* Quick Fill Info */}
+            {/* Quick Fill Buttons */}
             <div className="mt-5 flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 Quick Fill:
               </span>
               <button
                 type="button"
-                onClick={handleUseSuperAdmin}
+                onClick={handleFillDemoCredentials}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-[#0000F2] hover:bg-blue-100 hover:border-blue-300 transition active:scale-95 shadow-sm"
               >
                 <Sparkles className="h-3.5 w-3.5 text-[#0000F2]" />
                 Super Admin Demo
+              </button>
+
+              <button
+                type="button"
+                onClick={handleFillDemoCredentials}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition active:scale-95 shadow-sm"
+              >
+                Regular Workspace Login →
               </button>
             </div>
 
@@ -278,7 +303,7 @@ export default function SuperAdminLoginPage() {
                   </label>
                   <button
                     type="button"
-                    onClick={handleUseSuperAdmin}
+                    onClick={handleFillDemoCredentials}
                     className="text-[11px] font-bold text-[#0000F2] hover:underline"
                   >
                     Fill Admin
@@ -289,10 +314,10 @@ export default function SuperAdminLoginPage() {
                   id="email"
                   type="text"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={handleInputChange(setEmail)}
                   disabled={isSubmitting}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#0000F2] focus:ring-2 focus:ring-[#0000F2]/20 disabled:cursor-not-allowed disabled:bg-slate-50"
-                  placeholder="admin@admin.com"
+                  placeholder="fleek_bd"
                 />
               </div>
 
@@ -310,7 +335,7 @@ export default function SuperAdminLoginPage() {
                     id="password"
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={handleInputChange(setPassword)}
                     disabled={isSubmitting}
                     className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 pr-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#0000F2] focus:ring-2 focus:ring-[#0000F2]/20 disabled:cursor-not-allowed disabled:bg-slate-50"
                     placeholder="••••••••"
@@ -337,11 +362,15 @@ export default function SuperAdminLoginPage() {
                 </motion.div>
               ) : null}
 
-              {/* Login Button with Hermes Accent */}
+              {/* Login Button - Green when filled via Demo/Regular buttons */}
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0000F2] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition hover:bg-[#0000F2]/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+                className={`group inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold text-white shadow-lg transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 ${
+                  isDemoFilled
+                    ? "bg-emerald-600 shadow-emerald-600/25 hover:bg-emerald-600/90"
+                    : "bg-[#0000F2] shadow-blue-600/25 hover:bg-[#0000F2]/90"
+                }`}
               >
                 {isSubmitting ? (
                   <>
@@ -364,13 +393,6 @@ export default function SuperAdminLoginPage() {
                 className="text-xs font-semibold text-slate-500 transition hover:text-slate-900"
               >
                 ← Return to main site
-              </Link>
-
-              <Link
-                href="/rb/login"
-                className="text-xs font-bold text-[#0000F2] transition hover:underline"
-              >
-                Regular Workspace Login →
               </Link>
             </div>
           </div>
