@@ -20,6 +20,7 @@ export type ModuleKey =
   | "cr"
   | "lams"
   | "procurement"
+  | "customer-service"
   | "all"
   | (string & {});
 
@@ -32,6 +33,7 @@ export const MODULES: { key: ModuleKey; label: string }[] = [
   { key: "cr", label: "Credit Realisation (CR)" },
   { key: "lams", label: "LAMS" },
   { key: "procurement", label: "Procurement" },
+  { key: "customer-service", label: "Post-Sales & Customer Service" },
   { key: "all", label: "All" },
 ];
 
@@ -43,14 +45,63 @@ const ACRONYMS: Record<string, string> = {
   hrm: "HRM",
   crm: "CRM",
   zkteco: "ZKTeco",
+  dlp: "DLP",
+  sla: "SLA",
+  csat: "CSAT",
+  nps: "NPS",
+  kyc: "KYC",
+  dcr: "DCR",
+  oa: "OA",
   cr: "CR",
   lams: "LAMS",
   vs: "vs",
   and: "&",
 };
 
+const CUSTOM_SLUG_LABELS: Record<string, string> = {
+  "sub-category": "Sub-Category",
+
+  // Customer Service Main Sections
+  customers: "Customers & Properties",
+  payments: "Payments & Collections",
+  documents: "Documents & Land Records",
+  handover: "Handover & Possession",
+  tickets: "Tickets & Service Requests",
+  "property-care": "Warranty & Property Care",
+  communication: "Communication & Appointments",
+  reports: "Reports & Analytics",
+  settings: "Settings & Administration",
+
+  // Customer Service Sub-Pages
+  "customer-360": "Customer 360°",
+  "properties-bookings": "Bookings & Property Portfolio",
+  "change-requests": "Transfer, Resale & Change Requests",
+  "schedules-demand-letters": "Payment Schedules & Demand Letters",
+  "collections-ledger-receipts": "Collections, Receipts & Customer Ledger",
+  "dues-ageing-recovery": "Dues, Ageing & Recovery",
+  "refunds-adjustments": "Refunds & Adjustments",
+  center: "Document Centre",
+  "registration-tracking": "Registration Tracking",
+  "mutation-khatian-tracking": "Mutation & Khatian Tracking",
+  schedule: "Handover Schedule",
+  "inspection-snags": "Inspections & Snagging",
+  "possession-records": "Possession & Handover Records",
+  "warranty-dlp": "Warranty & DLP Claims",
+  "maintenance-requests": "Maintenance Requests",
+  "work-orders-association": "Work Orders & Owners Association",
+  "inbox-reminders": "Communication Hub & Reminders",
+  "site-visits-appointments": "Site Visits & Appointments",
+  "feedback-surveys": "Feedback, Surveys & NPS",
+  "collections-ageing": "Collections & Ageing Reports",
+  "service-ticket-sla": "Ticket & SLA Performance",
+  "handover-property-care": "Handover & Property Care Reports",
+  "service-workflow-rules": "Service & Workflow Rules",
+  "approval-permissions": "Approval & Permission Matrix",
+  "templates-integrations-audit": "Templates, Integrations & Audit Log",
+};
+
 export function slugToLabel(slug: string) {
-  if (slug === "sub-category") return "Sub-Category";
+  if (CUSTOM_SLUG_LABELS[slug]) return CUSTOM_SLUG_LABELS[slug];
   return slug
     .split("-")
     .map((w) => ACRONYMS[w] ?? w.charAt(0).toUpperCase() + w.slice(1))
@@ -603,6 +654,43 @@ crm
     user-wise-report
 `;
 
+
+const customerService = `
+dashboard
+customers
+  customer-360
+  properties-bookings
+  change-requests
+payments
+  schedules-demand-letters
+  collections-ledger-receipts
+  dues-ageing-recovery
+  refunds-adjustments
+documents
+  center
+  registration-tracking
+  mutation-khatian-tracking
+handover
+  schedule
+  inspection-snags
+  possession-records
+tickets
+property-care
+  warranty-dlp
+  maintenance-requests
+  work-orders-association
+communication
+  inbox-reminders
+  site-visits-appointments
+  feedback-surveys
+reports
+  collections-ageing
+  service-ticket-sla
+  handover-property-care
+settings
+  service-workflow-rules
+`;
+
 export const MENUS: Record<ModuleKey, MenuNode[]> = {
   project: parseTree(project),
   inventory: parseTree(inventory),
@@ -612,6 +700,7 @@ export const MENUS: Record<ModuleKey, MenuNode[]> = {
   cr: parseTree(cr),
   lams: parseTree(lams),
   procurement: parseTree(procurement),
+  "customer-service": parseTree(customerService),
   all: parseTree(all),
 };
 

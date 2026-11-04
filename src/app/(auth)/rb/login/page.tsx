@@ -1,13 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable prettier/prettier */
 "use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { Eye, EyeOff, Loader2, ArrowRight, Building2, Sparkles } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { Eye, EyeOff, ShieldCheck, Loader2, ArrowRight, Sparkles } from "lucide-react";
 
-import { loginUniversalSession } from "@/lib/admin-auth/adminAuthApi";
+import { loginAdminSession } from "@/lib/admin-auth/adminAuthApi";
 import {
   getStoredAccessToken,
   setStoredTokens,
@@ -17,47 +18,50 @@ const slides = [
   {
     image:
       "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1400&q=90",
-    badge: "HERMES WORKSPACE",
-    title: "Command center for high-performance teams.",
+    badge: "HERMES ENTERPRISE",
+    title: "Governance & multi-tenant command console.",
     description:
-      "Streamline operations, manage civil projects, track lead pipelines, and monitor financial statements in real time.",
+      "Control enterprise organizations, manage module entitlements, configure tenant-isolated RBAC, and monitor platform health.",
   },
   {
     image:
       "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1400&q=90",
-    badge: "OPERATIONAL AGILITY",
-    title: "Everything your enterprise needs in one place.",
+    badge: "PLATFORM ARCHITECTURE",
+    title: "Isolated tenant hierarchies with zero-leak access.",
     description:
-      "Connect sales, inventory, procurement, human resources, and credit realisation from a unified hub.",
+      "Role-based authorization and modular micro-features kept strictly in-sync between backend services and UI clients.",
   },
   {
     image:
       "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1400&q=90",
-    badge: "DATA INTELLIGENCE",
-    title: "Turn daily transactions into strategic decisions.",
+    badge: "TELEMETRY & OPERATIONS",
+    title: "Real-time auditing and active tenant oversight.",
     description:
-      "Track milestones, monitor store requisitions, verify voucher entries, and scale organizational productivity.",
+      "Monitor tenant registrations, audit subscription quotas, and manage enterprise security from one central location.",
   },
 ];
 
-export default function RegularLoginPage() {
+export default function SuperAdminLoginPage() {
   const router = useRouter();
 
-  const [identifier, setIdentifier] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Track which button was clicked to determine the redirect path
+  const [loginType, setLoginType] = useState<"default" | "super_admin" | "regular">("default");
+  const [isGreen, setIsGreen] = useState(false);
 
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
     if (getStoredAccessToken()) {
-      router.replace("/dashboard");
+      router.replace("/admin/dashboard");
     }
   }, [router]);
 
-  // Auto slide
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -69,10 +73,10 @@ export default function RegularLoginPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const cleanIdentifier = identifier.trim();
-    if (!cleanIdentifier || password.length < 4) {
+    const identifier = email.trim();
+    if (!identifier || password.length < 4) {
       setError(
-        "Please enter your email or username, and a password of at least 4 characters.",
+        "Enter a valid email or username, and a password of at least 4 characters.",
       );
       return;
     }
@@ -81,26 +85,55 @@ export default function RegularLoginPage() {
     setError("");
 
     try {
-      const session = await loginUniversalSession(cleanIdentifier, password);
+      const session = await loginAdminSession(identifier, password);
 
-      setStoredTokens(session.accessToken, session.refreshToken, session.user);
+      setStoredTokens(
+        session.accessToken,
+        session.refreshToken,
+        session.user,
+      );
 
-      router.replace("/dashboard");
-    } catch (err: any) {
+      // Redirect logic based on which button was clicked
+      if (loginType === "regular") {
+        router.replace("/dashboard");
+      } else {
+        router.replace("/admin/dashboard");
+      }
+      
+    } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Authentication failed. Please verify your credentials and try again.",
+          : "Admin login failed. Please try again.",
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleUseDemo = () => {
-    setIdentifier("admin@admin.com");
-    setPassword("12345678");
+  // For Super Admin Demo
+  const handleUseSuperAdmin = () => {
+    setEmail("fleek_bd");
+    setPassword("Password@123");
     setError("");
+    setIsGreen(true);
+    setLoginType("super_admin");
+  };
+
+  // For Regular Workspace Login
+  const handleUseRegularLogin = () => {
+    setEmail("fleek_bd");
+    setPassword("Password@123");
+    setError("");
+    setIsGreen(true);
+    setLoginType("regular");
+  };
+
+  // Reset green state and login type if user manually edits the fields
+  const handleInputChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setter(e.target.value);
+    setIsGreen(false);
+    setLoginType("default");
   };
 
   const slide = slides[currentSlide];
@@ -108,7 +141,7 @@ export default function RegularLoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100/80 px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
       {/* Main Container */}
-      <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl lg:grid lg:grid-cols-2">
+      <div className="w-full max-w-6xl overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl lg:grid lg:grid-cols-2">
         {/* LEFT SIDE - IMAGE SLIDER WITH VIBRANT ENTERPRISE VISUALS */}
         <div className="relative hidden min-h-[640px] overflow-hidden lg:block bg-slate-900">
           <AnimatePresence initial={false} mode="sync">
@@ -174,7 +207,7 @@ export default function RegularLoginPage() {
                 className="max-w-xl"
               >
                 <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#00D2FF] font-bold drop-shadow-sm">
-                  RealBiz Enterprise Operations
+                  RealBiz Super Governance
                 </p>
 
                 <h2 className="text-2xl font-black leading-tight tracking-tight text-white xl:text-3xl drop-shadow-md">
@@ -211,7 +244,7 @@ export default function RegularLoginPage() {
             {/* Footer Metadata */}
             <div className="mt-6 flex items-center justify-between border-t border-white/15 pt-4 text-[10px] uppercase tracking-wider text-slate-300">
               <span>Hermes Security Architecture</span>
-              <span>Universal Workspace Access</span>
+              <span>Central Admin Console</span>
             </div>
           </div>
         </div>
@@ -233,64 +266,70 @@ export default function RegularLoginPage() {
             {/* Form Header */}
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-                <Building2 className="h-4 w-4 text-[#0000F2]" />
-                <span>Enterprise Workspace Access</span>
+                <ShieldCheck className="h-4 w-4 text-[#0000F2]" />
+                <span>Super Administrator Access</span>
               </div>
 
               <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
-                Welcome back
+                Super Admin Login
               </h1>
 
               <p className="text-xs text-slate-500 leading-relaxed">
-                Sign in with your organization account to access your assigned operational workspaces.
+                Enter your administrative credentials to manage tenant organizations, module policies, and roles.
               </p>
             </div>
 
-            {/* Quick Fill Info */}
+            {/* Quick Fill Buttons */}
             <div className="mt-5 flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 Quick Fill:
               </span>
               <button
                 type="button"
-                onClick={handleUseDemo}
+                onClick={handleUseSuperAdmin}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-[#0000F2] hover:bg-blue-100 hover:border-blue-300 transition active:scale-95 shadow-sm"
               >
                 <Sparkles className="h-3.5 w-3.5 text-[#0000F2]" />
-                Workspace Demo
+                Super Admin Demo
+              </button>
+
+              <button
+                type="button"
+                onClick={handleUseRegularLogin}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition active:scale-95 shadow-sm"
+              >
+                Regular Workspace Login →
               </button>
             </div>
 
             {/* Login Form */}
             <form onSubmit={submit} className="mt-6 space-y-4">
-              {/* Email / Username */}
+              {/* Email or Username */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label
-                    htmlFor="identifier"
+                    htmlFor="email"
                     className="text-xs font-semibold uppercase tracking-wider text-slate-600"
                   >
-                    Work Email or Username
+                    Email or Username
                   </label>
                   <button
                     type="button"
-                    onClick={handleUseDemo}
+                    onClick={handleUseSuperAdmin}
                     className="text-[11px] font-bold text-[#0000F2] hover:underline"
                   >
-                    Fill Demo
+                    Fill Admin
                   </button>
                 </div>
 
                 <input
-                  id="identifier"
+                  id="email"
                   type="text"
-                  autoComplete="username"
-                  required
+                  value={email}
+                  onChange={handleInputChange(setEmail)}
                   disabled={isSubmitting}
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#0000F2] focus:ring-2 focus:ring-[#0000F2]/20 disabled:cursor-not-allowed disabled:bg-slate-50"
-                  placeholder="name@company.com or username"
+                  placeholder="fleek_bd"
                 />
               </div>
 
@@ -307,11 +346,9 @@ export default function RegularLoginPage() {
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    required
-                    disabled={isSubmitting}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={handleInputChange(setPassword)}
+                    disabled={isSubmitting}
                     className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 pr-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#0000F2] focus:ring-2 focus:ring-[#0000F2]/20 disabled:cursor-not-allowed disabled:bg-slate-50"
                     placeholder="••••••••"
                   />
@@ -328,25 +365,33 @@ export default function RegularLoginPage() {
 
               {/* Error */}
               {error ? (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600">
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600"
+                >
                   {error}
-                </div>
+                </motion.div>
               ) : null}
 
-              {/* Submit Button with Hermes Accent */}
+              {/* Login Button - Green when filled via any quick fill button */}
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0000F2] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition hover:bg-[#0000F2]/90 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
+                className={`group inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold text-white shadow-lg transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 ${
+                  isGreen
+                    ? "bg-emerald-600 shadow-emerald-600/25 hover:bg-emerald-600/90"
+                    : "bg-[#0000F2] shadow-blue-600/25 hover:bg-[#0000F2]/90"
+                }`}
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin text-white" />
-                    <span>Authenticating Workspace...</span>
+                    <span>Signing in to Admin...</span>
                   </>
                 ) : (
                   <>
-                    <span>Sign In to Workspace</span>
+                    <span>Sign In to Admin</span>
                     <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                   </>
                 )}
@@ -354,21 +399,33 @@ export default function RegularLoginPage() {
             </form>
 
             {/* Bottom Links */}
-            <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-6">
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-6">
               <Link
                 href="/"
                 className="text-xs font-semibold text-slate-500 transition hover:text-slate-900"
               >
                 ← Return to main site
               </Link>
-
-              <Link
-                href="/login"
-                className="text-xs font-bold text-[#0000F2] transition hover:underline"
-              >
-                Super Admin Login →
-              </Link>
+              
+              <div className="flex items-center gap-4">
+                <Link
+                  href="/change-password"
+                  target="_blank"
+                  className="text-xs font-semibold text-[#0000F2] hover:underline transition"
+                >
+                  Change Password
+                </Link>
+                
+                <Link
+                  href="/book-a-demo"
+                  target="_blank"
+                  className="text-xs font-semibold text-[#0000F2] hover:underline transition"
+                >
+                  Book a Demo
+                </Link>
+              </div>
             </div>
+            
           </div>
         </div>
       </div>

@@ -1,582 +1,493 @@
-'use client';
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
 
-import React, { useState } from 'react';
-import { 
-  ChevronRight, 
-  Search, 
-  X, 
-  Edit, 
-  Trash2 
-} from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Plus, X, Loader2, Edit3, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 
-interface FlatItem {
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
+const API_PATH = `${API_BASE}/realbizpro/api/v1`;
+
+// ====================== TYPES ======================
+interface Flat {
   id: string;
-  sl: number;
-  project: string;
-  site: string;
+  uuid: string;
+  projectId: string;
+  projectName: string;
+  propertyType: string;
+  siteName: string;
   flatLandNo: string;
   unit: string;
-  bedroom: string;
-  bathroom: string;
-  size: number;
-  price: number;
-  subtotal: number;
-  parkingCost: number;
-  utilityCharge: number;
-  grandTotal: number;
-  customer: string;
-  status: 'Sold' | 'Unsold' | 'Active';
-  drawing?: string;
-  dining?: string;
-  kitchen?: string;
-  balcony?: string;
-  parking?: string;
-  basement?: string;
-  facing?: string;
-  amenities?: string;
+  bedroom: number;
+  bathroom: number;
+  size: string;
+  pricePerUnit: string;
+  parkingCost: string;
+  utilityCharge: string;
+  customerName: string;
+  status: string;
+  subtotal: string;
+  grandTotal: string;
+  project?: { name: string; uuid: string };
+  deletedAt?: string;
 }
 
 export default function FlatPage() {
-  // Modal States
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [currentFlat, setCurrentFlat] = useState<FlatItem | null>(null);
+  const [dataList, setDataList] = useState<Flat[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Flat | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState("");
 
   // Filter States
-  const [projectFilter, setProjectFilter] = useState('');
-  const [siteFilter, setSiteFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [entries, setEntries] = useState('10');
+  const [filterProject, setFilterProject] = useState("");
+  const [filterSite, setFilterSite] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
 
-  // Form Fields State matching the exact image modal
-  const [formProject, setFormProject] = useState('');
-  const [formSite, setFormSite] = useState('');
-  const [formFlatNo, setFormFlatNo] = useState('');
-  const [formSize, setFormSize] = useState<number>(0);
-  const [formPrice, setFormPrice] = useState<number>(0);
-  const [formBedroom, setFormBedroom] = useState('');
-  const [formBathroom, setFormBathroom] = useState('');
-  const [formUnit, setFormUnit] = useState('');
-  const [formDrawing, setFormDrawing] = useState('');
-  const [formDining, setFormDining] = useState('');
-  const [formKitchen, setFormKitchen] = useState('');
-  const [formBalcony, setFormBalcony] = useState('');
-  const [formParking, setFormParking] = useState('');
-  const [formParkingCost, setFormParkingCost] = useState<number>(0);
-  const [formUtilityCharge, setFormUtilityCharge] = useState<number>(0);
-  const [formBasement, setFormBasement] = useState('');
-  const [formFacing, setFormFacing] = useState('');
-  const [formAmenities, setFormAmenities] = useState('');
-  const [formStatus, setFormStatus] = useState('Active');
+  // Dropdown Data
+  const [projects, setProjects] = useState<any[]>([]);
+  const [sites, setSites] = useState<any[]>([]);
 
-  // Flat Data State
-  const [flats, setFlats] = useState<FlatItem[]>([
-    { id: '1', sl: 1, project: 'Sheba Eyecon Tower', site: '', flatLandNo: 'F 4', unit: '', bedroom: '', bathroom: '', size: 1230, price: 60, subtotal: 73800, parkingCost: 0, utilityCharge: 0, grandTotal: 73800, customer: 'Sagor kumar', status: 'Sold' },
-    { id: '2', sl: 2, project: 'Sheba Eyecon Tower', site: '', flatLandNo: 'F 4', unit: '', bedroom: '', bathroom: '', size: 1230, price: 60, subtotal: 73800, parkingCost: 0, utilityCharge: 0, grandTotal: 73800, customer: '', status: 'Unsold' },
-    { id: '3', sl: 3, project: 'Sheba Eyecon Tower', site: '', flatLandNo: 'F 3', unit: '', bedroom: '', bathroom: '', size: 1150, price: 9500, subtotal: 10925000, parkingCost: 0, utilityCharge: 0, grandTotal: 10925000, customer: 'Sagor kumar', status: 'Sold' },
-    { id: '4', sl: 4, project: 'Sheba Eyecon Tower', site: '', flatLandNo: 'F2', unit: '', bedroom: '', bathroom: '', size: 1230, price: 9000, subtotal: 11070000, parkingCost: 300000, utilityCharge: 200000, grandTotal: 11570000, customer: 'Sagor kumar', status: 'Sold' },
-    { id: '5', sl: 5, project: 'Sheba Eyecon Tower', site: '', flatLandNo: 'F2', unit: '', bedroom: '', bathroom: '', size: 1230, price: 9000, subtotal: 11070000, parkingCost: 300000, utilityCharge: 200000, grandTotal: 11570000, customer: '', status: 'Unsold' },
-    { id: '6', sl: 6, project: 'Lake Garden', site: '', flatLandNo: 'E5', unit: 'E', bedroom: '3', bathroom: '3', size: 1480, price: 6000, subtotal: 8880000, parkingCost: 500000, utilityCharge: 300000, grandTotal: 9680000, customer: 'Abul', status: 'Sold' },
-    { id: '7', sl: 7, project: 'Lake Garden', site: '', flatLandNo: 'C-9', unit: 'C', bedroom: '', bathroom: '3', size: 1230, price: 6000, subtotal: 7380000, parkingCost: 800000, utilityCharge: 500000, grandTotal: 8680000, customer: 'Sagor kumar', status: 'Sold' },
-    { id: '8', sl: 8, project: 'Lake Garden', site: '', flatLandNo: 'C-9', unit: 'C', bedroom: '', bathroom: '3', size: 1230, price: 6000, subtotal: 7380000, parkingCost: 800000, utilityCharge: 500000, grandTotal: 8680000, customer: '', status: 'Unsold' },
-    { id: '9', sl: 9, project: 'Lake Garden', site: '', flatLandNo: 'C-10', unit: 'C', bedroom: '3', bathroom: '3', size: 1560, price: 9000, subtotal: 14040000, parkingCost: 800000, utilityCharge: 500000, grandTotal: 15340000, customer: 'Abc', status: 'Sold' },
-    { id: '10', sl: 10, project: 'Lake Garden', site: '', flatLandNo: 'A!', unit: '1', bedroom: '4', bathroom: '3', size: 1200, price: 70000, subtotal: 84000000, parkingCost: 200000, utilityCharge: 0, grandTotal: 84200000, customer: 'Mr. Raju raz', status: 'Sold' },
-  ]);
-
-  // Handle Edit Click to populate modal data
-  const handleEditClick = (flat: FlatItem) => {
-    setCurrentFlat(flat);
-    setFormProject(flat.project);
-    setFormSite(flat.site || '');
-    setFormFlatNo(flat.flatLandNo);
-    setFormSize(flat.size);
-    setFormPrice(flat.price);
-    setFormBedroom(flat.bedroom || '');
-    setFormBathroom(flat.bathroom || '');
-    setFormUnit(flat.unit || '');
-    setFormDrawing(flat.drawing || '');
-    setFormDining(flat.dining || '');
-    setFormKitchen(flat.kitchen || '');
-    setFormBalcony(flat.balcony || '');
-    setFormParking(flat.parking || '');
-    setFormParkingCost(flat.parkingCost || 0);
-    setFormUtilityCharge(flat.utilityCharge || 0);
-    setFormBasement(flat.basement || '');
-    setFormFacing(flat.facing || '');
-    setFormAmenities(flat.amenities || '');
-    setFormStatus(flat.status || 'Active');
-    setIsEditModalOpen(true);
-  };
-
-  // Filtered flats logic
-  const filteredFlats = flats.filter(f => {
-    const matchesProject = projectFilter ? f.project.toLowerCase().includes(projectFilter.toLowerCase()) : true;
-    const matchesStatus = statusFilter ? f.status.toLowerCase() === statusFilter.toLowerCase() : true;
-    const matchesSearch = searchQuery 
-      ? f.flatLandNo.toLowerCase().includes(searchQuery.toLowerCase()) || f.project.toLowerCase().includes(searchQuery.toLowerCase()) || f.customer.toLowerCase().includes(searchQuery.toLowerCase())
-      : true;
-    return matchesProject && matchesStatus && matchesSearch;
+  // Form Data
+  const [formData, setFormData] = useState({
+    projectId: "",
+    siteName: "",
+    flatLandNo: "",
+    unit: "",
+    bedroom: 0,
+    bathroom: 0,
+    size: "",
+    pricePerUnit: 0,
+    parkingCost: 0,
+    utilityCharge: 0,
+    customerName: "",
+    status: "Available",
+    // Extra fields from screenshot
+    drawing: "",
+    dining: "",
+    kitchen: "",
+    balcony: "",
+    parking: "",
+    basement: "",
+    facing: "",
+    amenities: "",
   });
 
+  // ====================== FETCH LISTS ======================
+  const fetchFlats = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_PATH}/flat-land/flats`);
+      const json = await res.json();
+      if (json.success) {
+        setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
+      }
+    } catch (err) {
+      toast.error("Failed to load flats");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ====================== FETCH DROPDOWNS ======================
+  const fetchDropdowns = async () => {
+    try {
+      // Fetch Projects
+      const resProj = await fetch(`${API_PATH}/project`);
+      const jsonProj = await resProj.json();
+      if (jsonProj.success) setProjects(jsonProj.data.data || jsonProj.data || []);
+
+      // Fetch Sites
+      const resSite = await fetch(`${API_PATH}/project-sites`);
+      const jsonSite = await resSite.json();
+      if (jsonSite.success) setSites(jsonSite.data.data || jsonSite.data || []);
+    } catch (err) {
+      console.error("Error fetching dropdowns:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchFlats();
+    fetchDropdowns();
+  }, []);
+
+  // Filter Sites based on selected Project
+  const filteredSites = formData.projectId 
+    ? sites.filter(s => String(s.projectId).toLowerCase() === String(formData.projectId).toLowerCase()) 
+    : sites;
+
+  // ====================== SUBMIT (POST / PUT) ======================
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    const payload = {
+      projectId: formData.projectId,
+      projectName: projects.find(p => p.uuid === formData.projectId)?.name || "",
+      propertyType: "flat",
+      uid: "string", // You can generate this dynamically if needed
+      flatLandNo: formData.flatLandNo,
+      siteBlock: formData.siteName || "string",
+      siteName: formData.siteName,
+      blockName: "string",
+      roadNo: "string",
+      roadSize: "string",
+      plotLocation: "string",
+      unit: formData.unit,
+      bedroom: Number(formData.bedroom),
+      bathroom: Number(formData.bathroom),
+      size: formData.size,
+      pricePerUnit: Number(formData.pricePerUnit),
+      parkingCost: Number(formData.parkingCost),
+      utilityCharge: Number(formData.utilityCharge),
+      customerName: formData.customerName,
+      facing: formData.facing,
+      amenities: formData.amenities,
+      drawing: formData.drawing,
+      dining: formData.dining,
+      kitchen: formData.kitchen,
+      balcony: formData.balcony,
+      parking: formData.parking,
+      basement: formData.basement,
+      subtotal: Number(formData.pricePerUnit), // Assuming subtotal calculation
+      grandTotal: Number(formData.pricePerUnit) + Number(formData.parkingCost) + Number(formData.utilityCharge),
+      status: formData.status,
+    };
+
+    try {
+      const isEdit = !!editingItem;
+      const url = isEdit
+        ? `${API_PATH}/flat-land/flats/${editingItem!.uuid}`
+        : `${API_PATH}/flat-land/flats`;
+      const method = isEdit ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (res.ok || json.success) {
+        toast.success(isEdit ? "Updated successfully!" : "Created successfully!");
+        setIsModalOpen(false);
+        setEditingItem(null);
+        fetchFlats();
+      } else {
+        toast.error(json.message || "Failed to save");
+      }
+    } catch (err: any) {
+      toast.error("Network Error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ====================== DELETE ======================
+  const handleDelete = async (item: Flat) => {
+    if (!window.confirm(`Delete Flat "${item.flatLandNo}"?`)) return;
+    try {
+      const res = await fetch(`${API_PATH}/flat-land/flats/${item.uuid}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Deleted successfully!");
+        setDataList((prev) => prev.filter((row) => row.uuid !== item.uuid));
+      } else {
+        toast.error("Failed to delete");
+      }
+    } catch (err) {
+      toast.error("Error deleting");
+    }
+  };
+
+  // ====================== OPEN MODAL ======================
+  const handleCreate = () => {
+    setFormData({
+      projectId: "",
+      siteName: "",
+      flatLandNo: "",
+      unit: "",
+      bedroom: 0,
+      bathroom: 0,
+      size: "",
+      pricePerUnit: 0,
+      parkingCost: 0,
+      utilityCharge: 0,
+      customerName: "",
+      status: "Available",
+      drawing: "",
+      dining: "",
+      kitchen: "",
+      balcony: "",
+      parking: "",
+      basement: "",
+      facing: "",
+      amenities: "",
+    });
+    setEditingItem(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (item: Flat) => {
+    setEditingItem(item);
+    setFormData({
+      projectId: item.projectId || "",
+      siteName: item.siteName || "",
+      flatLandNo: item.flatLandNo || "",
+      unit: item.unit || "",
+      bedroom: item.bedroom || 0,
+      bathroom: item.bathroom || 0,
+      size: item.size || "",
+      pricePerUnit: Number(item.pricePerUnit) || 0,
+      parkingCost: Number(item.parkingCost) || 0,
+      utilityCharge: Number(item.utilityCharge) || 0,
+      customerName: item.customerName || "",
+      status: item.status || "Available",
+      drawing: "",
+      dining: "",
+      kitchen: "",
+      balcony: "",
+      parking: "",
+      basement: "",
+      facing: "",
+      amenities: "",
+    });
+    setIsModalOpen(true);
+  };
+
+  // ====================== FILTERING ======================
+  const filteredData = dataList.filter((item) => {
+    const matchSearch = item.flatLandNo?.toLowerCase().includes(search.toLowerCase()) ||
+                        item.customerName?.toLowerCase().includes(search.toLowerCase());
+    const matchProject = filterProject ? item.projectId === filterProject : true;
+    const matchSite = filterSite ? item.siteName === filterSite : true;
+    const matchStatus = filterStatus ? item.status === filterStatus : true;
+    return matchSearch && matchProject && matchSite && matchStatus;
+  });
+
+  // Status Color Helper
+  const getStatusBadge = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "sold": return "bg-indigo-600 text-white";
+      case "available": return "bg-green-500 text-white";
+      case "unsold": return "bg-red-500 text-white";
+      case "booked": return "bg-yellow-500 text-white";
+      default: return "bg-gray-500 text-white";
+    }
+  };
+
+  // ====================== RENDER ======================
   return (
-    <div className="min-h-screen bg-slate-100 p-4 font-sans text-slate-800">
+    <div className="min-h-screen bg-gray-50 p-6 font-sans text-gray-800">
       
-      {/* ================= BREADCRUMB HEADER ================= */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center text-sm text-slate-600 space-x-2">
-          <span className="hover:text-blue-600 cursor-pointer">Home</span>
-          <ChevronRight className="w-4 h-4 text-slate-400" />
-          <span className="hover:text-blue-600 cursor-pointer">Flat</span>
-          <ChevronRight className="w-4 h-4 text-slate-400" />
-          <span className="font-semibold text-slate-800">Flat</span>
-        </div>
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium px-4 py-2 rounded flex items-center shadow transition"
-        >
-          +Flat Add
+      {/* Top Header */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="text-sm text-gray-500">Home &gt; Flat &gt; Flat</div>
+        <button onClick={handleCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm flex items-center gap-1">
+          <Plus className="w-4 h-4" /> Flat Add
         </button>
       </div>
 
-      {/* ================= MAIN CONTAINER ================= */}
-      <div className="bg-white rounded-md shadow-sm border border-slate-200 p-5 space-y-4">
-        
-        {/* Top Filters Bar */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-4 border-b border-slate-100 text-xs">
-          <div>
-            <label className="block text-slate-600 font-medium mb-1">Project</label>
-            <select 
-              value={projectFilter} 
-              onChange={(e) => setProjectFilter(e.target.value)} 
-              className="w-full border border-slate-300 rounded px-3 py-1.5 bg-white text-xs focus:outline-none focus:border-purple-500"
-            >
-              <option value="">Select value</option>
-              <option value="Sheba Eyecon Tower">Sheba Eyecon Tower</option>
-              <option value="Lake Garden">Lake Garden</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-slate-600 font-medium mb-1">Site</label>
-            <input 
-              type="text" 
-              placeholder="Select Site"
-              value={siteFilter} 
-              onChange={(e) => setSiteFilter(e.target.value)} 
-              className="w-full border border-slate-300 rounded px-3 py-1.5 bg-white text-xs focus:outline-none focus:border-purple-500" 
-            />
-          </div>
-          <div>
-            <label className="block text-slate-600 font-medium mb-1">Status</label>
-            <select 
-              value={statusFilter} 
-              onChange={(e) => setStatusFilter(e.target.value)} 
-              className="w-full border border-slate-300 rounded px-3 py-1.5 bg-white text-xs focus:outline-none focus:border-purple-500"
-            >
-              <option value="">Select Status</option>
-              <option value="Sold">Sold</option>
-              <option value="Unsold">Unsold</option>
-            </select>
-          </div>
+      {/* Filters */}
+      <div className="bg-white p-4 border rounded shadow-sm mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Project</label>
+          <select value={filterProject} onChange={e => setFilterProject(e.target.value)} className="w-full border rounded px-3 py-2 text-sm">
+            <option value="">Select value</option>
+            {projects.map(p => <option key={p.uuid} value={p.uuid}>{p.name}</option>)}
+          </select>
         </div>
-
-        {/* Action Controls & Search */}
-        <div className="flex flex-wrap items-center justify-between gap-4 py-2">
-          <div className="flex items-center space-x-2">
-            <button className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-medium transition shadow-sm">Excel</button>
-            <button className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded text-xs font-medium transition shadow-sm">PDF</button>
-            <div className="flex items-center text-xs text-slate-600 space-x-1 ml-2">
-              <span>Show</span>
-              <select 
-                value={entries} 
-                onChange={(e) => setEntries(e.target.value)}
-                className="border border-slate-300 rounded px-2 py-1 bg-white text-xs"
-              >
-                <option value="10">10</option>
-                <option value="25">25</option>
-                <option value="50">50</option>
-              </select>
-              <span>entries</span>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <span className="text-xs text-slate-600">Search:</span>
-            <input 
-              type="text" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="border border-slate-300 rounded px-3 py-1 text-xs w-full sm:w-48 focus:outline-none focus:border-purple-500" 
-            />
-          </div>
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Site</label>
+          <select value={filterSite} onChange={e => setFilterSite(e.target.value)} className="w-full border rounded px-3 py-2 text-sm">
+            <option value="">Select Site</option>
+            {sites.map(s => <option key={s.uuid} value={s.name}>{s.name}</option>)}
+          </select>
         </div>
-
-        {/* Data Table */}
-        <div className="overflow-x-auto border border-purple-300 rounded">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-[#6b58e8] text-white text-[11px] font-semibold uppercase tracking-wider">
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">SL</th>
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">PROJECT</th>
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">SITE</th>
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">FLAT/LAND NO</th>
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">UNIT</th>
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">BEDROOM</th>
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">BATHROOM</th>
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">SIZE</th>
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">PRICE</th>
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">SUBTOTAL</th>
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">PARKING COST</th>
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">UTILITY CHARGE</th>
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">GRAND TOTAL</th>
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">CUSTOMER</th>
-                <th className="p-2.5 border-r border-purple-400 whitespace-nowrap">STATUS</th>
-                <th className="p-2.5 whitespace-nowrap text-center">ACTION</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white text-slate-700">
-              {filteredFlats.length === 0 ? (
-                <tr>
-                  <td colSpan={16} className="text-center py-8 text-slate-400 italic bg-slate-50">
-                    No data available in table
-                  </td>
-                </tr>
-              ) : (
-                filteredFlats.map((flat) => (
-                  <tr key={flat.id} className="border-b border-slate-200 hover:bg-slate-50">
-                    <td className="p-2.5 border-r">{flat.sl}</td>
-                    <td className="p-2.5 border-r font-medium">{flat.project}</td>
-                    <td className="p-2.5 border-r">{flat.site}</td>
-                    <td className="p-2.5 border-r text-blue-600 font-medium cursor-pointer hover:underline">{flat.flatLandNo}</td>
-                    <td className="p-2.5 border-r">{flat.unit}</td>
-                    <td className="p-2.5 border-r">{flat.bedroom}</td>
-                    <td className="p-2.5 border-r">{flat.bathroom}</td>
-                    <td className="p-2.5 border-r">{flat.size}</td>
-                    <td className="p-2.5 border-r">{flat.price}</td>
-                    <td className="p-2.5 border-r">{flat.subtotal}</td>
-                    <td className="p-2.5 border-r">{flat.parkingCost || ''}</td>
-                    <td className="p-2.5 border-r">{flat.utilityCharge || ''}</td>
-                    <td className="p-2.5 border-r font-semibold">{flat.grandTotal}</td>
-                    <td className="p-2.5 border-r">{flat.customer}</td>
-                    <td className="p-2.5 border-r">
-                      <span className={`px-2.5 py-1 rounded text-white text-[10px] font-semibold ${flat.status === 'Sold' ? 'bg-blue-600' : 'bg-rose-500'}`}>
-                        {flat.status}
-                      </span>
-                    </td>
-                    <td className="p-2.5 text-center">
-                      <button 
-                        onClick={() => handleEditClick(flat)} 
-                        className="bg-sky-400 hover:bg-sky-500 text-white p-1.5 rounded shadow-sm transition"
-                        title="Edit Flat"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Status</label>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full border rounded px-3 py-2 text-sm">
+            <option value="">Select Status</option>
+            <option value="Available">Available</option>
+            <option value="Sold">Sold</option>
+            <option value="Unsold">Unsold</option>
+            <option value="Booked">Booked</option>
+          </select>
         </div>
-
-        {/* Footer Pagination */}
-        <div className="flex items-center justify-between text-xs text-slate-500 pt-2">
-          <span>Showing 1 to {filteredFlats.length} of {filteredFlats.length} entries</span>
-          <div className="flex space-x-1">
-            <button className="px-3 py-1 bg-slate-100 rounded text-slate-400 cursor-not-allowed" disabled>Previous</button>
-            <button className="px-3 py-1 bg-purple-600 text-white rounded font-medium">1</button>
-            <button className="px-3 py-1 bg-slate-100 rounded text-slate-600 hover:bg-slate-200">Next</button>
-          </div>
-        </div>
-
       </div>
 
-      {/* ================= MODAL: FLAT EDIT FORM (MATCHING EXACT IMAGE) ================= */}
-      {isEditModalOpen && currentFlat && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
-          <div className="bg-white w-full max-w-2xl rounded-lg shadow-2xl border border-slate-300 overflow-hidden my-6">
+      {/* Table */}
+      <div className="bg-white p-4 border rounded shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex gap-2">
+            <button className="bg-green-600 text-white px-3 py-1 rounded text-xs">Excel</button>
+            <button className="bg-red-600 text-white px-3 py-1 rounded text-xs">PDF</button>
+          </div>
+          <div className="flex gap-2 items-center text-sm">
+            <span>Search:</span>
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="border rounded px-2 py-1" />
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left whitespace-nowrap">
+              <thead className="bg-indigo-600 text-white">
+                <tr>
+                  {["SL", "PROJECT", "SITE", "FLAT/LAND NO", "UNIT", "BEDROOM", "BATHROOM", "SIZE", "PRICE", "SUBTOTAL", "PARKING COST", "UTILITY CHARGE", "GRAND TOTAL", "CUSTOMER", "STATUS", "ACTION"].map(h => (
+                    <th key={h} className="px-3 py-2 font-medium text-xs">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredData.length === 0 ? (
+                  <tr><td colSpan={16} className="text-center py-8 text-gray-500">No data available in table</td></tr>
+                ) : (
+                  filteredData.map((item, index) => (
+                    <tr key={item.uuid} className="hover:bg-gray-50">
+                      <td className="px-3 py-2">{index + 1}</td>
+                      <td className="px-3 py-2">{item.project?.name || item.projectName || "N/A"}</td>
+                      <td className="px-3 py-2">{item.siteName || "N/A"}</td>
+                      <td className="px-3 py-2">{item.flatLandNo}</td>
+                      <td className="px-3 py-2">{item.unit || "-"}</td>
+                      <td className="px-3 py-2">{item.bedroom || "-"}</td>
+                      <td className="px-3 py-2">{item.bathroom || "-"}</td>
+                      <td className="px-3 py-2">{item.size || "-"}</td>
+                      <td className="px-3 py-2">{item.pricePerUnit}</td>
+                      <td className="px-3 py-2">{item.subtotal}</td>
+                      <td className="px-3 py-2">{item.parkingCost}</td>
+                      <td className="px-3 py-2">{item.utilityCharge}</td>
+                      <td className="px-3 py-2 font-bold">{item.grandTotal}</td>
+                      <td className="px-3 py-2 text-indigo-600">{item.customerName || "-"}</td>
+                      <td className="px-3 py-2">
+                        <span className={`px-2 py-1 text-xs rounded ${getStatusBadge(item.status)}`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 flex gap-1">
+                        <button onClick={() => handleEdit(item)} className="bg-teal-400 text-white p-1.5 rounded hover:bg-teal-500"><Edit3 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleDelete(item)} className="bg-red-500 text-white p-1.5 rounded hover:bg-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ====================== ADD/EDIT MODAL ====================== */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg w-full max-w-4xl my-8">
             
             {/* Modal Header */}
-            <div className="px-4 py-3 flex items-center justify-between border-b border-slate-200 bg-white">
-              <h3 className="font-bold text-sm text-slate-800">Flat</h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-500 hover:bg-slate-100 p-1.5 rounded border border-slate-300">
-                <X className="w-4 h-4" />
-              </button>
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-lg font-bold">{editingItem ? "Edit Flat" : "Flat"}</h2>
+              <button onClick={() => setIsModalOpen(false)}><X className="w-5 h-5 text-gray-500" /></button>
             </div>
 
-            {/* Modal Body Form Grid */}
-            <div className="p-6 space-y-4 text-xs overflow-y-auto max-h-[75vh]">
+            {/* Modal Body */}
+            <form onSubmit={handleSubmit} className="p-4 space-y-4">
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Project <span className="text-red-500">*</span></label>
+                  <select required value={formData.projectId} onChange={(e) => setFormData({ ...formData, projectId: e.target.value, siteName: "" })} className="w-full border rounded px-3 py-2 text-sm">
+                    <option value="">Select One Option</option>
+                    {projects.map(p => <option key={p.uuid} value={p.uuid}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Site</label>
+                  <select value={formData.siteName} onChange={(e) => setFormData({ ...formData, siteName: e.target.value })} className="w-full border rounded px-3 py-2 text-sm">
+                    <option value="">Select Site</option>
+                    {filteredSites.map(s => <option key={s.uuid} value={s.name}>{s.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Flat No <span className="text-red-500">*</span></label>
+                  <input required type="text" value={formData.flatLandNo} onChange={(e) => setFormData({ ...formData, flatLandNo: e.target.value })} className="w-full border rounded px-3 py-2 text-sm" placeholder="Flat No" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Size <span className="text-red-500">*</span></label>
+                  <input required type="text" value={formData.size} onChange={(e) => setFormData({ ...formData, size: e.target.value })} className="w-full border rounded px-3 py-2 text-sm" placeholder="Size" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Price</label>
+                  <input type="number" value={formData.pricePerUnit} onChange={(e) => setFormData({ ...formData, pricePerUnit: Number(e.target.value) })} className="w-full border rounded px-3 py-2 text-sm" placeholder="Price" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Bedroom</label>
+                  <input type="number" value={formData.bedroom} onChange={(e) => setFormData({ ...formData, bedroom: Number(e.target.value) })} className="w-full border rounded px-3 py-2 text-sm" placeholder="Bedroom" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Bathroom</label>
+                  <input type="number" value={formData.bathroom} onChange={(e) => setFormData({ ...formData, bathroom: Number(e.target.value) })} className="w-full border rounded px-3 py-2 text-sm" placeholder="Bathroom" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Unit</label>
+                  <input type="text" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} className="w-full border rounded px-3 py-2 text-sm" placeholder="Unit" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Parking Cost</label>
+                  <input type="number" value={formData.parkingCost} onChange={(e) => setFormData({ ...formData, parkingCost: Number(e.target.value) })} className="w-full border rounded px-3 py-2 text-sm" placeholder="Parking Cost" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Utility Charge</label>
+                  <input type="number" value={formData.utilityCharge} onChange={(e) => setFormData({ ...formData, utilityCharge: Number(e.target.value) })} className="w-full border rounded px-3 py-2 text-sm" placeholder="Utility Charge" />
+                </div>
                 
-                {/* Project */}
+                {/* Extra fields (Drawing, Dining, etc.) */}
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">Project <span className="text-rose-500">*</span></label>
-                  <input 
-                    type="text" 
-                    value={formProject} 
-                    onChange={(e) => setFormProject(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500" 
-                  />
+                  <label className="block text-xs text-gray-600 mb-1">Drawing</label>
+                  <input type="text" value={formData.drawing} onChange={(e) => setFormData({ ...formData, drawing: e.target.value })} className="w-full border rounded px-3 py-2 text-sm" />
                 </div>
-
-                {/* Site */}
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">Site</label>
-                  <input 
-                    type="text" 
-                    placeholder="Select Site"
-                    value={formSite} 
-                    onChange={(e) => setFormSite(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500" 
-                  />
+                  <label className="block text-xs text-gray-600 mb-1">Dining</label>
+                  <input type="text" value={formData.dining} onChange={(e) => setFormData({ ...formData, dining: e.target.value })} className="w-full border rounded px-3 py-2 text-sm" />
                 </div>
-
-                {/* Flat No */}
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">Flat No <span className="text-rose-500">*</span></label>
-                  <input 
-                    type="text" 
-                    value={formFlatNo} 
-                    onChange={(e) => setFormFlatNo(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500" 
-                  />
+                  <label className="block text-xs text-gray-600 mb-1">Kitchen</label>
+                  <input type="text" value={formData.kitchen} onChange={(e) => setFormData({ ...formData, kitchen: e.target.value })} className="w-full border rounded px-3 py-2 text-sm" />
                 </div>
-
-                {/* Size */}
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">Size <span className="text-rose-500">*</span></label>
-                  <input 
-                    type="number" 
-                    value={formSize} 
-                    onChange={(e) => setFormSize(Number(e.target.value))} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500" 
-                  />
+                  <label className="block text-xs text-gray-600 mb-1">Balcony</label>
+                  <input type="text" value={formData.balcony} onChange={(e) => setFormData({ ...formData, balcony: e.target.value })} className="w-full border rounded px-3 py-2 text-sm" />
                 </div>
-
-                {/* Price */}
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">Price</label>
-                  <input 
-                    type="number" 
-                    value={formPrice} 
-                    onChange={(e) => setFormPrice(Number(e.target.value))} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500" 
-                  />
+                  <label className="block text-xs text-gray-600 mb-1">Facing</label>
+                  <input type="text" value={formData.facing} onChange={(e) => setFormData({ ...formData, facing: e.target.value })} className="w-full border rounded px-3 py-2 text-sm" />
                 </div>
-
-                {/* Bedroom */}
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">Bedroom</label>
-                  <input 
-                    type="text" 
-                    placeholder="Bedroom"
-                    value={formBedroom} 
-                    onChange={(e) => setFormBedroom(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500 placeholder:text-slate-400" 
-                  />
+                  <label className="block text-xs text-gray-600 mb-1">Amenities</label>
+                  <textarea value={formData.amenities} onChange={(e) => setFormData({ ...formData, amenities: e.target.value })} className="w-full border rounded px-3 py-2 text-sm" rows={2}></textarea>
                 </div>
-
-                {/* Bathroom */}
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">Bathroom</label>
-                  <input 
-                    type="text" 
-                    placeholder="Bathroom"
-                    value={formBathroom} 
-                    onChange={(e) => setFormBathroom(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500 placeholder:text-slate-400" 
-                  />
+                  <label className="block text-xs text-gray-600 mb-1">Status <span className="text-red-500">*</span></label>
+                  <select required value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full border rounded px-3 py-2 text-sm">
+                    <option value="Available">Available</option>
+                    <option value="Sold">Sold</option>
+                    <option value="Unsold">Unsold</option>
+                    <option value="Booked">Booked</option>
+                  </select>
                 </div>
-
-                {/* Unit */}
-                <div>
-                  <label className="block text-slate-700 font-medium mb-1">Unit</label>
-                  <input 
-                    type="text" 
-                    placeholder="Unit"
-                    value={formUnit} 
-                    onChange={(e) => setFormUnit(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500 placeholder:text-slate-400" 
-                  />
-                </div>
-
-                {/* Drawing */}
-                <div>
-                  <label className="block text-slate-700 font-medium mb-1">Drawing</label>
-                  <input 
-                    type="text" 
-                    placeholder="Drawing"
-                    value={formDrawing} 
-                    onChange={(e) => setFormDrawing(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500 placeholder:text-slate-400" 
-                  />
-                </div>
-
-                {/* Dining */}
-                <div>
-                  <label className="block text-slate-700 font-medium mb-1">Dining</label>
-                  <input 
-                    type="text" 
-                    placeholder="Dining"
-                    value={formDining} 
-                    onChange={(e) => setFormDining(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500 placeholder:text-slate-400" 
-                  />
-                </div>
-
-                {/* Kitchen */}
-                <div>
-                  <label className="block text-slate-700 font-medium mb-1">Kitchen</label>
-                  <input 
-                    type="text" 
-                    placeholder="Kitchen"
-                    value={formKitchen} 
-                    onChange={(e) => setFormKitchen(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500 placeholder:text-slate-400" 
-                  />
-                </div>
-
-                {/* Balcony */}
-                <div>
-                  <label className="block text-slate-700 font-medium mb-1">Balcony</label>
-                  <input 
-                    type="text" 
-                    placeholder="Balcony"
-                    value={formBalcony} 
-                    onChange={(e) => setFormBalcony(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500 placeholder:text-slate-400" 
-                  />
-                </div>
-
-                {/* Parking */}
-                <div>
-                  <label className="block text-slate-700 font-medium mb-1">Parking</label>
-                  <input 
-                    type="text" 
-                    placeholder="Parking"
-                    value={formParking} 
-                    onChange={(e) => setFormParking(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500 placeholder:text-slate-400" 
-                  />
-                </div>
-
-                {/* Parking Cost */}
-                <div>
-                  <label className="block text-slate-700 font-medium mb-1">Parking Cost</label>
-                  <input 
-                    type="number" 
-                    placeholder="Parking Cost"
-                    value={formParkingCost} 
-                    onChange={(e) => setFormParkingCost(Number(e.target.value))} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500 placeholder:text-slate-400" 
-                  />
-                </div>
-
-                {/* Utility Charge */}
-                <div>
-                  <label className="block text-slate-700 font-medium mb-1">Utility Charge</label>
-                  <input 
-                    type="number" 
-                    placeholder="Utility Charge"
-                    value={formUtilityCharge} 
-                    onChange={(e) => setFormUtilityCharge(Number(e.target.value))} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500 placeholder:text-slate-400" 
-                  />
-                </div>
-
-                {/* Basement */}
-                <div>
-                  <label className="block text-slate-700 font-medium mb-1">Basement</label>
-                  <input 
-                    type="text" 
-                    placeholder="Basement"
-                    value={formBasement} 
-                    onChange={(e) => setFormBasement(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500 placeholder:text-slate-400" 
-                  />
-                </div>
-
-                {/* Facing */}
-                <div>
-                  <label className="block text-slate-700 font-medium mb-1">Facing</label>
-                  <input 
-                    type="text" 
-                    placeholder="Facing"
-                    value={formFacing} 
-                    onChange={(e) => setFormFacing(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500 placeholder:text-slate-400" 
-                  />
-                </div>
-
-                {/* Status */}
-                <div>
-                  <label className="block text-slate-700 font-medium mb-1">Status <span className="text-rose-500">*</span></label>
-                  <input 
-                    type="text" 
-                    value={formStatus} 
-                    onChange={(e) => setFormStatus(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500" 
-                  />
-                </div>
-
-                {/* Amenities (Full Width) */}
-                <div className="md:col-span-2">
-                  <label className="block text-slate-700 font-medium mb-1">Amenities</label>
-                  <textarea 
-                    rows={3}
-                    placeholder="Amenities"
-                    value={formAmenities} 
-                    onChange={(e) => setFormAmenities(e.target.value)} 
-                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500 placeholder:text-slate-400"
-                  ></textarea>
-                </div>
-
               </div>
-            </div>
 
-            {/* Modal Footer Buttons */}
-            <div className="bg-white px-6 py-3 border-t border-slate-200 flex justify-end space-x-2">
-              <button 
-                onClick={() => setIsEditModalOpen(false)}
-                className="bg-slate-500 hover:bg-slate-600 text-white font-medium px-4 py-2 rounded text-xs transition"
-              >
-                Close
-              </button>
-              <button 
-                onClick={() => {
-                  setFlats(flats.map(f => f.id === currentFlat.id ? { 
-                    ...f, 
-                    project: formProject, 
-                    site: formSite, 
-                    flatLandNo: formFlatNo, 
-                    size: formSize, 
-                    price: formPrice, 
-                    subtotal: formSize * formPrice,
-                    grandTotal: (formSize * formPrice) + formParkingCost + formUtilityCharge,
-                    bedroom: formBedroom, 
-                    bathroom: formBathroom, 
-                    unit: formUnit, 
-                    drawing: formDrawing, 
-                    dining: formDining, 
-                    kitchen: formKitchen, 
-                    balcony: formBalcony, 
-                    parking: formParking, 
-                    parkingCost: formParkingCost, 
-                    utilityCharge: formUtilityCharge, 
-                    basement: formBasement, 
-                    facing: formFacing, 
-                    amenities: formAmenities, 
-                    status: formStatus as any 
-                  } : f));
-                  alert('Flat Updated Successfully!');
-                  setIsEditModalOpen(false);
-                }} 
-                className="bg-[#6b58e8] hover:bg-purple-700 text-white font-medium px-5 py-2 rounded text-xs shadow transition"
-              >
-                Submit
-              </button>
-            </div>
-
+              {/* Modal Footer */}
+              <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="bg-gray-400 text-white px-6 py-2 rounded text-sm">Close</button>
+                <button type="submit" disabled={submitting} className="bg-indigo-600 text-white px-8 py-2 rounded text-sm flex items-center gap-2">
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />} Submit
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
