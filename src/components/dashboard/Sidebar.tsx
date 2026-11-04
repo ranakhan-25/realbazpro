@@ -12,6 +12,14 @@ import {
   Handshake,
   FileCheck2,
   CalendarCheck2,
+  Receipt,
+  KeyRound,
+  LifeBuoy,
+  ShieldCheck,
+  MessageSquare,
+  BarChart3,
+  Settings,
+  Headset,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MENUS, MODULES, type MenuNode, type ModuleKey } from "@/lib/menus";
@@ -19,6 +27,29 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
 import { useUserAccess } from "@/context/UserAccessContext";
 import { useSidebar } from "@/context/SidebarContext";
+
+
+const CUSTOMER_SERVICE_ICONS: Record<string, React.ElementType> = {
+  dashboard: LayoutDashboard,
+  customers: Users,
+  "customers-properties": Users,
+  payments: Receipt,
+  "payments-collections": Receipt,
+  documents: FileCheck2,
+  "documents-land-records": FileCheck2,
+  handover: KeyRound,
+  "handover-possession": KeyRound,
+  tickets: LifeBuoy,
+  "tickets-service-requests": LifeBuoy,
+  "property-care": ShieldCheck,
+  "warranty-property-care": ShieldCheck,
+  communication: MessageSquare,
+  "communication-appointments": MessageSquare,
+  reports: BarChart3,
+  "reports-analytics": BarChart3,
+  settings: Settings,
+  "settings-administration": Settings,
+};
 
 const LAMS_ICONS: Record<string, React.ElementType> = {
   dashboard: LayoutDashboard,
@@ -124,11 +155,16 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
       const rawTree = MENUS[module] || [];
       base = pruneTreeByAccess(rawTree, module, hasAccessToRoute);
     }
-    let base = pruneTreeByAccess(
-      MENUS[module],
-      module,
-      hasAccessToRoute,
-    );
+    // let base = pruneTreeByAccess(
+    //   MENUS[module],
+    //   module,
+    //   hasAccessToRoute,
+    // );
+    if (module === "customer-service") {
+      const canonicalTree = MENUS["customer-service"] || [];
+      base = pruneTreeByAccess(canonicalTree, "customer-service", hasAccessToRoute);
+    }
+
     if (module === "procurement") {
       base = base.filter(
         (n) => n.slug !== "approvals" && n.slug !== "vendors"
@@ -209,7 +245,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")
         );
         const isOpen = !!q || expanded.has(n.path) || expanded.has(cleanNodePath);
-        const Icon = module === "lams" ? LAMS_ICONS[n.slug] : null;
+        const Icon = module === "lams" ? LAMS_ICONS[n.slug] : module === "customer-service" ? CUSTOMER_SERVICE_ICONS[n.slug] : null;
 
         if (n.children?.length) {
           return (
@@ -232,14 +268,17 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
                     : undefined
                 }
               >
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-2">
                   {isAncestor ? (
                     <span
                       className="h-3.5 w-1 rounded"
                       style={{ backgroundColor: brandColor }}
                     />
                   ) : null}
-                  {n.label}
+                  {Icon && depth === 0 ? (
+                    <Icon className="h-4 w-4 shrink-0 text-foreground/70" />
+                  ) : null}
+                  <span>{n.label}</span>
                 </span>
                 <ChevronRight
                   className={cn(
@@ -257,11 +296,14 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           );
         }
 
-        const href = n.path.startsWith("/")
-          ? n.path
-          : n.path.startsWith("http")
+        const href =
+          module === "customer-service" && (n.path === "dashboard" || n.slug === "dashboard")
+            ? "/dashboard/customer-service"
+            : n.path.startsWith("/")
             ? n.path
-            : `/dashboard/${module}/${n.path}`;
+            : n.path.startsWith("http")
+              ? n.path
+              : `/dashboard/${module}/${n.path}`;
 
         return (
           <li key={n.path}>
@@ -321,7 +363,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         const isAncestor = Boolean(
           cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")
         );
-        const Icon = module === "lams" ? LAMS_ICONS[n.slug] : null;
+        const Icon = module === "lams" ? LAMS_ICONS[n.slug] : module === "customer-service" ? CUSTOMER_SERVICE_ICONS[n.slug] : null;
 
         if (n.children?.length) {
           return (
