@@ -50,8 +50,9 @@ export default function SuperAdminLoginPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // State to track if the user clicked the Demo/Regular login buttons
-  const [isDemoFilled, setIsDemoFilled] = useState(false);
+  // Track which button was clicked to determine the redirect path
+  const [loginType, setLoginType] = useState<"default" | "super_admin" | "regular">("default");
+  const [isGreen, setIsGreen] = useState(false);
 
   const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -92,8 +93,8 @@ export default function SuperAdminLoginPage() {
         session.user,
       );
 
-      // Redirect logic: if isDemoFilled is true (fleek_bd used), go to /dashboard. Otherwise go to /admin/dashboard
-      if (isDemoFilled) {
+      // Redirect logic based on which button was clicked
+      if (loginType === "regular") {
         router.replace("/dashboard");
       } else {
         router.replace("/admin/dashboard");
@@ -110,18 +111,29 @@ export default function SuperAdminLoginPage() {
     }
   };
 
-  // Shared function for BOTH "Super Admin Demo" and "Regular Workspace Login"
-  const handleFillDemoCredentials = () => {
+  // For Super Admin Demo
+  const handleUseSuperAdmin = () => {
     setEmail("fleek_bd");
     setPassword("Password@123");
     setError("");
-    setIsDemoFilled(true); // Turns button green and enables /dashboard redirect
+    setIsGreen(true);
+    setLoginType("super_admin");
   };
 
-  // Reset green state if user manually edits the fields
+  // For Regular Workspace Login
+  const handleUseRegularLogin = () => {
+    setEmail("fleek_bd");
+    setPassword("Password@123");
+    setError("");
+    setIsGreen(true);
+    setLoginType("regular");
+  };
+
+  // Reset green state and login type if user manually edits the fields
   const handleInputChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setter(e.target.value);
-    setIsDemoFilled(false);
+    setIsGreen(false);
+    setLoginType("default");
   };
 
   const slide = slides[currentSlide];
@@ -274,7 +286,7 @@ export default function SuperAdminLoginPage() {
               </span>
               <button
                 type="button"
-                onClick={handleFillDemoCredentials}
+                onClick={handleUseSuperAdmin}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-[#0000F2] hover:bg-blue-100 hover:border-blue-300 transition active:scale-95 shadow-sm"
               >
                 <Sparkles className="h-3.5 w-3.5 text-[#0000F2]" />
@@ -283,7 +295,7 @@ export default function SuperAdminLoginPage() {
 
               <button
                 type="button"
-                onClick={handleFillDemoCredentials}
+                onClick={handleUseRegularLogin}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition active:scale-95 shadow-sm"
               >
                 Regular Workspace Login →
@@ -303,7 +315,7 @@ export default function SuperAdminLoginPage() {
                   </label>
                   <button
                     type="button"
-                    onClick={handleFillDemoCredentials}
+                    onClick={handleUseSuperAdmin}
                     className="text-[11px] font-bold text-[#0000F2] hover:underline"
                   >
                     Fill Admin
@@ -362,12 +374,12 @@ export default function SuperAdminLoginPage() {
                 </motion.div>
               ) : null}
 
-              {/* Login Button - Green when filled via Demo/Regular buttons */}
+              {/* Login Button - Green when filled via any quick fill button */}
               <button
                 type="submit"
                 disabled={isSubmitting}
                 className={`group inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold text-white shadow-lg transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 ${
-                  isDemoFilled
+                  isGreen
                     ? "bg-emerald-600 shadow-emerald-600/25 hover:bg-emerald-600/90"
                     : "bg-[#0000F2] shadow-blue-600/25 hover:bg-[#0000F2]/90"
                 }`}
@@ -387,14 +399,33 @@ export default function SuperAdminLoginPage() {
             </form>
 
             {/* Bottom Links */}
-            <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-6">
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-6">
               <Link
                 href="/"
                 className="text-xs font-semibold text-slate-500 transition hover:text-slate-900"
               >
                 ← Return to main site
               </Link>
+              
+              <div className="flex items-center gap-4">
+                <Link
+                  href="/change-password"
+                  target="_blank"
+                  className="text-xs font-semibold text-[#0000F2] hover:underline transition"
+                >
+                  Change Password
+                </Link>
+                
+                <Link
+                  href="/book-a-demo"
+                  target="_blank"
+                  className="text-xs font-semibold text-[#0000F2] hover:underline transition"
+                >
+                  Book a Demo
+                </Link>
+              </div>
             </div>
+            
           </div>
         </div>
       </div>
