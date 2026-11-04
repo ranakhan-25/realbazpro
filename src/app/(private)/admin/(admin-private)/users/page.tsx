@@ -13,7 +13,10 @@ import {
   MoreHorizontal,
   Plus,
   Search,
+  ShieldAlert,
   ShieldCheck,
+  Ban,
+  Check,
   Trash2,
   UserRound,
   X,
@@ -24,6 +27,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import UserForm from "@/components/modules/UserForm";
 import UserWizardModal from "@/components/modules/UserWizardModal";
 import UserModuleAccessModal from "@/components/modules/UserModuleAccessModal";
+import UserCustomPermissionModal from "@/components/modules/UserCustomPermissionModal";
+import { getUserOverrideSummaries } from "@/services/customPermissionService";
 import { getStoredUserProfile } from "@/lib/admin-auth/adminAuthStorage";
 import {
   deleteUser,
@@ -109,6 +114,7 @@ function getUserIdentifier(user: User) {
 
 function getFullName(user: User) {
   return (
+    (user as any).name ||
     `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
     user.username ||
     "Unnamed User"
@@ -164,6 +170,13 @@ export default function UsersPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [moduleAccessUser, setModuleAccessUser] = useState<User | null>(null);
+  const [customPermUser, setCustomPermUser] = useState<User | null>(null);
+  const [overrideSummaries, setOverrideSummaries] = useState<
+    Record<
+      string | number,
+      { totalOverrides: number; deniedCount: number; allowedCount: number }
+    >
+  >({});
   const [viewOpen, setViewOpen] = useState(false);
   const [viewUser, setViewUser] = useState<User | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
@@ -182,8 +195,9 @@ export default function UsersPage() {
   const [resetError, setResetError] = useState("");
   const [resetNotice, setResetNotice] = useState("");
 
+  const [pageSize, setPageSize] = useState(10);
   const requestIdRef = useRef(0);
-  const totalPages = Math.max(1, Math.ceil(totalUsers / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(totalUsers / pageSize));
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -193,7 +207,7 @@ export default function UsersPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  useEffect(() => setPage(1), [status]);
+  useEffect(() => setPage(1), [status, pageSize]);
 
   const loadUsers = useCallback(async () => {
     const requestId = ++requestIdRef.current;
@@ -202,7 +216,7 @@ export default function UsersPage() {
       setError("");
       const response = await getUsers({
         page,
-        limit: PAGE_SIZE,
+        limit: pageSize,
         search: search || undefined,
         isActive: status === "all" ? undefined : status === "active",
         sortField: "created_at",
@@ -238,6 +252,10 @@ export default function UsersPage() {
 
       setUsers(validUsers);
       setTotalUsers(total || validUsers.length);
+
+      getUserOverrideSummaries()
+        .then((sums) => setOverrideSummaries(sums || {}))
+        .catch(() => {});
     } catch (err) {
       if (requestId !== requestIdRef.current) return;
       setError(
@@ -248,7 +266,7 @@ export default function UsersPage() {
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [page, search, status]);
+  }, [page, pageSize, search, status]);
 
   useEffect(() => {
     void loadUsers();
@@ -606,6 +624,24 @@ export default function UsersPage() {
                                 +{roles.length - 2}
                               </span>
                             )}
+                            {user.id && Boolean(overrideSummaries[user.id]?.deniedCount) && (
+                              <span
+                                className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 border border-rose-200"
+                                title="This user has explicit permission restrictions"
+                              >
+                                <Ban className="h-2.5 w-2.5" />
+                                {overrideSummaries[user.id]?.deniedCount} Restricted
+                              </span>
+                            )}
+                            {user.id && Boolean(overrideSummaries[user.id]?.allowedCount) && (
+                              <span
+                                className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200"
+                                title="This user has explicit permission grants"
+                              >
+                                <Check className="h-2.5 w-2.5" />
+                                {overrideSummaries[user.id]?.allowedCount} Granted
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 text-sm text-slate-400">
@@ -696,6 +732,15 @@ export default function UsersPage() {
                               Module & Feature Access
                             </MenuButton>
                             <MenuButton
+                              onClick={() => {
+                                setMenuUserId(null);
+                                setCustomPermUser(user);
+                              }}
+                              icon={<ShieldAlert className="h-4 w-4 text-rose-600" />}
+                            >
+                              Permission Overrides & Restrictions
+                            </MenuButton>
+                            <MenuButton
                               onClick={() => openResetPassword(user)}
                               icon={<KeyRound className="h-4 w-4" />}
                             >
@@ -719,8 +764,43 @@ export default function UsersPage() {
           </table>
         </div>
 
-        {!loading && totalUsers > PAGE_SIZE && (
-          <div className="border-t border-slate-100 px-5 py-3">
+        {!loading && totalUsers > 0 && (
+          <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4 text-xs text-slate-500">
+              <p>
+                Showing{" "}
+                <span className="font-semibold text-slate-700">
+                  {(page - 1) * pageSize + 1}
+                </span>{" "}
+                to{" "}
+                <span className="font-semibold text-slate-700">
+                  {Math.min(page * pageSize, totalUsers)}
+                </span>{" "}
+                of{" "}
+                <span className="font-semibold text-slate-700">
+                  {totalUsers}
+                </span>{" "}
+                users
+              </p>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-400">Per page:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="h-7 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none hover:border-slate-300"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
             <div className="flex items-center justify-end">
               <div className="flex items-center gap-1.5">
                 <button
@@ -788,6 +868,18 @@ export default function UsersPage() {
         user={moduleAccessUser}
         onClose={() => setModuleAccessUser(null)}
         onSuccess={() => void loadUsers()}
+      />
+
+      <UserCustomPermissionModal
+        isOpen={Boolean(customPermUser)}
+        user={customPermUser}
+        onClose={() => setCustomPermUser(null)}
+        onSuccess={() => {
+          void loadUsers();
+          getUserOverrideSummaries()
+            .then((sums) => setOverrideSummaries(sums || {}))
+            .catch(() => {});
+        }}
       />
 
       <AnimatePresence>
@@ -1188,42 +1280,88 @@ function UserDetails({
   user: User;
   primaryColor: string;
 }) {
+  const anyUser = user as any;
+  const fullName =
+    anyUser.name ||
+    [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+    user.username ||
+    "Not specified";
+  const mobile = anyUser.mobile || user.phone || anyUser.phone_number || "Not specified";
+  const createdDate = formatDate(anyUser.createdAt || anyUser.created_at);
+  const updatedDate = formatDate(anyUser.updatedAt || anyUser.updated_at);
+  const lastLogin = formatDate(anyUser.lastLoginAt || anyUser.last_login_at);
+  const designation = anyUser.designationName || anyUser.designation || "Not specified";
+  const isSuperUser = anyUser.isSuperUser ?? anyUser.is_super_user;
+  const isOrgAdmin = anyUser.isOrgAdmin ?? anyUser.is_org_admin;
+  const orgId = anyUser.orgId ?? anyUser.org_id;
+  const orgName =
+    anyUser.organization?.name ||
+    anyUser.orgName ||
+    (orgId
+      ? `Organization #${orgId}`
+      : isSuperUser
+        ? "Platform Super Admin"
+        : "Not assigned");
+  const userType = user.userType || anyUser.user_type || "Office";
   const roles = getRoleList(user);
-  const companies = Array.isArray((user as any).companies)
-    ? (user as any).companies
-    : [];
+  const companies = Array.isArray(anyUser.companies) ? anyUser.companies : [];
+
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-4 rounded-2xl bg-slate-50 p-4">
+      <div className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
         <div
-          className="flex h-14 w-14 items-center justify-center rounded-full"
+          className="flex h-14 w-14 items-center justify-center rounded-full shadow-sm"
           style={{ backgroundColor: `${primaryColor}1A`, color: primaryColor }}
         >
           <UserRound className="h-6 w-6" />
         </div>
-        <div>
-          <h3 className="font-bold text-slate-900">{getFullName(user)}</h3>
-          <p className="text-sm text-slate-500">{user.email || "—"}</p>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-slate-900 truncate">{fullName}</h3>
+            {isSuperUser && (
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">
+                Super Admin
+              </span>
+            )}
+            {isOrgAdmin && (
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                Org Admin
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-slate-500 truncate">
+            {user.email || `@${user.username}`}
+          </p>
         </div>
         <span
-          className={`ml-auto rounded-full px-3 py-1 text-xs font-semibold ${user.isActive ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}
+          className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+            user.isActive
+              ? "border border-emerald-200 bg-emerald-50 text-emerald-600"
+              : "bg-slate-100 text-slate-500"
+          }`}
         >
           {user.isActive ? "Active" : "Inactive"}
         </span>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Detail label="First Name" value={user.firstName} />
-        <Detail label="Last Name" value={user.lastName} />
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Detail label="Full Name" value={fullName} />
         <Detail label="Username" value={user.username} />
-        <Detail label="Phone Number" value={user.phone} />
-        <Detail label="Email" value={user.email} />
-        <Detail label="User Type" value={user.userType} />
-        <Detail label="Created" value={formatDate(user.createdAt)} />
-        <Detail label="Updated" value={formatDate(user.updatedAt)} />
+        <Detail label="Email Address" value={user.email} />
+        <Detail label="Phone Number" value={mobile} />
+        <Detail label="User Type" value={userType} />
+        <Detail label="Designation" value={designation} />
+        <Detail label="Organization" value={orgName} />
+        <Detail label="Created On" value={createdDate} />
+        <Detail label="Last Updated" value={updatedDate} />
+        {anyUser.last_login_at && (
+          <Detail label="Last Login" value={lastLogin} />
+        )}
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <ObjectArrayDetail label="Roles" values={roles} />
-        <ObjectArrayDetail label="Companies" values={companies} />
+
+      <div className="grid gap-3 pt-1 md:grid-cols-2">
+        <ObjectArrayDetail label="Assigned Roles" values={roles} />
+        <ObjectArrayDetail label="Assigned Companies" values={companies} />
       </div>
     </div>
   );
@@ -1242,7 +1380,7 @@ function Detail({
         {label}
       </p>
       <p className="mt-1 break-words text-sm font-semibold text-slate-700">
-        {value === undefined || value === null || value === "" ? "—" : value}
+        {value === undefined || value === null || value === "" ? "Not specified" : value}
       </p>
     </div>
   );
@@ -1363,9 +1501,9 @@ function Modal({
 }
 
 function formatDate(date?: string) {
-  if (!date) return "—";
+  if (!date) return "Not recorded";
   const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) return "—";
+  if (Number.isNaN(parsed.getTime())) return "Not recorded";
   return parsed.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
