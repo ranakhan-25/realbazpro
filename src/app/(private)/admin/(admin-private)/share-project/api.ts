@@ -154,9 +154,19 @@ export async function unpublishProject(uuid: string) {
   await api.post(`/share-project/admin/projects/${encodeURIComponent(uuid)}/unpublish`);
 }
 
-export async function getInvestments(params: { page?: number; limit?: number } = {}) {
+export async function getInvestments(params: { page?: number; limit?: number; projectUuid?: string } = {}) {
   const response = await api.get("/share-project/admin/investments", {
-    params: { page: params.page || 1, limit: params.limit || 100 },
+    params: { page: params.page || 1, limit: params.limit || 100, ...(params.projectUuid ? { projectUuid: params.projectUuid } : {}) },
   });
   return unwrap<any>(response.data);
+}
+
+
+
+export async function approveInvestment(uuid: string) {
+  await api.post(`/share-project/admin/investments/${encodeURIComponent(uuid)}/approve`);
+}
+
+export async function rejectInvestment(uuid: string, reason: string) {
+  await api.post(`/share-project/admin/investments/${encodeURIComponent(uuid)}/reject`, { reason });
 }

@@ -20,6 +20,15 @@ export type ShareProjectRecord = {
   status?: string;
   createdAt?: string;
   owner?: unknown;
+  creatorName?: string;
+  creatorEmail?: string;
+  creatorPhone?: string;
+  companyName?: string;
+  totalInvestmentAmount?: number | string;
+  pricePerShare?: number | string;
+  totalShares?: number;
+  expectedAnnualReturn?: number | string;
+  category?: { name?: string } | null;
   [key: string]: unknown;
 };
 
