@@ -10,6 +10,7 @@ import {
   Building,
   Zap,
   Droplets,
+  Eye,
 } from "lucide-react";
 import { CSPageHeader } from "@/components/customer-service/CSPageHeader";
 import { CSStatCard } from "@/components/customer-service/CSStatCard";
@@ -65,7 +66,7 @@ const INITIAL_MAINTENANCE: MaintenanceItem[] = [
 
 export default function MaintenanceRequestsPage() {
   const { primaryColor } = useTheme();
-  const brand = primaryColor || "#0000F2";
+  const brand = primaryColor || "#6D4AFF";
 
   const [activeTab, setActiveTab] = useState("all");
   const [items, setItems] = useState<MaintenanceItem[]>(INITIAL_MAINTENANCE);
@@ -110,56 +111,79 @@ export default function MaintenanceRequestsPage() {
   const columns: Column<MaintenanceItem>[] = [
     {
       key: "facility",
-      header: "Equipment / Common Facility",
+      header: "EQUIPMENT / COMMON FACILITY",
       sortable: true,
+      minWidth: "240px",
       render: (m) => (
         <div>
-          <span className="font-bold text-slate-900 block text-xs">{m.facility}</span>
-          <div className="text-[11px] text-blue-600 font-medium">{m.project}</div>
+          <span className="font-semibold text-[#111827] block text-xs">{m.facility}</span>
+          <div className="text-[11px] text-[#6D4AFF] font-medium mt-0.5">{m.project}</div>
         </div>
       ),
     },
     {
       key: "maintenanceType",
-      header: "Type & Date",
+      header: "TYPE & DATE",
+      minWidth: "160px",
       render: (m) => (
         <div>
-          <span className="font-semibold text-slate-800 text-xs">{m.maintenanceType}</span>
-          <div className="text-[11px] text-slate-400">Date: {m.scheduledDate}</div>
+          <span className="font-semibold text-[#111827] text-xs">{m.maintenanceType}</span>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">Date: {m.scheduledDate}</div>
         </div>
       ),
     },
     {
       key: "vendorName",
-      header: "Servicing Vendor / AMC",
+      header: "SERVICING VENDOR / AMC",
+      minWidth: "220px",
       render: (m) => (
         <div>
-          <div className="font-semibold text-slate-800 text-xs">{m.vendorName}</div>
-          <div className="text-[11px] font-mono text-slate-500">Est. Cost: ৳ {m.costEstimate.toLocaleString()}</div>
+          <div className="font-semibold text-[#111827] text-xs">{m.vendorName}</div>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">Est. Cost: ৳ {m.costEstimate.toLocaleString()}</div>
         </div>
       ),
     },
     {
       key: "status",
-      header: "Status",
+      header: "STATUS",
+      minWidth: "140px",
       render: (m) => (
         <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
             m.status === "Completed"
-              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              ? "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
               : m.status === "In Progress"
-                ? "bg-blue-50 text-blue-700 border border-blue-200"
-                : "bg-amber-50 text-amber-800 border border-amber-200"
+                ? "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]"
+                : "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
           }`}
         >
           {m.status}
         </span>
       ),
     },
+    {
+      key: "actions",
+      header: "ACTION",
+      align: "right",
+      minWidth: "90px",
+      render: (m) => (
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => toast.info(`Viewing maintenance details: ${m.facility}`)}
+            title="View Maintenance Job Details"
+            aria-label="View Details"
+            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+          >
+            <Eye className="h-4 w-4" />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Post-Handover Maintenance Requests"
         subtitle="Manage common area equipment servicing (lifts, generators, pumps, fire safety) under Section 11(3) builder maintenance."
@@ -184,16 +208,16 @@ export default function MaintenanceRequestsPage() {
           value="৳ 1.08 Lac"
           subtext="Common area equipment AMC"
           icon={Building}
-          iconBg="bg-blue-50"
-          iconColor="text-blue-600"
+          iconBg="bg-[#EFF6FF]"
+          iconColor="text-[#2563EB]"
         />
         <CSStatCard
           title="Completed This Month"
           value={items.filter((i) => i.status === "Completed").length.toString()}
           subtext="Preventive inspections signed off"
           icon={CheckCircle2}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
+          iconBg="bg-[#ECFDF3]"
+          iconColor="text-[#039855]"
         />
       </div>
 
@@ -236,15 +260,14 @@ export default function MaintenanceRequestsPage() {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              className="h-9 px-4 text-xs font-semibold text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleCreate}
-              className="px-4 py-2 text-xs font-semibold text-white rounded-lg shadow-sm transition hover:opacity-95"
-              style={{ backgroundColor: brand }}
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
             >
               Save Schedule
             </button>
@@ -253,60 +276,60 @@ export default function MaintenanceRequestsPage() {
       >
         <form onSubmit={handleCreate} className="space-y-3.5 text-xs">
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Equipment / Facility *</label>
+            <label className="block font-semibold text-[#374151] mb-1">Facility / Asset Equipment *</label>
             <input
               type="text"
               required
               value={facility}
               onChange={(e) => setFacility(e.target.value)}
-              placeholder="e.g. Passenger Lift 01"
-              className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+              placeholder="e.g. Passenger Lift 01 (Sigma)"
+              className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Project</label>
+              <label className="block font-semibold text-[#374151] mb-1">Project Allotment</label>
               <input
                 type="text"
                 value={project}
                 onChange={(e) => setProject(e.target.value)}
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Maintenance Type</label>
+              <label className="block font-semibold text-[#374151] mb-1">Maintenance Type</label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as any)}
-                className="w-full h-9 px-2 rounded-lg border border-slate-200 outline-none focus:border-blue-500 bg-white"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
-                <option value="Preventive">Preventive Maintenance (AMC)</option>
+                <option value="Preventive">Preventive AMC Servicing</option>
                 <option value="Emergency Breakdown">Emergency Breakdown</option>
-                <option value="Routine Service">Routine Service</option>
                 <option value="Statutory Annual">Statutory Annual Inspection</option>
+                <option value="Routine Service">Routine Operational Service</option>
               </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Servicing Vendor</label>
+              <label className="block font-semibold text-[#374151] mb-1">Servicing Vendor</label>
               <input
                 type="text"
                 value={vendor}
                 onChange={(e) => setVendor(e.target.value)}
-                placeholder="AMC Vendor"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                placeholder="e.g. Sigma Elevator Ltd."
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Estimated Cost (BDT)</label>
+              <label className="block font-semibold text-[#374151] mb-1">Estimated Cost (BDT)</label>
               <input
                 type="number"
                 value={cost}
                 onChange={(e) => setCost(e.target.value)}
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500 font-mono font-bold"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] tabular-nums outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
           </div>
@@ -315,4 +338,3 @@ export default function MaintenanceRequestsPage() {
     </div>
   );
 }
-

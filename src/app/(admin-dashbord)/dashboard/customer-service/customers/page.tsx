@@ -25,7 +25,7 @@ import { useTheme } from "@/lib/theme";
 
 export default function Customer360Page() {
   const { primaryColor } = useTheme();
-  const brand = primaryColor || "#0000F2";
+  const brand = primaryColor || "#6D4AFF";
 
   const [activeTab, setActiveTab] = useState("all");
   const [customers, setCustomers] = useState<CustomerProfile[]>(MOCK_CUSTOMERS);
@@ -84,25 +84,27 @@ export default function Customer360Page() {
   const columns: Column<CustomerProfile>[] = [
     {
       key: "name",
-      header: "Customer Name & ID",
+      header: "CUSTOMER NAME & ID",
       sortable: true,
+      minWidth: "220px",
       render: (c) => (
         <div>
-          <div className="font-bold text-slate-900">{c.name}</div>
-          <div className="text-[11px] font-mono text-slate-400">{c.id}</div>
+          <div className="font-semibold text-[#111827] text-xs">{c.name}</div>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">{c.id}</div>
         </div>
       ),
     },
     {
       key: "phone",
-      header: "Contact",
+      header: "CONTACT",
+      minWidth: "190px",
       render: (c) => (
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
-            <Phone className="h-3 w-3 text-slate-400" /> {c.phone}
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5 text-xs text-[#374151] tabular-nums font-medium">
+            <Phone className="h-3 w-3 text-[#9CA3AF]" /> {c.phone}
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-            <Mail className="h-3 w-3 text-slate-400" /> {c.email}
+          <div className="flex items-center gap-1.5 text-[11px] text-[#6B7280]">
+            <Mail className="h-3 w-3 text-[#9CA3AF]" /> {c.email}
           </div>
         </div>
       ),
@@ -110,34 +112,37 @@ export default function Customer360Page() {
     {
       key: "nid",
       header: "NID / TIN",
+      minWidth: "160px",
       render: (c) => (
         <div>
-          <div className="font-mono text-xs text-slate-800">{c.nid}</div>
+          <div className="tabular-nums text-xs font-medium text-[#111827]">{c.nid}</div>
           {c.tin && (
-            <div className="text-[11px] text-slate-400">TIN: {c.tin}</div>
+            <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">TIN: {c.tin}</div>
           )}
         </div>
       ),
     },
     {
       key: "nomineeName",
-      header: "Nominee",
+      header: "NOMINEE",
+      minWidth: "160px",
       render: (c) => (
         <div>
-          <div className="text-xs font-semibold text-slate-700">{c.nomineeName}</div>
-          <div className="text-[11px] text-slate-400">({c.nomineeRelation})</div>
+          <div className="text-xs font-semibold text-[#111827]">{c.nomineeName}</div>
+          <div className="text-[11px] text-[#6B7280]">({c.nomineeRelation})</div>
         </div>
       ),
     },
     {
       key: "totalPaidAmount",
-      header: "Financials",
+      header: "FINANCIALS",
+      minWidth: "160px",
       render: (c) => (
         <div>
-          <div className="text-xs font-bold text-emerald-600">
+          <div className="text-xs font-semibold text-[#039855] tabular-nums">
             Paid: ৳ {(c.totalPaidAmount / 100000).toFixed(1)} Lac
           </div>
-          <div className="text-[11px] font-semibold text-slate-500">
+          <div className="text-[11px] font-medium text-[#6B7280] tabular-nums mt-0.5">
             Due: ৳ {(c.totalDueAmount / 100000).toFixed(1)} Lac
           </div>
         </div>
@@ -145,15 +150,16 @@ export default function Customer360Page() {
     },
     {
       key: "status",
-      header: "Status",
+      header: "STATUS",
+      minWidth: "120px",
       render: (c) => (
         <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider ${
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${
             c.status === "vip"
-              ? "bg-amber-100 text-amber-800 font-bold"
+              ? "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
               : c.status === "active"
-                ? "bg-emerald-50 text-emerald-700"
-                : "bg-rose-50 text-rose-700"
+                ? "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
+                : "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]"
           }`}
         >
           {c.status}
@@ -162,22 +168,27 @@ export default function Customer360Page() {
     },
     {
       key: "actions",
-      header: "Actions",
-      width: "90px",
+      header: "ACTION",
+      align: "right",
+      minWidth: "90px",
       render: (c) => (
-        <button
-          type="button"
-          onClick={() => setSelectedCustomer(c)}
-          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-        >
-          <Eye className="h-3.5 w-3.5 text-blue-600" /> View 360°
-        </button>
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => setSelectedCustomer(c)}
+            title="View Customer 360° Profile"
+            aria-label="View Customer 360° Profile"
+            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+          >
+            <Eye className="h-4 w-4" />
+          </button>
+        </div>
       ),
     },
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Customer 360° Profiles"
         subtitle="Master customer directory, nominee KYC, co-applicants, and property lifecycle timeline."
@@ -203,16 +214,16 @@ export default function Customer360Page() {
           value={customers.filter((c) => c.status === "vip").length.toString()}
           subtext="High-value multi-unit portfolios"
           icon={UserCheck}
-          iconBg="bg-amber-50"
-          iconColor="text-amber-600"
+          iconBg="bg-[#FFFAEB]"
+          iconColor="text-[#DC6803]"
         />
         <CSStatCard
           title="Total Lifetime Collections"
           value="৳ 3.86 Cr"
           subtext="Verified money receipts ledger"
           icon={Building}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
+          iconBg="bg-[#ECFDF3]"
+          iconColor="text-[#039855]"
         />
       </div>
 
@@ -262,70 +273,70 @@ export default function Customer360Page() {
         {selectedCustomer && (
           <div className="space-y-5 text-xs">
             {/* Contact & KYC Details */}
-            <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50">
-              <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <Shield className="h-4 w-4 text-blue-600" /> Verified KYC & Contact Information
+            <div className="rounded-[12px] border border-[#E5E7EB] p-4 space-y-3 bg-[#F9FAFB]">
+              <h4 className="font-semibold text-[#111827] text-sm flex items-center gap-2">
+                <Shield className="h-4 w-4 text-[#6D4AFF]" /> Verified KYC & Contact Information
               </h4>
-              <div className="grid grid-cols-2 gap-2 text-slate-700">
+              <div className="grid grid-cols-2 gap-3 text-[#374151]">
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Primary Phone</span>
-                  <span className="font-semibold">{selectedCustomer.phone}</span>
+                  <span className="text-[#6B7280] block text-[11px]">Primary Phone</span>
+                  <span className="font-semibold tabular-nums text-[#111827]">{selectedCustomer.phone}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Email Address</span>
-                  <span className="font-semibold">{selectedCustomer.email}</span>
+                  <span className="text-[#6B7280] block text-[11px]">Email Address</span>
+                  <span className="font-semibold text-[#111827]">{selectedCustomer.email}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[11px]">National ID (NID)</span>
-                  <span className="font-mono font-semibold">{selectedCustomer.nid}</span>
+                  <span className="text-[#6B7280] block text-[11px]">National ID (NID)</span>
+                  <span className="tabular-nums font-semibold text-[#111827]">{selectedCustomer.nid}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[11px]">e-TIN Reference</span>
-                  <span className="font-mono font-semibold">{selectedCustomer.tin || "Not Provided"}</span>
+                  <span className="text-[#6B7280] block text-[11px]">e-TIN Reference</span>
+                  <span className="tabular-nums font-semibold text-[#111827]">{selectedCustomer.tin || "Not Provided"}</span>
                 </div>
               </div>
               <div>
-                <span className="text-slate-400 block text-[11px]">Mailing Address</span>
-                <span className="font-medium text-slate-800">{selectedCustomer.address}</span>
+                <span className="text-[#6B7280] block text-[11px]">Mailing Address</span>
+                <span className="font-medium text-[#111827]">{selectedCustomer.address}</span>
               </div>
             </div>
 
             {/* Nominee Details */}
-            <div className="rounded-xl border border-slate-200 p-4 space-y-2 bg-white">
-              <h4 className="font-bold text-slate-900 flex items-center gap-2">
-                <UserCheck className="h-4 w-4 text-indigo-600" /> Registered Nominee Details
+            <div className="rounded-[12px] border border-[#E5E7EB] p-4 space-y-2 bg-white">
+              <h4 className="font-semibold text-[#111827] flex items-center gap-2">
+                <UserCheck className="h-4 w-4 text-[#6D4AFF]" /> Registered Nominee Details
               </h4>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Nominee Full Name</span>
-                  <span className="font-semibold text-slate-800">{selectedCustomer.nomineeName}</span>
+                  <span className="text-[#6B7280] block text-[11px]">Nominee Full Name</span>
+                  <span className="font-semibold text-[#111827]">{selectedCustomer.nomineeName}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Relationship</span>
-                  <span className="font-semibold text-slate-800">{selectedCustomer.nomineeRelation}</span>
+                  <span className="text-[#6B7280] block text-[11px]">Relationship</span>
+                  <span className="font-semibold text-[#111827]">{selectedCustomer.nomineeRelation}</span>
                 </div>
                 <div className="col-span-2">
-                  <span className="text-slate-400 block text-[11px]">Nominee NID / Birth Cert</span>
-                  <span className="font-mono font-semibold text-slate-800">{selectedCustomer.nomineeNid}</span>
+                  <span className="text-[#6B7280] block text-[11px]">Nominee NID / Birth Cert</span>
+                  <span className="tabular-nums font-semibold text-[#111827]">{selectedCustomer.nomineeNid}</span>
                 </div>
               </div>
             </div>
 
             {/* Financial Summary */}
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-2">
-              <h4 className="font-bold text-emerald-950 flex items-center gap-2">
-                <Building className="h-4 w-4 text-emerald-600" /> Property Ledger Balance
+            <div className="rounded-[12px] border border-[#A6F4C5] bg-[#ECFDF3]/40 p-4 space-y-2">
+              <h4 className="font-semibold text-[#027A48] flex items-center gap-2">
+                <Building className="h-4 w-4 text-[#039855]" /> Property Ledger Balance
               </h4>
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white p-2.5 rounded-lg border border-emerald-100">
-                  <span className="text-slate-500 block text-[11px]">Total Paid Amount</span>
-                  <span className="text-base font-bold text-emerald-700">
+                <div className="bg-white p-3 rounded-lg border border-[#A6F4C5]/60 shadow-xs">
+                  <span className="text-[#6B7280] block text-[11px]">Total Paid Amount</span>
+                  <span className="text-base font-semibold text-[#039855] tabular-nums">
                     ৳ {selectedCustomer.totalPaidAmount.toLocaleString()}
                   </span>
                 </div>
-                <div className="bg-white p-2.5 rounded-lg border border-emerald-100">
-                  <span className="text-slate-500 block text-[11px]">Remaining Due Balance</span>
-                  <span className="text-base font-bold text-slate-900">
+                <div className="bg-white p-3 rounded-lg border border-[#E5E7EB] shadow-xs">
+                  <span className="text-[#6B7280] block text-[11px]">Remaining Due Balance</span>
+                  <span className="text-base font-semibold text-[#111827] tabular-nums">
                     ৳ {selectedCustomer.totalDueAmount.toLocaleString()}
                   </span>
                 </div>
@@ -347,15 +358,14 @@ export default function Customer360Page() {
             <button
               type="button"
               onClick={() => setIsCreateOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              className="h-9 px-4 text-xs font-semibold text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleCreateCustomer}
-              className="px-4 py-2 text-xs font-semibold text-white rounded-lg shadow-sm transition hover:opacity-95"
-              style={{ backgroundColor: brand }}
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
             >
               Save Profile
             </button>
@@ -364,7 +374,7 @@ export default function Customer360Page() {
       >
         <form onSubmit={handleCreateCustomer} className="space-y-3.5 text-xs">
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">
+            <label className="block font-semibold text-[#374151] mb-1">
               Customer Full Name *
             </label>
             <input
@@ -373,13 +383,13 @@ export default function Customer360Page() {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="e.g. Mohammad Rafiqul Islam"
-              className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+              className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-semibold text-[#374151] mb-1">
                 Phone Number *
               </label>
               <input
@@ -388,11 +398,11 @@ export default function Customer360Page() {
                 value={newPhone}
                 onChange={(e) => setNewPhone(e.target.value)}
                 placeholder="+880 1711-XXXXXX"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] tabular-nums outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-semibold text-[#374151] mb-1">
                 National ID (NID) *
               </label>
               <input
@@ -401,13 +411,13 @@ export default function Customer360Page() {
                 value={newNid}
                 onChange={(e) => setNewNid(e.target.value)}
                 placeholder="10 / 17 digit NID"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] tabular-nums outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">
+            <label className="block font-semibold text-[#374151] mb-1">
               Email Address
             </label>
             <input
@@ -415,13 +425,13 @@ export default function Customer360Page() {
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               placeholder="customer@example.com"
-              className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+              className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-1 border-t border-slate-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#E5E7EB]">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-semibold text-[#374151] mb-1">
                 Nominee Name
               </label>
               <input
@@ -429,17 +439,17 @@ export default function Customer360Page() {
                 value={newNominee}
                 onChange={(e) => setNewNominee(e.target.value)}
                 placeholder="Nominee full name"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-semibold text-[#374151] mb-1">
                 Nominee Relation
               </label>
               <select
                 value={newNomineeRel}
                 onChange={(e) => setNewNomineeRel(e.target.value)}
-                className="w-full h-9 px-2 rounded-lg border border-slate-200 outline-none focus:border-blue-500 bg-white"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="Spouse">Spouse</option>
                 <option value="Son">Son</option>
@@ -455,4 +465,3 @@ export default function Customer360Page() {
     </div>
   );
 }
-

@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { useTheme } from "@/lib/theme";
 
 export interface FilterTabOption {
   key: string;
@@ -23,46 +22,44 @@ export function CSFilterTabs({
   onTabChange,
   onChange,
 }: CSFilterTabsProps) {
-  const { primaryColor } = useTheme();
-  const brand = primaryColor || "#0000F2";
   const handleSelect = onTabChange || onChange || (() => {});
 
   return (
-    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-200">
-      {tabs.map((tab) => {
-        const isActive = activeTab === tab.key;
-        return (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => handleSelect(tab.key)}
-            className={`flex items-center gap-2 whitespace-nowrap px-3.5 py-2 text-xs font-semibold rounded-lg transition ${
-              isActive
-                ? "bg-slate-900 text-white shadow-xs"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <span>{tab.label}</span>
-            {typeof tab.count === "number" && (
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                  isActive
-                    ? "bg-white/20 text-white"
-                    : tab.badgeVariant === "danger"
-                      ? "bg-rose-100 text-rose-700"
-                      : tab.badgeVariant === "warning"
-                        ? "bg-amber-100 text-amber-700"
-                        : tab.badgeVariant === "success"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                {tab.count}
-              </span>
-            )}
-          </button>
-        );
-      })}
+    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+      <div className="inline-flex h-9 items-center gap-1 rounded-lg border border-[#E5E7EB] bg-[#F2F4F7] p-1 flex-wrap sm:flex-nowrap">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => handleSelect(tab.key)}
+              className={`flex h-7 items-center gap-1.5 whitespace-nowrap px-3 text-xs font-medium rounded-md transition-all duration-140 ${
+                isActive
+                  ? "bg-white text-[#111827] font-semibold shadow-xs"
+                  : "text-[#6B7280] hover:text-[#111827] hover:bg-white/50"
+              }`}
+            >
+              <span>{tab.label}</span>
+              {typeof tab.count === "number" && (
+                <span
+                  className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold tabular-nums ${
+                    isActive
+                      ? "bg-[#F4F1FF] text-[#6D4AFF]"
+                      : tab.badgeVariant === "danger"
+                        ? "bg-[#FEF3F2] text-[#B42318]"
+                        : tab.badgeVariant === "warning"
+                          ? "bg-[#FFFAEB] text-[#B54708]"
+                          : "bg-[#E5E7EB] text-[#4B5563]"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

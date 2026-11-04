@@ -4,12 +4,10 @@ import React, { useState } from "react";
 import {
   KeyRound,
   ShieldCheck,
-  Wrench,
   Building2,
   Download,
   Clock,
   TrendingUp,
-  CheckCircle2,
   Eye,
 } from "lucide-react";
 import { CSPageHeader } from "@/components/customer-service/CSPageHeader";
@@ -110,7 +108,7 @@ const INITIAL_PROJECT_REPORTS: ProjectHandoverReport[] = [
 
 export default function HandoverPropertyCareReportPage() {
   const { primaryColor } = useTheme();
-  const [reports, setReports] = useState<ProjectHandoverReport[]>(INITIAL_PROJECT_REPORTS);
+  const [reports] = useState<ProjectHandoverReport[]>(INITIAL_PROJECT_REPORTS);
   const [activeTab, setActiveTab] = useState("all");
   const [selectedProject, setSelectedProject] = useState<ProjectHandoverReport | null>(null);
 
@@ -130,30 +128,32 @@ export default function HandoverPropertyCareReportPage() {
 
   const columns: Column<ProjectHandoverReport>[] = [
     {
-      header: "Project & Location",
+      header: "PROJECT & LOCATION",
       accessorKey: "projectName",
       cell: (row) => (
         <div>
-          <div className="font-semibold text-foreground">{row.projectName}</div>
-          <div className="text-xs text-muted-foreground">{row.location}</div>
+          <div className="font-semibold text-[#111827]">{row.projectName}</div>
+          <div className="text-xs text-[#6B7280]">{row.location}</div>
         </div>
       ),
     },
     {
-      header: "Handover Progress",
+      header: "HANDOVER PROGRESS",
       accessorKey: "handedOverUnits",
       cell: (row) => {
         const pct = Math.round((row.handedOverUnits / row.totalUnits) * 100);
         return (
-          <div className="space-y-1 w-32">
+          <div className="space-y-1.5 w-36">
             <div className="flex justify-between text-xs">
-              <span className="font-bold text-foreground">{row.handedOverUnits}/{row.totalUnits} Units</span>
-              <span className="text-muted-foreground">{pct}%</span>
+              <span className="font-semibold text-[#111827] tabular-nums">
+                {row.handedOverUnits}/{row.totalUnits} Units
+              </span>
+              <span className="text-[#6B7280] font-semibold tabular-nums">{pct}%</span>
             </div>
-            <div className="w-full h-1.5 rounded-full bg-foreground/10 overflow-hidden">
+            <div className="w-full h-1.5 rounded-full bg-[#E5E7EB] overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-300"
-                style={{ width: `${pct}%`, backgroundColor: primaryColor }}
+                style={{ width: `${pct}%`, backgroundColor: primaryColor || "#6D4AFF" }}
               />
             </div>
           </div>
@@ -161,71 +161,76 @@ export default function HandoverPropertyCareReportPage() {
       },
     },
     {
-      header: "Snags & Inspections",
+      header: "SNAGS & INSPECTIONS",
       accessorKey: "openSnags",
       cell: (row) => (
-        <div className="text-xs">
-          <div className="text-foreground">
-            Open Snags: <span className="font-semibold text-amber-600">{row.openSnags}</span>
+        <div className="text-xs space-y-0.5">
+          <div className="text-[#374151]">
+            Open Snags: <span className="font-semibold text-[#B54708] tabular-nums">{row.openSnags}</span>
           </div>
-          <div className="text-muted-foreground text-[11px]">
+          <div className="text-[#6B7280] text-[11px] tabular-nums">
             {row.pendingInspections} Inspections Pending
           </div>
         </div>
       ),
     },
     {
-      header: "2-Yr Statutory DLP",
+      header: "2-YR STATUTORY DLP",
       accessorKey: "activeDlpUnits",
       cell: (row) => (
-        <div className="text-xs">
-          <div className="text-foreground font-medium">{row.activeDlpUnits} Units Covered</div>
-          <div className="text-emerald-600 text-[11px] font-medium">{row.dlpClaimsResolved} Claims Rectified</div>
+        <div className="text-xs space-y-0.5">
+          <div className="text-[#111827] font-semibold tabular-nums">{row.activeDlpUnits} Units Covered</div>
+          <div className="text-[#027A48] text-[11px] font-semibold tabular-nums">{row.dlpClaimsResolved} Claims Rectified</div>
         </div>
       ),
     },
     {
-      header: "DLP Rectification Cost",
+      header: "DLP RECTIFICATION COST",
       accessorKey: "totalDlpExpenditure",
       cell: (row) => (
-        <span className="text-xs font-mono font-medium text-foreground">
+        <span className="text-xs font-semibold text-[#111827] tabular-nums">
           {row.totalDlpExpenditure}
         </span>
       ),
     },
     {
-      header: "Owners Association Status",
+      header: "OWNERS ASSOCIATION",
       accessorKey: "associationStatus",
       cell: (row) => {
         const badges = {
-          "Formed & Handed": "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
-          "In Formation": "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300",
-          "Developer Managed": "bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300",
+          "Formed & Handed": "bg-[#ECFDF3] border border-[#A6F4C5] text-[#027A48]",
+          "In Formation": "bg-[#EFF8FF] border border-[#B2DDFF] text-[#175CD3]",
+          "Developer Managed": "bg-[#F4F3FF] border border-[#DDD6FE] text-[#5925DC]",
         };
         return (
-          <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${badges[row.associationStatus]}`}>
+          <span className={`px-2.5 py-1 rounded-full text-[11.5px] font-semibold shadow-2xs ${badges[row.associationStatus]}`}>
             {row.associationStatus}
           </span>
         );
       },
     },
     {
-      header: "Actions",
+      header: "ACTION",
       accessorKey: "id",
+      align: "right",
+      minWidth: "90px",
       cell: (row) => (
-        <button
-          onClick={() => setSelectedProject(row)}
-          className="p-1.5 rounded-lg border border-border hover:bg-foreground/5 text-foreground/80 transition"
-          title="View Project Care Report"
-        >
-          <Eye className="h-3.5 w-3.5" />
-        </button>
+        <div className="flex items-center justify-end pr-2">
+          <button
+            onClick={() => setSelectedProject(row)}
+            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+            title="View Project Care Report"
+            aria-label="View Project Care Report"
+          >
+            <Eye className="h-4 w-4" />
+          </button>
+        </div>
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Handover & Property Care Reports"
         description="Comprehensive audit of unit handover velocity, joint snag rectification velocity, statutory 2-year DLP expenditures, and Owners Association transitions."
@@ -283,7 +288,7 @@ export default function HandoverPropertyCareReportPage() {
           { key: "association", label: "OA Formed & Handed", count: counts.association },
         ]}
         activeTab={activeTab}
-        onChange={setActiveTab}
+        onTabChange={setActiveTab}
       />
 
       <CSTable
@@ -297,63 +302,63 @@ export default function HandoverPropertyCareReportPage() {
       <CSDetailDrawer
         isOpen={!!selectedProject}
         onClose={() => setSelectedProject(null)}
-        title={`Handover & DLP Audit: ${selectedProject?.projectName}`}
-        subtitle={`${selectedProject?.location} • ${selectedProject?.totalUnits} Total Units`}
+        title={`Handover & DLP Audit: ${selectedProject?.projectName || ""}`}
+        subtitle={`${selectedProject?.location || ""} • ${selectedProject?.totalUnits || 0} Total Units`}
       >
         {selectedProject && (
           <div className="space-y-5">
-            <div className="p-4 rounded-xl border border-border bg-foreground/[0.02] space-y-3">
-              <div className="text-xs text-muted-foreground">Handover & Delivery Completion</div>
+            <div className="p-4 rounded-xl border border-[#E5E7EB] bg-[#F7F8FA] space-y-3">
+              <div className="text-xs font-semibold text-[#6B7280]">Handover & Delivery Completion</div>
               <div className="flex items-center justify-between">
-                <span className="text-base font-bold text-foreground">
+                <span className="text-base font-bold text-[#111827] tabular-nums">
                   {selectedProject.handedOverUnits} of {selectedProject.totalUnits} Units Handed Over
                 </span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-800">
+                <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-[#ECFDF3] border border-[#A6F4C5] text-[#027A48] tabular-nums">
                   {Math.round((selectedProject.handedOverUnits / selectedProject.totalUnits) * 100)}% Complete
                 </span>
               </div>
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Defect & DLP Statistics</h4>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B7280]">Defect & DLP Statistics</h4>
+              <div className="grid grid-cols-2 gap-3 text-xs bg-white p-4 rounded-xl border border-[#E5E7EB]">
                 <div>
-                  <span className="text-muted-foreground">Active DLP Warranties:</span>
-                  <div className="font-semibold text-foreground">{selectedProject.activeDlpUnits} Units</div>
+                  <span className="text-[#6B7280]">Active DLP Warranties:</span>
+                  <div className="font-semibold text-[#111827] tabular-nums">{selectedProject.activeDlpUnits} Units</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Rectified DLP Claims:</span>
-                  <div className="font-semibold text-foreground">{selectedProject.dlpClaimsResolved} Claims</div>
+                  <span className="text-[#6B7280]">Rectified DLP Claims:</span>
+                  <div className="font-semibold text-[#111827] tabular-nums">{selectedProject.dlpClaimsResolved} Claims</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Open Snags:</span>
-                  <div className="font-semibold text-amber-600">{selectedProject.openSnags} Pending</div>
+                  <span className="text-[#6B7280]">Open Snags:</span>
+                  <div className="font-semibold text-[#B54708] tabular-nums">{selectedProject.openSnags} Pending</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Total DLP Expenditure:</span>
-                  <div className="font-semibold text-foreground font-mono">{selectedProject.totalDlpExpenditure}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3 pt-2 border-t border-border">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Owners Association & Facility</h4>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span className="text-muted-foreground">Association Status:</span>
-                  <div className="font-semibold text-foreground">{selectedProject.associationStatus}</div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Maintenance Collection:</span>
-                  <div className="font-semibold text-emerald-600">{selectedProject.maintenanceCollectionRate}</div>
+                  <span className="text-[#6B7280]">Total DLP Expenditure:</span>
+                  <div className="font-semibold text-[#111827] tabular-nums">{selectedProject.totalDlpExpenditure}</div>
                 </div>
               </div>
             </div>
 
-            <div className="p-3 rounded-lg border border-border bg-foreground/[0.01] text-xs space-y-1">
-              <span className="font-semibold text-foreground">Statutory Real Estate Act 2010 Mandate:</span>
-              <p className="text-muted-foreground text-[11px] leading-relaxed">
-                Developer shall maintain structural defects, concealed plumbing, and electrical installations at developer's own expense for a statutory period of 24 months from the date of physical key handover.
+            <div className="space-y-3 pt-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B7280]">Owners Association & Facility</h4>
+              <div className="grid grid-cols-2 gap-3 text-xs bg-white p-4 rounded-xl border border-[#E5E7EB]">
+                <div>
+                  <span className="text-[#6B7280]">Association Status:</span>
+                  <div className="font-semibold text-[#111827]">{selectedProject.associationStatus}</div>
+                </div>
+                <div>
+                  <span className="text-[#6B7280]">Maintenance Collection:</span>
+                  <div className="font-semibold text-[#027A48] tabular-nums">{selectedProject.maintenanceCollectionRate}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl border border-[#E5E7EB] bg-[#F7F8FA] text-xs space-y-1.5">
+              <span className="font-bold text-[#111827]">Statutory Real Estate Act 2010 Mandate:</span>
+              <p className="text-[#6B7280] text-[11.5px] leading-relaxed">
+                The developer shall maintain structural defects, concealed plumbing, and electrical installations at developer's own expense for a statutory period of 24 months from the date of physical key handover.
               </p>
             </div>
           </div>
@@ -362,4 +367,3 @@ export default function HandoverPropertyCareReportPage() {
     </div>
   );
 }
-

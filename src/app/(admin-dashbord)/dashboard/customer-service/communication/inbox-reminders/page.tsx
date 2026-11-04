@@ -136,6 +136,8 @@ const INITIAL_LOGS: CommunicationLog[] = [
 
 export default function CommunicationInboxPage() {
   const { primaryColor } = useTheme();
+  const brand = primaryColor || "#6D4AFF";
+
   const [logs, setLogs] = useState<CommunicationLog[]>(INITIAL_LOGS);
   const [activeTab, setActiveTab] = useState("all");
   const [selectedLog, setSelectedLog] = useState<CommunicationLog | null>(null);
@@ -205,33 +207,36 @@ export default function CommunicationInboxPage() {
 
   const columns: Column<CommunicationLog>[] = [
     {
-      header: "Reference & Customer",
-      accessorKey: "commNo",
-      cell: (row) => (
+      key: "commNo",
+      header: "REFERENCE & CUSTOMER",
+      sortable: true,
+      minWidth: "220px",
+      render: (row) => (
         <div>
-          <div className="font-semibold text-foreground">{row.customerName}</div>
-          <div className="text-xs text-muted-foreground">{row.commNo} • {row.unit}</div>
+          <div className="font-semibold text-[#111827] text-xs">{row.customerName}</div>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">{row.commNo} • {row.unit}</div>
         </div>
       ),
     },
     {
-      header: "Channel",
-      accessorKey: "channel",
-      cell: (row) => {
+      key: "channel",
+      header: "CHANNEL",
+      minWidth: "140px",
+      render: (row) => {
         const icons = {
-          SMS: <MessageSquare className="h-3.5 w-3.5 text-blue-500" />,
-          Email: <Mail className="h-3.5 w-3.5 text-purple-500" />,
-          WhatsApp: <MessageSquare className="h-3.5 w-3.5 text-emerald-500" />,
-          Call: <PhoneCall className="h-3.5 w-3.5 text-amber-500" />,
+          SMS: <MessageSquare className="h-3.5 w-3.5 text-[#2563EB]" />,
+          Email: <Mail className="h-3.5 w-3.5 text-[#6D4AFF]" />,
+          WhatsApp: <MessageSquare className="h-3.5 w-3.5 text-[#039855]" />,
+          Call: <PhoneCall className="h-3.5 w-3.5 text-[#DC6803]" />,
         };
         const colors = {
-          SMS: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300",
-          Email: "bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300",
-          WhatsApp: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
-          Call: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+          SMS: "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]",
+          Email: "bg-[#F4F1FF] text-[#6D4AFF] border border-[#DDD6FE]",
+          WhatsApp: "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]",
+          Call: "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]",
         };
         return (
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium ${colors[row.channel]}`}>
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${colors[row.channel]}`}>
             {icons[row.channel]}
             {row.channel}
           </span>
@@ -239,67 +244,77 @@ export default function CommunicationInboxPage() {
       },
     },
     {
-      header: "Purpose / Type",
-      accessorKey: "type",
-      cell: (row) => (
-        <span className="text-xs font-medium text-foreground bg-foreground/5 px-2 py-1 rounded">
+      key: "type",
+      header: "PURPOSE / TYPE",
+      minWidth: "180px",
+      render: (row) => (
+        <span className="text-[11px] font-medium text-[#374151] bg-[#F3F4F6] border border-[#E5E7EB] px-2 py-0.5 rounded-md">
           {row.type}
         </span>
       ),
     },
     {
-      header: "Message Snippet",
-      accessorKey: "subjectOrPreview",
-      cell: (row) => (
-        <p className="text-xs text-muted-foreground line-clamp-2 max-w-sm" title={row.subjectOrPreview}>
+      key: "subjectOrPreview",
+      header: "MESSAGE SNIPPET",
+      minWidth: "260px",
+      render: (row) => (
+        <p className="text-xs text-[#6B7280] line-clamp-2 max-w-sm" title={row.subjectOrPreview}>
           {row.subjectOrPreview}
         </p>
       ),
     },
     {
-      header: "Time & Dispatcher",
-      accessorKey: "sentAt",
-      cell: (row) => (
+      key: "sentAt",
+      header: "TIME & DISPATCHER",
+      minWidth: "180px",
+      render: (row) => (
         <div className="text-xs">
-          <div className="text-foreground">{row.status === "Scheduled" ? `Queued: ${row.scheduledFor}` : row.sentAt}</div>
-          <div className="text-muted-foreground text-[11px]">{row.sentBy}</div>
+          <div className="font-semibold text-[#111827] tabular-nums">{row.status === "Scheduled" ? `Queued: ${row.scheduledFor}` : row.sentAt}</div>
+          <div className="text-[#6B7280] text-[11px] mt-0.5">{row.sentBy}</div>
         </div>
       ),
     },
     {
-      header: "Status",
-      accessorKey: "status",
-      cell: (row) => {
+      key: "status",
+      header: "STATUS",
+      minWidth: "120px",
+      render: (row) => {
         const badges = {
-          Delivered: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
-          Read: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300",
-          Sent: "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300",
-          Scheduled: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
-          Failed: "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300",
+          Delivered: "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]",
+          Read: "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]",
+          Sent: "bg-[#F4F1FF] text-[#6D4AFF] border border-[#DDD6FE]",
+          Scheduled: "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]",
+          Failed: "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]",
         };
         return (
-          <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${badges[row.status]}`}>
+          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${badges[row.status]}`}>
             {row.status}
           </span>
         );
       },
     },
     {
-      header: "Actions",
-      accessorKey: "id",
-      cell: (row) => (
-        <div className="flex items-center gap-1.5">
+      key: "actions",
+      header: "ACTION",
+      align: "right",
+      minWidth: "110px",
+      render: (row) => (
+        <div className="flex items-center justify-end gap-1.5">
           <button
+            type="button"
             onClick={() => setSelectedLog(row)}
-            className="p-1.5 rounded-lg border border-border hover:bg-foreground/5 text-foreground/80 transition"
+            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
             title="View Dispatch Details"
+            aria-label="View Dispatch Details"
           >
-            <Eye className="h-3.5 w-3.5" />
+            <Eye className="h-4 w-4" />
           </button>
           <button
+            type="button"
             onClick={() => handleResend(row)}
-            className="p-1.5 rounded-lg border border-border hover:bg-foreground/5 text-foreground/80 transition"
+            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#F4F1FF] border border-[#DDD6FE] text-[#6D4AFF] hover:bg-[#E9E5FF] hover:border-[#C4B5FD] hover:text-[#4F32C7] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#6D4AFF]"
             title="Resend Dispatch"
+            aria-label="Resend Dispatch"
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
@@ -309,11 +324,12 @@ export default function CommunicationInboxPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Omnichannel Communication Hub & Reminders"
-        description="Unified dispatch log for SMS broadcasts, automated payment reminders, WhatsApp updates, emails, and direct call interactions."
-        badgeText="Real-time Dispatcher"
+        subtitle="Unified dispatch log for SMS broadcasts, automated payment reminders, WhatsApp updates, emails, and direct call interactions."
+        badge="Real-time Dispatcher"
+        breadcrumbs={[{ label: "Communication & Appointments" }, { label: "Unified Inbox" }]}
         primaryAction={{
           label: "Compose Notification",
           icon: Plus,
@@ -332,30 +348,32 @@ export default function CommunicationInboxPage() {
         <CSStatCard
           title="Total Dispatched (MTD)"
           value="4,820"
-          subtitle="SMS, Email & WhatsApp"
+          subtext="SMS, Email & WhatsApp"
           icon={Send}
-          trend={{ value: 14.5, isPositive: true }}
         />
         <CSStatCard
           title="Delivery Success Rate"
           value="98.7%"
-          subtitle="Teletalk & Twilio Gateways"
+          subtext="Teletalk & Twilio Gateways"
           icon={CheckCircle2}
-          color="emerald"
+          iconBg="bg-[#ECFDF3]"
+          iconColor="text-[#039855]"
         />
         <CSStatCard
           title="Auto-Payment Reminders"
           value="318"
-          subtitle="Sent for upcoming milestones"
+          subtext="Sent for upcoming milestones"
           icon={Clock}
-          color="blue"
+          iconBg="bg-[#EFF6FF]"
+          iconColor="text-[#2563EB]"
         />
         <CSStatCard
           title="Delivery Failures / Bounces"
           value="12"
-          subtitle="Invalid phone/email requiring update"
+          subtext="Invalid phone/email requiring update"
           icon={AlertCircle}
-          color="rose"
+          iconBg="bg-[#FEF2F2]"
+          iconColor="text-[#DC2626]"
         />
       </div>
 
@@ -370,7 +388,7 @@ export default function CommunicationInboxPage() {
           { key: "scheduled", label: "Scheduled Queue", count: counts.scheduled },
         ]}
         activeTab={activeTab}
-        onChange={setActiveTab}
+        onTabChange={setActiveTab}
       />
 
       <CSTable
@@ -385,28 +403,47 @@ export default function CommunicationInboxPage() {
         isOpen={isComposeOpen}
         onClose={() => setIsComposeOpen(false)}
         title="Compose Customer Communication"
-        description="Dispatch SMS, Email, or WhatsApp updates with automated customer record tracking."
+        subtitle="Dispatch SMS, Email, or WhatsApp updates with automated customer record tracking."
+        maxWidth="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsComposeOpen(false)}
+              className="h-9 px-4 text-xs font-semibold text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="compose-form"
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
+            >
+              Dispatch Now
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleCompose} className="space-y-4">
+        <form id="compose-form" onSubmit={handleCompose} className="space-y-3.5 text-xs">
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Target Customer / Allottee *</label>
+            <label className="block font-semibold text-[#374151] mb-1">Target Customer / Allottee *</label>
             <input
               type="text"
               required
               placeholder="e.g. Mohammad Rafiqul Islam (Apt A-7)"
               value={newCustomer}
               onChange={(e) => setNewCustomer(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Channel *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Channel *</label>
               <select
                 value={newChannel}
                 onChange={(e) => setNewChannel(e.target.value as any)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="SMS">SMS Gateway (Teletalk)</option>
                 <option value="WhatsApp">WhatsApp Business</option>
@@ -415,11 +452,11 @@ export default function CommunicationInboxPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Notice Category *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Notice Category *</label>
               <select
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as any)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="Payment Reminder">Payment Reminder</option>
                 <option value="Construction Milestone">Construction Milestone</option>
@@ -431,46 +468,29 @@ export default function CommunicationInboxPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Message Subject / Headline</label>
+            <label className="block font-semibold text-[#374151] mb-1">Message Subject / Headline</label>
             <input
               type="text"
               placeholder="e.g. 7th Floor Slab Casting Complete"
               value={newSubject}
               onChange={(e) => setNewSubject(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Message Body *</label>
+            <label className="block font-semibold text-[#374151] mb-1">Message Body *</label>
             <textarea
               required
               rows={4}
               placeholder="Type message text or select a template..."
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full p-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] text-xs transition"
             />
-            <p className="text-[11px] text-muted-foreground mt-1">
+            <p className="text-[11px] text-[#6B7280] mt-1">
               Dynamic tags supported: {"{customer_name}"}, {"{unit_no}"}, {"{amount_due}"}, {"{due_date}"}
             </p>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-border">
-            <button
-              type="button"
-              onClick={() => setIsComposeOpen(false)}
-              className="px-4 py-2 text-xs font-medium rounded-lg border border-border hover:bg-foreground/5 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-medium text-white rounded-lg transition shadow-sm"
-              style={{ backgroundColor: primaryColor }}
-            >
-              Dispatch Now
-            </button>
           </div>
         </form>
       </CSModal>
@@ -483,65 +503,65 @@ export default function CommunicationInboxPage() {
         subtitle={`${selectedLog?.customerName} • ${selectedLog?.channel}`}
       >
         {selectedLog && (
-          <div className="space-y-5">
-            <div className="p-4 rounded-xl border border-border bg-foreground/[0.02] space-y-2">
-              <div className="text-xs text-muted-foreground">Channel & Status</div>
+          <div className="space-y-5 text-xs">
+            <div className="p-4 rounded-[12px] border border-[#E5E7EB] bg-[#F9FAFB] space-y-2">
+              <div className="text-[11px] text-[#6B7280]">Channel & Status</div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-foreground">{selectedLog.channel} Broadcast</span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-800">
+                <span className="text-sm font-semibold text-[#111827]">{selectedLog.channel} Broadcast</span>
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]">
                   {selectedLog.status}
                 </span>
               </div>
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Recipient Details</h4>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Recipient Details</h4>
+              <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-muted-foreground">Customer:</span>
-                  <div className="font-semibold text-foreground">{selectedLog.customerName}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Customer:</span>
+                  <div className="font-semibold text-[#111827]">{selectedLog.customerName}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Allocated Unit:</span>
-                  <div className="font-semibold text-foreground">{selectedLog.unit}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Allocated Unit:</span>
+                  <div className="font-semibold text-[#6D4AFF]">{selectedLog.unit}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Phone:</span>
-                  <div className="font-semibold text-foreground">{selectedLog.phone}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Phone:</span>
+                  <div className="font-semibold text-[#111827] tabular-nums">{selectedLog.phone}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Email:</span>
-                  <div className="font-semibold text-foreground">{selectedLog.email}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Email:</span>
+                  <div className="font-semibold text-[#111827]">{selectedLog.email}</div>
                 </div>
               </div>
             </div>
 
             <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Dispatched Message Body</h4>
-              <div className="p-3 rounded-lg border border-border bg-background text-xs leading-relaxed text-foreground whitespace-pre-wrap font-sans">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Dispatched Message Body</h4>
+              <div className="p-3.5 rounded-[12px] border border-[#E5E7EB] bg-white text-xs leading-relaxed text-[#374151] whitespace-pre-wrap font-sans">
                 {selectedLog.subjectOrPreview}
               </div>
             </div>
 
-            <div className="space-y-2 pt-2 border-t border-border text-xs">
-              <div className="flex justify-between text-muted-foreground">
+            <div className="space-y-2 pt-2 border-t border-[#E5E7EB] text-xs">
+              <div className="flex justify-between text-[#6B7280]">
                 <span>Dispatched By:</span>
-                <span className="font-medium text-foreground">{selectedLog.sentBy}</span>
+                <span className="font-medium text-[#111827]">{selectedLog.sentBy}</span>
               </div>
-              <div className="flex justify-between text-muted-foreground">
+              <div className="flex justify-between text-[#6B7280]">
                 <span>Timestamp:</span>
-                <span className="font-medium text-foreground">{selectedLog.sentAt}</span>
+                <span className="font-medium text-[#111827] tabular-nums">{selectedLog.sentAt}</span>
               </div>
             </div>
 
             <div className="pt-4 flex gap-2">
               <button
+                type="button"
                 onClick={() => {
                   handleResend(selectedLog);
                   setSelectedLog(null);
                 }}
-                className="flex-1 py-2 text-xs font-medium text-white rounded-lg transition"
-                style={{ backgroundColor: primaryColor }}
+                className="flex-1 py-2 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg transition shadow-xs"
               >
                 Resend Message
               </button>
@@ -552,4 +572,3 @@ export default function CommunicationInboxPage() {
     </div>
   );
 }
-

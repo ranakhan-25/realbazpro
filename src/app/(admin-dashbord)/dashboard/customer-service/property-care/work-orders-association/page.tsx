@@ -9,6 +9,7 @@ import {
   Plus,
   CheckCircle2,
   Bell,
+  Eye,
 } from "lucide-react";
 import { CSPageHeader } from "@/components/customer-service/CSPageHeader";
 import { CSStatCard } from "@/components/customer-service/CSStatCard";
@@ -83,34 +84,37 @@ export default function WorkOrdersAssociationPage() {
   const columns: Column<AssociationRecord>[] = [
     {
       key: "associationName",
-      header: "Association Name & Project",
+      header: "ASSOCIATION NAME & PROJECT",
       sortable: true,
+      minWidth: "250px",
       render: (a) => (
         <div>
-          <span className="font-bold text-slate-900 block text-xs">{a.associationName}</span>
-          <div className="text-[11px] text-blue-600 font-medium">{a.project}</div>
+          <span className="font-semibold text-[#111827] block text-xs">{a.associationName}</span>
+          <div className="text-[11px] text-[#6D4AFF] font-medium mt-0.5">{a.project}</div>
         </div>
       ),
     },
     {
       key: "presidentName",
-      header: "President / Society Leadership",
+      header: "PRESIDENT / SOCIETY LEADERSHIP",
+      minWidth: "220px",
       render: (a) => (
         <div>
-          <div className="font-semibold text-slate-800 text-xs">{a.presidentName}</div>
-          <div className="text-[11px] text-slate-400 font-mono">{a.contactPhone}</div>
+          <div className="font-semibold text-[#111827] text-xs">{a.presidentName}</div>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">{a.contactPhone}</div>
         </div>
       ),
     },
     {
       key: "handedOverCount",
-      header: "Occupancy Ratio",
+      header: "OCCUPANCY RATIO",
+      minWidth: "170px",
       render: (a) => (
         <div>
-          <span className="text-xs font-bold text-slate-900">
+          <span className="text-xs font-semibold text-[#111827] tabular-nums">
             {a.handedOverCount} / {a.totalFlats} Flats
           </span>
-          <div className="text-[11px] text-slate-400">
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">
             {Math.round((a.handedOverCount / a.totalFlats) * 100)}% possession completed
           </div>
         </div>
@@ -118,37 +122,58 @@ export default function WorkOrdersAssociationPage() {
     },
     {
       key: "monthlyServiceChargePerFlat",
-      header: "Service Charge (Tk/mo)",
+      header: "SERVICE CHARGE (TK/MO)",
+      minWidth: "200px",
       render: (a) => (
         <div>
-          <span className="font-bold text-emerald-700 text-xs">
+          <span className="font-semibold text-[#039855] text-xs tabular-nums">
             ৳ {a.monthlyServiceChargePerFlat.toLocaleString()} / flat
           </span>
-          <div className="text-[10px] text-slate-400 font-mono">{a.associationBankAcc}</div>
+          <div className="text-[10px] text-[#6B7280] tabular-nums mt-0.5">{a.associationBankAcc}</div>
         </div>
       ),
     },
     {
       key: "handoverStatus",
-      header: "Governance Status",
+      header: "GOVERNANCE STATUS",
+      minWidth: "210px",
       render: (a) => (
         <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
             a.handoverStatus === "Formally Handed Over to OA"
-              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              ? "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
               : a.handoverStatus === "Ad-hoc Committee"
-                ? "bg-purple-50 text-purple-700 border border-purple-200"
-                : "bg-blue-50 text-blue-700 border border-blue-200"
+                ? "bg-[#F4F1FF] text-[#6D4AFF] border border-[#DDD6FE]"
+                : "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]"
           }`}
         >
           {a.handoverStatus}
         </span>
       ),
     },
+    {
+      key: "actions",
+      header: "ACTION",
+      align: "right",
+      minWidth: "90px",
+      render: (a) => (
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => toast.info(`Viewing society details: ${a.associationName}`)}
+            title="View Association Details"
+            aria-label="View Association Details"
+            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+          >
+            <Eye className="h-4 w-4" />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Work Orders & Flat Owners Association (OA)"
         subtitle="Manage Flat Owners Welfare Association formation, common service charge budgets, and common area governance transfer."
@@ -168,16 +193,16 @@ export default function WorkOrdersAssociationPage() {
           value={associations.filter((a) => a.handoverStatus === "Formally Handed Over to OA").length.toString()}
           subtext="Elected committee managing"
           icon={CheckCircle2}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
+          iconBg="bg-[#ECFDF3]"
+          iconColor="text-[#039855]"
         />
         <CSStatCard
           title="Avg Monthly Service Charge"
           value="৳ 6,166"
           subtext="Per apartment unit"
           icon={DollarSign}
-          iconBg="bg-blue-50"
-          iconColor="text-blue-600"
+          iconBg="bg-[#EFF6FF]"
+          iconColor="text-[#2563EB]"
         />
       </div>
 
@@ -209,4 +234,3 @@ export default function WorkOrdersAssociationPage() {
     </div>
   );
 }
-

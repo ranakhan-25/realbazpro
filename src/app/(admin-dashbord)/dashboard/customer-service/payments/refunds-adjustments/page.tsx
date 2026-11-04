@@ -51,7 +51,7 @@ const INITIAL_REFUNDS: RefundRequestItem[] = [
 
 export default function RefundsAdjustmentsPage() {
   const { primaryColor } = useTheme();
-  const brand = primaryColor || "#0000F2";
+  const brand = primaryColor || "#6D4AFF";
 
   const [activeTab, setActiveTab] = useState("all");
   const [refunds, setRefunds] = useState<RefundRequestItem[]>(INITIAL_REFUNDS);
@@ -114,34 +114,37 @@ export default function RefundsAdjustmentsPage() {
   const columns: Column<RefundRequestItem>[] = [
     {
       key: "id",
-      header: "Refund ID & Date",
+      header: "REFUND ID & DATE",
       sortable: true,
+      minWidth: "170px",
       render: (r) => (
         <div>
-          <span className="font-mono font-bold text-slate-900">{r.id}</span>
-          <div className="text-[11px] text-slate-400">{r.requestedDate}</div>
+          <span className="font-semibold text-[#111827] tabular-nums text-xs">{r.id}</span>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">{r.requestedDate}</div>
         </div>
       ),
     },
     {
       key: "customerName",
-      header: "Customer & Unit",
+      header: "CUSTOMER & UNIT",
+      minWidth: "190px",
       render: (r) => (
         <div>
-          <div className="font-bold text-slate-900">{r.customerName}</div>
-          <div className="text-[11px] text-blue-600 font-medium">{r.unit}</div>
+          <div className="font-semibold text-[#111827] text-xs">{r.customerName}</div>
+          <div className="text-[11px] text-[#6D4AFF] font-medium mt-0.5">{r.unit}</div>
         </div>
       ),
     },
     {
       key: "totalPaid",
-      header: "Paid & Deductions",
+      header: "PAID & DEDUCTIONS",
+      minWidth: "190px",
       render: (r) => (
         <div className="space-y-0.5">
-          <div className="text-xs font-semibold text-slate-700">
+          <div className="text-xs font-semibold text-[#111827] tabular-nums">
             Paid: ৳ {r.totalPaid.toLocaleString()}
           </div>
-          <div className="text-[11px] text-rose-600">
+          <div className="text-[11px] text-[#DC2626] tabular-nums">
             Deduction ({r.deductionPercentage}%): -৳ {r.deductionAmount.toLocaleString()}
           </div>
         </div>
@@ -149,40 +152,54 @@ export default function RefundsAdjustmentsPage() {
     },
     {
       key: "netRefundAmount",
-      header: "Net Approved Refund",
+      header: "NET APPROVED REFUND",
       sortable: true,
+      minWidth: "180px",
       render: (r) => (
-        <span className="font-bold text-emerald-700 text-sm">
+        <span className="font-semibold text-[#039855] text-sm tabular-nums">
           ৳ {r.netRefundAmount.toLocaleString()}
         </span>
       ),
     },
     {
       key: "approvalStage",
-      header: "Approval Stage",
+      header: "APPROVAL STAGE",
+      minWidth: "190px",
       render: (r) => (
-        <div className="space-y-1">
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-              r.approvalStage === "Disbursed"
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                : r.approvalStage === "Accounts Cheque Preparation"
-                  ? "bg-purple-50 text-purple-700 border border-purple-200"
-                  : "bg-amber-50 text-amber-800 border border-amber-200"
-            }`}
-          >
-            {r.approvalStage}
-          </span>
-          {r.approvalStage !== "Disbursed" && (
-            <div>
-              <button
-                type="button"
-                onClick={() => handleAdvance(r)}
-                className="text-[10px] font-bold text-blue-600 hover:underline"
-              >
-                Approve Stage →
-              </button>
-            </div>
+        <span
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+            r.approvalStage === "Disbursed"
+              ? "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
+              : r.approvalStage === "Accounts Cheque Preparation"
+                ? "bg-[#F4F1FF] text-[#6D4AFF] border border-[#DDD6FE]"
+                : "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
+          }`}
+        >
+          {r.approvalStage}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "ACTION",
+      align: "right",
+      minWidth: "120px",
+      render: (r) => (
+        <div className="flex items-center justify-end">
+          {r.approvalStage !== "Disbursed" ? (
+            <button
+              type="button"
+              onClick={() => handleAdvance(r)}
+              title="Advance to next approval stage"
+              aria-label="Advance Approval Stage"
+              className="h-8 px-2.5 rounded-lg inline-flex items-center gap-1.5 bg-[#ECFDF3] border border-[#A6F4C5] text-[#039855] hover:bg-[#D1FADF] hover:text-[#027A48] text-xs font-semibold transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#039855]"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" /> Advance
+            </button>
+          ) : (
+            <span className="text-xs text-[#039855] font-semibold inline-flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Disbursed
+            </span>
           )}
         </div>
       ),
@@ -190,7 +207,7 @@ export default function RefundsAdjustmentsPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Refunds & Contract Adjustments"
         subtitle="Manage booking cancellation refunds, contractual deductions, and cross-departmental cheque clearances."
@@ -215,16 +232,16 @@ export default function RefundsAdjustmentsPage() {
           value="৳ 50.0 Lac"
           subtext="Approved liability in pipeline"
           icon={Building}
-          iconBg="bg-amber-50"
-          iconColor="text-amber-600"
+          iconBg="bg-[#FFFAEB]"
+          iconColor="text-[#DC6803]"
         />
         <CSStatCard
           title="Contractual Deductions Retained"
           value="৳ 5.00 Lac"
           subtext="Per standard Sale Agreement terms"
           icon={Receipt}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
+          iconBg="bg-[#ECFDF3]"
+          iconColor="text-[#039855]"
         />
       </div>
 
@@ -272,15 +289,14 @@ export default function RefundsAdjustmentsPage() {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              className="h-9 px-4 text-xs font-semibold text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleCreate}
-              className="px-4 py-2 text-xs font-semibold text-white rounded-lg shadow-sm transition hover:opacity-95"
-              style={{ backgroundColor: brand }}
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
             >
               Submit Application
             </button>
@@ -288,49 +304,49 @@ export default function RefundsAdjustmentsPage() {
         }
       >
         <form onSubmit={handleCreate} className="space-y-3.5 text-xs">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Customer Name *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Customer Name *</label>
               <input
                 type="text"
                 required
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="Full name"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Unit Allotment *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Unit Allotment *</label>
               <input
                 type="text"
                 required
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 placeholder="e.g. D-2, Uttara Green"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Total Paid (BDT) *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Total Paid (BDT) *</label>
               <input
                 type="number"
                 required
                 value={totalPaid}
                 onChange={(e) => setTotalPaid(e.target.value)}
                 placeholder="Amount"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500 font-mono font-bold"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] tabular-nums font-semibold outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Deduction %</label>
+              <label className="block font-semibold text-[#374151] mb-1">Deduction %</label>
               <select
                 value={deductionPct}
                 onChange={(e) => setDeductionPct(e.target.value)}
-                className="w-full h-9 px-2 rounded-lg border border-slate-200 outline-none focus:border-blue-500 bg-white"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="5">5% (Grace Period)</option>
                 <option value="10">10% (Standard Agreement)</option>
@@ -341,13 +357,13 @@ export default function RefundsAdjustmentsPage() {
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Reason for Cancellation</label>
+            <label className="block font-semibold text-[#374151] mb-1">Reason for Cancellation</label>
             <textarea
               rows={3}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="State customer justification..."
-              className="w-full p-2.5 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+              className="w-full p-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] text-xs transition"
             />
           </div>
         </form>
@@ -355,4 +371,3 @@ export default function RefundsAdjustmentsPage() {
     </div>
   );
 }
-

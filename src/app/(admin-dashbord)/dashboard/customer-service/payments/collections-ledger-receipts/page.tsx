@@ -68,7 +68,7 @@ const INITIAL_RECEIPTS: CollectionReceipt[] = [
 
 export default function CollectionsLedgerReceiptsPage() {
   const { primaryColor } = useTheme();
-  const brand = primaryColor || "#0000F2";
+  const brand = primaryColor || "#6D4AFF";
 
   const [activeTab, setActiveTab] = useState("all");
   const [receipts, setReceipts] = useState<CollectionReceipt[]>(INITIAL_RECEIPTS);
@@ -119,42 +119,46 @@ export default function CollectionsLedgerReceiptsPage() {
   const columns: Column<CollectionReceipt>[] = [
     {
       key: "moneyReceiptNo",
-      header: "Receipt No & Date",
+      header: "RECEIPT NO & DATE",
       sortable: true,
+      minWidth: "180px",
       render: (r) => (
         <div>
-          <span className="font-mono font-bold text-slate-900">{r.moneyReceiptNo}</span>
-          <div className="text-[11px] text-slate-400">{r.receiptDate}</div>
+          <span className="font-semibold text-[#111827] tabular-nums text-xs">{r.moneyReceiptNo}</span>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">{r.receiptDate}</div>
         </div>
       ),
     },
     {
       key: "customerName",
-      header: "Customer & Unit",
+      header: "CUSTOMER & UNIT",
+      minWidth: "190px",
       render: (r) => (
         <div>
-          <div className="font-bold text-slate-800">{r.customerName}</div>
-          <div className="text-[11px] text-blue-600 font-medium">{r.unit}</div>
+          <div className="font-semibold text-[#111827] text-xs">{r.customerName}</div>
+          <div className="text-[11px] text-[#6D4AFF] font-medium mt-0.5">{r.unit}</div>
         </div>
       ),
     },
     {
       key: "amount",
-      header: "Amount (BDT)",
+      header: "AMOUNT (BDT)",
       sortable: true,
+      minWidth: "160px",
       render: (r) => (
-        <span className="font-bold text-emerald-700 text-sm">
+        <span className="font-semibold text-[#039855] text-sm tabular-nums">
           ৳ {r.amount.toLocaleString()}
         </span>
       ),
     },
     {
       key: "paymentMethod",
-      header: "Method & Instrument",
+      header: "METHOD & INSTRUMENT",
+      minWidth: "210px",
       render: (r) => (
         <div>
-          <div className="font-semibold text-slate-800">{r.paymentMethod}</div>
-          <div className="text-[11px] text-slate-400 font-mono">
+          <div className="font-semibold text-[#111827] text-xs">{r.paymentMethod}</div>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">
             {r.bankName ? `${r.bankName} • ` : ""}{r.chequeOrTxnId}
           </div>
         </div>
@@ -162,15 +166,16 @@ export default function CollectionsLedgerReceiptsPage() {
     },
     {
       key: "checkerStatus",
-      header: "Maker-Checker Approval",
+      header: "MAKER-CHECKER APPROVAL",
+      minWidth: "220px",
       render: (r) => (
-        <div className="space-y-0.5">
-          <div className="text-[11px] text-slate-500 font-medium">{r.makerStatus}</div>
+        <div className="space-y-1">
+          <div className="text-[11px] text-[#6B7280] font-medium">{r.makerStatus}</div>
           <span
-            className={`inline-flex items-center gap-1 text-[11px] font-bold ${
+            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
               r.checkerStatus === "Posted to Accounts Ledger"
-                ? "text-emerald-700"
-                : "text-amber-700"
+                ? "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
+                : "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
             }`}
           >
             {r.checkerStatus === "Posted to Accounts Ledger" ? (
@@ -185,21 +190,27 @@ export default function CollectionsLedgerReceiptsPage() {
     },
     {
       key: "actions",
-      header: "Receipt",
+      header: "ACTION",
+      align: "right",
+      minWidth: "90px",
       render: (r) => (
-        <button
-          type="button"
-          onClick={() => setSelectedReceipt(r)}
-          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-        >
-          <Printer className="h-3.5 w-3.5 text-blue-600" /> Print Slip
-        </button>
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => setSelectedReceipt(r)}
+            title="Print Money Receipt Slip"
+            aria-label="Print Money Receipt Slip"
+            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+          >
+            <Printer className="h-4 w-4" />
+          </button>
+        </div>
       ),
     },
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Collections, Receipts & Customer Ledger"
         subtitle="Post-sales collection register, payment verification and money receipt issuance synchronized with Accounts."
@@ -224,16 +235,16 @@ export default function CollectionsLedgerReceiptsPage() {
           value="৳ 8.00 Lac"
           subtext="Cheques under bank clearing"
           icon={Clock}
-          iconBg="bg-amber-50"
-          iconColor="text-amber-600"
+          iconBg="bg-[#FFFAEB]"
+          iconColor="text-[#DC6803]"
         />
         <CSStatCard
           title="Posted to Ledger"
           value="98.2%"
           subtext="Reconciliation completion rate"
           icon={CheckCircle2}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
+          iconBg="bg-[#ECFDF3]"
+          iconColor="text-[#039855]"
         />
       </div>
 
@@ -276,15 +287,14 @@ export default function CollectionsLedgerReceiptsPage() {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              className="h-9 px-4 text-xs font-semibold text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleCreate}
-              className="px-4 py-2 text-xs font-semibold text-white rounded-lg shadow-sm transition hover:opacity-95"
-              style={{ backgroundColor: brand }}
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
             >
               Generate Receipt
             </button>
@@ -292,49 +302,49 @@ export default function CollectionsLedgerReceiptsPage() {
         }
       >
         <form onSubmit={handleCreate} className="space-y-3.5 text-xs">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Customer Name *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Customer Name *</label>
               <input
                 type="text"
                 required
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="Purchaser name"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Unit Allotment *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Unit Allotment *</label>
               <input
                 type="text"
                 required
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 placeholder="e.g. A-7, Hena Heights"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Amount (BDT) *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Amount (BDT) *</label>
               <input
                 type="number"
                 required
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="BDT"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500 font-mono font-bold"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] tabular-nums font-semibold outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
+              <label className="block font-semibold text-[#374151] mb-1">Payment Method</label>
               <select
                 value={method}
                 onChange={(e) => setMethod(e.target.value as any)}
-                className="w-full h-9 px-2 rounded-lg border border-slate-200 outline-none focus:border-blue-500 bg-white"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="Bank Deposit">Bank Deposit / EFT</option>
                 <option value="Cheque">Bank Cheque</option>
@@ -345,25 +355,25 @@ export default function CollectionsLedgerReceiptsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Bank Name</label>
+              <label className="block font-semibold text-[#374151] mb-1">Bank Name</label>
               <input
                 type="text"
                 value={bankName}
                 onChange={(e) => setBankName(e.target.value)}
                 placeholder="e.g. Standard Chartered"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Cheque / Txn ID</label>
+              <label className="block font-semibold text-[#374151] mb-1">Cheque / Txn ID</label>
               <input
                 type="text"
                 value={refNo}
                 onChange={(e) => setRefNo(e.target.value)}
                 placeholder="Instrument Ref"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500 font-mono"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] tabular-nums outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
           </div>
@@ -382,15 +392,14 @@ export default function CollectionsLedgerReceiptsPage() {
             <button
               type="button"
               onClick={() => setSelectedReceipt(null)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              className="h-9 px-4 text-xs font-semibold text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition"
             >
               Close
             </button>
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white rounded-lg shadow-sm transition hover:opacity-95"
-              style={{ backgroundColor: brand }}
+              className="h-9 px-4 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
             >
               <Printer className="h-3.5 w-3.5" /> Print Receipt
             </button>
@@ -398,48 +407,48 @@ export default function CollectionsLedgerReceiptsPage() {
         }
       >
         {selectedReceipt && (
-          <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 text-xs font-sans">
-            <div className="border-b border-slate-200 pb-3 flex justify-between items-center">
+          <div className="rounded-[12px] border border-[#E5E7EB] bg-white p-5 space-y-4 text-xs font-sans text-[#374151]">
+            <div className="border-b border-[#E5E7EB] pb-3 flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-slate-900 text-sm">REALBIZ PRO REAL ESTATE LTD.</h3>
-                <p className="text-[11px] text-slate-400">Official Money Receipt</p>
+                <h3 className="font-bold text-[#111827] text-sm">REALBIZ PRO REAL ESTATE LTD.</h3>
+                <p className="text-[11px] text-[#6B7280]">Official Money Receipt</p>
               </div>
-              <div className="text-right font-mono font-bold text-blue-700">
+              <div className="text-right tabular-nums font-semibold text-[#6D4AFF]">
                 {selectedReceipt.moneyReceiptNo}
               </div>
             </div>
 
             <div className="space-y-2 py-1">
-              <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Received From:</span>
-                <span className="font-bold text-slate-900">{selectedReceipt.customerName}</span>
+              <div className="flex justify-between py-1.5 border-b border-[#F3F4F6]">
+                <span className="text-[#6B7280]">Received From:</span>
+                <span className="font-semibold text-[#111827]">{selectedReceipt.customerName}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Against Unit Allotment:</span>
-                <span className="font-semibold text-blue-700">{selectedReceipt.unit}</span>
+              <div className="flex justify-between py-1.5 border-b border-[#F3F4F6]">
+                <span className="text-[#6B7280]">Against Unit Allotment:</span>
+                <span className="font-semibold text-[#6D4AFF]">{selectedReceipt.unit}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Payment Instrument:</span>
-                <span className="font-medium text-slate-800">
+              <div className="flex justify-between py-1.5 border-b border-[#F3F4F6]">
+                <span className="text-[#6B7280]">Payment Instrument:</span>
+                <span className="font-medium text-[#111827] tabular-nums">
                   {selectedReceipt.paymentMethod} ({selectedReceipt.bankName || "Direct"}) • {selectedReceipt.chequeOrTxnId}
                 </span>
               </div>
-              <div className="flex justify-between py-2 border-b border-slate-200 bg-emerald-50/60 px-3 rounded-lg">
-                <span className="font-bold text-emerald-950">Amount Received:</span>
-                <span className="font-bold text-emerald-700 text-sm">
+              <div className="flex justify-between py-2.5 border-b border-[#A6F4C5] bg-[#ECFDF3]/60 px-3.5 rounded-[10px]">
+                <span className="font-semibold text-[#027A48]">Amount Received:</span>
+                <span className="font-bold text-[#039855] text-sm tabular-nums">
                   BDT {selectedReceipt.amount.toLocaleString()} /-
                 </span>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-200 flex justify-between items-end">
+            <div className="pt-4 border-t border-[#E5E7EB] flex justify-between items-end">
               <div>
-                <p className="text-[10px] text-slate-400">Post-Sales Officer</p>
-                <p className="font-semibold text-slate-700">Prepared & Verified</p>
+                <p className="text-[10px] text-[#9CA3AF]">Post-Sales Officer</p>
+                <p className="font-semibold text-[#4B5563]">Prepared & Verified</p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-slate-400">Accounts Department</p>
-                <p className="font-semibold text-emerald-700">{selectedReceipt.checkerStatus}</p>
+                <p className="text-[10px] text-[#9CA3AF]">Accounts Department</p>
+                <p className="font-semibold text-[#039855]">{selectedReceipt.checkerStatus}</p>
               </div>
             </div>
           </div>
@@ -448,4 +457,3 @@ export default function CollectionsLedgerReceiptsPage() {
     </div>
   );
 }
-

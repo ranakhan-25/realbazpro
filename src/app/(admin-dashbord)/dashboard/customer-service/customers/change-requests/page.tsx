@@ -65,7 +65,7 @@ const INITIAL_REQUESTS: ChangeRequest[] = [
 
 export default function ChangeRequestsPage() {
   const { primaryColor } = useTheme();
-  const brand = primaryColor || "#0000F2";
+  const brand = primaryColor || "#6D4AFF";
 
   const [activeTab, setActiveTab] = useState("all");
   const [requests, setRequests] = useState<ChangeRequest[]>(INITIAL_REQUESTS);
@@ -127,86 +127,104 @@ export default function ChangeRequestsPage() {
   const columns: Column<ChangeRequest>[] = [
     {
       key: "id",
-      header: "Request ID & Date",
+      header: "REQUEST ID & DATE",
       sortable: true,
+      minWidth: "180px",
       render: (r) => (
         <div>
-          <span className="font-mono font-bold text-slate-900">{r.id}</span>
-          <div className="text-[11px] text-slate-400">{r.appliedDate}</div>
+          <span className="font-semibold text-[#111827] tabular-nums text-xs">{r.id}</span>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">{r.appliedDate}</div>
         </div>
       ),
     },
     {
       key: "requestType",
-      header: "Type & Unit",
+      header: "TYPE & UNIT",
+      minWidth: "190px",
       render: (r) => (
         <div>
-          <span className="font-semibold text-slate-800">{r.requestType}</span>
-          <div className="text-[11px] text-blue-600 font-medium">{r.unit}</div>
+          <span className="font-semibold text-[#111827] text-xs">{r.requestType}</span>
+          <div className="text-[11px] text-[#6D4AFF] font-medium mt-0.5">{r.unit}</div>
         </div>
       ),
     },
     {
       key: "customerName",
-      header: "Existing Customer",
+      header: "EXISTING CUSTOMER",
+      minWidth: "200px",
       render: (r) => (
         <div>
-          <div className="font-bold text-slate-900">{r.customerName}</div>
-          <div className="text-[11px] text-slate-400">{r.reason}</div>
+          <div className="font-semibold text-[#111827] text-xs">{r.customerName}</div>
+          <div className="text-[11px] text-[#6B7280] line-clamp-1 mt-0.5">{r.reason}</div>
         </div>
       ),
     },
     {
       key: "newBuyerName",
-      header: "Transferee / New Buyer",
+      header: "TRANSFEREE / NEW BUYER",
+      minWidth: "200px",
       render: (r) => (
         <div>
           {r.newBuyerName ? (
             <>
-              <div className="font-semibold text-slate-800">{r.newBuyerName}</div>
+              <div className="font-semibold text-[#111827] text-xs">{r.newBuyerName}</div>
               {r.newBuyerNid && (
-                <div className="text-[11px] font-mono text-slate-400">NID: {r.newBuyerNid}</div>
+                <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">NID: {r.newBuyerNid}</div>
               )}
             </>
           ) : (
-            <span className="text-slate-400 italic">N/A</span>
+            <span className="text-[#9CA3AF] italic text-xs">N/A</span>
           )}
         </div>
       ),
     },
     {
       key: "transferFee",
-      header: "Transfer Fee",
+      header: "TRANSFER FEE",
+      minWidth: "140px",
       render: (r) => (
-        <span className="font-bold text-slate-900">
+        <span className="font-semibold text-[#111827] tabular-nums text-xs">
           ৳ {r.transferFee.toLocaleString()}
         </span>
       ),
     },
     {
       key: "status",
-      header: "Approval Workflow",
+      header: "WORKFLOW STATUS",
+      minWidth: "160px",
       render: (r) => (
-        <div className="space-y-1">
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-              r.status === "Completed"
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                : "bg-blue-50 text-blue-700 border border-blue-200"
-            }`}
-          >
-            {r.status}
-          </span>
-          {r.status !== "Completed" && (
-            <div>
-              <button
-                type="button"
-                onClick={() => handleAdvanceStatus(r)}
-                className="text-[10px] font-bold text-blue-600 hover:underline"
-              >
-                Approve Stage →
-              </button>
-            </div>
+        <span
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+            r.status === "Completed"
+              ? "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
+              : "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]"
+          }`}
+        >
+          {r.status}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "ACTION",
+      align: "right",
+      minWidth: "120px",
+      render: (r) => (
+        <div className="flex items-center justify-end">
+          {r.status !== "Completed" ? (
+            <button
+              type="button"
+              onClick={() => handleAdvanceStatus(r)}
+              title={`Advance to next approval stage`}
+              aria-label="Advance Approval Stage"
+              className="h-8 px-2.5 rounded-lg inline-flex items-center gap-1.5 bg-[#ECFDF3] border border-[#A6F4C5] text-[#039855] hover:bg-[#D1FADF] hover:text-[#027A48] text-xs font-semibold transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#039855]"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" /> Advance
+            </button>
+          ) : (
+            <span className="text-xs text-[#039855] font-semibold inline-flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Endorsed
+            </span>
           )}
         </div>
       ),
@@ -214,7 +232,7 @@ export default function ChangeRequestsPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Transfer, Resale & Change Requests"
         subtitle="Manage flat ownership transfers, secondary resales, booking cancellations and customer profile amendments."
@@ -239,16 +257,16 @@ export default function ChangeRequestsPage() {
           value="৳ 4.50 Lac"
           subtext="Processing fee revenue"
           icon={Building}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
+          iconBg="bg-[#ECFDF3]"
+          iconColor="text-[#039855]"
         />
         <CSStatCard
           title="Completed Transfers"
           value={requests.filter((r) => r.status === "Completed").length.toString()}
           subtext="Deed endorsement done"
           icon={CheckCircle2}
-          iconBg="bg-blue-50"
-          iconColor="text-blue-600"
+          iconBg="bg-[#EFF6FF]"
+          iconColor="text-[#2563EB]"
         />
       </div>
 
@@ -291,15 +309,14 @@ export default function ChangeRequestsPage() {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              className="h-9 px-4 text-xs font-semibold text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleCreate}
-              className="px-4 py-2 text-xs font-semibold text-white rounded-lg shadow-sm transition hover:opacity-95"
-              style={{ backgroundColor: brand }}
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
             >
               Submit Application
             </button>
@@ -308,13 +325,13 @@ export default function ChangeRequestsPage() {
       >
         <form onSubmit={handleCreate} className="space-y-3.5 text-xs">
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">
+            <label className="block font-semibold text-[#374151] mb-1">
               Request Type *
             </label>
             <select
               value={requestType}
               onChange={(e) => setRequestType(e.target.value as any)}
-              className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500 bg-white"
+              className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
             >
               <option value="Ownership Transfer">Ownership Transfer (Family / Blood-line)</option>
               <option value="Resale">Secondary Market Resale</option>
@@ -323,9 +340,9 @@ export default function ChangeRequestsPage() {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-semibold text-[#374151] mb-1">
                 Current Customer Name *
               </label>
               <input
@@ -334,11 +351,11 @@ export default function ChangeRequestsPage() {
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="e.g. Mohammad Rafiqul Islam"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-semibold text-[#374151] mb-1">
                 Unit Number *
               </label>
               <input
@@ -347,15 +364,15 @@ export default function ChangeRequestsPage() {
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 placeholder="e.g. A-7, Hena Heights"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
           </div>
 
           {requestType !== "Cancellation & Refund" && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-[#374151] mb-1">
                   New Transferee / Buyer Name
                 </label>
                 <input
@@ -363,18 +380,18 @@ export default function ChangeRequestsPage() {
                   value={newBuyer}
                   onChange={(e) => setNewBuyer(e.target.value)}
                   placeholder="New purchaser name"
-                  className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                  className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-[#374151] mb-1">
                   Transfer Fee (BDT)
                 </label>
                 <input
                   type="number"
                   value={transferFee}
                   onChange={(e) => setTransferFee(e.target.value)}
-                  className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500 font-mono"
+                  className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] tabular-nums outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
                 />
               </div>
             </div>
@@ -384,4 +401,3 @@ export default function ChangeRequestsPage() {
     </div>
   );
 }
-

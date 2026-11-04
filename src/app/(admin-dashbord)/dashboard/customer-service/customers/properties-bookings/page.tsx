@@ -34,32 +34,35 @@ export default function PropertiesBookingsPage() {
   const columns: Column<PropertyBooking>[] = [
     {
       key: "id",
-      header: "Booking ID & Date",
+      header: "BOOKING ID & DATE",
       sortable: true,
+      minWidth: "180px",
       render: (b) => (
         <div>
-          <span className="font-mono font-bold text-slate-900">{b.id}</span>
-          <div className="text-[11px] text-slate-400">{b.bookingDate}</div>
+          <span className="font-semibold text-[#111827] tabular-nums text-xs">{b.id}</span>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">{b.bookingDate}</div>
         </div>
       ),
     },
     {
       key: "customerName",
-      header: "Customer",
+      header: "CUSTOMER",
+      minWidth: "180px",
       render: (b) => (
         <div>
-          <div className="font-bold text-slate-800">{b.customerName}</div>
-          <div className="text-[11px] text-slate-400">{b.customerPhone}</div>
+          <div className="font-semibold text-[#111827] text-xs">{b.customerName}</div>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">{b.customerPhone}</div>
         </div>
       ),
     },
     {
       key: "project",
-      header: "Project & Unit",
+      header: "PROJECT & UNIT",
+      minWidth: "220px",
       render: (b) => (
         <div>
-          <div className="font-semibold text-slate-900">{b.project}</div>
-          <div className="text-[11px] text-blue-600 font-medium">
+          <div className="font-semibold text-[#111827] text-xs">{b.project}</div>
+          <div className="text-[11px] text-[#6D4AFF] font-medium mt-0.5">
             Unit: {b.unitNumber} ({b.sizeSqFt} sft)
           </div>
         </div>
@@ -67,38 +70,40 @@ export default function PropertiesBookingsPage() {
     },
     {
       key: "totalPrice",
-      header: "Valuation & Ledger",
+      header: "VALUATION & LEDGER",
+      minWidth: "190px",
       render: (b) => (
         <div className="space-y-0.5">
-          <div className="text-xs font-bold text-slate-900">
+          <div className="text-xs font-semibold text-[#111827] tabular-nums">
             ৳ {(b.totalPrice / 100000).toFixed(1)} Lac
           </div>
-          <div className="text-[11px] text-emerald-600 font-semibold">
+          <div className="text-[11px] text-[#039855] font-medium tabular-nums">
             Paid: ৳ {(b.paidAmount / 100000).toFixed(1)} Lac
           </div>
           {b.dueAmount > 0 ? (
-            <div className="text-[10px] text-amber-700 font-medium">
+            <div className="text-[10px] text-[#DC6803] font-medium tabular-nums">
               Due: ৳ {(b.dueAmount / 100000).toFixed(1)} Lac
             </div>
           ) : (
-            <div className="text-[10px] text-emerald-700 font-bold">Paid in Full</div>
+            <div className="text-[10px] text-[#039855] font-semibold">Paid in Full</div>
           )}
         </div>
       ),
     },
     {
       key: "handoverStatus",
-      header: "Handover & DLP",
+      header: "HANDOVER & DLP",
+      minWidth: "160px",
       render: (b) => (
         <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
             b.handoverStatus === "DLP Active"
-              ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+              ? "bg-[#F4F1FF] text-[#6D4AFF] border border-[#DDD6FE]"
               : b.handoverStatus === "Ready for Snagging"
-                ? "bg-amber-50 text-amber-800 border border-amber-200"
+                ? "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
                 : b.handoverStatus === "Handed Over"
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  : "bg-slate-100 text-slate-700"
+                  ? "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
+                  : "bg-[#F3F4F6] text-[#374151] border border-[#E5E7EB]"
           }`}
         >
           {b.handoverStatus}
@@ -107,20 +112,26 @@ export default function PropertiesBookingsPage() {
     },
     {
       key: "actions",
-      header: "Quick Action",
+      header: "ACTION",
+      align: "right",
+      minWidth: "150px",
       render: (b) => (
-        <Link
-          href="/dashboard/customer-service/payments/schedules-demand-letters"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline"
-        >
-          Demand Letter <ArrowRight className="h-3 w-3" />
-        </Link>
+        <div className="flex items-center justify-end">
+          <Link
+            href="/dashboard/customer-service/payments/schedules-demand-letters"
+            title="View Demand Letter & Payment Schedule"
+            aria-label="View Demand Letter"
+            className="h-8 px-3 rounded-lg inline-flex items-center gap-1.5 bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] text-xs font-semibold transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+          >
+            Demand Letter <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       ),
     },
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Bookings & Property Portfolio"
         subtitle="Customer apartment allotments, commercial spaces, plots, parking bays, and milestone payment status."
@@ -140,16 +151,16 @@ export default function PropertiesBookingsPage() {
           value="18 Flats"
           subtext="Pending pre-possession inspection"
           icon={KeyRound}
-          iconBg="bg-amber-50"
-          iconColor="text-amber-600"
+          iconBg="bg-[#FFFAEB]"
+          iconColor="text-[#DC6803]"
         />
         <CSStatCard
           title="Active 2-Year DLP Coverage"
           value="142 Flats"
           subtext="Statutory warranty active"
           icon={Layers}
-          iconBg="bg-indigo-50"
-          iconColor="text-indigo-600"
+          iconBg="bg-[#F4F1FF]"
+          iconColor="text-[#6D4AFF]"
         />
       </div>
 
@@ -187,4 +198,3 @@ export default function PropertiesBookingsPage() {
     </div>
   );
 }
-

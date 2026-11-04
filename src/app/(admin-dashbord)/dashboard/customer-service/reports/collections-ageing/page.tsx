@@ -98,159 +98,147 @@ const INITIAL_AGEING_DATA: AgeingReportRow[] = [
     noticeStage: "On Track",
     recoveryOfficer: "Nusrat Jahan",
   },
-  {
-    id: "AGE-05",
-    customerName: "Dr. Nazmul Huda",
-    phone: "+880 1819-876543",
-    unit: "B-4, Eastern Lakeview",
-    project: "Eastern Lakeview",
-    totalAgreementValue: "৳ 1,60,00,000",
-    totalCollected: "৳ 1,30,00,000",
-    overdueAmount: "৳ 7,20,000",
-    overdueDays: 42,
-    ageingBracket: "31-60 Days",
-    delaySurcharge: "৳ 14,400",
-    noticeStage: "1st Reminder",
-    recoveryOfficer: "Tariqul Alam",
-  },
-  {
-    id: "AGE-06",
-    customerName: "Engr. Tanvir Ahmed",
-    phone: "+880 1722-998877",
-    unit: "D-2, Uttara Green Park",
-    project: "Uttara Green Park",
-    totalAgreementValue: "৳ 1,35,00,000",
-    totalCollected: "৳ 1,15,00,000",
-    overdueAmount: "৳ 5,00,000",
-    overdueDays: 22,
-    ageingBracket: "Current (0-30 d)",
-    delaySurcharge: "৳ 0",
-    noticeStage: "1st Reminder",
-    recoveryOfficer: "Nusrat Jahan",
-  },
 ];
 
 export default function CollectionsAgeingReportPage() {
   const { primaryColor } = useTheme();
-  const [data, setData] = useState<AgeingReportRow[]>(INITIAL_AGEING_DATA);
+  const brand = primaryColor || "#6D4AFF";
+
+  const [rows, setRows] = useState<AgeingReportRow[]>(INITIAL_AGEING_DATA);
   const [activeTab, setActiveTab] = useState("all");
   const [selectedRow, setSelectedRow] = useState<AgeingReportRow | null>(null);
 
-  const filteredData = data.filter((row) => {
+  const filteredData = rows.filter((row) => {
     if (activeTab === "critical") return row.ageingBracket === "90+ Days Critical";
     if (activeTab === "61to90") return row.ageingBracket === "61-90 Days";
     if (activeTab === "31to60") return row.ageingBracket === "31-60 Days";
     if (activeTab === "current") return row.ageingBracket === "Current (0-30 d)";
-    if (activeTab === "notices") return row.noticeStage === "Final Statutory Notice" || row.noticeStage === "2nd Notice";
+    if (activeTab === "notices") return row.noticeStage !== "On Track";
     return true;
   });
 
   const counts = {
-    all: data.length,
-    critical: data.filter((d) => d.ageingBracket === "90+ Days Critical").length,
-    "61to90": data.filter((d) => d.ageingBracket === "61-90 Days").length,
-    "31to60": data.filter((d) => d.ageingBracket === "31-60 Days").length,
-    current: data.filter((d) => d.ageingBracket === "Current (0-30 d)").length,
-    notices: data.filter((d) => d.noticeStage === "Final Statutory Notice" || d.noticeStage === "2nd Notice").length,
+    all: rows.length,
+    critical: rows.filter((r) => r.ageingBracket === "90+ Days Critical").length,
+    "61to90": rows.filter((r) => r.ageingBracket === "61-90 Days").length,
+    "31to60": rows.filter((r) => r.ageingBracket === "31-60 Days").length,
+    current: rows.filter((r) => r.ageingBracket === "Current (0-30 d)").length,
+    notices: rows.filter((r) => r.noticeStage !== "On Track").length,
   };
 
   const columns: Column<AgeingReportRow>[] = [
     {
-      header: "Customer & Allotted Unit",
-      accessorKey: "customerName",
-      cell: (row) => (
+      key: "customerName",
+      header: "CUSTOMER & UNIT",
+      sortable: true,
+      minWidth: "220px",
+      render: (row) => (
         <div>
-          <div className="font-semibold text-foreground">{row.customerName}</div>
-          <div className="text-xs text-muted-foreground">{row.unit} • {row.project}</div>
+          <div className="font-semibold text-[#111827] text-xs">{row.customerName}</div>
+          <div className="text-[11px] text-[#6D4AFF] font-medium mt-0.5">{row.unit}</div>
+          <div className="text-[10px] text-[#6B7280] tabular-nums mt-0.5">{row.phone}</div>
         </div>
       ),
     },
     {
-      header: "Agreement Value & Paid",
-      accessorKey: "totalAgreementValue",
-      cell: (row) => (
-        <div className="text-xs">
-          <div className="text-foreground font-medium">{row.totalAgreementValue}</div>
-          <div className="text-emerald-600 text-[11px]">Paid: {row.totalCollected}</div>
+      key: "totalAgreementValue",
+      header: "AGREEMENT & COLLECTED",
+      minWidth: "190px",
+      render: (row) => (
+        <div className="space-y-0.5">
+          <div className="text-xs font-semibold text-[#111827] tabular-nums">{row.totalAgreementValue}</div>
+          <div className="text-[11px] text-[#039855] font-medium tabular-nums">Paid: {row.totalCollected}</div>
         </div>
       ),
     },
     {
-      header: "Overdue Amount",
-      accessorKey: "overdueAmount",
-      cell: (row) => (
-        <div className="font-bold text-xs text-rose-600">
+      key: "overdueAmount",
+      header: "OVERDUE PRINCIPAL",
+      sortable: true,
+      minWidth: "160px",
+      render: (row) => (
+        <span className={`text-xs font-semibold tabular-nums ${row.overdueAmount === "৳ 0" ? "text-[#039855]" : "text-[#DC2626]"}`}>
           {row.overdueAmount}
-        </div>
+        </span>
       ),
     },
     {
-      header: "Ageing Bracket & Days",
-      accessorKey: "overdueDays",
-      cell: (row) => {
+      key: "ageingBracket",
+      header: "AGEING BRACKET",
+      minWidth: "180px",
+      render: (row) => {
         const colors = {
-          "Current (0-30 d)": "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300",
-          "31-60 Days": "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
-          "61-90 Days": "bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300",
-          "90+ Days Critical": "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300",
+          "Current (0-30 d)": "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]",
+          "31-60 Days": "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]",
+          "61-90 Days": "bg-[#FFF4ED] text-[#D92D20] border border-[#FECDCA]",
+          "90+ Days Critical": "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]",
         };
         return (
-          <div className="space-y-0.5">
-            <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${colors[row.ageingBracket]}`}>
+          <div className="space-y-1">
+            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${colors[row.ageingBracket]}`}>
               {row.ageingBracket}
             </span>
-            <div className="text-[11px] text-muted-foreground pl-1">{row.overdueDays} days past due</div>
+            <div className="text-[11px] text-[#6B7280] tabular-nums pl-1">{row.overdueDays} days past due</div>
           </div>
         );
       },
     },
     {
-      header: "Accrued Surcharge",
-      accessorKey: "delaySurcharge",
-      cell: (row) => (
-        <span className="text-xs font-mono font-medium text-foreground">
+      key: "delaySurcharge",
+      header: "ACCRUED SURCHARGE",
+      minWidth: "160px",
+      render: (row) => (
+        <span className="text-xs font-semibold text-[#111827] tabular-nums">
           {row.delaySurcharge}
         </span>
       ),
     },
     {
-      header: "Recovery Notice Stage",
-      accessorKey: "noticeStage",
-      cell: (row) => {
+      key: "noticeStage",
+      header: "RECOVERY NOTICE STAGE",
+      minWidth: "180px",
+      render: (row) => {
         const badges = {
-          "On Track": "bg-emerald-50 text-emerald-700 border border-emerald-200",
-          "1st Reminder": "bg-blue-50 text-blue-700 border border-blue-200",
-          "2nd Notice": "bg-amber-50 text-amber-700 border border-amber-200",
-          "Final Statutory Notice": "bg-rose-50 text-rose-700 border border-rose-200",
+          "On Track": "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]",
+          "1st Reminder": "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]",
+          "2nd Notice": "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]",
+          "Final Statutory Notice": "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]",
         };
         return (
-          <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${badges[row.noticeStage]}`}>
+          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${badges[row.noticeStage]}`}>
             {row.noticeStage}
           </span>
         );
       },
     },
     {
-      header: "Actions",
-      accessorKey: "id",
-      cell: (row) => (
-        <button
-          onClick={() => setSelectedRow(row)}
-          className="p-1.5 rounded-lg border border-border hover:bg-foreground/5 text-foreground/80 transition"
-          title="View Ledger Breakdown"
-        >
-          <Eye className="h-3.5 w-3.5" />
-        </button>
+      key: "actions",
+      header: "ACTION",
+      align: "right",
+      minWidth: "90px",
+      render: (row) => (
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => setSelectedRow(row)}
+            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+            title="View Ledger Breakdown"
+            aria-label="View Details"
+          >
+            <Eye className="h-4 w-4" />
+          </button>
+        </div>
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Collections & Dues Ageing Analytics"
-        description="Comprehensive portfolio-level financial ageing report, 30/60/90+ days overdue analysis, delay surcharges, and legal notice triggers."
-        badgeText="Financial Recovery Hub"
+        subtitle="Comprehensive portfolio-level financial ageing report, 30/60/90+ days overdue analysis, delay surcharges, and legal notice triggers."
+        badge="Financial Recovery Hub"
+        breadcrumbs={[{ label: "Reports & Analytics" }, { label: "Collections Ageing" }]}
         primaryAction={{
           label: "Export Statement (Excel)",
           icon: Download,
@@ -269,31 +257,33 @@ export default function CollectionsAgeingReportPage() {
         <CSStatCard
           title="Total Overdue Receivables"
           value="৳ 4.82 Cr"
-          subtitle="Across 6 active projects"
+          subtext="Across 6 active projects"
           icon={DollarSign}
-          color="rose"
+          iconBg="bg-[#FEF2F2]"
+          iconColor="text-[#DC2626]"
         />
         <CSStatCard
           title="Critical Default (90+ Days)"
           value="৳ 1.12 Cr"
-          subtitle="Statutory cancellation notice zone"
+          subtext="Statutory cancellation notice zone"
           icon={AlertTriangle}
-          color="rose"
+          iconBg="bg-[#FEF2F2]"
+          iconColor="text-[#DC2626]"
         />
         <CSStatCard
           title="Realized Collections (MTD)"
           value="৳ 1.95 Cr"
-          subtitle="Target: ৳ 2.20 Cr"
+          subtext="Target: ৳ 2.20 Cr"
           icon={TrendingUp}
-          color="emerald"
-          trend={{ value: 8.8, isPositive: true }}
+          trend={{ value: "+8.8%", isPositive: true }}
         />
         <CSStatCard
           title="Collection Velocity %"
           value="93.4%"
-          subtitle="On-time installment clearance"
+          subtext="On-time installment clearance"
           icon={CheckCircle2}
-          color="blue"
+          iconBg="bg-[#EFF6FF]"
+          iconColor="text-[#2563EB]"
         />
       </div>
 
@@ -307,7 +297,7 @@ export default function CollectionsAgeingReportPage() {
           { key: "notices", label: "Legal Notices Active", count: counts.notices },
         ]}
         activeTab={activeTab}
-        onChange={setActiveTab}
+        onTabChange={setActiveTab}
       />
 
       <CSTable
@@ -325,66 +315,66 @@ export default function CollectionsAgeingReportPage() {
         subtitle={`${selectedRow?.unit} • ${selectedRow?.project}`}
       >
         {selectedRow && (
-          <div className="space-y-5">
-            <div className="p-4 rounded-xl border border-border bg-foreground/[0.02] space-y-3">
-              <div className="text-xs text-muted-foreground">Financial Exposure Summary</div>
+          <div className="space-y-5 text-xs">
+            <div className="p-4 rounded-[12px] border border-[#E5E7EB] bg-[#F9FAFB] space-y-3">
+              <div className="text-[11px] text-[#6B7280]">Financial Exposure Summary</div>
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-muted-foreground">Agreement Price:</span>
-                  <div className="text-sm font-bold text-foreground">{selectedRow.totalAgreementValue}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Agreement Price:</span>
+                  <div className="text-sm font-semibold text-[#111827] tabular-nums">{selectedRow.totalAgreementValue}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Total Realized:</span>
-                  <div className="text-sm font-bold text-emerald-600">{selectedRow.totalCollected}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Total Realized:</span>
+                  <div className="text-sm font-semibold text-[#039855] tabular-nums">{selectedRow.totalCollected}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Overdue Installment:</span>
-                  <div className="text-sm font-bold text-rose-600">{selectedRow.overdueAmount}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Overdue Installment:</span>
+                  <div className="text-sm font-semibold text-[#DC2626] tabular-nums">{selectedRow.overdueAmount}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Delay Surcharge:</span>
-                  <div className="text-sm font-bold text-amber-600">{selectedRow.delaySurcharge}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Delay Surcharge:</span>
+                  <div className="text-sm font-semibold text-[#DC6803] tabular-nums">{selectedRow.delaySurcharge}</div>
                 </div>
               </div>
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Delinquency Details</h4>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Delinquency Details</h4>
+              <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-muted-foreground">Days Overdue:</span>
-                  <div className="font-semibold text-foreground">{selectedRow.overdueDays} Days</div>
+                  <span className="text-[#6B7280] block text-[11px]">Days Overdue:</span>
+                  <div className="font-semibold text-[#111827] tabular-nums">{selectedRow.overdueDays} Days</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Ageing Category:</span>
-                  <div className="font-semibold text-foreground">{selectedRow.ageingBracket}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Ageing Category:</span>
+                  <div className="font-semibold text-[#111827]">{selectedRow.ageingBracket}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Recovery Stage:</span>
-                  <div className="font-semibold text-foreground">{selectedRow.noticeStage}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Recovery Stage:</span>
+                  <div className="font-semibold text-[#111827]">{selectedRow.noticeStage}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Assigned Recovery Officer:</span>
-                  <div className="font-semibold text-foreground">{selectedRow.recoveryOfficer}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Assigned Recovery Officer:</span>
+                  <div className="font-semibold text-[#111827]">{selectedRow.recoveryOfficer}</div>
                 </div>
               </div>
             </div>
 
-            <div className="p-3 rounded-lg border border-border bg-foreground/[0.01] space-y-2 text-xs">
-              <div className="font-semibold text-foreground">Statutory Real Estate Act 2010 Clause:</div>
-              <p className="text-muted-foreground text-[11px] leading-relaxed">
+            <div className="p-3.5 rounded-[12px] border border-[#E5E7EB] bg-white space-y-2 text-xs">
+              <div className="font-semibold text-[#111827]">Statutory Real Estate Act 2010 Clause:</div>
+              <p className="text-[#6B7280] text-[11px] leading-relaxed">
                 As per Real Estate Development and Management Act 2010 Section 14, an allottee must be served two formal written notices with minimum 30 days remedy period prior to allotment cancellation proceedings.
               </p>
             </div>
 
             <div className="pt-4 flex gap-2">
               <button
+                type="button"
                 onClick={() => {
                   toast.success(`Demand Notice issued to ${selectedRow.customerName}`);
                   setSelectedRow(null);
                 }}
-                className="flex-1 py-2 text-xs font-medium text-white rounded-lg transition"
-                style={{ backgroundColor: primaryColor }}
+                className="flex-1 py-2 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg transition shadow-xs"
               >
                 Issue Formal Notice
               </button>
@@ -395,4 +385,3 @@ export default function CollectionsAgeingReportPage() {
     </div>
   );
 }
-

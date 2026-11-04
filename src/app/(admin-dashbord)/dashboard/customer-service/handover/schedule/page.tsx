@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Plus,
   ArrowRight,
+  Eye,
 } from "lucide-react";
 import { CSPageHeader } from "@/components/customer-service/CSPageHeader";
 import { CSStatCard } from "@/components/customer-service/CSStatCard";
@@ -76,41 +77,44 @@ export default function HandoverSchedulePage() {
   const columns: Column<HandoverItem>[] = [
     {
       key: "id",
-      header: "Handover ID",
+      header: "HANDOVER ID & PROJECT",
       sortable: true,
+      minWidth: "180px",
       render: (h) => (
         <div>
-          <span className="font-mono font-bold text-slate-900">{h.id}</span>
-          <div className="text-[11px] text-slate-500">{h.project}</div>
+          <span className="font-semibold text-[#111827] tabular-nums text-xs">{h.id}</span>
+          <div className="text-[11px] text-[#6B7280] mt-0.5">{h.project}</div>
         </div>
       ),
     },
     {
       key: "customerName",
-      header: "Purchaser & Allotment",
+      header: "PURCHASER & ALLOTMENT",
+      minWidth: "200px",
       render: (h) => (
         <div>
-          <div className="font-bold text-slate-900">{h.customerName}</div>
-          <div className="text-[11px] text-blue-600 font-medium">{h.unit}</div>
+          <div className="font-semibold text-[#111827] text-xs">{h.customerName}</div>
+          <div className="text-[11px] text-[#6D4AFF] font-medium mt-0.5">{h.unit}</div>
         </div>
       ),
     },
     {
       key: "readinessPercentage",
-      header: "Civil & MEP Readiness",
+      header: "CIVIL & MEP READINESS",
       sortable: true,
+      minWidth: "170px",
       render: (h) => (
-        <div className="space-y-1 w-36">
-          <div className="flex justify-between text-[11px] font-bold">
-            <span className="text-slate-700">Readiness</span>
-            <span className={h.readinessPercentage >= 95 ? "text-emerald-700" : "text-amber-700"}>
+        <div className="space-y-1.5 w-36">
+          <div className="flex justify-between text-[11px] font-semibold">
+            <span className="text-[#6B7280]">Readiness</span>
+            <span className={`tabular-nums ${h.readinessPercentage >= 95 ? "text-[#039855]" : "text-[#DC6803]"}`}>
               {h.readinessPercentage}%
             </span>
           </div>
-          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-[#E5E7EB] rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full ${
-                h.readinessPercentage >= 95 ? "bg-emerald-500" : "bg-amber-500"
+                h.readinessPercentage >= 95 ? "bg-[#039855]" : "bg-[#F79009]"
               }`}
               style={{ width: `${h.readinessPercentage}%` }}
             />
@@ -120,50 +124,72 @@ export default function HandoverSchedulePage() {
     },
     {
       key: "targetHandoverDate",
-      header: "Target Possession Date",
+      header: "TARGET POSSESSION DATE",
+      minWidth: "180px",
       render: (h) => (
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
-          <Calendar className="h-3.5 w-3.5 text-slate-400" /> {h.targetHandoverDate}
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-[#111827] tabular-nums">
+          <Calendar className="h-3.5 w-3.5 text-[#9CA3AF]" /> {h.targetHandoverDate}
         </div>
       ),
     },
     {
       key: "snagsIdentified",
-      header: "Snags Rectified",
+      header: "SNAGS RECTIFIED",
+      minWidth: "160px",
       render: (h) => (
         <div>
-          <span className="text-xs font-bold text-slate-800">
+          <span className="text-xs font-semibold text-[#111827] tabular-nums">
             {h.snagsResolved} / {h.snagsIdentified} Snags
           </span>
           {h.snagsIdentified > h.snagsResolved ? (
-            <div className="text-[10px] text-amber-700 font-semibold">Rectification in progress</div>
+            <div className="text-[10px] text-[#DC6803] font-medium mt-0.5">Rectification in progress</div>
           ) : (
-            <div className="text-[10px] text-emerald-700 font-bold">100% Cleared</div>
+            <div className="text-[10px] text-[#039855] font-semibold mt-0.5">100% Cleared</div>
           )}
         </div>
       ),
     },
     {
       key: "handoverStatus",
-      header: "Status",
+      header: "STATUS",
+      minWidth: "180px",
       render: (h) => (
         <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
             h.handoverStatus === "Possession Taken"
-              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              ? "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
               : h.handoverStatus === "Ready for Key Delivery"
-                ? "bg-blue-50 text-blue-700 border border-blue-200 font-bold"
-                : "bg-amber-50 text-amber-800 border border-amber-200"
+                ? "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]"
+                : "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
           }`}
         >
           {h.handoverStatus}
         </span>
       ),
     },
+    {
+      key: "actions",
+      header: "ACTION",
+      align: "right",
+      minWidth: "90px",
+      render: (h) => (
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => toast.info(`Viewing handover schedule details for ${h.unit}`)}
+            title="View Handover Details"
+            aria-label="View Handover Details"
+            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+          >
+            <Eye className="h-4 w-4" />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Handover & Possession Schedule"
         subtitle="Manage project completion timelines, joint client inspections, snag clearances and formal possession dates."
@@ -183,16 +209,16 @@ export default function HandoverSchedulePage() {
           value={handovers.filter((h) => h.handoverStatus === "Ready for Key Delivery").length.toString()}
           subtext="100% snag rectification cleared"
           icon={CheckCircle2}
-          iconBg="bg-blue-50"
-          iconColor="text-blue-600"
+          iconBg="bg-[#EFF6FF]"
+          iconColor="text-[#2563EB]"
         />
         <CSStatCard
           title="Handed Over This Quarter"
           value="42 Flats"
           subtext="Possession certificates signed"
           icon={Building}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
+          iconBg="bg-[#ECFDF3]"
+          iconColor="text-[#039855]"
         />
       </div>
 
@@ -230,4 +256,3 @@ export default function HandoverSchedulePage() {
     </div>
   );
 }
-

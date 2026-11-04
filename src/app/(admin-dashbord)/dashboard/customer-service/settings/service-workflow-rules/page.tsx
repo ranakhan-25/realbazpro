@@ -5,11 +5,8 @@ import {
   Sliders,
   Clock,
   ShieldCheck,
-  CheckCircle2,
   Plus,
   RefreshCw,
-  Edit2,
-  Trash2,
   ArrowRight,
   Eye,
   ToggleLeft,
@@ -176,84 +173,95 @@ export default function ServiceWorkflowRulesPage() {
 
   const columns: Column<ServiceRule>[] = [
     {
-      header: "Rule Name & Code",
+      header: "RULE NAME & CODE",
       accessorKey: "ruleName",
       cell: (row) => (
         <div>
-          <div className="font-semibold text-foreground">{row.ruleName}</div>
-          <div className="text-xs text-muted-foreground">{row.ruleCode} • {row.ruleType}</div>
+          <div className="font-semibold text-[#111827]">{row.ruleName}</div>
+          <div className="text-xs text-[#6B7280]">
+            <span className="font-semibold text-[#4B5563] tabular-nums">{row.ruleCode}</span> • {row.ruleType}
+          </div>
         </div>
       ),
     },
     {
-      header: "Trigger Condition / Scope",
+      header: "TRIGGER CONDITION / SCOPE",
       accessorKey: "categoryOrTrigger",
       cell: (row) => (
-        <p className="text-xs text-foreground/90 max-w-xs font-medium">
+        <p className="text-xs text-[#374151] max-w-xs font-medium">
           {row.categoryOrTrigger}
         </p>
       ),
     },
     {
-      header: "SLA Targets",
+      header: "SLA TARGETS",
       accessorKey: "resolutionTarget",
       cell: (row) => (
-        <div className="text-xs">
-          <div className="text-foreground">
-            Resolution: <span className="font-semibold">{row.resolutionTarget}</span>
+        <div className="text-xs space-y-0.5">
+          <div className="text-[#111827]">
+            Resolution: <span className="font-semibold text-[#027A48] tabular-nums">{row.resolutionTarget}</span>
           </div>
-          <div className="text-muted-foreground text-[11px]">
+          <div className="text-[#6B7280] text-[11px] tabular-nums">
             1st Response: {row.firstResponseTarget}
           </div>
         </div>
       ),
     },
     {
-      header: "Assigned Department",
+      header: "ASSIGNED DEPARTMENT",
       accessorKey: "assignedDepartment",
       cell: (row) => (
-        <div className="text-xs font-medium text-foreground">
+        <div className="text-xs font-semibold text-[#111827]">
           {row.assignedDepartment}
         </div>
       ),
     },
     {
-      header: "Operating Schedule",
+      header: "OPERATING SCHEDULE",
       accessorKey: "operatingHours",
       cell: (row) => (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-[#6B7280]">
           {row.operatingHours}
         </span>
       ),
     },
     {
-      header: "Status",
+      header: "STATUS",
       accessorKey: "status",
       cell: (row) => (
         <button
           onClick={() => handleToggle(row.id)}
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition ${
+          className={`h-8 px-2.5 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold transition shadow-2xs ${
             row.status === "Active"
-              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
-              : "bg-muted text-muted-foreground"
+              ? "bg-[#ECFDF3] border border-[#A6F4C5] text-[#027A48] hover:bg-[#D1FADF]"
+              : "bg-[#F3F4F6] border border-[#E5E7EB] text-[#4B5563] hover:bg-[#E5E7EB]"
           }`}
+          title="Click to toggle status"
+          aria-label="Toggle rule status"
         >
-          {row.status === "Active" ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-          {row.status}
+          {row.status === "Active" ? (
+            <ToggleRight className="h-4 w-4 text-[#027A48]" />
+          ) : (
+            <ToggleLeft className="h-4 w-4 text-[#9CA3AF]" />
+          )}
+          <span>{row.status}</span>
         </button>
       ),
     },
     {
-      header: "Actions",
+      header: "ACTION",
       accessorKey: "id",
+      align: "right",
+      minWidth: "90px",
       cell: (row) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center justify-end pr-2">
           <button
             onClick={() => setSelectedRule(row)}
-            className="p-1.5 rounded-lg border border-border hover:bg-foreground/5 text-foreground/80 transition"
+            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
             title="View Details"
+            aria-label="View Details"
           >
-            <Eye className="h-3.5 w-3.5" />
+            <Eye className="h-4 w-4" />
           </button>
         </div>
       ),
@@ -261,7 +269,7 @@ export default function ServiceWorkflowRulesPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Service & Workflow Rules Configuration"
         description="Configure automated SLA resolution thresholds, intelligent ticket routing policies, multi-tier escalation triggers, and statutory DLP compliance policies."
@@ -320,7 +328,7 @@ export default function ServiceWorkflowRulesPage() {
           { key: "statutory", label: "Statutory Policies", count: counts.statutory },
         ]}
         activeTab={activeTab}
-        onChange={setActiveTab}
+        onTabChange={setActiveTab}
       />
 
       <CSTable
@@ -339,24 +347,24 @@ export default function ServiceWorkflowRulesPage() {
       >
         <form onSubmit={handleAddRule} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Rule Name *</label>
+            <label className="block text-xs font-semibold text-[#374151] mb-1.5">Rule Name *</label>
             <input
               type="text"
               required
               placeholder="e.g. Sanitary & Water Leakage Immediate Dispatch"
               value={ruleName}
               onChange={(e) => setRuleName(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full h-9 px-3 text-xs font-medium rounded-lg border border-[#E5E7EB] bg-white focus:outline-none focus:ring-2 focus:ring-[#6D4AFF]/20 focus:border-[#6D4AFF] transition"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Rule Type *</label>
+              <label className="block text-xs font-semibold text-[#374151] mb-1.5">Rule Type *</label>
               <select
                 value={ruleType}
                 onChange={(e) => setRuleType(e.target.value as any)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-3 text-xs font-medium rounded-lg border border-[#E5E7EB] bg-white focus:outline-none focus:ring-2 focus:ring-[#6D4AFF]/20 focus:border-[#6D4AFF] transition"
               >
                 <option value="SLA Policy">SLA Policy</option>
                 <option value="Auto-Routing">Auto-Routing Rule</option>
@@ -365,11 +373,11 @@ export default function ServiceWorkflowRulesPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Assigned Department *</label>
+              <label className="block text-xs font-semibold text-[#374151] mb-1.5">Assigned Department *</label>
               <select
                 value={assignedDepartment}
                 onChange={(e) => setAssignedDepartment(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-3 text-xs font-medium rounded-lg border border-[#E5E7EB] bg-white focus:outline-none focus:ring-2 focus:ring-[#6D4AFF]/20 focus:border-[#6D4AFF] transition"
               >
                 <option value="Site Engineering & QA">Site Engineering & QA</option>
                 <option value="Finishing Sub-contractor Care">Finishing Sub-contractor Care</option>
@@ -381,24 +389,24 @@ export default function ServiceWorkflowRulesPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Category or Trigger Condition *</label>
+            <label className="block text-xs font-semibold text-[#374151] mb-1.5">Category or Trigger Condition *</label>
             <input
               type="text"
               required
               placeholder="e.g. Water Seepage, Bathroom backflow, Pipe leakage"
               value={categoryOrTrigger}
               onChange={(e) => setCategoryOrTrigger(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full h-9 px-3 text-xs font-medium rounded-lg border border-[#E5E7EB] bg-white focus:outline-none focus:ring-2 focus:ring-[#6D4AFF]/20 focus:border-[#6D4AFF] transition"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">1st Response Target</label>
+              <label className="block text-xs font-semibold text-[#374151] mb-1.5">1st Response Target</label>
               <select
                 value={firstResponseTarget}
                 onChange={(e) => setFirstResponseTarget(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-3 text-xs font-medium rounded-lg border border-[#E5E7EB] bg-white focus:outline-none focus:ring-2 focus:ring-[#6D4AFF]/20 focus:border-[#6D4AFF] transition"
               >
                 <option value="30 Minutes">30 Minutes</option>
                 <option value="1 Hour">1 Hour</option>
@@ -407,11 +415,11 @@ export default function ServiceWorkflowRulesPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Target Resolution Time</label>
+              <label className="block text-xs font-semibold text-[#374151] mb-1.5">Target Resolution Time</label>
               <select
                 value={resolutionTarget}
                 onChange={(e) => setResolutionTarget(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-3 text-xs font-medium rounded-lg border border-[#E5E7EB] bg-white focus:outline-none focus:ring-2 focus:ring-[#6D4AFF]/20 focus:border-[#6D4AFF] transition"
               >
                 <option value="12 Hours">12 Hours</option>
                 <option value="24 Hours">24 Hours</option>
@@ -421,18 +429,18 @@ export default function ServiceWorkflowRulesPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+          <div className="flex justify-end gap-2 pt-3 border-t border-[#E5E7EB]">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-xs font-medium rounded-lg border border-border hover:bg-foreground/5 transition"
+              className="h-9 px-4 text-xs font-medium rounded-lg border border-[#D0D5DD] hover:bg-[#F9FAFB] transition"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-medium text-white rounded-lg transition shadow-sm"
-              style={{ backgroundColor: primaryColor }}
+              className="h-9 px-4 text-xs font-medium text-white rounded-lg transition shadow-xs hover:opacity-95"
+              style={{ backgroundColor: primaryColor || "#6D4AFF" }}
             >
               Save Rule
             </button>
@@ -444,17 +452,19 @@ export default function ServiceWorkflowRulesPage() {
       <CSDetailDrawer
         isOpen={!!selectedRule}
         onClose={() => setSelectedRule(null)}
-        title={`Workflow Rule: ${selectedRule?.ruleCode}`}
-        subtitle={`${selectedRule?.ruleName} • ${selectedRule?.ruleType}`}
+        title={`Workflow Rule: ${selectedRule?.ruleCode || ""}`}
+        subtitle={`${selectedRule?.ruleName || ""} • ${selectedRule?.ruleType || ""}`}
       >
         {selectedRule && (
           <div className="space-y-5">
-            <div className="p-4 rounded-xl border border-border bg-foreground/[0.02] space-y-2">
-              <div className="text-xs text-muted-foreground">Rule Classification</div>
+            <div className="p-4 rounded-xl border border-[#E5E7EB] bg-[#F7F8FA] space-y-2">
+              <div className="text-xs font-semibold text-[#6B7280]">Rule Classification</div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-foreground">{selectedRule.ruleType}</span>
-                <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
-                  selectedRule.status === "Active" ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground"
+                <span className="text-sm font-bold text-[#111827]">{selectedRule.ruleType}</span>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+                  selectedRule.status === "Active"
+                    ? "bg-[#ECFDF3] border border-[#A6F4C5] text-[#027A48]"
+                    : "bg-[#F3F4F6] border border-[#E5E7EB] text-[#4B5563]"
                 }`}>
                   {selectedRule.status}
                 </span>
@@ -462,30 +472,30 @@ export default function ServiceWorkflowRulesPage() {
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Scope & Thresholds</h4>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B7280]">Scope & Thresholds</h4>
+              <div className="grid grid-cols-2 gap-3 text-xs bg-white p-4 rounded-xl border border-[#E5E7EB]">
                 <div>
-                  <span className="text-muted-foreground">First Response:</span>
-                  <div className="font-semibold text-foreground">{selectedRule.firstResponseTarget}</div>
+                  <span className="text-[#6B7280]">First Response:</span>
+                  <div className="font-semibold text-[#111827] tabular-nums">{selectedRule.firstResponseTarget}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Resolution Target:</span>
-                  <div className="font-semibold text-foreground">{selectedRule.resolutionTarget}</div>
+                  <span className="text-[#6B7280]">Resolution Target:</span>
+                  <div className="font-semibold text-[#111827] tabular-nums">{selectedRule.resolutionTarget}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Operating Schedule:</span>
-                  <div className="font-semibold text-foreground">{selectedRule.operatingHours}</div>
+                  <span className="text-[#6B7280]">Operating Schedule:</span>
+                  <div className="font-semibold text-[#111827]">{selectedRule.operatingHours}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Assigned Team:</span>
-                  <div className="font-semibold text-foreground">{selectedRule.assignedDepartment}</div>
+                  <span className="text-[#6B7280]">Assigned Team:</span>
+                  <div className="font-semibold text-[#111827]">{selectedRule.assignedDepartment}</div>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2 pt-2 border-t border-border">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Escalation Protocol</h4>
-              <div className="p-3 rounded-lg border border-border bg-background text-xs text-foreground font-medium">
+            <div className="space-y-2 pt-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B7280]">Escalation Protocol</h4>
+              <div className="p-3 rounded-lg border border-[#E5E7EB] bg-white text-xs text-[#111827] font-medium leading-relaxed">
                 {selectedRule.escalationTarget}
               </div>
             </div>
@@ -496,8 +506,8 @@ export default function ServiceWorkflowRulesPage() {
                   handleToggle(selectedRule.id);
                   setSelectedRule(null);
                 }}
-                className="flex-1 py-2 text-xs font-medium text-white rounded-lg transition"
-                style={{ backgroundColor: primaryColor }}
+                className="flex-1 h-9 text-xs font-medium text-white rounded-lg transition shadow-xs hover:opacity-95"
+                style={{ backgroundColor: primaryColor || "#6D4AFF" }}
               >
                 {selectedRule.status === "Active" ? "Disable Rule" : "Activate Rule"}
               </button>
@@ -508,4 +518,3 @@ export default function ServiceWorkflowRulesPage() {
     </div>
   );
 }
-

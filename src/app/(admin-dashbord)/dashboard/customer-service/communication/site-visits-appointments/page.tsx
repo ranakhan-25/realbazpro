@@ -98,27 +98,14 @@ const INITIAL_VISITS: SiteVisitAppointment[] = [
     assignedEscort: "Md. Tariqul Hasan (Site Engr)",
     safetyPpeRequired: true,
     status: "Completed",
-    customerNotes: "Interior contractor introduced and site access permission pass endorsed.",
-  },
-  {
-    id: "VST-105",
-    visitNo: "VST-2026-038",
-    customerName: "Mrs. Anowara Begum",
-    phone: "+880 1715-334455",
-    unit: "B-2, Meghna Ocean Pearl",
-    project: "Meghna Ocean Pearl",
-    visitPurpose: "General Visit",
-    appointmentDate: "2026-11-02",
-    timeSlot: "11:30 AM - 01:00 PM",
-    assignedEscort: "Engr. Mahmudul Karim",
-    safetyPpeRequired: true,
-    status: "Rescheduled",
-    customerNotes: "Postponed due to rainfall; customer requested next Saturday visit.",
+    customerNotes: "Allottee contractor access granted for false ceiling design measurement.",
   },
 ];
 
 export default function SiteVisitsAppointmentsPage() {
   const { primaryColor } = useTheme();
+  const brand = primaryColor || "#6D4AFF";
+
   const [visits, setVisits] = useState<SiteVisitAppointment[]>(INITIAL_VISITS);
   const [activeTab, setActiveTab] = useState("all");
   const [selectedVisit, setSelectedVisit] = useState<SiteVisitAppointment | null>(null);
@@ -127,8 +114,8 @@ export default function SiteVisitsAppointmentsPage() {
   // Form State
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
-  const [project, setProject] = useState("Hena Heights, Gulshan");
   const [unit, setUnit] = useState("");
+  const [project, setProject] = useState("Hena Heights, Gulshan");
   const [visitPurpose, setVisitPurpose] = useState<SiteVisitAppointment["visitPurpose"]>("Milestone Inspection");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [timeSlot, setTimeSlot] = useState("10:00 AM - 11:30 AM");
@@ -156,7 +143,7 @@ export default function SiteVisitsAppointmentsPage() {
   const handleBookVisit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName || !unit || !appointmentDate) {
-      toast.error("Please fill in customer name, unit and appointment date.");
+      toast.error("Please fill in customer name, unit, and visit date.");
       return;
     }
 
@@ -171,13 +158,13 @@ export default function SiteVisitsAppointmentsPage() {
       appointmentDate,
       timeSlot,
       assignedEscort,
-      safetyPpeRequired: true,
+      safetyPpeRequired: visitPurpose !== "Handover Walkthrough",
       status: "Scheduled",
       customerNotes,
     };
 
     setVisits([newVisit, ...visits]);
-    toast.success(`Site visit booked for ${customerName} on ${appointmentDate}`);
+    toast.success(`Site appointment booked for ${customerName} on ${appointmentDate}`);
     setIsBookModalOpen(false);
     setCustomerName("");
     setPhone("");
@@ -186,106 +173,103 @@ export default function SiteVisitsAppointmentsPage() {
   };
 
   const handleStatusChange = (id: string, newStatus: SiteVisitAppointment["status"]) => {
-    setVisits((prev) =>
-      prev.map((v) => (v.id === id ? { ...v, status: newStatus } : v))
-    );
-    toast.success(`Visit status updated to ${newStatus}`);
+    setVisits(visits.map((v) => (v.id === id ? { ...v, status: newStatus } : v)));
+    toast.success(`Appointment status updated to ${newStatus}`);
   };
 
   const columns: Column<SiteVisitAppointment>[] = [
     {
-      header: "Visit ID & Customer",
-      accessorKey: "visitNo",
-      cell: (row) => (
+      key: "visitNo",
+      header: "SLOT NO & CUSTOMER",
+      sortable: true,
+      minWidth: "210px",
+      render: (row) => (
         <div>
-          <div className="font-semibold text-foreground">{row.customerName}</div>
-          <div className="text-xs text-muted-foreground">{row.visitNo} • {row.phone}</div>
+          <div className="font-semibold text-[#111827] text-xs">{row.customerName}</div>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">{row.visitNo} • {row.unit}</div>
         </div>
       ),
     },
     {
-      header: "Project & Unit",
-      accessorKey: "project",
-      cell: (row) => (
-        <div>
-          <div className="text-xs font-medium text-foreground">{row.project}</div>
-          <div className="text-xs text-muted-foreground">Unit: {row.unit}</div>
-        </div>
-      ),
-    },
-    {
-      header: "Purpose",
-      accessorKey: "visitPurpose",
-      cell: (row) => (
-        <span className="text-xs font-medium text-foreground bg-foreground/5 px-2.5 py-1 rounded-md">
+      key: "visitPurpose",
+      header: "PURPOSE",
+      minWidth: "180px",
+      render: (row) => (
+        <span className="text-[11px] font-medium text-[#374151] bg-[#F3F4F6] border border-[#E5E7EB] px-2 py-0.5 rounded-md">
           {row.visitPurpose}
         </span>
       ),
     },
     {
-      header: "Scheduled Slot",
-      accessorKey: "appointmentDate",
-      cell: (row) => (
+      key: "appointmentDate",
+      header: "DATE & TIME SLOT",
+      minWidth: "190px",
+      render: (row) => (
         <div className="text-xs">
-          <div className="font-medium text-foreground flex items-center gap-1">
-            <Calendar className="h-3 w-3 text-muted-foreground" />
-            {row.appointmentDate}
-          </div>
-          <div className="text-muted-foreground text-[11px] flex items-center gap-1">
-            <Clock className="h-3 w-3 text-muted-foreground" />
-            {row.timeSlot}
-          </div>
+          <div className="font-semibold text-[#111827] tabular-nums">{row.appointmentDate}</div>
+          <div className="text-[#6B7280] text-[11px] tabular-nums mt-0.5">{row.timeSlot}</div>
         </div>
       ),
     },
     {
-      header: "Assigned Escort & Safety",
-      accessorKey: "assignedEscort",
-      cell: (row) => (
-        <div className="text-xs">
-          <div className="text-foreground">{row.assignedEscort}</div>
-          {row.safetyPpeRequired && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-300 font-medium mt-0.5">
-              <HardHat className="h-3 w-3" /> Helmet & PPE Required
+      key: "assignedEscort",
+      header: "ESCORT & SAFETY",
+      minWidth: "200px",
+      render: (row) => (
+        <div className="space-y-1">
+          <div className="text-xs font-semibold text-[#111827]">{row.assignedEscort}</div>
+          {row.safetyPpeRequired ? (
+            <span className="inline-flex items-center gap-1 text-[10px] text-[#DC6803] font-semibold bg-[#FFFAEB] border border-[#FEDF89] px-2 py-0.5 rounded-full">
+              <HardHat className="h-3 w-3" /> Helmet & Vest
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[10px] text-[#039855] font-semibold bg-[#ECFDF3] border border-[#A6F4C5] px-2 py-0.5 rounded-full">
+              General Access
             </span>
           )}
         </div>
       ),
     },
     {
-      header: "Status",
-      accessorKey: "status",
-      cell: (row) => {
+      key: "status",
+      header: "STATUS",
+      minWidth: "130px",
+      render: (row) => {
         const badges = {
-          "Scheduled": "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300",
-          "In Progress": "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
-          "Completed": "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
-          "Rescheduled": "bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300",
-          "Cancelled": "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300",
+          Scheduled: "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]",
+          "In Progress": "bg-[#F4F1FF] text-[#6D4AFF] border border-[#DDD6FE]",
+          Completed: "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]",
+          Rescheduled: "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]",
+          Cancelled: "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]",
         };
         return (
-          <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${badges[row.status]}`}>
+          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${badges[row.status]}`}>
             {row.status}
           </span>
         );
       },
     },
     {
-      header: "Actions",
-      accessorKey: "id",
-      cell: (row) => (
-        <div className="flex items-center gap-1.5">
+      key: "actions",
+      header: "ACTION",
+      align: "right",
+      minWidth: "140px",
+      render: (row) => (
+        <div className="flex items-center justify-end gap-1.5">
           <button
+            type="button"
             onClick={() => setSelectedVisit(row)}
-            className="p-1.5 rounded-lg border border-border hover:bg-foreground/5 text-foreground/80 transition"
+            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
             title="View Details"
+            aria-label="View Details"
           >
-            <Eye className="h-3.5 w-3.5" />
+            <Eye className="h-4 w-4" />
           </button>
           {row.status === "Scheduled" && (
             <button
+              type="button"
               onClick={() => handleStatusChange(row.id, "In Progress")}
-              className="px-2 py-1 text-xs rounded border border-border hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-600 font-medium transition"
+              className="h-8 px-2.5 rounded-lg inline-flex items-center text-xs font-semibold bg-[#FFFAEB] border border-[#FEDF89] text-[#DC6803] hover:bg-[#FEF0C7] transition shadow-xs"
               title="Mark In Progress"
             >
               Check-In
@@ -293,8 +277,9 @@ export default function SiteVisitsAppointmentsPage() {
           )}
           {row.status === "In Progress" && (
             <button
+              type="button"
               onClick={() => handleStatusChange(row.id, "Completed")}
-              className="px-2 py-1 text-xs rounded border border-border hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-emerald-600 font-medium transition"
+              className="h-8 px-2.5 rounded-lg inline-flex items-center text-xs font-semibold bg-[#ECFDF3] border border-[#A6F4C5] text-[#039855] hover:bg-[#D1FADF] transition shadow-xs"
               title="Mark Completed"
             >
               Done
@@ -306,11 +291,12 @@ export default function SiteVisitsAppointmentsPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Site Visits & Appointments"
-        description="Coordinate prospective and post-sales site visits, joint construction inspections, handover walkthroughs, and safety compliance."
-        badgeText="On-Site Operations"
+        subtitle="Coordinate prospective and post-sales site visits, joint construction inspections, handover walkthroughs, and safety compliance."
+        badge="On-Site Operations"
+        breadcrumbs={[{ label: "Communication & Appointments" }, { label: "Site Visits" }]}
         primaryAction={{
           label: "Book Site Visit",
           icon: Plus,
@@ -329,30 +315,32 @@ export default function SiteVisitsAppointmentsPage() {
         <CSStatCard
           title="Scheduled This Week"
           value="24"
-          subtitle="Across 6 active projects"
+          subtext="Across 6 active projects"
           icon={Calendar}
-          color="blue"
         />
         <CSStatCard
           title="Today's Site Appointments"
           value="5"
-          subtitle="2 Completed, 1 In Progress"
+          subtext="2 Completed, 1 In Progress"
           icon={Clock}
-          trend={{ value: 10, isPositive: true }}
+          iconBg="bg-[#EFF6FF]"
+          iconColor="text-[#2563EB]"
         />
         <CSStatCard
           title="Escort Engineers on Duty"
           value="8"
-          subtitle="Site QA & Post-Sales Officers"
+          subtext="Site QA & Post-Sales Officers"
           icon={UserCheck}
-          color="purple"
+          iconBg="bg-[#F4F1FF]"
+          iconColor="text-[#6D4AFF]"
         />
         <CSStatCard
           title="Visit Completion Rate"
           value="96.2%"
-          subtitle="Prompt site feedback captured"
+          subtext="Prompt site feedback captured"
           icon={CheckCircle2}
-          color="emerald"
+          iconBg="bg-[#ECFDF3]"
+          iconColor="text-[#039855]"
         />
       </div>
 
@@ -366,7 +354,7 @@ export default function SiteVisitsAppointmentsPage() {
           { key: "rescheduled", label: "Rescheduled / Cancelled", count: counts.rescheduled },
         ]}
         activeTab={activeTab}
-        onChange={setActiveTab}
+        onTabChange={setActiveTab}
       />
 
       <CSTable
@@ -381,40 +369,59 @@ export default function SiteVisitsAppointmentsPage() {
         isOpen={isBookModalOpen}
         onClose={() => setIsBookModalOpen(false)}
         title="Book Customer Site Visit / Inspection"
-        description="Coordinate engineer escort, safety PPE protocol, and schedule calendar."
+        subtitle="Coordinate engineer escort, safety PPE protocol, and schedule calendar."
+        maxWidth="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsBookModalOpen(false)}
+              className="h-9 px-4 text-xs font-semibold text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="book-visit-form"
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
+            >
+              Confirm Appointment
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleBookVisit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+        <form id="book-visit-form" onSubmit={handleBookVisit} className="space-y-3.5 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Customer Full Name *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Customer Full Name *</label>
               <input
                 type="text"
                 required
                 placeholder="e.g. Barrister Shahed Chowdhury"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Contact Phone *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Contact Phone *</label>
               <input
                 type="text"
                 placeholder="+880 1700-000000"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] tabular-nums outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Project *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Project *</label>
               <select
                 value={project}
                 onChange={(e) => setProject(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="Hena Heights, Gulshan">Hena Heights, Gulshan</option>
                 <option value="Eastern Lakeview">Eastern Lakeview</option>
@@ -424,25 +431,25 @@ export default function SiteVisitsAppointmentsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Unit / Flat No. *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Unit / Flat No. *</label>
               <input
                 type="text"
                 required
                 placeholder="e.g. Apt A-7 (7th Floor)"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Visit Purpose *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Visit Purpose *</label>
               <select
                 value={visitPurpose}
                 onChange={(e) => setVisitPurpose(e.target.value as any)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="Milestone Inspection">Milestone Inspection</option>
                 <option value="Snagging Walkthrough">Snagging Walkthrough</option>
@@ -452,11 +459,11 @@ export default function SiteVisitsAppointmentsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Assigned Escort *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Assigned Escort *</label>
               <select
                 value={assignedEscort}
                 onChange={(e) => setAssignedEscort(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="Engr. Monirul Islam (Site QA)">Engr. Monirul Islam (Site QA)</option>
                 <option value="Kazi Farhad (QA Supervisor)">Kazi Farhad (QA Supervisor)</option>
@@ -466,23 +473,23 @@ export default function SiteVisitsAppointmentsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Appointment Date *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Appointment Date *</label>
               <input
                 type="date"
                 required
                 value={appointmentDate}
                 onChange={(e) => setAppointmentDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Time Slot *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Time Slot *</label>
               <select
                 value={timeSlot}
                 onChange={(e) => setTimeSlot(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="10:00 AM - 11:30 AM">10:00 AM - 11:30 AM</option>
                 <option value="11:30 AM - 01:00 PM">11:30 AM - 01:00 PM</option>
@@ -493,31 +500,14 @@ export default function SiteVisitsAppointmentsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Specific Inspection Focus / Notes</label>
+            <label className="block font-semibold text-[#374151] mb-1">Specific Inspection Focus / Notes</label>
             <textarea
               rows={2}
               placeholder="e.g. Inspect bathroom tile grouting and kitchen window sealant..."
               value={customerNotes}
               onChange={(e) => setCustomerNotes(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full p-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] text-xs transition"
             />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-border">
-            <button
-              type="button"
-              onClick={() => setIsBookModalOpen(false)}
-              className="px-4 py-2 text-xs font-medium rounded-lg border border-border hover:bg-foreground/5 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-medium text-white rounded-lg transition shadow-sm"
-              style={{ backgroundColor: primaryColor }}
-            >
-              Confirm Appointment
-            </button>
           </div>
         </form>
       </CSModal>
@@ -530,57 +520,57 @@ export default function SiteVisitsAppointmentsPage() {
         subtitle={`${selectedVisit?.customerName} • ${selectedVisit?.project}`}
       >
         {selectedVisit && (
-          <div className="space-y-5">
-            <div className="p-4 rounded-xl border border-border bg-foreground/[0.02] space-y-2">
-              <div className="text-xs text-muted-foreground">Appointment Status</div>
+          <div className="space-y-5 text-xs">
+            <div className="p-4 rounded-[12px] border border-[#E5E7EB] bg-[#F9FAFB] space-y-2">
+              <div className="text-[11px] text-[#6B7280]">Appointment Status</div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-foreground">{selectedVisit.visitPurpose}</span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-800">
+                <span className="text-sm font-semibold text-[#111827]">{selectedVisit.visitPurpose}</span>
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">
                   {selectedVisit.status}
                 </span>
               </div>
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Customer & Project</h4>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Customer & Project</h4>
+              <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-muted-foreground">Customer:</span>
-                  <div className="font-semibold text-foreground">{selectedVisit.customerName}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Customer:</span>
+                  <div className="font-semibold text-[#111827]">{selectedVisit.customerName}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Phone:</span>
-                  <div className="font-semibold text-foreground">{selectedVisit.phone}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Phone:</span>
+                  <div className="font-semibold text-[#111827] tabular-nums">{selectedVisit.phone}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Project:</span>
-                  <div className="font-semibold text-foreground">{selectedVisit.project}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Project:</span>
+                  <div className="font-semibold text-[#111827]">{selectedVisit.project}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Unit:</span>
-                  <div className="font-semibold text-foreground">{selectedVisit.unit}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Unit:</span>
+                  <div className="font-semibold text-[#6D4AFF]">{selectedVisit.unit}</div>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-3 pt-2 border-t border-border">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Visit Logistics</h4>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="space-y-3 pt-2 border-t border-[#E5E7EB]">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Visit Logistics</h4>
+              <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-muted-foreground">Date:</span>
-                  <div className="font-semibold text-foreground">{selectedVisit.appointmentDate}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Date:</span>
+                  <div className="font-semibold text-[#111827] tabular-nums">{selectedVisit.appointmentDate}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Time Slot:</span>
-                  <div className="font-semibold text-foreground">{selectedVisit.timeSlot}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Time Slot:</span>
+                  <div className="font-semibold text-[#111827] tabular-nums">{selectedVisit.timeSlot}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Assigned Escort:</span>
-                  <div className="font-semibold text-foreground">{selectedVisit.assignedEscort}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Assigned Escort:</span>
+                  <div className="font-semibold text-[#111827]">{selectedVisit.assignedEscort}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Safety Gear:</span>
-                  <div className="font-semibold text-foreground">
+                  <span className="text-[#6B7280] block text-[11px]">Safety Gear:</span>
+                  <div className="font-semibold text-[#111827]">
                     {selectedVisit.safetyPpeRequired ? "Helmet & Vest Mandatory" : "General Access"}
                   </div>
                 </div>
@@ -588,9 +578,9 @@ export default function SiteVisitsAppointmentsPage() {
             </div>
 
             {selectedVisit.customerNotes && (
-              <div className="space-y-1 pt-2 border-t border-border">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Special Instructions</h4>
-                <p className="text-xs text-muted-foreground bg-foreground/5 p-3 rounded-lg">
+              <div className="space-y-1 pt-2 border-t border-[#E5E7EB]">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Special Instructions</h4>
+                <p className="text-xs text-[#374151] bg-[#F9FAFB] border border-[#E5E7EB] p-3 rounded-lg">
                   {selectedVisit.customerNotes}
                 </p>
               </div>
@@ -598,12 +588,12 @@ export default function SiteVisitsAppointmentsPage() {
 
             <div className="pt-4 flex gap-2">
               <button
+                type="button"
                 onClick={() => {
                   handleStatusChange(selectedVisit.id, "Completed");
                   setSelectedVisit(null);
                 }}
-                className="flex-1 py-2 text-xs font-medium text-white rounded-lg transition"
-                style={{ backgroundColor: primaryColor }}
+                className="flex-1 py-2 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg transition shadow-xs"
               >
                 Mark Visit Completed
               </button>
@@ -614,4 +604,3 @@ export default function SiteVisitsAppointmentsPage() {
     </div>
   );
 }
-

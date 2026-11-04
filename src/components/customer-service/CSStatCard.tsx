@@ -2,7 +2,6 @@
 
 import React from "react";
 import { TrendingUp, TrendingDown } from "lucide-react";
-import { useTheme } from "@/lib/theme";
 
 export interface CSStatCardProps {
   title: string;
@@ -13,7 +12,7 @@ export interface CSStatCardProps {
   subtitle?: string;
   color?: string;
   trend?: {
-    value: number;
+    value: number | string;
     isPositive: boolean;
   };
   icon?: React.ElementType;
@@ -31,62 +30,69 @@ export function CSStatCard({
   color,
   trend,
   icon: Icon,
-  iconBg = "bg-blue-50",
-  iconColor = "text-blue-600",
+  iconBg,
+  iconColor,
 }: CSStatCardProps) {
-  const { primaryColor } = useTheme();
   const displaySubtext = subtext || subtitle;
 
-  const colorClasses = {
-    blue: { bg: "bg-blue-50 dark:bg-blue-950/40", text: "text-blue-600 dark:text-blue-400" },
-    emerald: { bg: "bg-emerald-50 dark:bg-emerald-950/40", text: "text-emerald-600 dark:text-emerald-400" },
-    purple: { bg: "bg-purple-50 dark:bg-purple-950/40", text: "text-purple-600 dark:text-purple-400" },
-    amber: { bg: "bg-amber-50 dark:bg-amber-950/40", text: "text-amber-600 dark:text-amber-400" },
-    rose: { bg: "bg-rose-50 dark:bg-rose-950/40", text: "text-rose-600 dark:text-rose-400" },
+  const colorClasses: Record<string, { bg: string; text: string }> = {
+    purple: { bg: "bg-[#F4F1FF] border border-[#DDD6FE]", text: "text-[#6D4AFF]" },
+    blue: { bg: "bg-[#EFF6FF] border border-[#BFDBFE]", text: "text-[#2563EB]" },
+    emerald: { bg: "bg-[#ECFDF3] border border-[#A6F4C5]", text: "text-[#027A48]" },
+    amber: { bg: "bg-[#FFFAEB] border border-[#FEDF89]", text: "text-[#DC6803]" },
+    rose: { bg: "bg-[#FEF2F2] border border-[#FECACA]", text: "text-[#DC2626]" },
+    sky: { bg: "bg-[#EFF8FF] border border-[#BFDBFE]", text: "text-[#175CD3]" },
+    teal: { bg: "bg-[#F0FDFA] border border-[#99F6E4]", text: "text-[#0F766E]" },
+    indigo: { bg: "bg-[#EEF2FF] border border-[#C7D2FE]", text: "text-[#4F46E5]" },
   };
 
-  const chosenBg = color && (colorClasses as any)[color] ? (colorClasses as any)[color].bg : iconBg;
-  const chosenColor = color && (colorClasses as any)[color] ? (colorClasses as any)[color].text : iconColor;
+  const palette = (color && colorClasses[color]) || colorClasses.purple;
+  const chosenBg = iconBg || palette.bg;
+  const chosenColor = iconColor || palette.text;
+
+  const trendPositive = trend ? trend.isPositive : isPositive;
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition hover:shadow-md">
+    <div className="rounded-[12px] border border-[#E5E7EB] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition hover:shadow-xs">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+        <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
           {title}
         </span>
         {Icon && (
           <div
-            className={`flex h-9 w-9 items-center justify-center rounded-xl ${chosenBg} ${chosenColor}`}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg ${chosenBg} ${chosenColor}`}
           >
-            <Icon className="h-4.5 w-4.5" />
+            <Icon className="h-4.5 w-4.5 stroke-[1.8]" />
           </div>
         )}
       </div>
 
-      <div className="mt-3 flex items-baseline gap-2.5">
-        <span className="text-2xl font-bold tracking-tight text-slate-900">
+      <div className="mt-3 flex items-baseline gap-2.5 flex-wrap">
+        <span className="text-2xl font-bold tracking-tight text-[#111827] tabular-nums">
           {value}
         </span>
         {(change || trend) && (
           <span
-            className={`flex items-center text-xs font-semibold ${
-              (trend ? trend.isPositive : isPositive)
-                ? "text-emerald-600"
-                : "text-rose-600"
+            className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full ${
+              trendPositive
+                ? "bg-[#ECFDF3] text-[#027A48]"
+                : "bg-[#FEF3F2] text-[#B42318]"
             }`}
           >
-            {(trend ? trend.isPositive : isPositive) ? (
+            {trendPositive ? (
               <TrendingUp className="mr-0.5 h-3.5 w-3.5" />
             ) : (
               <TrendingDown className="mr-0.5 h-3.5 w-3.5" />
             )}
-            {trend ? `${trend.isPositive ? "+" : ""}${trend.value}%` : change}
+            <span className="tabular-nums">
+              {trend ? `${trend.isPositive ? "+" : ""}${trend.value}%` : change}
+            </span>
           </span>
         )}
       </div>
 
       {displaySubtext && (
-        <p className="mt-1 text-xs text-slate-500">{displaySubtext}</p>
+        <p className="mt-1 text-xs text-[#6B7280] line-clamp-1">{displaySubtext}</p>
       )}
     </div>
   );

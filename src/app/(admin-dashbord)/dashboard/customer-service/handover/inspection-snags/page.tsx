@@ -68,7 +68,7 @@ const INITIAL_SNAGS: SnagItem[] = [
 
 export default function InspectionSnagsPage() {
   const { primaryColor } = useTheme();
-  const brand = primaryColor || "#0000F2";
+  const brand = primaryColor || "#6D4AFF";
 
   const [activeTab, setActiveTab] = useState("all");
   const [snags, setSnags] = useState<SnagItem[]>(INITIAL_SNAGS);
@@ -125,36 +125,39 @@ export default function InspectionSnagsPage() {
   const columns: Column<SnagItem>[] = [
     {
       key: "id",
-      header: "Snag ID & Unit",
+      header: "SNAG ID & UNIT",
       sortable: true,
+      minWidth: "160px",
       render: (s) => (
         <div>
-          <span className="font-mono font-bold text-slate-900">{s.id}</span>
-          <div className="text-[11px] font-semibold text-blue-600">{s.unit}</div>
+          <span className="font-semibold text-[#111827] tabular-nums text-xs">{s.id}</span>
+          <div className="text-[11px] font-medium text-[#6D4AFF] mt-0.5">{s.unit}</div>
         </div>
       ),
     },
     {
       key: "description",
-      header: "Defect Description & Area",
+      header: "DEFECT DESCRIPTION & AREA",
+      minWidth: "260px",
       render: (s) => (
         <div>
-          <span className="font-bold text-slate-900 block text-xs">{s.defectLocation}</span>
-          <p className="text-slate-600 text-[11px] line-clamp-1">{s.description}</p>
+          <span className="font-semibold text-[#111827] block text-xs">{s.defectLocation}</span>
+          <p className="text-[#6B7280] text-[11px] line-clamp-1 mt-0.5">{s.description}</p>
         </div>
       ),
     },
     {
       key: "severity",
-      header: "Severity",
+      header: "SEVERITY",
+      minWidth: "120px",
       render: (s) => (
         <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+          className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide ${
             s.severity === "Critical"
-              ? "bg-rose-100 text-rose-800"
+              ? "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]"
               : s.severity === "Major"
-                ? "bg-amber-100 text-amber-800"
-                : "bg-blue-50 text-blue-700"
+                ? "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
+                : "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]"
           }`}
         >
           {s.severity}
@@ -163,40 +166,54 @@ export default function InspectionSnagsPage() {
     },
     {
       key: "assignedContractor",
-      header: "Contractor & Deadline",
+      header: "CONTRACTOR & DEADLINE",
+      minWidth: "200px",
       render: (s) => (
         <div>
-          <div className="font-semibold text-slate-800 text-xs">{s.assignedContractor}</div>
-          <div className="text-[11px] text-slate-400">Target: {s.targetRectificationDate}</div>
+          <div className="font-semibold text-[#111827] text-xs">{s.assignedContractor}</div>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">Target: {s.targetRectificationDate}</div>
         </div>
       ),
     },
     {
       key: "status",
-      header: "Rectification Status",
+      header: "RECTIFICATION STATUS",
+      minWidth: "190px",
       render: (s) => (
-        <div className="space-y-1">
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-              s.status === "Client Signed Off"
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                : s.status === "Verified by Site Engr"
-                  ? "bg-purple-50 text-purple-700 border border-purple-200"
-                  : "bg-amber-50 text-amber-800 border border-amber-200"
-            }`}
-          >
-            {s.status}
-          </span>
-          {s.status !== "Client Signed Off" && (
-            <div>
-              <button
-                type="button"
-                onClick={() => handleAdvance(s)}
-                className="text-[10px] font-bold text-blue-600 hover:underline"
-              >
-                Advance Status →
-              </button>
-            </div>
+        <span
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+            s.status === "Client Signed Off"
+              ? "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
+              : s.status === "Verified by Site Engr"
+                ? "bg-[#F4F1FF] text-[#6D4AFF] border border-[#DDD6FE]"
+                : "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
+          }`}
+        >
+          {s.status}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "ACTION",
+      align: "right",
+      minWidth: "120px",
+      render: (s) => (
+        <div className="flex items-center justify-end">
+          {s.status !== "Client Signed Off" ? (
+            <button
+              type="button"
+              onClick={() => handleAdvance(s)}
+              title="Advance snag rectification status"
+              aria-label="Advance Status"
+              className="h-8 px-2.5 rounded-lg inline-flex items-center gap-1.5 bg-[#ECFDF3] border border-[#A6F4C5] text-[#039855] hover:bg-[#D1FADF] hover:text-[#027A48] text-xs font-semibold transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#039855]"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" /> Advance
+            </button>
+          ) : (
+            <span className="text-xs text-[#039855] font-semibold inline-flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Signed Off
+            </span>
           )}
         </div>
       ),
@@ -204,7 +221,7 @@ export default function InspectionSnagsPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Joint Inspections & Snagging (হ্যান্ডওভার-পূর্ব ত্রুটি)"
         subtitle="Manage joint pre-handover walk-through defect lists, contractor assignments, and client rectification sign-offs."
@@ -229,16 +246,16 @@ export default function InspectionSnagsPage() {
           value={snags.filter((s) => s.status !== "Client Signed Off").length.toString()}
           subtext="Assigned to finishing crews"
           icon={Clock}
-          iconBg="bg-amber-50"
-          iconColor="text-amber-600"
+          iconBg="bg-[#FFFAEB]"
+          iconColor="text-[#DC6803]"
         />
         <CSStatCard
           title="Client Signed Off"
           value={snags.filter((s) => s.status === "Client Signed Off").length.toString()}
           subtext="Cleared for key possession"
           icon={CheckCircle2}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
+          iconBg="bg-[#ECFDF3]"
+          iconColor="text-[#039855]"
         />
       </div>
 
@@ -281,15 +298,14 @@ export default function InspectionSnagsPage() {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              className="h-9 px-4 text-xs font-semibold text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleCreate}
-              className="px-4 py-2 text-xs font-semibold text-white rounded-lg shadow-sm transition hover:opacity-95"
-              style={{ backgroundColor: brand }}
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
             >
               Save Snag Record
             </button>
@@ -297,38 +313,38 @@ export default function InspectionSnagsPage() {
         }
       >
         <form onSubmit={handleCreate} className="space-y-3.5 text-xs">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Unit Allotment *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Unit Allotment *</label>
               <input
                 type="text"
                 required
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 placeholder="e.g. C-9, Sheba Green"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Defect Location *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Defect Location *</label>
               <input
                 type="text"
                 required
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="e.g. Master Bedroom Ceiling"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Severity</label>
+              <label className="block font-semibold text-[#374151] mb-1">Severity</label>
               <select
                 value={severity}
                 onChange={(e) => setSeverity(e.target.value as any)}
-                className="w-full h-9 px-2 rounded-lg border border-slate-200 outline-none focus:border-blue-500 bg-white"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="Minor">Minor (Cosmetic / Paint)</option>
                 <option value="Major">Major (Plumbing / Sanitary / Tiles)</option>
@@ -336,26 +352,26 @@ export default function InspectionSnagsPage() {
               </select>
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Assigned Contractor</label>
+              <label className="block font-semibold text-[#374151] mb-1">Assigned Contractor</label>
               <input
                 type="text"
                 value={contractor}
                 onChange={(e) => setContractor(e.target.value)}
                 placeholder="Finishing / MEP team"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Defect Description *</label>
+            <label className="block font-semibold text-[#374151] mb-1">Defect Description *</label>
             <textarea
               rows={3}
               required
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
               placeholder="Describe issue found during walk-through..."
-              className="w-full p-2.5 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+              className="w-full p-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] text-xs transition"
             />
           </div>
         </form>
@@ -363,4 +379,3 @@ export default function InspectionSnagsPage() {
     </div>
   );
 }
-

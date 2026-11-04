@@ -30,8 +30,8 @@ interface FeedbackSurvey {
   unit: string;
   project: string;
   surveyType: "Handover CSAT" | "Construction Update" | "DLP Resolution" | "Pre-Sales to Post-Sales";
-  csatScore: number; // 1 to 5
-  npsScore: number; // 0 to 10
+  csatScore: number;
+  npsScore: number;
   npsCategory: "Promoter" | "Passive" | "Detractor";
   comments: string;
   followUpStatus: "Satisfied - Closed" | "Pending Review" | "Escalated to CX Head" | "Action Taken";
@@ -80,62 +80,34 @@ const INITIAL_FEEDBACK: FeedbackSurvey[] = [
     csatScore: 5,
     npsScore: 9,
     npsCategory: "Promoter",
-    comments: "Monthly drone video progress updates and WhatsApp milestone alerts are very reassuring for overseas and busy doctors like me.",
+    comments: "Regular milestone drone photos and timely demand letters made the payment planning very smooth. Great job by customer relations desk.",
     followUpStatus: "Satisfied - Closed",
-    assignedOfficer: "Md. Tariqul Hasan",
-    submittedAt: "2026-11-01 02:00 PM",
-  },
-  {
-    id: "FB-104",
-    feedbackNo: "CSAT-2026-084",
-    customerName: "Mrs. Anowara Begum",
-    unit: "B-2, Meghna Ocean Pearl",
-    project: "Meghna Ocean Pearl",
-    surveyType: "Pre-Sales to Post-Sales",
-    csatScore: 4,
-    npsScore: 8,
-    npsCategory: "Passive",
-    comments: "Overall good transition from sales to customer care. Payment ledger portal could have easier bKash/Nagad instant receipt generation.",
-    followUpStatus: "Action Taken",
-    assignedOfficer: "Kazi Farhad",
-    submittedAt: "2026-10-29 05:20 PM",
-  },
-  {
-    id: "FB-105",
-    feedbackNo: "CSAT-2026-085",
-    customerName: "Engr. Tanvir Ahmed",
-    unit: "D-2, Uttara Green Park",
-    project: "Uttara Green Park",
-    surveyType: "DLP Resolution",
-    csatScore: 2,
-    npsScore: 5,
-    npsCategory: "Detractor",
-    comments: "Sub-station earthing fluctuation tripped my sensitive equipment. Requires immediate electrical team verification.",
-    followUpStatus: "Pending Review",
-    assignedOfficer: "Engr. Mahmudul Karim",
-    submittedAt: "2026-11-04 08:15 AM",
+    assignedOfficer: "Nusrat Jahan (CX Lead)",
+    submittedAt: "2026-11-01 02:20 PM",
   },
 ];
 
 export default function FeedbackSurveysPage() {
   const { primaryColor } = useTheme();
+  const brand = primaryColor || "#6D4AFF";
+
   const [feedbacks, setFeedbacks] = useState<FeedbackSurvey[]>(INITIAL_FEEDBACK);
   const [activeTab, setActiveTab] = useState("all");
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackSurvey | null>(null);
   const [isSurveyModalOpen, setIsSurveyModalOpen] = useState(false);
 
-  // Survey Campaign state
+  // Form states
   const [campaignTitle, setCampaignTitle] = useState("");
   const [campaignType, setCampaignType] = useState<FeedbackSurvey["surveyType"]>("Handover CSAT");
   const [targetProject, setTargetProject] = useState("All Projects");
 
-  const filteredFeedbacks = feedbacks.filter((fb) => {
-    if (activeTab === "promoters") return fb.npsCategory === "Promoter";
-    if (activeTab === "passives") return fb.npsCategory === "Passive";
-    if (activeTab === "detractors") return fb.npsCategory === "Detractor";
-    if (activeTab === "handover") return fb.surveyType === "Handover CSAT";
-    if (activeTab === "dlp") return fb.surveyType === "DLP Resolution";
-    if (activeTab === "escalated") return fb.followUpStatus === "Escalated to CX Head" || fb.followUpStatus === "Pending Review";
+  const filteredFeedbacks = feedbacks.filter((f) => {
+    if (activeTab === "promoters") return f.npsCategory === "Promoter";
+    if (activeTab === "passives") return f.npsCategory === "Passive";
+    if (activeTab === "detractors") return f.npsCategory === "Detractor";
+    if (activeTab === "handover") return f.surveyType === "Handover CSAT";
+    if (activeTab === "dlp") return f.surveyType === "DLP Resolution";
+    if (activeTab === "escalated") return f.followUpStatus === "Escalated to CX Head" || f.followUpStatus === "Pending Review";
     return true;
   });
 
@@ -151,62 +123,57 @@ export default function FeedbackSurveysPage() {
 
   const handleLaunchCampaign = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success(`Survey campaign "${campaignTitle || campaignType}" dispatched to ${targetProject}`);
+    toast.success(`Survey campaign "${campaignTitle || campaignType}" dispatched to ${targetProject} purchasers.`);
     setIsSurveyModalOpen(false);
     setCampaignTitle("");
   };
 
   const handleStatusUpdate = (id: string, newStatus: FeedbackSurvey["followUpStatus"]) => {
-    setFeedbacks((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, followUpStatus: newStatus } : f))
-    );
-    toast.success(`Feedback status updated to: ${newStatus}`);
+    setFeedbacks(feedbacks.map((f) => (f.id === id ? { ...f, followUpStatus: newStatus } : f)));
+    toast.success(`Feedback issue updated: ${newStatus}`);
   };
 
   const columns: Column<FeedbackSurvey>[] = [
     {
-      header: "Survey Ref & Customer",
-      accessorKey: "feedbackNo",
-      cell: (row) => (
+      key: "feedbackNo",
+      header: "SURVEY NO & CUSTOMER",
+      sortable: true,
+      minWidth: "210px",
+      render: (row) => (
         <div>
-          <div className="font-semibold text-foreground">{row.customerName}</div>
-          <div className="text-xs text-muted-foreground">{row.feedbackNo} • {row.unit}</div>
+          <div className="font-semibold text-[#111827] text-xs">{row.customerName}</div>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">{row.feedbackNo} • {row.unit}</div>
         </div>
       ),
     },
     {
-      header: "Touchpoint / Category",
-      accessorKey: "surveyType",
-      cell: (row) => (
-        <span className="text-xs font-medium text-foreground bg-foreground/5 px-2.5 py-1 rounded-md">
+      key: "surveyType",
+      header: "TOUCHPOINT",
+      minWidth: "170px",
+      render: (row) => (
+        <span className="text-[11px] font-medium text-[#374151] bg-[#F3F4F6] border border-[#E5E7EB] px-2 py-0.5 rounded-md">
           {row.surveyType}
         </span>
       ),
     },
     {
-      header: "CSAT & NPS",
-      accessorKey: "csatScore",
-      cell: (row) => (
+      key: "npsScore",
+      header: "CSAT & NPS SCORE",
+      minWidth: "180px",
+      render: (row) => (
         <div className="space-y-1">
-          <div className="flex items-center gap-1 text-amber-500 text-xs font-bold">
-            <div className="flex">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`h-3 w-3 ${i < row.csatScore ? "fill-amber-400 text-amber-400" : "text-border"}`}
-                />
-              ))}
-            </div>
-            <span className="text-foreground ml-1">{row.csatScore}.0</span>
+          <div className="flex items-center gap-1 text-xs font-semibold text-[#111827]">
+            <Star className="h-3.5 w-3.5 text-[#F59E0B] fill-[#F59E0B]" />
+            <span className="tabular-nums">{row.csatScore}.0</span>
           </div>
           <div className="text-[11px] font-semibold flex items-center gap-1">
-            {row.npsCategory === "Promoter" && <Smile className="h-3 w-3 text-emerald-500" />}
-            {row.npsCategory === "Passive" && <Meh className="h-3 w-3 text-amber-500" />}
-            {row.npsCategory === "Detractor" && <Frown className="h-3 w-3 text-rose-500" />}
-            <span className={
-              row.npsCategory === "Promoter" ? "text-emerald-600" :
-              row.npsCategory === "Passive" ? "text-amber-600" : "text-rose-600"
-            }>
+            {row.npsCategory === "Promoter" && <Smile className="h-3.5 w-3.5 text-[#039855]" />}
+            {row.npsCategory === "Passive" && <Meh className="h-3.5 w-3.5 text-[#DC6803]" />}
+            {row.npsCategory === "Detractor" && <Frown className="h-3.5 w-3.5 text-[#DC2626]" />}
+            <span className={`tabular-nums ${
+              row.npsCategory === "Promoter" ? "text-[#039855]" :
+              row.npsCategory === "Passive" ? "text-[#DC6803]" : "text-[#DC2626]"
+            }`}>
               NPS {row.npsScore}/10 ({row.npsCategory})
             </span>
           </div>
@@ -214,47 +181,54 @@ export default function FeedbackSurveysPage() {
       ),
     },
     {
-      header: "Customer Voice / Comments",
-      accessorKey: "comments",
-      cell: (row) => (
-        <p className="text-xs text-muted-foreground line-clamp-2 max-w-sm" title={row.comments}>
+      key: "comments",
+      header: "CUSTOMER VOICE",
+      minWidth: "250px",
+      render: (row) => (
+        <p className="text-xs text-[#6B7280] line-clamp-2 max-w-sm" title={row.comments}>
           {row.comments}
         </p>
       ),
     },
     {
-      header: "Follow-up Status",
-      accessorKey: "followUpStatus",
-      cell: (row) => {
+      key: "followUpStatus",
+      header: "FOLLOW-UP STATUS",
+      minWidth: "170px",
+      render: (row) => {
         const badges = {
-          "Satisfied - Closed": "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
-          "Pending Review": "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
-          "Escalated to CX Head": "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300",
-          "Action Taken": "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300",
+          "Satisfied - Closed": "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]",
+          "Pending Review": "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]",
+          "Escalated to CX Head": "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]",
+          "Action Taken": "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]",
         };
         return (
-          <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${badges[row.followUpStatus]}`}>
+          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${badges[row.followUpStatus]}`}>
             {row.followUpStatus}
           </span>
         );
       },
     },
     {
-      header: "Actions",
-      accessorKey: "id",
-      cell: (row) => (
-        <div className="flex items-center gap-1.5">
+      key: "actions",
+      header: "ACTION",
+      align: "right",
+      minWidth: "120px",
+      render: (row) => (
+        <div className="flex items-center justify-end gap-1.5">
           <button
+            type="button"
             onClick={() => setSelectedFeedback(row)}
-            className="p-1.5 rounded-lg border border-border hover:bg-foreground/5 text-foreground/80 transition"
+            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
             title="View Survey"
+            aria-label="View Survey"
           >
-            <Eye className="h-3.5 w-3.5" />
+            <Eye className="h-4 w-4" />
           </button>
           {row.npsCategory === "Detractor" && row.followUpStatus !== "Action Taken" && (
             <button
+              type="button"
               onClick={() => handleStatusUpdate(row.id, "Escalated to CX Head")}
-              className="px-2 py-1 text-xs rounded border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 font-medium transition"
+              className="h-8 px-2.5 rounded-lg inline-flex items-center text-xs font-semibold bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] hover:bg-[#FEE2E2] transition shadow-xs"
               title="Escalate Detractor"
             >
               Escalate
@@ -266,11 +240,12 @@ export default function FeedbackSurveysPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Feedback, Surveys & NPS"
-        description="Monitor buyer sentiment across key touchpoints: booking confirmation, construction progress, handover possession, and 2-year DLP property care."
-        badgeText="Voice of Customer"
+        subtitle="Monitor buyer sentiment across key touchpoints: booking confirmation, construction progress, handover possession, and 2-year DLP property care."
+        badge="Voice of Customer"
+        breadcrumbs={[{ label: "Communication & Appointments" }, { label: "Feedback & NPS" }]}
         primaryAction={{
           label: "Launch Survey Campaign",
           icon: Plus,
@@ -289,31 +264,33 @@ export default function FeedbackSurveysPage() {
         <CSStatCard
           title="Net Promoter Score (NPS)"
           value="+54"
-          subtitle="Industry benchmark: +35"
+          subtext="Industry benchmark: +35"
           icon={TrendingUp}
-          color="emerald"
-          trend={{ value: 8, isPositive: true }}
+          trend={{ value: "+8 pts", isPositive: true }}
         />
         <CSStatCard
           title="Average CSAT Rating"
           value="4.6 / 5.0"
-          subtitle="Based on 248 reviews"
+          subtext="Based on 248 reviews"
           icon={Star}
-          color="amber"
+          iconBg="bg-[#FFFAEB]"
+          iconColor="text-[#DC6803]"
         />
         <CSStatCard
           title="Brand Promoters (9-10)"
           value="78%"
-          subtitle="Advocates & Referral Drivers"
+          subtext="Advocates & Referral Drivers"
           icon={Smile}
-          color="blue"
+          iconBg="bg-[#EFF6FF]"
+          iconColor="text-[#2563EB]"
         />
         <CSStatCard
           title="Active Detractors"
           value="2"
-          subtitle="Requiring CX Management Follow-up"
+          subtext="Requiring CX Management Follow-up"
           icon={Frown}
-          color="rose"
+          iconBg="bg-[#FEF2F2]"
+          iconColor="text-[#DC2626]"
         />
       </div>
 
@@ -328,7 +305,7 @@ export default function FeedbackSurveysPage() {
           { key: "escalated", label: "Action Needed", count: counts.escalated },
         ]}
         activeTab={activeTab}
-        onChange={setActiveTab}
+        onTabChange={setActiveTab}
       />
 
       <CSTable
@@ -343,27 +320,46 @@ export default function FeedbackSurveysPage() {
         isOpen={isSurveyModalOpen}
         onClose={() => setIsSurveyModalOpen(false)}
         title="Launch Customer Feedback Campaign"
-        description="Dispatch automated SMS and email survey links to allottees at specific milestone touchpoints."
+        subtitle="Dispatch automated SMS and email survey links to allottees at specific milestone touchpoints."
+        maxWidth="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsSurveyModalOpen(false)}
+              className="h-9 px-4 text-xs font-semibold text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="launch-campaign-form"
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
+            >
+              Dispatch Survey Link
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleLaunchCampaign} className="space-y-4">
+        <form id="launch-campaign-form" onSubmit={handleLaunchCampaign} className="space-y-3.5 text-xs">
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Campaign Title</label>
+            <label className="block font-semibold text-[#374151] mb-1">Campaign Title</label>
             <input
               type="text"
               placeholder="e.g. Q4 2026 Handover Allottee CSAT"
               value={campaignTitle}
               onChange={(e) => setCampaignTitle(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Survey Touchpoint *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Survey Touchpoint *</label>
               <select
                 value={campaignType}
                 onChange={(e) => setCampaignType(e.target.value as any)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="Handover CSAT">Handover & Key Possession CSAT</option>
                 <option value="Construction Update">Construction Progress Transparency</option>
@@ -372,11 +368,11 @@ export default function FeedbackSurveysPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1">Target Project *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Target Project *</label>
               <select
                 value={targetProject}
                 onChange={(e) => setTargetProject(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="All Projects">All Active Projects</option>
                 <option value="Hena Heights, Gulshan">Hena Heights, Gulshan</option>
@@ -387,30 +383,13 @@ export default function FeedbackSurveysPage() {
             </div>
           </div>
 
-          <div className="p-3 rounded-lg border border-border bg-foreground/[0.02] space-y-2 text-xs">
-            <span className="font-semibold text-foreground">Standard 3-Question Survey Template:</span>
-            <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+          <div className="p-3.5 rounded-[12px] border border-[#E5E7EB] bg-[#F9FAFB] space-y-2 text-xs">
+            <span className="font-semibold text-[#111827]">Standard 3-Question Survey Template:</span>
+            <ol className="list-decimal list-inside space-y-1 text-[#6B7280]">
               <li>How satisfied are you with the finishing quality and handover timeline? (1-5 Stars)</li>
               <li>How likely are you to recommend RealBiz Pro developments to friends and family? (NPS 0-10)</li>
               <li>Any suggestions or unresolved concerns for our site engineering team? (Open text)</li>
             </ol>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-border">
-            <button
-              type="button"
-              onClick={() => setIsSurveyModalOpen(false)}
-              className="px-4 py-2 text-xs font-medium rounded-lg border border-border hover:bg-foreground/5 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-medium text-white rounded-lg transition shadow-sm"
-              style={{ backgroundColor: primaryColor }}
-            >
-              Dispatch Survey Link
-            </button>
           </div>
         </form>
       </CSModal>
@@ -423,73 +402,57 @@ export default function FeedbackSurveysPage() {
         subtitle={`${selectedFeedback?.customerName} • ${selectedFeedback?.project}`}
       >
         {selectedFeedback && (
-          <div className="space-y-5">
-            <div className="p-4 rounded-xl border border-border bg-foreground/[0.02] space-y-2">
-              <div className="text-xs text-muted-foreground">NPS Category & CSAT</div>
+          <div className="space-y-5 text-xs">
+            <div className="p-4 rounded-[12px] border border-[#E5E7EB] bg-[#F9FAFB] space-y-2">
+              <div className="text-[11px] text-[#6B7280]">NPS Category & CSAT</div>
               <div className="flex items-center justify-between">
-                <span className="text-base font-bold text-foreground">
+                <span className="text-base font-semibold text-[#111827] tabular-nums">
                   {selectedFeedback.npsCategory} ({selectedFeedback.npsScore}/10)
                 </span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-800">
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5] tabular-nums">
                   {selectedFeedback.csatScore} / 5 Stars
                 </span>
               </div>
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Customer & Unit</h4>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Customer & Unit</h4>
+              <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-muted-foreground">Customer:</span>
-                  <div className="font-semibold text-foreground">{selectedFeedback.customerName}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Customer:</span>
+                  <div className="font-semibold text-[#111827]">{selectedFeedback.customerName}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Unit & Project:</span>
-                  <div className="font-semibold text-foreground">{selectedFeedback.unit}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Unit & Project:</span>
+                  <div className="font-semibold text-[#6D4AFF]">{selectedFeedback.unit}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Touchpoint:</span>
-                  <div className="font-semibold text-foreground">{selectedFeedback.surveyType}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Touchpoint:</span>
+                  <div className="font-medium text-[#111827]">{selectedFeedback.surveyType}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Submitted At:</span>
-                  <div className="font-semibold text-foreground">{selectedFeedback.submittedAt}</div>
+                  <span className="text-[#6B7280] block text-[11px]">Date & Time:</span>
+                  <div className="font-medium text-[#111827] tabular-nums">{selectedFeedback.submittedAt}</div>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2 pt-2 border-t border-border">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Buyer's Written Remarks</h4>
-              <p className="text-xs text-foreground bg-background p-3 rounded-lg border border-border leading-relaxed">
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Customer Voice & Comments</h4>
+              <div className="p-3.5 rounded-[12px] border border-[#E5E7EB] bg-white text-xs leading-relaxed text-[#374151]">
                 "{selectedFeedback.comments}"
-              </p>
-            </div>
-
-            <div className="space-y-3 pt-2 border-t border-border">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Follow-up Workflow</h4>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span className="text-muted-foreground">Current Status:</span>
-                  <div className="font-semibold text-foreground">{selectedFeedback.followUpStatus}</div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Assigned Officer:</span>
-                  <div className="font-semibold text-foreground">{selectedFeedback.assignedOfficer}</div>
-                </div>
               </div>
             </div>
 
-            <div className="pt-4 flex gap-2">
-              <button
-                onClick={() => {
-                  handleStatusUpdate(selectedFeedback.id, "Action Taken");
-                  setSelectedFeedback(null);
-                }}
-                className="flex-1 py-2 text-xs font-medium text-white rounded-lg transition"
-                style={{ backgroundColor: primaryColor }}
-              >
-                Mark Action Taken & Closed
-              </button>
+            <div className="space-y-2 pt-2 border-t border-[#E5E7EB] text-xs">
+              <div className="flex justify-between text-[#6B7280]">
+                <span>Assigned CX Officer:</span>
+                <span className="font-medium text-[#111827]">{selectedFeedback.assignedOfficer}</span>
+              </div>
+              <div className="flex justify-between text-[#6B7280]">
+                <span>Resolution Status:</span>
+                <span className="font-semibold text-[#039855]">{selectedFeedback.followUpStatus}</span>
+              </div>
             </div>
           </div>
         )}
@@ -497,4 +460,3 @@ export default function FeedbackSurveysPage() {
     </div>
   );
 }
-

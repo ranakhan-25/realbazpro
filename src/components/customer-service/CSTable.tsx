@@ -1,14 +1,23 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Inbox, Eye } from "lucide-react";
-import { useTheme } from "@/lib/theme";
+import React, { useState, useMemo, useRef, useEffect } from "react";
+import {
+  Search,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  Inbox,
+  RefreshCw,
+} from "lucide-react";
 
 export interface Column<T> {
   key?: string;
   accessorKey?: string;
   header: string;
   width?: string;
+  minWidth?: string;
+  align?: "left" | "center" | "right";
   sortable?: boolean;
   render?: (row: T, index: number) => React.ReactNode;
   cell?: (row: T, index: number) => React.ReactNode;
@@ -25,6 +34,8 @@ export interface CSTableProps<T> {
   emptySubtitle?: string;
   extraHeaderActions?: React.ReactNode;
   exportFileName?: string;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export function CSTable<T extends { id?: string | number }>({
@@ -38,14 +49,26 @@ export function CSTable<T extends { id?: string | number }>({
   emptySubtitle = "There are currently no items matching your criteria.",
   extraHeaderActions,
   exportFileName,
+  onRefresh,
+  isRefreshing = false,
 }: CSTableProps<T>) {
-  const { primaryColor } = useTheme();
-  const brand = primaryColor || "#0000F2";
-
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [currentPageSize, setCurrentPageSize] = useState<number>(pageSize);
   const [page, setPage] = useState(1);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const scrollWrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = scrollWrapperRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      setIsScrolled(el.scrollTop > 2);
+    };
+    el.addEventListener("scroll", handleScroll);
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Filter
   const filtered = useMemo(() => {
@@ -86,11 +109,11 @@ export function CSTable<T extends { id?: string | number }>({
   }, [filtered, sortKey, sortOrder]);
 
   // Pagination
-  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(sorted.length / currentPageSize));
   const paginated = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return sorted.slice(start, start + pageSize);
-  }, [sorted, page, pageSize]);
+    const start = (page - 1) * currentPageSize;
+    return sorted.slice(start, start + currentPageSize);
+  }, [sorted, page, currentPageSize]);
 
   const handleSort = (key: string) => {
     if (sortKey === key) {
@@ -105,136 +128,243 @@ export function CSTable<T extends { id?: string | number }>({
     }
   };
 
+  const isActionCol = (header: string, key?: string) => {
+    const h = header.toLowerCase();
+    const k = (key || "").toLowerCase();
+    return h.includes("action") || h.includes("view") || k.includes("action");
+  };
+
   return (
-    <div className="space-y-4">
-      {/* Search & Actions Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setPage(1);
-            }}
-            placeholder={searchPlaceholder}
-            className="h-9 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-xs text-slate-900 shadow-xs outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-          />
+    <div className="w-full space-y-0 rounded-[12px] border border-[#E5E7EB] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] overflow-hidden transition-shadow">
+      {/* Top Bar Spec: 56px, padding 0 16px, border-bottom #E5E7EB */}
+      <div className="flex h-14 min-h-[56px] items-center justify-between border-b border-[#E5E7EB] px-4 gap-3 bg-white">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-[13px] text-[#6B7280]">
+            <span>Show</span>
+            <select
+              value={currentPageSize}
+              onChange={(e) => {
+                setCurrentPageSize(Number(e.target.value));
+                setPage(1);
+              }}
+              className="h-8 rounded-lg border border-[#E5E7EB] bg-white px-2.5 text-xs font-medium text-[#111827] outline-none transition focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+            <span>entries</span>
+          </div>
+
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[#4B5563] shadow-xs hover:bg-[#F9FAFB] hover:text-[#111827] transition active:scale-95 disabled:opacity-50"
+              title="Refresh table data"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-[#6D4AFF]" : ""}`} />
+            </button>
+          )}
         </div>
 
-        {extraHeaderActions && (
-          <div className="flex items-center gap-2">{extraHeaderActions}</div>
-        )}
+        <div className="flex items-center gap-2.5">
+          {/* Search Control: 36px tall */}
+          <div className="relative w-64 sm:w-72">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(1);
+              }}
+              placeholder={searchPlaceholder}
+              className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-white pl-9 pr-3 text-[13px] text-[#111827] placeholder-[#9CA3AF] shadow-xs outline-none transition focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20"
+            />
+          </div>
+
+          {extraHeaderActions && (
+            <div className="flex items-center gap-2">{extraHeaderActions}</div>
+          )}
+        </div>
       </div>
 
-      {/* Table Container */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-100 bg-slate-50/70 text-slate-500 font-semibold uppercase tracking-wider">
-              <tr>
-                {columns.map((col, idx) => {
-                  const colKey = col.key || col.accessorKey || `col_${idx}`;
-                  return (
-                    <th
-                      key={colKey}
-                      style={{ width: col.width }}
-                      onClick={() => col.sortable && handleSort(colKey)}
-                      className={`px-4 py-3 ${
-                        col.sortable ? "cursor-pointer select-none hover:text-slate-800" : ""
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>{col.header}</span>
-                        {col.sortable && sortKey === colKey && (
-                          sortOrder === "asc" ? (
-                            <ChevronUp className="h-3.5 w-3.5 text-blue-600" />
-                          ) : (
-                            <ChevronDown className="h-3.5 w-3.5 text-blue-600" />
-                          )
-                        )}
-                      </div>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
+      {/* Inner Horizontal Scroll Wrapper */}
+      <div
+        ref={scrollWrapperRef}
+        className="relative max-h-[640px] w-full overflow-x-auto overflow-y-auto"
+      >
+        <table className="w-full min-w-[760px] text-left border-collapse">
+          {/* Table Header Spec: Lavender #E9E5FF, 46px height, bottom border 2px #C9BFFF */}
+          <thead
+            className={`sticky top-0 z-10 h-[46px] bg-[#E9E5FF] border-b-2 border-[#C9BFFF] transition-shadow ${
+              isScrolled ? "shadow-[0_4px_8px_-4px_rgba(46,26,135,0.18)]" : ""
+            }`}
+          >
+            <tr>
+              {columns.map((col, idx) => {
+                const colKey = col.key || col.accessorKey || `col_${idx}`;
+                const isAction = isActionCol(col.header, colKey);
+                const isSorted = sortKey === colKey;
+                const isFirst = idx === 0;
+                const isLast = idx === columns.length - 1;
 
-            <tbody className="divide-y divide-slate-100">
-              {paginated.length > 0 ? (
-                paginated.map((row, idx) => (
-                  <tr
-                    key={(row as any).id || idx}
-                    onClick={() => onRowClick && onRowClick(row)}
-                    className={`transition hover:bg-slate-50/80 ${
-                      onRowClick ? "cursor-pointer" : ""
+                const alignmentClass =
+                  col.align === "right" || isAction
+                    ? "text-right justify-end"
+                    : col.align === "center"
+                    ? "text-center justify-center"
+                    : "text-left justify-start";
+
+                const minColWidth = isAction ? col.minWidth || "120px" : col.minWidth || "140px";
+
+                return (
+                  <th
+                    key={colKey}
+                    style={{
+                      width: col.width,
+                      minWidth: minColWidth,
+                    }}
+                    onClick={() => col.sortable && handleSort(colKey)}
+                    className={`h-[46px] px-4 py-0 text-[11.5px] font-bold uppercase tracking-[0.06em] select-none transition-colors ${
+                      isSorted
+                        ? "bg-[#D2C9FF] text-[#3B1FA8] shadow-[inset_0_-3px_0_0_#6D4AFF]"
+                        : "text-[#2E1A87]"
+                    } ${
+                      col.sortable
+                        ? "cursor-pointer hover:bg-[#DFD9FF]"
+                        : "cursor-default"
+                    } ${isFirst ? "rounded-tl-[12px]" : ""} ${
+                      isLast ? "rounded-tr-[12px] pr-4" : ""
                     }`}
                   >
-                    {columns.map((col, cIdx) => {
-                      const colKey = col.key || col.accessorKey || `col_${cIdx}`;
-                      const renderer = col.render || col.cell;
-                      return (
-                        <td key={colKey} className="px-4 py-3 text-slate-700">
-                          {renderer ? renderer(row, idx) : (row as any)[colKey]}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={columns.length} className="px-4 py-16 text-center">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 mb-3">
-                        <Inbox className="h-6 w-6" />
-                      </div>
-                      <h4 className="text-sm font-semibold text-slate-800">{emptyTitle}</h4>
-                      <p className="mt-1 text-xs text-slate-400 max-w-sm">{emptySubtitle}</p>
+                    <div className={`flex items-center gap-1.5 ${alignmentClass} leading-none`}>
+                      <span className="truncate">{col.header}</span>
+                      {col.sortable && (
+                        <span className="shrink-0 text-[#7C6BD6]">
+                          {isSorted ? (
+                            sortOrder === "asc" ? (
+                              <ChevronUp className="h-3.5 w-3.5 text-[#6D4AFF] stroke-[2.2]" />
+                            ) : (
+                              <ChevronDown className="h-3.5 w-3.5 text-[#6D4AFF] stroke-[2.2]" />
+                            )
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5 opacity-60 hover:opacity-100 hover:text-[#2E1A87] stroke-[1.75]" />
+                          )}
+                        </span>
+                      )}
                     </div>
-                  </td>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+
+          {/* Rows and Cells Spec */}
+          <tbody className="divide-y divide-[#F1F2F4] bg-white">
+            {paginated.length > 0 ? (
+              paginated.map((row, idx) => (
+                <tr
+                  key={(row as any).id || idx}
+                  onClick={() => onRowClick && onRowClick(row)}
+                  className={`group transition-colors duration-140 hover:bg-[#FAFAFF] ${
+                    onRowClick ? "cursor-pointer" : ""
+                  }`}
+                >
+                  {columns.map((col, cIdx) => {
+                    const colKey = col.key || col.accessorKey || `col_${cIdx}`;
+                    const renderer = col.render || col.cell;
+                    const isSortedCol = sortKey === colKey;
+                    const isAction = isActionCol(col.header, colKey);
+                    const isLast = cIdx === columns.length - 1;
+
+                    const alignClass =
+                      col.align === "right" || isAction
+                        ? "text-right"
+                        : col.align === "center"
+                        ? "text-center"
+                        : "text-left";
+
+                    return (
+                      <td
+                        key={colKey}
+                        className={`px-4 py-3 text-[13px] text-[#374151] align-middle ${alignClass} ${
+                          isSortedCol ? "bg-[#FCFBFF]" : ""
+                        } ${isLast ? "pr-4" : ""}`}
+                      >
+                        {renderer
+                          ? renderer(row, idx)
+                          : (
+                            <span className="tabular-nums font-sans text-[#374151]">
+                              {(row as any)[colKey] !== undefined && (row as any)[colKey] !== null
+                                ? String((row as any)[colKey])
+                                : "—"}
+                            </span>
+                          )}
+                      </td>
+                    );
+                  })}
                 </tr>
-              )}
-            </tbody>
-          </table>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-16 text-center bg-white">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F4F1FF] text-[#6D4AFF] mb-3">
+                      <Inbox className="h-6 w-6 stroke-[1.75]" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-[#111827]">{emptyTitle}</h4>
+                    <p className="mt-1 text-xs text-[#6B7280] max-w-sm">{emptySubtitle}</p>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination Footer Spec: 56px, border-top #E5E7EB, range text 13px #6B7280, page button 32px */}
+      <div className="flex h-14 min-h-[56px] items-center justify-between border-t border-[#E5E7EB] bg-white px-4">
+        <span className="text-[13px] text-[#6B7280]">
+          Showing{" "}
+          <span className="font-semibold text-[#111827] tabular-nums">
+            {sorted.length === 0 ? 0 : (page - 1) * currentPageSize + 1}
+          </span>{" "}
+          to{" "}
+          <span className="font-semibold text-[#111827] tabular-nums">
+            {Math.min(page * currentPageSize, sorted.length)}
+          </span>{" "}
+          of <span className="font-semibold text-[#111827] tabular-nums">{sorted.length}</span> entries
+        </span>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[#4B5563] shadow-xs hover:bg-[#F9FAFB] hover:text-[#111827] disabled:opacity-40 disabled:cursor-not-allowed transition"
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          <span className="px-2.5 text-xs font-semibold text-[#111827] tabular-nums">
+            Page {page} of {totalPages}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages || totalPages === 0}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[#4B5563] shadow-xs hover:bg-[#F9FAFB] hover:text-[#111827] disabled:opacity-40 disabled:cursor-not-allowed transition"
+            aria-label="Next page"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
-
-        {/* Pagination Footer */}
-        {sorted.length > pageSize && (
-          <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-            <span className="text-xs text-slate-500">
-              Showing <span className="font-semibold text-slate-800">{(page - 1) * pageSize + 1}</span> to{" "}
-              <span className="font-semibold text-slate-800">
-                {Math.min(page * pageSize, sorted.length)}
-              </span>{" "}
-              of <span className="font-semibold text-slate-800">{sorted.length}</span> results
-            </span>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-2xs hover:bg-slate-50 disabled:opacity-40 transition"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-
-              <span className="px-2 text-xs font-semibold text-slate-700">
-                {page} / {totalPages}
-              </span>
-
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-2xs hover:bg-slate-50 disabled:opacity-40 transition"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

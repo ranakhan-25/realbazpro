@@ -15,23 +15,16 @@ import {
   Clock,
   AlertTriangle,
   ArrowRight,
-  TrendingUp,
-  FileText,
-  Calendar,
   Sparkles,
-  PhoneCall,
+  Eye,
   CheckCircle2,
 } from "lucide-react";
 import { CSPageHeader } from "@/components/customer-service/CSPageHeader";
 import { CSStatCard } from "@/components/customer-service/CSStatCard";
 import { CSTable, Column } from "@/components/customer-service/CSTable";
-import { MOCK_TICKETS, MOCK_BOOKINGS, ServiceTicket } from "@/services/customerServiceData";
-import { useTheme } from "@/lib/theme";
+import { MOCK_TICKETS, ServiceTicket } from "@/services/customerServiceData";
 
 export default function CustomerServiceDashboardPage() {
-  const { primaryColor } = useTheme();
-  const brand = primaryColor || "#0000F2";
-
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = () => {
@@ -42,58 +35,67 @@ export default function CustomerServiceDashboardPage() {
   const ticketColumns: Column<ServiceTicket>[] = [
     {
       key: "ticketNo",
-      header: "Ticket No & Subject",
+      header: "Ticket Ref & Subject",
+      sortable: true,
+      minWidth: "240px",
       render: (t) => (
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-mono font-bold text-slate-900">{t.ticketNo}</span>
+            <span className="font-semibold text-[#111827] tabular-nums font-sans">{t.ticketNo}</span>
             <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+              className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${
                 t.priority === "Urgent"
-                  ? "bg-rose-100 text-rose-700 animate-pulse"
+                  ? "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]"
                   : t.priority === "High"
-                    ? "bg-amber-100 text-amber-800"
-                    : "bg-blue-50 text-blue-700"
+                    ? "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
+                    : "bg-[#EFF8FF] text-[#175CD3] border border-[#BFDBFE]"
               }`}
             >
               {t.priority}
             </span>
           </div>
-          <p className="mt-0.5 text-xs text-slate-600 line-clamp-1">{t.subject}</p>
+          <p className="mt-0.5 text-xs text-[#4B5563] line-clamp-1">{t.subject}</p>
         </div>
       ),
     },
     {
       key: "customerName",
       header: "Customer & Unit",
+      sortable: true,
+      minWidth: "180px",
       render: (t) => (
         <div>
-          <div className="font-semibold text-slate-800">{t.customerName}</div>
-          <div className="text-[11px] text-slate-400">{t.unit}</div>
+          <div className="font-medium text-[#111827]">{t.customerName}</div>
+          <div className="text-[12px] text-[#6B7280]">{t.unit}</div>
         </div>
       ),
     },
     {
       key: "category",
       header: "Category",
+      minWidth: "130px",
       render: (t) => (
-        <span className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-700">
+        <span className="inline-block rounded-md bg-[#F2F4F7] px-2 py-0.5 text-xs font-medium text-[#344054] border border-[#E4E7EC]">
           {t.category}
         </span>
       ),
     },
     {
       key: "slaRemainingHours",
-      header: "SLA Status",
+      header: "SLA Adherence",
+      sortable: true,
+      minWidth: "140px",
       render: (t) => (
         <div>
           {t.isOverdue ? (
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-600">
-              <AlertTriangle className="h-3.5 w-3.5" /> Overdue
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#DC2626]">
+              <AlertTriangle className="h-3.5 w-3.5 stroke-[2]" />
+              <span>SLA Breached</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
-              <Clock className="h-3.5 w-3.5" /> {t.slaRemainingHours}h Left
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#027A48]">
+              <Clock className="h-3.5 w-3.5 stroke-[2]" />
+              <span className="tabular-nums font-sans">{t.slaRemainingHours}h Remaining</span>
             </span>
           )}
         </div>
@@ -102,42 +104,61 @@ export default function CustomerServiceDashboardPage() {
     {
       key: "status",
       header: "Status",
+      minWidth: "120px",
+      render: (t) => {
+        const badges: Record<string, { bg: string; text: string; dot: string }> = {
+          Open: { bg: "bg-[#EFF8FF]", text: "text-[#175CD3]", dot: "bg-[#2E90FA]" },
+          "In Progress": { bg: "bg-[#F4F1FF]", text: "text-[#6D4AFF]", dot: "bg-[#9B7DFF]" },
+          Escalated: { bg: "bg-[#FEF2F2]", text: "text-[#DC2626]", dot: "bg-[#F04438]" },
+          Resolved: { bg: "bg-[#ECFDF3]", text: "text-[#027A48]", dot: "bg-[#12B76A]" },
+        };
+        const s = badges[t.status] || badges.Open;
+        return (
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11.5px] font-medium border border-[#E5E7EB] ${s.bg} ${s.text}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+            {t.status}
+          </span>
+        );
+      },
+    },
+    {
+      key: "actions",
+      header: "Action",
+      minWidth: "100px",
+      align: "right",
       render: (t) => (
-        <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-            t.status === "Open"
-              ? "bg-blue-50 text-blue-700"
-              : t.status === "In Progress"
-                ? "bg-purple-50 text-purple-700"
-                : t.status === "Escalated"
-                  ? "bg-rose-50 text-rose-700"
-                  : "bg-emerald-50 text-emerald-700"
-          }`}
-        >
-          {t.status}
-        </span>
+        <div className="flex items-center justify-end gap-2 pr-1">
+          <Link
+            href={`/dashboard/customer-service/tickets`}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] text-[#2563EB] shadow-2xs hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition focus-visible:ring-2 focus-visible:ring-[#6D4AFF] focus-visible:ring-offset-2"
+            title="Inspect Service Ticket"
+            aria-label="Inspect Service Ticket"
+          >
+            <Eye className="h-4 w-4 stroke-[1.75]" />
+          </Link>
+        </div>
       ),
     },
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 w-full max-w-[1600px] mx-auto">
       {/* Header */}
       <CSPageHeader
         title="Post-Sales & Customer Service"
-        subtitle="Real Estate customer lifecycle management: collections, handover, snagging, statutory DLP & support."
-        badge="Enterprise Hub"
+        subtitle="Linear-density customer experience: milestone billing, handover snagging, statutory DLP tracking, and service governance."
+        badge="Enterprise Control"
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
         secondaryAction={{
-          label: "Collections Report",
+          label: "Collections Ledger",
           onClick: () => {
             window.location.href = "/dashboard/customer-service/reports/collections-ageing";
           },
           icon: BarChart3,
         }}
         primaryAction={{
-          label: "New Service Request",
+          label: "Log Service Ticket",
           onClick: () => {
             window.location.href = "/dashboard/customer-service/tickets";
           },
@@ -150,12 +171,11 @@ export default function CustomerServiceDashboardPage() {
         <CSStatCard
           title="Active Customer Bookings"
           value="486 Units"
-          change="+18 this mo"
+          change="+18 this month"
           isPositive={true}
-          subtext="Gulshan, Dhanmondi, Bashundhara"
+          subtitle="Gulshan, Dhanmondi, Bashundhara"
           icon={Users}
-          iconBg="bg-blue-50"
-          iconColor="text-blue-600"
+          color="blue"
         />
 
         <CSStatCard
@@ -163,10 +183,9 @@ export default function CustomerServiceDashboardPage() {
           value="৳ 3.42 Cr"
           change="92% of target"
           isPositive={true}
-          subtext="Target: ৳ 3.75 Cr by 30th"
+          subtitle="Target: ৳ 3.75 Cr by 30th"
           icon={Receipt}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
+          color="emerald"
         />
 
         <CSStatCard
@@ -174,10 +193,9 @@ export default function CustomerServiceDashboardPage() {
           value="৳ 84.5 Lac"
           change="+12% risk"
           isPositive={false}
-          subtext="24 units flagged for legal notice"
+          subtitle="24 units flagged for statutory notice"
           icon={AlertTriangle}
-          iconBg="bg-amber-50"
-          iconColor="text-amber-600"
+          color="amber"
         />
 
         <CSStatCard
@@ -185,10 +203,9 @@ export default function CustomerServiceDashboardPage() {
           value="142 Flats"
           change="Real Estate Act 2010"
           isPositive={true}
-          subtext="Statutory 2-year maintenance active"
+          subtitle="Statutory 2-year maintenance active"
           icon={ShieldCheck}
-          iconBg="bg-indigo-50"
-          iconColor="text-indigo-600"
+          color="purple"
         />
       </div>
 
@@ -199,10 +216,9 @@ export default function CustomerServiceDashboardPage() {
           value="18 Active"
           change="4 urgent"
           isPositive={false}
-          subtext="Avg 1st Response: 42 mins"
+          subtitle="Avg 1st Response: 42 mins"
           icon={LifeBuoy}
-          iconBg="bg-sky-50"
-          iconColor="text-sky-600"
+          color="rose"
         />
 
         <CSStatCard
@@ -210,10 +226,9 @@ export default function CustomerServiceDashboardPage() {
           value="96.4%"
           change="+2.1%"
           isPositive={true}
-          subtext="Target benchmark >= 95%"
+          subtitle="Target benchmark >= 95%"
           icon={Clock}
-          iconBg="bg-teal-50"
-          iconColor="text-teal-600"
+          color="emerald"
         />
 
         <CSStatCard
@@ -221,43 +236,41 @@ export default function CustomerServiceDashboardPage() {
           value="37 Items"
           change="8 pending sign-off"
           isPositive={true}
-          subtext="Pre-possession joint inspections"
+          subtitle="Pre-possession joint inspections"
           icon={KeyRound}
-          iconBg="bg-amber-50"
-          iconColor="text-amber-600"
+          color="sky"
         />
 
         <CSStatCard
-          title="CSAT / NPS Score"
+          title="CSAT / NPS Rating"
           value="4.8 / 5.0"
           change="+72 NPS"
           isPositive={true}
-          subtext="184 post-handover survey responses"
+          subtitle="184 post-handover survey responses"
           icon={Sparkles}
-          iconBg="bg-purple-50"
-          iconColor="text-purple-600"
+          color="purple"
         />
       </div>
 
       {/* Main Grid: Live Queue & Operational Shortcuts */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left 2 Cols: Live Priority Support Queue */}
-        <div className="space-y-4 lg:col-span-2">
+        <div className="space-y-3.5 lg:col-span-2">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-[15px] font-semibold text-[#111827]">
                 Priority Service Queue & SLA Tracking
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[#6B7280]">
                 Real-time escalated and urgent service tickets requiring engineer dispatch.
               </p>
             </div>
             <Link
               href="/dashboard/customer-service/tickets"
-              className="inline-flex items-center gap-1 text-xs font-semibold hover:underline"
-              style={{ color: brand }}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-[#6D4AFF] hover:underline"
             >
-              View All 18 Tickets <ArrowRight className="h-3.5 w-3.5" />
+              <span>View All 18 Tickets</span>
+              <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
@@ -267,129 +280,132 @@ export default function CustomerServiceDashboardPage() {
             pageSize={4}
             searchPlaceholder="Filter queue by customer, ticket no or unit..."
             emptyTitle="No pending tickets in live queue"
+            onRefresh={handleRefresh}
+            isRefreshing={isRefreshing}
           />
         </div>
 
         {/* Right Col: Quick Execution Hubs & Follow-ups */}
         <div className="space-y-4">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center justify-between">
-              <span>Operational Quick Links</span>
-              <span className="text-[11px] font-semibold text-slate-400 uppercase">
-                10 Workflows
+          <div className="rounded-[12px] border border-[#E5E7EB] bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-3.5">
+            <h3 className="text-[15px] font-semibold text-[#111827] flex items-center justify-between">
+              <span>Operational Workflows</span>
+              <span className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider">
+                10 Systems
               </span>
             </h3>
 
             <div className="space-y-2">
               <Link
                 href="/dashboard/customer-service/payments/schedules-demand-letters"
-                className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/40 transition group"
+                className="flex items-center justify-between p-2.5 rounded-lg border border-[#E5E7EB] hover:border-[#DDD6FE] hover:bg-[#F4F1FF] transition group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#A6F4C5] bg-[#ECFDF3] text-[#039855]">
                     <Receipt className="h-4 w-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition">
+                    <div className="text-xs font-semibold text-[#111827] group-hover:text-[#6D4AFF] transition">
                       Demand Letters Generator
                     </div>
-                    <div className="text-[11px] text-slate-400">Generate milestone notice PDFs</div>
+                    <div className="text-[11px] text-[#6B7280]">Generate milestone notice PDFs</div>
                   </div>
                 </div>
-                <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:translate-x-0.5 transition" />
+                <ArrowRight className="h-3.5 w-3.5 text-[#9CA3AF] group-hover:text-[#6D4AFF] group-hover:translate-x-0.5 transition" />
               </Link>
 
               <Link
                 href="/dashboard/customer-service/documents/mutation-khatian-tracking"
-                className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/40 transition group"
+                className="flex items-center justify-between p-2.5 rounded-lg border border-[#E5E7EB] hover:border-[#DDD6FE] hover:bg-[#F4F1FF] transition group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] text-[#2563EB]">
                     <FileCheck2 className="h-4 w-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition">
-                      e-Mutation & Khatian
+                    <div className="text-xs font-semibold text-[#111827] group-hover:text-[#6D4AFF] transition">
+                      e-Mutation & Khatian Records
                     </div>
-                    <div className="text-[11px] text-slate-400">Application No & DCR tracking</div>
+                    <div className="text-[11px] text-[#6B7280]">Application No & DCR tracking</div>
                   </div>
                 </div>
-                <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:translate-x-0.5 transition" />
+                <ArrowRight className="h-3.5 w-3.5 text-[#9CA3AF] group-hover:text-[#6D4AFF] group-hover:translate-x-0.5 transition" />
               </Link>
 
               <Link
                 href="/dashboard/customer-service/handover/inspection-snags"
-                className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/40 transition group"
+                className="flex items-center justify-between p-2.5 rounded-lg border border-[#E5E7EB] hover:border-[#DDD6FE] hover:bg-[#F4F1FF] transition group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#FEDF89] bg-[#FFFAEB] text-[#DC6803]">
                     <KeyRound className="h-4 w-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition">
+                    <div className="text-xs font-semibold text-[#111827] group-hover:text-[#6D4AFF] transition">
                       Snagging & Joint Inspection
                     </div>
-                    <div className="text-[11px] text-slate-400">Defect logs before key handover</div>
+                    <div className="text-[11px] text-[#6B7280]">Defect logs before key handover</div>
                   </div>
                 </div>
-                <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:translate-x-0.5 transition" />
+                <ArrowRight className="h-3.5 w-3.5 text-[#9CA3AF] group-hover:text-[#6D4AFF] group-hover:translate-x-0.5 transition" />
               </Link>
 
               <Link
                 href="/dashboard/customer-service/property-care/warranty-dlp"
-                className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/40 transition group"
+                className="flex items-center justify-between p-2.5 rounded-lg border border-[#E5E7EB] hover:border-[#DDD6FE] hover:bg-[#F4F1FF] transition group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#DDD6FE] bg-[#F4F1FF] text-[#6D4AFF]">
                     <ShieldCheck className="h-4 w-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition">
-                      2-Year Statutory DLP
+                    <div className="text-xs font-semibold text-[#111827] group-hover:text-[#6D4AFF] transition">
+                      2-Year Statutory DLP Governance
                     </div>
-                    <div className="text-[11px] text-slate-400">Structural warranty defect claims</div>
+                    <div className="text-[11px] text-[#6B7280]">Structural warranty defect claims</div>
                   </div>
                 </div>
-                <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:translate-x-0.5 transition" />
+                <ArrowRight className="h-3.5 w-3.5 text-[#9CA3AF] group-hover:text-[#6D4AFF] group-hover:translate-x-0.5 transition" />
               </Link>
 
               <Link
                 href="/dashboard/customer-service/payments/refunds-adjustments"
-                className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/40 transition group"
+                className="flex items-center justify-between p-2.5 rounded-lg border border-[#E5E7EB] hover:border-[#DDD6FE] hover:bg-[#F4F1FF] transition group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]">
                     <DollarSign className="h-4 w-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition">
-                      Refunds & Waiver Approval
+                    <div className="text-xs font-semibold text-[#111827] group-hover:text-[#6D4AFF] transition">
+                      Refunds & Waiver Chain
                     </div>
-                    <div className="text-[11px] text-slate-400">Maker-checker approval chain</div>
+                    <div className="text-[11px] text-[#6B7280]">Maker-checker approval hierarchy</div>
                   </div>
                 </div>
-                <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:translate-x-0.5 transition" />
+                <ArrowRight className="h-3.5 w-3.5 text-[#9CA3AF] group-hover:text-[#6D4AFF] group-hover:translate-x-0.5 transition" />
               </Link>
             </div>
           </div>
 
-          {/* Today's Statutory Compliance Alert Card */}
-          <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/60 to-indigo-50/60 p-5 shadow-xs space-y-2.5">
-            <div className="flex items-center gap-2 text-blue-900 font-bold text-xs uppercase tracking-wider">
-              <ShieldCheck className="h-4 w-4 text-blue-600" />
-              <span>Bangladesh Real Estate Act 2010 Notice</span>
+          {/* Statutory Compliance Notice Card with Lavender Anchor Accent */}
+          <div className="rounded-[12px] border border-[#C9BFFF] bg-[#F4F1FF] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] space-y-2 border-l-4 border-l-[#6D4AFF]">
+            <div className="flex items-center gap-2 text-[#2E1A87] font-bold text-xs uppercase tracking-wider">
+              <ShieldCheck className="h-4 w-4 text-[#6D4AFF]" />
+              <span>Real Estate Development Act 2010</span>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Under Section 11(2)(c), builders are legally bound to rectify construction defects
-              for a minimum of <strong className="text-slate-900">2 years from the date of physical possession</strong>.
-              All DLP timers are synced to possession records.
+            <p className="text-xs text-[#374151] leading-relaxed">
+              Under Section 11(2)(c), builders are legally mandated to rectify construction defects
+              for a minimum of <strong className="text-[#111827] font-semibold">2 years from the date of physical possession</strong>.
+              All defect liability timers are automatically calculated from endorsed key release records.
             </p>
             <div className="pt-1">
               <Link
                 href="/dashboard/customer-service/property-care/warranty-dlp"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-900"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#6D4AFF] hover:text-[#4F32C7] transition"
               >
-                Inspect DLP Expiry Roster <ArrowRight className="h-3 w-3" />
+                <span>Inspect Active DLP Warranties</span>
+                <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
           </div>
@@ -398,4 +414,3 @@ export default function CustomerServiceDashboardPage() {
     </div>
   );
 }
-

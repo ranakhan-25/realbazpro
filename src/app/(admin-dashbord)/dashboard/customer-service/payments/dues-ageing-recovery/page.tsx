@@ -84,63 +84,69 @@ export default function DuesAgeingRecoveryPage() {
   const columns: Column<AgeingDueItem>[] = [
     {
       key: "customerName",
-      header: "Customer & Unit",
+      header: "CUSTOMER & UNIT",
       sortable: true,
+      minWidth: "200px",
       render: (d) => (
         <div>
-          <div className="font-bold text-slate-900">{d.customerName}</div>
-          <div className="text-[11px] text-blue-600 font-medium">{d.unit}</div>
-          <div className="text-[10px] text-slate-400 font-mono">{d.phone}</div>
+          <div className="font-semibold text-[#111827] text-xs">{d.customerName}</div>
+          <div className="text-[11px] text-[#6D4AFF] font-medium mt-0.5">{d.unit}</div>
+          <div className="text-[10px] text-[#6B7280] tabular-nums mt-0.5">{d.phone}</div>
         </div>
       ),
     },
     {
       key: "totalDue",
-      header: "Total Overdue",
+      header: "TOTAL OVERDUE",
       sortable: true,
+      minWidth: "160px",
       render: (d) => (
-        <span className="font-bold text-slate-900 text-sm">
+        <span className="font-semibold text-[#111827] text-sm tabular-nums">
           ৳ {d.totalDue.toLocaleString()}
         </span>
       ),
     },
     {
       key: "bucket30Days",
-      header: "1-30 Days",
+      header: "1-30 DAYS",
+      minWidth: "130px",
       render: (d) => (
-        <span className={d.bucket30Days > 0 ? "font-semibold text-slate-700" : "text-slate-300"}>
+        <span className={`tabular-nums text-xs ${d.bucket30Days > 0 ? "font-medium text-[#374151]" : "text-[#9CA3AF]"}`}>
           {d.bucket30Days > 0 ? `৳ ${d.bucket30Days.toLocaleString()}` : "—"}
         </span>
       ),
     },
     {
       key: "bucket60Days",
-      header: "31-60 Days",
+      header: "31-60 DAYS",
+      minWidth: "130px",
       render: (d) => (
-        <span className={d.bucket60Days > 0 ? "font-semibold text-amber-700" : "text-slate-300"}>
+        <span className={`tabular-nums text-xs ${d.bucket60Days > 0 ? "font-semibold text-[#DC6803]" : "text-[#9CA3AF]"}`}>
           {d.bucket60Days > 0 ? `৳ ${d.bucket60Days.toLocaleString()}` : "—"}
         </span>
       ),
     },
     {
       key: "bucket90PlusDays",
-      header: "90+ Days (Critical)",
+      header: "90+ DAYS (CRITICAL)",
+      minWidth: "170px",
       render: (d) => (
-        <span className={d.bucket90PlusDays > 0 ? "font-bold text-rose-700 animate-pulse" : "text-slate-300"}>
+        <span className={`tabular-nums text-xs ${d.bucket90PlusDays > 0 ? "font-bold text-[#DC2626]" : "text-[#9CA3AF]"}`}>
           {d.bucket90PlusDays > 0 ? `৳ ${d.bucket90PlusDays.toLocaleString()}` : "—"}
         </span>
       ),
     },
     {
       key: "lateFeeApplied",
-      header: "Late Surcharge",
+      header: "LATE SURCHARGE",
+      minWidth: "150px",
       render: (d) => (
         <div>
-          <span className="font-medium text-slate-700">
+          <span className="font-medium text-[#374151] tabular-nums text-xs">
             ৳ {d.lateFeeApplied.toLocaleString()}
           </span>
           {d.waiverRequested && (
-            <div className="text-[10px] font-bold text-amber-700 bg-amber-50 rounded px-1.5 py-0.5 inline-block mt-0.5">
+            <div className="text-[10px] font-semibold text-[#DC6803] bg-[#FFFAEB] border border-[#FEDF89] rounded-md px-1.5 py-0.5 inline-block mt-1">
               Waiver Requested
             </div>
           )}
@@ -149,15 +155,16 @@ export default function DuesAgeingRecoveryPage() {
     },
     {
       key: "riskLevel",
-      header: "Recovery Stage",
+      header: "RECOVERY STAGE",
+      minWidth: "160px",
       render: (d) => (
         <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
             d.riskLevel === "Legal Notice Stage"
-              ? "bg-rose-100 text-rose-800 font-bold border border-rose-300"
+              ? "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]"
               : d.riskLevel === "Medium"
-                ? "bg-amber-50 text-amber-800"
-                : "bg-emerald-50 text-emerald-700"
+                ? "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
+                : "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
           }`}
         >
           {d.riskLevel}
@@ -166,21 +173,27 @@ export default function DuesAgeingRecoveryPage() {
     },
     {
       key: "actions",
-      header: "Follow-up",
+      header: "ACTION",
+      align: "right",
+      minWidth: "110px",
       render: (d) => (
-        <button
-          type="button"
-          onClick={() => handleSendReminder(d)}
-          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-        >
-          <Send className="h-3 w-3 text-blue-600" /> Remind
-        </button>
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => handleSendReminder(d)}
+            title="Dispatch payment reminder"
+            aria-label="Dispatch payment reminder"
+            className="h-8 px-2.5 rounded-lg inline-flex items-center gap-1.5 bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] text-xs font-semibold transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+          >
+            <Send className="h-3.5 w-3.5" /> Remind
+          </button>
+        </div>
       ),
     },
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Dues, Ageing & Recovery Analysis"
         subtitle="Track outstanding installment aging (30/60/90+ days), calculate late surcharges, and manage recovery reminders."
@@ -194,24 +207,24 @@ export default function DuesAgeingRecoveryPage() {
           value="৳ 62.0 Lac"
           subtext="Across active property contracts"
           icon={AlertTriangle}
-          iconBg="bg-rose-50"
-          iconColor="text-rose-600"
+          iconBg="bg-[#FEF2F2]"
+          iconColor="text-[#DC2626]"
         />
         <CSStatCard
           title="90+ Days Critical Overdue"
           value="৳ 25.0 Lac"
           subtext="Eligible for contract legal warning"
           icon={ShieldAlert}
-          iconBg="bg-rose-100"
-          iconColor="text-rose-700"
+          iconBg="bg-[#FEF2F2]"
+          iconColor="text-[#DC2626]"
         />
         <CSStatCard
           title="Waiver Requests Pending"
           value="1 Case"
           subtext="Late surcharge waiver submitted"
           icon={DollarSign}
-          iconBg="bg-amber-50"
-          iconColor="text-amber-600"
+          iconBg="bg-[#FFFAEB]"
+          iconColor="text-[#DC6803]"
         />
       </div>
 
@@ -245,4 +258,3 @@ export default function DuesAgeingRecoveryPage() {
     </div>
   );
 }
-

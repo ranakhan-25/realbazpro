@@ -64,7 +64,7 @@ const INITIAL_CLAIMS: WarrantyDlpClaim[] = [
 
 export default function WarrantyDlpPage() {
   const { primaryColor } = useTheme();
-  const brand = primaryColor || "#0000F2";
+  const brand = primaryColor || "#6D4AFF";
 
   const [activeTab, setActiveTab] = useState("all");
   const [claims, setClaims] = useState<WarrantyDlpClaim[]>(INITIAL_CLAIMS);
@@ -122,38 +122,41 @@ export default function WarrantyDlpPage() {
   const columns: Column<WarrantyDlpClaim>[] = [
     {
       key: "claimNo",
-      header: "Claim No & Unit",
+      header: "CLAIM NO & UNIT",
       sortable: true,
+      minWidth: "180px",
       render: (c) => (
         <div>
-          <span className="font-mono font-bold text-slate-900">{c.claimNo}</span>
-          <div className="text-[11px] text-blue-600 font-semibold">{c.unit}</div>
+          <span className="font-semibold text-[#111827] tabular-nums text-xs">{c.claimNo}</span>
+          <div className="text-[11px] text-[#6D4AFF] font-medium mt-0.5">{c.unit}</div>
         </div>
       ),
     },
     {
       key: "customerName",
-      header: "Purchaser & Project",
+      header: "PURCHASER & PROJECT",
+      minWidth: "190px",
       render: (c) => (
         <div>
-          <div className="font-bold text-slate-900">{c.customerName}</div>
-          <div className="text-[11px] text-slate-400">{c.project}</div>
+          <div className="font-semibold text-[#111827] text-xs">{c.customerName}</div>
+          <div className="text-[11px] text-[#6B7280] mt-0.5">{c.project}</div>
         </div>
       ),
     },
     {
       key: "defectCategory",
-      header: "Defect & Severity",
+      header: "DEFECT & SEVERITY",
+      minWidth: "190px",
       render: (c) => (
-        <div className="space-y-0.5">
-          <span className="font-semibold text-slate-800 text-xs block">{c.defectCategory}</span>
+        <div className="space-y-1">
+          <span className="font-semibold text-[#111827] text-xs block">{c.defectCategory}</span>
           <span
-            className={`rounded-full px-2 py-0.2 text-[10px] font-bold ${
+            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide ${
               c.severity === "Critical Structural"
-                ? "bg-rose-100 text-rose-800"
+                ? "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]"
                 : c.severity === "Major"
-                  ? "bg-amber-100 text-amber-800"
-                  : "bg-blue-50 text-blue-700"
+                  ? "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
+                  : "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]"
             }`}
           >
             {c.severity}
@@ -163,40 +166,54 @@ export default function WarrantyDlpPage() {
     },
     {
       key: "dlpExpiryDate",
-      header: "2-Year Statutory Timer",
+      header: "2-YEAR STATUTORY TIMER",
+      minWidth: "190px",
       render: (c) => (
         <div>
-          <div className="text-xs font-semibold text-indigo-700">Expires: {c.dlpExpiryDate}</div>
-          <div className="text-[10px] text-slate-400">Possession: {c.possessionDate}</div>
+          <div className="text-xs font-semibold text-[#6D4AFF] tabular-nums">Expires: {c.dlpExpiryDate}</div>
+          <div className="text-[10px] text-[#6B7280] tabular-nums mt-0.5">Possession: {c.possessionDate}</div>
         </div>
       ),
     },
     {
       key: "status",
-      header: "Rectification Status",
+      header: "RECTIFICATION STATUS",
+      minWidth: "190px",
       render: (c) => (
-        <div className="space-y-1">
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-              c.status === "Resolved & Signed Off"
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                : c.status === "Rectification in Progress"
-                  ? "bg-blue-50 text-blue-700 border border-blue-200"
-                  : "bg-amber-50 text-amber-800 border border-amber-200"
-            }`}
-          >
-            {c.status}
-          </span>
-          {c.status !== "Resolved & Signed Off" && (
-            <div>
-              <button
-                type="button"
-                onClick={() => handleAdvance(c)}
-                className="text-[10px] font-bold text-blue-600 hover:underline"
-              >
-                Advance Stage →
-              </button>
-            </div>
+        <span
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+            c.status === "Resolved & Signed Off"
+              ? "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
+              : c.status === "Rectification in Progress"
+                ? "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]"
+                : "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
+          }`}
+        >
+          {c.status}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "ACTION",
+      align: "right",
+      minWidth: "120px",
+      render: (c) => (
+        <div className="flex items-center justify-end">
+          {c.status !== "Resolved & Signed Off" ? (
+            <button
+              type="button"
+              onClick={() => handleAdvance(c)}
+              title="Advance claim rectification stage"
+              aria-label="Advance Claim Stage"
+              className="h-8 px-2.5 rounded-lg inline-flex items-center gap-1.5 bg-[#ECFDF3] border border-[#A6F4C5] text-[#039855] hover:bg-[#D1FADF] hover:text-[#027A48] text-xs font-semibold transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#039855]"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" /> Advance
+            </button>
+          ) : (
+            <span className="text-xs text-[#039855] font-semibold inline-flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Signed Off
+            </span>
           )}
         </div>
       ),
@@ -204,7 +221,7 @@ export default function WarrantyDlpPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="Warranty & Statutory DLP Claims (২ বছরের নির্মাণ ত্রুটি ওয়ারেন্টি)"
         subtitle="Manage Defect Liability Period (DLP) obligations under Section 11(2)(c) of the Real Estate Act 2010."
@@ -217,56 +234,43 @@ export default function WarrantyDlpPage() {
         }}
       />
 
-      {/* Statutory Act Notice Card */}
-      <div className="rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50/70 via-blue-50/50 to-white p-5 space-y-2">
-        <div className="flex items-center gap-2 text-indigo-900 font-bold text-xs uppercase tracking-wider">
-          <ShieldCheck className="h-4 w-4 text-indigo-600" />
-          <span>Real Estate Development & Management Act, 2010 (ধারা ১১(২)(গ))</span>
-        </div>
-        <p className="text-xs text-slate-700 leading-relaxed max-w-4xl">
-          হস্তান্তরের তারিখ থেকে ন্যূনতম <strong>২ (দুই) বছর পর্যন্ত</strong> নির্মাণজনিত যে কোনো কাঠামোগত ত্রুটি
-          (যেমন: ছাদ/দেওয়াল লিকেজ, প্লাস্টার ক্র্যাক, ড্রেনেজ স্লথ, ইত্যাদি) ডেভেলপার নিজ খরচে মেরামত করতে আইনত বাধ্য।
-          প্রতিটি ফ্ল্যাটের জন্য হস্তান্তরের তারিখ থেকে সিস্টেম অটোমেটিক DLP টাইমার কাউন্টডাউন বজায় রাখে।
-        </p>
-      </div>
-
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <CSStatCard
-          title="Active DLP Warranty Contracts"
-          value="142 Flats"
-          subtext="Under active 2-year warranty"
+          title="Active DLP Warranty Claims"
+          value={claims.length.toString()}
+          subtext="Under builder warranty repair"
           icon={ShieldCheck}
         />
         <CSStatCard
-          title="Active Claims in Rectification"
-          value={claims.filter((c) => c.status !== "Resolved & Signed Off").length.toString()}
-          subtext="Assigned to structural engineers"
-          icon={Wrench}
-          iconBg="bg-amber-50"
-          iconColor="text-amber-600"
+          title="Critical Structural Repairs"
+          value={claims.filter((c) => c.severity === "Critical Structural").length.toString()}
+          subtext="High-priority engineer dispatch"
+          icon={AlertTriangle}
+          iconBg="bg-[#FEF2F2]"
+          iconColor="text-[#DC2626]"
         />
         <CSStatCard
-          title="Claims Resolved & Signed Off"
+          title="Resolved Warranty Cases"
           value={claims.filter((c) => c.status === "Resolved & Signed Off").length.toString()}
-          subtext="Client satisfaction confirmed"
+          subtext="Client satisfaction sign-off"
           icon={CheckCircle2}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
+          iconBg="bg-[#ECFDF3]"
+          iconColor="text-[#039855]"
         />
       </div>
 
       <CSFilterTabs
         tabs={[
-          { key: "all", label: "All Warranty Claims", count: claims.length },
+          { key: "all", label: "All DLP Claims", count: claims.length },
           {
             key: "active",
-            label: "Active In Progress",
+            label: "Active & In Progress",
             count: claims.filter((c) => c.status !== "Resolved & Signed Off").length,
             badgeVariant: "warning",
           },
           {
             key: "resolved",
-            label: "Resolved & Signed Off",
+            label: "Resolved & Closed",
             count: claims.filter((c) => c.status === "Resolved & Signed Off").length,
           },
         ]}
@@ -277,8 +281,8 @@ export default function WarrantyDlpPage() {
       <CSTable
         data={filtered}
         columns={columns}
-        searchPlaceholder="Search claim no, customer, unit or defect category..."
-        searchFields={["claimNo", "customerName", "unit", "defectCategory"]}
+        searchPlaceholder="Search claim no, customer name, unit or defect category..."
+        searchFields={["claimNo", "customerName", "unit", "defectCategory", "assignedEngineer"]}
         emptyTitle="No DLP warranty claims logged"
       />
 
@@ -287,22 +291,21 @@ export default function WarrantyDlpPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title="Log Statutory DLP Warranty Claim"
-        subtitle="Record defect under Section 11(2)(c) builder repair obligation"
+        subtitle="Builder Defect Liability Period (Real Estate Act 2010)"
         maxWidth="md"
         footer={
           <>
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              className="h-9 px-4 text-xs font-semibold text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleCreate}
-              className="px-4 py-2 text-xs font-semibold text-white rounded-lg shadow-sm transition hover:opacity-95"
-              style={{ backgroundColor: brand }}
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
             >
               Register Claim
             </button>
@@ -310,67 +313,69 @@ export default function WarrantyDlpPage() {
         }
       >
         <form onSubmit={handleCreate} className="space-y-3.5 text-xs">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Customer Name *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Customer Name *</label>
               <input
                 type="text"
                 required
                 value={customer}
                 onChange={(e) => setCustomer(e.target.value)}
                 placeholder="Full name"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Unit Allotment *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Unit Number *</label>
               <input
                 type="text"
                 required
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 placeholder="e.g. A-7, Hena Heights"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Defect Category</label>
+              <label className="block font-semibold text-[#374151] mb-1">Defect Category</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as any)}
-                className="w-full h-9 px-2 rounded-lg border border-slate-200 outline-none focus:border-blue-500 bg-white"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="Water Seepage">Water Seepage / Dampness</option>
-                <option value="Wall Cracks">Wall / Plaster Hairline Cracks</option>
-                <option value="Drainage Backflow">Drainage Backflow / Sanitary</option>
-                <option value="Electrical Sub-Line">Electrical Sub-Line Fluctuation</option>
-                <option value="Window Sealant">Window / Balcony Silicone Sealant</option>
+                <option value="Plaster & Structural Crack">Plaster & Structural Crack</option>
+                <option value="Drainage Backflow">Drainage & Plumbing Defect</option>
+                <option value="Window Sealant">Aluminium Window Leakage</option>
+                <option value="Tile Debonding">Hollow Tile / Debonding</option>
               </select>
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Severity</label>
+              <label className="block font-semibold text-[#374151] mb-1">Severity</label>
               <select
                 value={severity}
                 onChange={(e) => setSeverity(e.target.value as any)}
-                className="w-full h-9 px-2 rounded-lg border border-slate-200 outline-none focus:border-blue-500 bg-white"
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
-                <option value="Major">Major</option>
-                <option value="Critical Structural">Critical Structural</option>
-                <option value="Minor">Minor</option>
+                <option value="Minor">Minor (Non-structural)</option>
+                <option value="Major">Major (Inhabitant Inconvenience)</option>
+                <option value="Critical Structural">Critical Structural / Safety</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Assigned QA Engineer</label>
+            <label className="block font-semibold text-[#374151] mb-1">
+              Assigned Engineer / Contractor
+            </label>
             <input
               type="text"
               value={engineer}
               onChange={(e) => setEngineer(e.target.value)}
-              className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+              className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
             />
           </div>
         </form>
@@ -378,4 +383,3 @@ export default function WarrantyDlpPage() {
     </div>
   );
 }
-

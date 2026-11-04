@@ -247,6 +247,10 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         const isOpen = !!q || expanded.has(n.path) || expanded.has(cleanNodePath);
         const Icon = module === "lams" ? LAMS_ICONS[n.slug] : module === "customer-service" ? CUSTOMER_SERVICE_ICONS[n.slug] : null;
 
+        const displayLabel = n.label.includes("|")
+          ? n.label.split("|").pop()?.trim() || n.label
+          : n.label;
+
         if (n.children?.length) {
           return (
             <li key={n.path}>
@@ -278,7 +282,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
                   {Icon && depth === 0 ? (
                     <Icon className="h-4 w-4 shrink-0 text-foreground/70" />
                   ) : null}
-                  <span>{n.label}</span>
+                  <span>{displayLabel}</span>
                 </span>
                 <ChevronRight
                   className={cn(
@@ -338,7 +342,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
                 ) : isActive ? (
                   <span className="h-3.5 w-1 rounded bg-white/80" />
                 ) : null}
-                <span className="truncate">{n.label}</span>
+                <span className="truncate">{displayLabel}</span>
               </div>
             </Link>
           </li>
@@ -365,6 +369,10 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         );
         const Icon = module === "lams" ? LAMS_ICONS[n.slug] : module === "customer-service" ? CUSTOMER_SERVICE_ICONS[n.slug] : null;
 
+        const displayLabel = n.label.includes("|")
+          ? n.label.split("|").pop()?.trim() || n.label
+          : n.label;
+
         if (n.children?.length) {
           return (
             <li key={n.path} className="relative group">
@@ -385,19 +393,19 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
                     ? { backgroundColor: brandColor }
                     : undefined
                 }
-                title={n.label}
+                title={displayLabel}
               >
                 {Icon ? (
                   <Icon className="h-4.5 w-4.5" />
                 ) : (
                   <span className="text-xs font-bold tracking-tight">
-                    {n.label.slice(0, 2).toUpperCase()}
+                    {displayLabel.slice(0, 2).toUpperCase()}
                   </span>
                 )}
               </button>
 
               <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 z-50 rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
-                {n.label}
+                {displayLabel}
                 <span className="ml-1 text-[10px] text-slate-300">({n.children.length})</span>
               </div>
             </li>
@@ -426,19 +434,19 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
                   ? { backgroundColor: brandColor }
                   : undefined
               }
-              title={n.label}
+              title={displayLabel}
             >
               {Icon ? (
                 <Icon className="h-4.5 w-4.5" />
               ) : (
                 <span className="text-xs font-bold tracking-tight">
-                  {n.label.slice(0, 2).toUpperCase()}
+                  {displayLabel.slice(0, 2).toUpperCase()}
                 </span>
               )}
             </Link>
 
             <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 z-50 rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
-              {n.label}
+              {displayLabel}
             </div>
           </li>
         );

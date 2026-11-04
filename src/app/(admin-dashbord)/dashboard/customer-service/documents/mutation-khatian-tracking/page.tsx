@@ -65,7 +65,7 @@ const INITIAL_MUTATIONS: MutationRecord[] = [
 
 export default function MutationKhatianTrackingPage() {
   const { primaryColor } = useTheme();
-  const brand = primaryColor || "#0000F2";
+  const brand = primaryColor || "#6D4AFF";
 
   const [activeTab, setActiveTab] = useState("all");
   const [mutations, setMutations] = useState<MutationRecord[]>(INITIAL_MUTATIONS);
@@ -112,43 +112,46 @@ export default function MutationKhatianTrackingPage() {
   const columns: Column<MutationRecord>[] = [
     {
       key: "mutationAppNo",
-      header: "e-Mutation App No & Office",
+      header: "E-MUTATION APP NO & OFFICE",
       sortable: true,
+      minWidth: "240px",
       render: (m) => (
         <div>
-          <span className="font-mono font-bold text-blue-700">{m.mutationAppNo}</span>
-          <div className="text-[11px] text-slate-500 line-clamp-1">{m.acLandOffice}</div>
+          <span className="font-semibold text-[#6D4AFF] tabular-nums text-xs">{m.mutationAppNo}</span>
+          <div className="text-[11px] text-[#6B7280] line-clamp-1 mt-0.5">{m.acLandOffice}</div>
         </div>
       ),
     },
     {
       key: "customerName",
-      header: "Customer & Unit",
+      header: "CUSTOMER & UNIT",
+      minWidth: "190px",
       render: (m) => (
         <div>
-          <div className="font-bold text-slate-900">{m.customerName}</div>
-          <div className="text-[11px] text-slate-500 font-medium">{m.unit}</div>
+          <div className="font-semibold text-[#111827] text-xs">{m.customerName}</div>
+          <div className="text-[11px] text-[#6B7280] font-medium mt-0.5">{m.unit}</div>
         </div>
       ),
     },
     {
       key: "currentStage",
-      header: "Current Stage in Land Office",
+      header: "CURRENT STAGE IN LAND OFFICE",
+      minWidth: "220px",
       render: (m) => (
-        <div>
+        <div className="space-y-1">
           <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+            className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
               m.currentStage === "Khatian Approved"
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                ? "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
                 : m.currentStage === "Hearing Scheduled"
-                  ? "bg-amber-50 text-amber-800 border border-amber-200"
-                  : "bg-blue-50 text-blue-700 border border-blue-200"
+                  ? "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
+                  : "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]"
             }`}
           >
             {m.currentStage}
           </span>
           {m.hearingDate && (
-            <div className="text-[11px] text-amber-800 font-semibold mt-0.5">
+            <div className="text-[11px] text-[#DC6803] font-semibold tabular-nums">
               Hearing Date: {m.hearingDate}
             </div>
           )}
@@ -157,21 +160,22 @@ export default function MutationKhatianTrackingPage() {
     },
     {
       key: "dcrNumber",
-      header: "DCR Fee & Khatian No",
+      header: "DCR FEE & KHATIAN NO",
+      minWidth: "200px",
       render: (m) => (
-        <div className="space-y-0.5">
+        <div className="space-y-1">
           {m.khatianNumber ? (
-            <span className="font-bold text-emerald-700 block text-xs">
+            <span className="font-semibold text-[#039855] block text-xs">
               {m.khatianNumber}
             </span>
           ) : (
-            <span className="text-[11px] text-slate-400 italic">Khatian Pending</span>
+            <span className="text-[11px] text-[#9CA3AF] italic">Khatian Pending</span>
           )}
           <span
-            className={`inline-block text-[10px] font-bold rounded px-1.5 py-0.2 ${
+            className={`inline-block text-[10px] font-semibold rounded-full px-2 py-0.5 ${
               m.dcrPaid
-                ? "bg-emerald-50 text-emerald-700"
-                : "bg-amber-50 text-amber-800"
+                ? "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
+                : "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
             }`}
           >
             {m.dcrPaid ? `DCR ৳ ${m.dcrFeeAmount} Paid` : `DCR ৳ ${m.dcrFeeAmount} Unpaid`}
@@ -181,22 +185,27 @@ export default function MutationKhatianTrackingPage() {
     },
     {
       key: "actions",
-      header: "Govt Portal",
+      header: "ACTION",
+      align: "right",
+      minWidth: "140px",
       render: (m) => (
-        <a
-          href="https://mutation.land.gov.bd"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-        >
-          <ExternalLink className="h-3 w-3 text-blue-600" /> Verify Portal
-        </a>
+        <div className="flex items-center justify-end">
+          <a
+            href="https://mutation.land.gov.bd"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open Bangladesh Land Ministry e-Mutation Portal"
+            className="h-8 px-2.5 rounded-lg inline-flex items-center gap-1.5 bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] text-xs font-semibold transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+          >
+            <ExternalLink className="h-3.5 w-3.5" /> Verify Portal
+          </a>
+        </div>
       ),
     },
   ];
 
   return (
-    <div className="mx-auto max-w-[1600px] p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 pb-28 md:pb-32 space-y-6 max-w-[1600px] mx-auto">
       <CSPageHeader
         title="e-Mutation & Khatian Tracking (ই-নামজারি)"
         subtitle="Track Bangladesh Land Ministry e-Mutation application numbers, inquiry stages, hearing slots, DCR fees, and approved khatian numbers."
@@ -221,16 +230,16 @@ export default function MutationKhatianTrackingPage() {
           value={mutations.filter((m) => m.currentStage === "Hearing Scheduled").length.toString()}
           subtext="Customer appearance required"
           icon={Clock}
-          iconBg="bg-amber-50"
-          iconColor="text-amber-600"
+          iconBg="bg-[#FFFAEB]"
+          iconColor="text-[#DC6803]"
         />
         <CSStatCard
           title="Khatian Generated & Approved"
           value={mutations.filter((m) => m.currentStage === "Khatian Approved").length.toString()}
           subtext="Separated mutated ownership"
           icon={CheckCircle2}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
+          iconBg="bg-[#ECFDF3]"
+          iconColor="text-[#039855]"
         />
       </div>
 
@@ -278,15 +287,14 @@ export default function MutationKhatianTrackingPage() {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              className="h-9 px-4 text-xs font-semibold text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleCreate}
-              className="px-4 py-2 text-xs font-semibold text-white rounded-lg shadow-sm transition hover:opacity-95"
-              style={{ backgroundColor: brand }}
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
             >
               Save Application
             </button>
@@ -295,7 +303,7 @@ export default function MutationKhatianTrackingPage() {
       >
         <form onSubmit={handleCreate} className="space-y-3.5 text-xs">
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">
+            <label className="block font-semibold text-[#374151] mb-1">
               e-Mutation Application No *
             </label>
             <input
@@ -304,43 +312,43 @@ export default function MutationKhatianTrackingPage() {
               value={appNo}
               onChange={(e) => setAppNo(e.target.value)}
               placeholder="e.g. MUT-2026-DH-XXXXX"
-              className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500 font-mono font-bold"
+              className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] tabular-nums font-semibold outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Customer Name *</label>
+              <label className="block font-semibold text-[#374151] mb-1">Customer Name *</label>
               <input
                 type="text"
                 required
                 value={customer}
                 onChange={(e) => setCustomer(e.target.value)}
                 placeholder="Full name"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Unit Number</label>
+              <label className="block font-semibold text-[#374151] mb-1">Unit Number</label>
               <input
                 type="text"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 placeholder="e.g. A-7, Hena Heights"
-                className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">
+            <label className="block font-semibold text-[#374151] mb-1">
               Assistant Commissioner (Land) Office
             </label>
             <input
               type="text"
               value={office}
               onChange={(e) => setOffice(e.target.value)}
-              className="w-full h-9 px-3 rounded-lg border border-slate-200 outline-none focus:border-blue-500"
+              className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
             />
           </div>
         </form>
@@ -348,4 +356,3 @@ export default function MutationKhatianTrackingPage() {
     </div>
   );
 }
-
