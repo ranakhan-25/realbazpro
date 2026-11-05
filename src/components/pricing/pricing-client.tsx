@@ -7,8 +7,22 @@ import { Check, HelpCircle, ChevronDown, Sparkles } from "lucide-react";
 import { useLanguage } from "@/lib/language";
 import { AnimatedHeading } from "@/components/home/animated-heading";
 import { getPlans, type Plan } from "@/services/planService";
+import PublicTenantRegisterModal from "./PublicTenantRegisterModal";
 
 type Billing = "monthly" | "yearly";
+
+export interface PricingPlanItem {
+  id: number | string;
+  name: string;
+  monthly: string;
+  yearly: string;
+  yearlyNote?: string;
+  description: string;
+  features: string[];
+  cta: string;
+  highlighted: boolean;
+  isFree?: boolean;
+}
 
 export function PricingClient() {
   const { t } = useLanguage();
@@ -16,6 +30,9 @@ export function PricingClient() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [dbPlans, setDbPlans] = useState<Plan[]>([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+  const [selectedPlanForCheckout, setSelectedPlanForCheckout] =
+    useState<PricingPlanItem | null>(null);
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -101,7 +118,8 @@ export function PricingClient() {
     if (dbPlans && dbPlans.length > 0) {
       return dbPlans.map((p) => {
         const cur = p.currency || "$";
-        const isTrial = Number(p.monthlyPrice) === 0 && Number(p.yearlyPrice) === 0;
+        const isTrial =
+          Number(p.monthlyPrice) === 0 && Number(p.yearlyPrice) === 0;
         const monthlyText = isTrial ? "Free" : `${cur}${p.monthlyPrice}`;
         const yearlyText = isTrial ? "Free" : `${cur}${p.yearlyPrice}`;
         const yearlyNote = isTrial
@@ -127,7 +145,8 @@ export function PricingClient() {
         }
 
         const isHighlighted =
-          p.code?.toUpperCase() === "PRO" || p.code?.toUpperCase() === "STARTER";
+          p.code?.toUpperCase() === "PRO" ||
+          p.code?.toUpperCase() === "STARTER";
 
         return {
           id: p.id || p.uuid,
@@ -135,7 +154,8 @@ export function PricingClient() {
           monthly: monthlyText,
           yearly: yearlyText,
           yearlyNote,
-          description: p.description || "Robust cloud real estate management tools",
+          description:
+            p.description || "Robust cloud real estate management tools",
           features: [...limitsFeatures, ...extraFeatures],
           cta: isTrial ? "Start Free Trial" : "Get Started Now",
           highlighted: isHighlighted,
@@ -196,10 +216,16 @@ export function PricingClient() {
                     <motion.span
                       layoutId="billing-pill"
                       className="absolute inset-0 -z-10 rounded-full bg-primary"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 400,
+                        damping: 30,
+                      }}
                     />
                   )}
-                  {option === "monthly" ? t("pricing.monthly") : t("pricing.yearly")}
+                  {option === "monthly"
+                    ? t("pricing.monthly")
+                    : t("pricing.yearly")}
                 </button>
               ))}
             </div>
@@ -212,7 +238,8 @@ export function PricingClient() {
                   exit={{ opacity: 0, scale: 0.9, x: -5 }}
                   className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/20 px-2.5 py-1 text-[11px] font-semibold text-foreground"
                 >
-                  <Sparkles size={11} className="text-accent" /> {t("pricing.saveBadge")}
+                  <Sparkles size={11} className="text-accent" />{" "}
+                  {t("pricing.saveBadge")}
                 </motion.span>
               )}
             </AnimatePresence>
@@ -248,7 +275,9 @@ export function PricingClient() {
                 <h2 className="font-display text-[17px] font-semibold text-foreground">
                   {plan.name}
                 </h2>
-                <p className="mt-1 text-[13px] text-muted-foreground">{plan.description}</p>
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  {plan.description}
+                </p>
 
                 <div className="mt-5 flex items-baseline gap-1">
                   <AnimatePresence mode="wait">
@@ -265,40 +294,61 @@ export function PricingClient() {
                   </AnimatePresence>
                   {plan.monthly !== customPriceLabel && !plan.isFree && (
                     <span className="text-[13px] text-muted-foreground">
-                      {billing === "monthly" ? t("pricing.perMonth") : t("pricing.perYear")}
+                      {billing === "monthly"
+                        ? t("pricing.perMonth")
+                        : t("pricing.perYear")}
                     </span>
                   )}
                 </div>
                 <p className="mt-1 text-[12px] text-muted-foreground/80">
-                  {billing === "yearly" ? plan.yearlyNote : t("pricing.billedMonthly")}
+                  {billing === "yearly"
+                    ? plan.yearlyNote
+                    : t("pricing.billedMonthly")}
                 </p>
 
                 <ul className="mt-6 flex-1 space-y-3">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-2.5">
                       <Check size={15} className="mt-0.5 shrink-0 text-gold" />
-                      <span className="text-[13.5px] text-foreground/80">{feature}</span>
+                      <span className="text-[13.5px] text-foreground/80">
+                        {feature}
+                      </span>
                     </li>
                   ))}
                 </ul>
 
-                <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-                  <Link
-                    href="/login"
-                    className={`mt-7 block w-full rounded-full px-5 py-2.5 text-center text-[13.5px] font-semibold transition-colors ${
+                <motion.div
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPlanForCheckout(plan);
+                      setCheckoutModalOpen(true);
+                    }}
+                    className={`mt-7 block w-full rounded-full px-5 py-2.5 text-center text-[13.5px] font-semibold transition-colors cursor-pointer ${
                       plan.highlighted
-                        ? "bg-accent text-accent-foreground hover:opacity-90"
+                        ? "bg-accent text-accent-foreground hover:opacity-90 shadow-md"
                         : "border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"
                     }`}
                   >
                     {plan.cta}
-                  </Link>
+                  </button>
                 </motion.div>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
+
+      {/* Public Registration & Checkout Modal */}
+      <PublicTenantRegisterModal
+        isOpen={checkoutModalOpen}
+        onClose={() => setCheckoutModalOpen(false)}
+        plan={selectedPlanForCheckout}
+        billingCycle={billing}
+      />
 
       {/* FAQ — separate band, alternating background to match the rest of the site */}
       <section className="bg-secondary px-5 py-14 sm:px-8 sm:py-20">

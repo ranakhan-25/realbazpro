@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useTheme } from "@/lib/theme";
 import SubscriptionPaymentModal from "@/components/modules/SubscriptionPaymentModal";
+import PaymentHistoryTable from "@/components/modules/PaymentHistoryTable";
 import {
   getOrganizations,
   getOrganization,
@@ -904,6 +905,11 @@ export default function UserOrganizationPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Payment History with Invoices */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
+        <PaymentHistoryTable organizationId={selectedOrg?.id} />
       </div>
 
       <OrgEditModal
