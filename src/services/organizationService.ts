@@ -1,4 +1,4 @@
-/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import api from "@/lib/api";
 import { Plan } from "./planService";
 
@@ -15,6 +15,11 @@ export interface EntitledFeature {
   featureCode: string;
   featureName: string;
   routePath?: string;
+  actions?: string[];
+  canView?: boolean;
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 export interface EntitledModule {
@@ -32,7 +37,8 @@ export interface Organization {
   email?: string;
   phone?: string;
   address?: string;
-  subscriptionStatus: "trial" | "active" | "past_due" | "expired" | "locked" | "canceled";
+  subscriptionStatus:
+    "trial" | "active" | "past_due" | "expired" | "locked" | "canceled";
   subscriptionStartDate?: string;
   subscriptionEndDate?: string;
   trialEndsAt?: string;
@@ -120,10 +126,9 @@ export async function getOrganizations(params?: {
   plan?: string;
   all?: boolean;
 }): Promise<Organization[]> {
-  const response = await api.get<any>(
-    "/system/organizations",
-    { params: { ...params, all: true } },
-  );
+  const response = await api.get<any>("/system/organizations", {
+    params: { ...params, all: true },
+  });
   const res = response.data;
   const inner = res?.data ?? res;
   if (Array.isArray(inner)) {
@@ -143,10 +148,7 @@ export async function getPaginatedOrganizations(params?: {
   search?: string;
   plan?: string;
 }): Promise<PaginatedResult<Organization>> {
-  const response = await api.get<any>(
-    "/system/organizations",
-    { params },
-  );
+  const response = await api.get<any>("/system/organizations", { params });
   const res = response.data;
   const inner = res?.data ?? res;
 
@@ -177,10 +179,12 @@ export async function getPaginatedOrganizations(params?: {
   };
 }
 
-export async function getOrganization(id: string | number): Promise<Organization> {
-  const response = await api.get<{ success?: boolean; data?: Organization } | Organization>(
-    `/system/organizations/${id}`,
-  );
+export async function getOrganization(
+  id: string | number,
+): Promise<Organization> {
+  const response = await api.get<
+    { success?: boolean; data?: Organization } | Organization
+  >(`/system/organizations/${id}`);
   if ("data" in response.data && response.data.data) {
     return response.data.data;
   }
@@ -190,10 +194,9 @@ export async function getOrganization(id: string | number): Promise<Organization
 export async function createOrganizationWizard(
   payload: CreateOrganizationWizardPayload,
 ): Promise<Organization> {
-  const response = await api.post<{ success?: boolean; data?: Organization } | Organization>(
-    "/system/organizations/wizard",
-    payload,
-  );
+  const response = await api.post<
+    { success?: boolean; data?: Organization } | Organization
+  >("/system/organizations/wizard", payload);
   if ("data" in response.data && response.data.data) {
     return response.data.data;
   }
@@ -204,10 +207,9 @@ export async function updateOrganization(
   id: string | number,
   payload: UpdateOrganizationPayload,
 ): Promise<Organization> {
-  const response = await api.patch<{ success?: boolean; data?: Organization } | Organization>(
-    `/system/organizations/${id}`,
-    payload,
-  );
+  const response = await api.patch<
+    { success?: boolean; data?: Organization } | Organization
+  >(`/system/organizations/${id}`, payload);
   if ("data" in response.data && response.data.data) {
     return response.data.data;
   }
@@ -218,10 +220,9 @@ export async function updateSubscription(
   id: string | number,
   payload: UpdateSubscriptionPayload,
 ): Promise<Organization> {
-  const response = await api.patch<{ success?: boolean; data?: Organization } | Organization>(
-    `/system/organizations/${id}/subscription`,
-    payload,
-  );
+  const response = await api.patch<
+    { success?: boolean; data?: Organization } | Organization
+  >(`/system/organizations/${id}/subscription`, payload);
   if ("data" in response.data && response.data.data) {
     return response.data.data;
   }
@@ -232,20 +233,21 @@ export async function toggleOrganizationLock(
   id: string | number,
   payload: ToggleLockPayload,
 ): Promise<Organization> {
-  const response = await api.patch<{ success?: boolean; data?: Organization } | Organization>(
-    `/system/organizations/${id}/lock`,
-    payload,
-  );
+  const response = await api.patch<
+    { success?: boolean; data?: Organization } | Organization
+  >(`/system/organizations/${id}/lock`, payload);
   if ("data" in response.data && response.data.data) {
     return response.data.data;
   }
   return response.data as Organization;
 }
 
-export async function getOrganizationEntitlements(id: string | number): Promise<EntitledModule[]> {
-  const response = await api.get<{ success?: boolean; data?: EntitledModule[] } | EntitledModule[]>(
-    `/system/organizations/${id}/entitlements`,
-  );
+export async function getOrganizationEntitlements(
+  id: string | number,
+): Promise<EntitledModule[]> {
+  const response = await api.get<
+    { success?: boolean; data?: EntitledModule[] } | EntitledModule[]
+  >(`/system/organizations/${id}/entitlements`);
   if (Array.isArray(response.data)) {
     return response.data;
   }
@@ -255,11 +257,21 @@ export async function getOrganizationEntitlements(id: string | number): Promise<
 export async function updateOrganizationEntitlements(
   id: string | number,
   moduleFeatureAccess: ModuleFeatureAccessItem[],
+  featureOverrides?: Array<{
+    featureId: number;
+    isGranted?: boolean;
+    canView?: boolean;
+    canCreate?: boolean;
+    canEdit?: boolean;
+    canDelete?: boolean;
+  }>,
 ): Promise<EntitledModule[]> {
-  const response = await api.put<{ success?: boolean; data?: EntitledModule[] } | EntitledModule[]>(
-    `/system/organizations/${id}/entitlements`,
-    { moduleFeatureAccess },
-  );
+  const response = await api.put<
+    { success?: boolean; data?: EntitledModule[] } | EntitledModule[]
+  >(`/system/organizations/${id}/entitlements`, {
+    moduleFeatureAccess,
+    featureOverrides,
+  });
   if (Array.isArray(response.data)) {
     return response.data;
   }
