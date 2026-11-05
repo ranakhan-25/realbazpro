@@ -28,6 +28,9 @@ import {
   type CreateOrganizationWizardPayload,
   type Organization,
 } from "@/services/organizationService";
+import ModuleFeatureAccessTreeSelector, {
+  type FeaturePermissionState,
+} from "./ModuleFeatureAccessTreeSelector";
 
 interface OrganizationWizardModalProps {
   isOpen: boolean;
@@ -73,6 +76,10 @@ export default function OrganizationWizardModal({
   // STEP 3: Module & Feature Selection State
   // Map of moduleId -> Array of featureIds
   const [selectedFeatures, setSelectedFeatures] = useState<{ [moduleId: string]: (number | string)[] }>({});
+  const [selectedModuleIds, setSelectedModuleIds] = useState<(number | string)[]>([]);
+  const [featurePermissions, setFeaturePermissions] = useState<
+    Record<string | number, FeaturePermissionState>
+  >({});
 
   useEffect(() => {
     if (isOpen) {
@@ -102,15 +109,32 @@ export default function OrganizationWizardModal({
 
       // Default select all available modules and features
       const initialMap: { [moduleId: string]: (number | string)[] } = {};
+      const initialMods: (number | string)[] = [];
+      const perms: Record<string | number, FeaturePermissionState> = {};
+
       for (const m of fetchedTree) {
         const modKey = String(m.id ?? m.uuid ?? "");
         if (modKey) {
-          initialMap[modKey] = (m.features || [])
+          initialMods.push(m.id ?? m.uuid ?? "");
+          const featIds = (m.features || [])
             .map((f) => (f.id !== undefined && f.id !== null ? f.id : f.uuid))
             .filter((id): id is number | string => id !== undefined && id !== null && id !== "");
+          initialMap[modKey] = featIds;
+
+          featIds.forEach((fid) => {
+            perms[String(fid)] = {
+              isGranted: true,
+              canView: true,
+              canCreate: true,
+              canEdit: true,
+              canDelete: false,
+            };
+          });
         }
       }
       setSelectedFeatures(initialMap);
+      setSelectedModuleIds(initialMods);
+      setFeaturePermissions(perms);
     } catch (err) {
       console.error(err);
       toast.error("Failed to load plans or module tree from backend");
@@ -758,15 +782,15 @@ export default function OrganizationWizardModal({
 
           {/* STEP 3: TREE MODULE & FEATURE SELECTION */}
           {currentStep === 3 && (
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4 text-indigo-600" />
                     Module & Feature Access Entitlements
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Check the modules and nested features this organization and its users are permitted to access.
+                    Search and configure the modules, nested features, and granular Read/Write operations permitted for this organization.
                   </p>
                 </div>
               </div>
@@ -776,101 +800,33 @@ export default function OrganizationWizardModal({
                   No modules found. Please create modules in the Module Tree Builder.
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {moduleTree.map((mod) => {
-                    const modId = mod.id ?? mod.uuid ?? "";
-                    const key = String(modId);
-                    const featureList = mod.features || [];
-                    const selectedList = selectedFeatures[key] || [];
-                    const isAllSelected =
-                      featureList.length > 0 &&
-                      featureList.every((feat) => {
-                        const featId = feat.id ?? feat.uuid ?? "";
-                        return selectedList.some((id) => String(id) === String(featId));
-                      });
+                <ModuleFeatureAccessTreeSelector
+                  modules={moduleTree}
+                  selectedModuleIds={selectedModuleIds}
+                  featurePermissions={featurePermissions}
+                  onChange={(updatedMods, updatedPerms) => {
+                    setSelectedModuleIds(updatedMods);
+                    setFeaturePermissions(updatedPerms);
 
-                    const selectedCount = featureList.filter((feat) => {
-                      const featId = feat.id ?? feat.uuid ?? "";
-                      return selectedList.some((id) => String(id) === String(featId));
-                    }).length;
-
-                    return (
-                      <div
-                        key={key}
-                        className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-xs"
-                      >
-                        {/* Module Header Row */}
-                        <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="checkbox"
-                              id={`mod-${key}`}
-                              checked={isAllSelected}
-                              onChange={() => toggleModuleAll(modId)}
-                              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                            />
-                            <label
-                              htmlFor={`mod-${key}`}
-                              className="text-xs font-bold text-slate-900 dark:text-white cursor-pointer flex items-center gap-1.5"
-                            >
-                              <Layers className="h-3.5 w-3.5 text-indigo-600" />
-                              {mod.name}
-                              <span className="font-mono text-[10px] text-slate-400">
-                                ({mod.code})
-                              </span>
-                            </label>
-                          </div>
-
-                          <span className="text-[11px] font-semibold text-slate-500">
-                            {selectedCount} of {featureList.length} features enabled
-                          </span>
-                        </div>
-
-                        {/* Nested Features Checkbox Grid */}
-                        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                          {featureList.length === 0 ? (
-                            <p className="text-xs text-slate-400 italic col-span-full">
-                              No nested features registered for this module yet.
-                            </p>
-                          ) : (
-                            featureList.map((feat) => {
-                              const featId = feat.id ?? feat.uuid ?? "";
-                              const isChecked = selectedList.some(
-                                (id) => String(id) === String(featId),
-                              );
-
-                              return (
-                                <label
-                                  key={String(featId)}
-                                  className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${
-                                    isChecked
-                                      ? "border-indigo-200 dark:border-indigo-900 bg-indigo-50/20 dark:bg-indigo-950/20"
-                                      : "border-slate-100 dark:border-slate-800/80 hover:bg-slate-50"
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    onChange={() => toggleFeature(modId, featId)}
-                                    className="w-3.5 h-3.5 mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                                  />
-                                  <div className="min-w-0">
-                                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                                      {feat.name}
-                                    </p>
-                                    <p className="text-[10px] font-mono text-slate-400 truncate">
-                                      {feat.code}
-                                    </p>
-                                  </div>
-                                </label>
-                              );
-                            })
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                    // Sync to selectedFeatures for organization onboarding payload
+                    const newSelectedFeatures: Record<string, (string | number)[]> = {};
+                    moduleTree.forEach((m) => {
+                      const modKey = String(m.id ?? m.uuid ?? "");
+                      const grantedIds = (m.features || [])
+                        .filter((f) => {
+                          const fid = f.id ?? f.uuid ?? f.code;
+                          return Boolean(updatedPerms[String(fid)]?.isGranted);
+                        })
+                        .map((f) => f.id ?? f.uuid ?? f.code)
+                        .filter(Boolean) as (string | number)[];
+                      if (grantedIds.length > 0) {
+                        newSelectedFeatures[modKey] = grantedIds;
+                      }
+                    });
+                    setSelectedFeatures(newSelectedFeatures);
+                  }}
+                  primaryColor="#0000F2"
+                />
               )}
             </div>
           )}

@@ -9,6 +9,7 @@ import { Topbar } from "@/components/dashboard/Topbar";
 import { getSession, type Session } from "@/lib/auth";
 import { isModuleKey, type ModuleKey } from "@/lib/menus";
 import { UserAccessProvider, useUserAccess } from "@/context/UserAccessContext";
+import { SidebarProvider, useSidebar } from "@/context/SidebarContext";
 
 function DashboardAccessGuard({
   moduleKey,
@@ -109,9 +110,9 @@ function DashboardContent({
   session: Session;
 }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const { accessibleModules } = useUserAccess();
+  const { isMobileOpen, setMobileOpen, isCollapsed } = useSidebar();
 
   const isHubRoot = pathname === "/dashboard" || pathname === "/dashboard/";
   const rest = pathname.replace(/^\/dashboard\/?/, "");
@@ -122,10 +123,10 @@ function DashboardContent({
   const activePath = restParts.join("/");
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground antialiased">
       <Topbar
         session={session}
-        onMenu={() => setOpen(true)}
+        onMenu={() => setMobileOpen(true)}
         search={search}
         onSearch={setSearch}
       />
@@ -133,11 +134,15 @@ function DashboardContent({
         <Sidebar
           module={moduleKey}
           activePath={activePath}
-          open={open}
-          onClose={() => setOpen(false)}
+          open={isMobileOpen}
+          onClose={() => setMobileOpen(false)}
           filter={search}
         />
-        <main className="min-w-0 flex-1">
+        <main
+          className={`min-w-0 flex-1 transition-all duration-300 ease-in-out ${
+            isCollapsed ? "lg:max-w-[calc(100vw-5rem)]" : "lg:max-w-[calc(100vw-18rem)]"
+          }`}
+        >
           <DashboardAccessGuard
             moduleKey={moduleKey}
             activePath={activePath}
@@ -175,7 +180,9 @@ export default function DashboardLayout({
 
   return (
     <UserAccessProvider>
-      <DashboardContent session={session}>{children}</DashboardContent>
+      <SidebarProvider storageKey="realbiz_org_sidebar_collapsed">
+        <DashboardContent session={session}>{children}</DashboardContent>
+      </SidebarProvider>
     </UserAccessProvider>
   );
 }

@@ -8,6 +8,7 @@ export interface Plan {
   description?: string;
   monthlyPrice: number;
   yearlyPrice: number;
+  currency?: string;
   billingCycle: "monthly" | "quarterly" | "half_yearly" | "yearly" | "lifetime";
   durationDays: number;
   trialDays: number;
@@ -27,6 +28,7 @@ export interface CreatePlanPayload {
   description?: string;
   monthlyPrice: number;
   yearlyPrice: number;
+  currency?: string;
   billingCycle?: "monthly" | "quarterly" | "half_yearly" | "yearly" | "lifetime";
   durationDays: number;
   trialDays: number;

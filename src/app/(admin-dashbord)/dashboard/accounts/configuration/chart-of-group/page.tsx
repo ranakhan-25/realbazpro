@@ -1,515 +1,434 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useMemo } from 'react';
 import {
+  ChevronDown,
+  Search,
   Plus,
+  RefreshCcw,
+  X,
   Pencil,
   Trash2,
-  ChevronDown,
-  ChevronsUpDown,
-  Network,
-  X,
-} from "lucide-react";
+} from 'lucide-react';
 
-// API Integration এর জন্য টাইপ ডিফাইন করা হয়েছে
-export interface ChartOfGroupItem {
-  id: number;
-  sl: number;
-  code: string;
-  name: string;
-  reportSection: string;
-  under: string;
-  chartOfSection: string;
-  hasDelete?: boolean;
-}
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/realbizpro/api/v1';
 
-// Add Form Data Type
-export interface AddGroupFormData {
-  code: string;
-  name: string;
-  reportSection: string;
-  under: string;
-  chartOfSection: string;
-}
-
-// ইমেজের ডেটা অনুযায়ী প্রাথমিক স্টেট
-const initialChartData: ChartOfGroupItem[] = [
-  {
-    id: 1,
-    sl: 1,
-    code: "200-001-010",
-    name: "Security Deposit Liabilities",
-    reportSection: "",
-    under: "Current Liabilities",
-    chartOfSection: "Liabilites",
-  },
-  {
-    id: 2,
-    sl: 2,
-    code: "500-001-002",
-    name: "Contractor Bill Expense",
-    reportSection: "operating_expense",
-    under: "Direct Expense",
-    chartOfSection: "Expense",
-  },
-  {
-    id: 3,
-    sl: 3,
-    code: "500-001-003",
-    name: "Worker Bill Expanse",
-    reportSection: "operating_expense",
-    under: "Direct Expense",
-    chartOfSection: "Expense",
-  },
-  {
-    id: 4,
-    sl: 4,
-    code: "200-001-007",
-    name: "GRN Bill Liabilities",
-    reportSection: "",
-    under: "Current Liabilities",
-    chartOfSection: "Liabilites",
-  },
-  {
-    id: 5,
-    sl: 5,
-    code: "500-001-001",
-    name: "Admistrative Expences",
-    reportSection: "operating_expense",
-    under: "Direct Expense",
-    chartOfSection: "Expense",
-  },
-  {
-    id: 6,
-    sl: 6,
-    code: "200-001-005",
-    name: "Worker",
-    reportSection: "",
-    under: "Current Liabilities",
-    chartOfSection: "Liabilites",
-  },
-  {
-    id: 7,
-    sl: 7,
-    code: "200-001-006",
-    name: "Received From Other Source",
-    reportSection: "",
-    under: "Current Liabilities",
-    chartOfSection: "Liabilites",
-    hasDelete: true,
-  },
-  {
-    id: 8,
-    sl: 8,
-    code: "100-011",
-    name: "Payment To other Side",
-    reportSection: "",
-    under: "Primary",
-    chartOfSection: "Assets",
-    hasDelete: true,
-  },
-  {
-    id: 9,
-    sl: 9,
-    code: "500-022",
-    name: "Cost of Goods Sold (COGS)",
-    reportSection: "cogs",
-    under: "Primary",
-    chartOfSection: "Expense",
-  },
-  {
-    id: 10,
-    sl: 10,
-    code: "100-001-004",
-    name: "Closing Stock",
-    reportSection: "",
-    under: "Current Assets",
-    chartOfSection: "Assets",
-  },
+// ডামি ডেটা (বেশি ডেটা দিয়ে টেস্ট করার জন্য)
+const initialDummyData = [
+  { id: 1, code: 'AST-001', name: 'Office Laptop', category: 'Electronics', unit: 'Pcs', brand: 'Global Link', price: 1200, group: 'Fixed Asset' },
+  { id: 2, code: 'AST-002', name: 'AC Machine', category: 'Electronics', unit: 'Pcs', brand: 'Samsung', price: 800, group: 'Current Asset' },
+  { id: 3, code: 'AST-003', name: 'Office Printer', category: 'Stationery', unit: 'Pcs', brand: 'HP', price: 350, group: 'Fixed Asset' },
+  { id: 4, code: 'AST-004', name: 'Conference Table', category: 'Furniture', unit: 'Pcs', brand: 'Local', price: 500, group: 'Fixed Asset' },
+  { id: 5, code: 'AST-005', name: 'Desktop Computer', category: 'Electronics', unit: 'Pcs', brand: 'Dell', price: 1500, group: 'Fixed Asset' },
+  { id: 6, code: 'AST-006', name: 'Whiteboard', category: 'Stationery', unit: 'Pcs', brand: 'Local', price: 100, group: 'Expense' },
+  { id: 7, code: 'AST-007', name: 'Ergonomic Chair', category: 'Furniture', unit: 'Pcs', brand: 'Global Link', price: 300, group: 'Fixed Asset' },
+  { id: 8, code: 'AST-008', name: 'Projector', category: 'Electronics', unit: 'Pcs', brand: 'Epson', price: 950, group: 'Fixed Asset' },
+  { id: 9, code: 'AST-009', name: 'Water Dispenser', category: 'Electronics', unit: 'Pcs', brand: 'WALTON', price: 200, group: 'Asset' },
+  { id: 10, code: 'AST-010', name: 'Reception Sofa', category: 'Furniture', unit: 'Pcs', brand: 'Local', price: 750, group: 'Fixed Asset' },
+  { id: 11, code: 'AST-011', name: 'Router', category: 'Electronics', unit: 'Pcs', brand: 'TP-Link', price: 80, group: 'Asset' },
 ];
 
-export default function ChartOfGroupPage() {
-  const [chartData, setChartData] = useState<ChartOfGroupItem[]>(initialChartData);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [entriesPerPage, setEntriesPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+export default function AssetItemList() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  const [assets, setAssets] = useState(initialDummyData);
 
-  // Modal State
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [formData, setFormData] = useState<AddGroupFormData>({
-    code: "",
-    name: "",
-    reportSection: "",
-    under: "",
-    chartOfSection: "",
+  // Search & Pagination States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [entriesPerPage, setEntriesPerPage] = useState(5);
+
+  // Chart of Groups State
+  const [chartGroups, setChartGroups] = useState<{ id: string; name: string }[]>([]);
+  const [isGroupsLoading, setIsGroupsLoading] = useState(false);
+
+  // Form State
+  const [formData, setFormData] = useState({
+    id: 0,
+    code: '',
+    category: '',
+    brand: '',
+    name: '',
+    unit: '',
+    price: '',
+    group: ''
   });
 
-  // Handle Form Change
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  // ১. API থেকে Chart of Groups ফেচ করা
+  const fetchChartOfGroups = async () => {
+    setIsGroupsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/chart-of-groups`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json', 'accept': 'application/json' }
+      });
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        let extractedData = [];
+        if (Array.isArray(result.data)) extractedData = result.data;
+        else if (Array.isArray(result.data.items)) extractedData = result.data.items;
+        else if (Array.isArray(result.data.data)) extractedData = result.data.data;
+
+        const formattedGroups = extractedData.map((item: any) => ({
+          id: item.uuid || item.id || Math.random().toString(),
+          name: item.name || item.groupName || item.title || item.accountName || 'Unknown Group'
+        }));
+
+        setChartGroups(formattedGroups);
+      }
+    } catch (error) {
+      console.error("Failed to fetch chart groups:", error);
+    } finally {
+      setIsGroupsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchChartOfGroups();
+  }, []);
+
+  // ==========================================
+  // ২. SEARCH LOGIC (সার্চ কুয়েরি ফিল্টার)
+  // ==========================================
+  const filteredAssets = useMemo(() => {
+    if (!searchQuery.trim()) return assets;
+    const query = searchQuery.toLowerCase();
+    
+    return assets.filter(
+      (item) =>
+        item.name.toLowerCase().includes(query) ||
+        item.category.toLowerCase().includes(query) ||
+        item.brand.toLowerCase().includes(query) ||
+        item.code.toLowerCase().includes(query) ||
+        item.group.toLowerCase().includes(query)
+    );
+  }, [assets, searchQuery]);
+
+  // ==========================================
+  // ৩. PAGINATION LOGIC (পেজিনেশন)
+  // ==========================================
+  const totalEntries = filteredAssets.length;
+  const totalPages = Math.ceil(totalEntries / entriesPerPage);
+
+  // কারেন্ট পেজের ডেটা স্লাইস করা
+  const indexOfLastEntry = currentPage * entriesPerPage;
+  const indexOfFirstEntry = indexOfLastEntry - entriesPerPage;
+  const currentEntries = filteredAssets.slice(indexOfFirstEntry, indexOfLastEntry);
+
+  // সার্চ করলে বা এন্ট্রি পার পেজ চেঞ্জ হলে পেজ ১ এ রিসেট হবে
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, entriesPerPage]);
+
+  // Handlers
+  const handleAddClick = () => {
+    setModalMode('add');
+    setFormData({ id: 0, code: '', category: '', brand: '', name: '', unit: '', price: '', group: '' });
+    setIsModalOpen(true);
+  };
+
+  const handleEditClick = (item: any) => {
+    setModalMode('edit');
+    setFormData({
+      id: item.id,
+      code: item.code,
+      category: item.category,
+      brand: item.brand,
+      name: item.name,
+      unit: item.unit,
+      price: item.price.toString(),
+      group: item.group,
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Add Submit Handler (পরবর্তীতে API Call যুক্ত করা যাবে)
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Submitting Add Group Data:", formData);
     
-    // API response এর জায়গায় নতুন ডাটা আপডেট লজিক
-    const newItem: ChartOfGroupItem = {
-      id: chartData.length + 1,
-      sl: chartData.length + 1,
-      code: formData.code,
-      name: formData.name,
-      reportSection: formData.reportSection,
-      under: formData.under,
-      chartOfSection: formData.chartOfSection,
-    };
-    
-    setChartData((prev) => [...prev, newItem]);
-    setIsAddModalOpen(false);
-    setFormData({ code: "", name: "", reportSection: "", under: "", chartOfSection: "" });
-  };
-
-  const handleEdit = (item: ChartOfGroupItem) => {
-    console.log("Edit item:", item);
+    if (modalMode === 'edit') {
+      setAssets((prev) =>
+        prev.map((item) =>
+          item.id === formData.id ? { ...item, ...formData, price: Number(formData.price) } : item
+        )
+      );
+    } else {
+      const newId = assets.length > 0 ? Math.max(...assets.map(a => a.id)) + 1 : 1;
+      const newAsset = {
+        ...formData,
+        id: newId,
+        code: `AST-00${newId}`,
+        price: Number(formData.price) || 0,
+      };
+      setAssets([...assets, newAsset]);
+    }
+    setIsModalOpen(false);
   };
 
   const handleDelete = (id: number) => {
-    console.log("Delete id:", id);
-    setChartData((prev) => prev.filter((item) => item.id !== id));
+    if (window.confirm('Are you sure you want to delete this item?')) {
+      setAssets(assets.filter(asset => asset.id !== id));
+    }
   };
 
   return (
-    // ডার্ক মোডের জন্য আরও ডিপ ব্ল্যাক ব্যাকগ্রাউন্ড (dark:bg-[#030712])
-    <div className="h-full w-full bg-slate-50 dark:bg-[#030712] text-slate-800 dark:text-slate-100 p-3 flex flex-col overflow-hidden font-sans select-none">
-      
-      {/* Navigation Breadcrumb & Action Header */}
-      <div className="flex flex-row items-center justify-between gap-2 mb-2 shrink-0">
-        <nav className="text-xs md:text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5 font-medium">
-          <span className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
-            Home
+    <div className="min-h-screen bg-[#f4f7f6] p-4 md:p-6 font-sans text-sm text-[#333]">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-4">
+        <div className="flex items-center space-x-2 text-[#6b58e8] text-sm">
+          <span className="hover:underline cursor-pointer">Home</span>
+          <span className="text-gray-400">&gt;</span>
+          <span className="hover:underline cursor-pointer flex items-center">
+            Inventory <ChevronDown className="w-3 h-3 ml-1" />
           </span>
-          <span>&gt;</span>
-          <span className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer flex items-center gap-0.5">
-            Accounts Module <ChevronDown className="w-3.5 h-3.5" />
-          </span>
-          <span>&gt;</span>
-          <span className="text-slate-400 dark:text-slate-500 font-normal">
-            Chart Of Group
-          </span>
-        </nav>
+          <span className="text-gray-400">&gt;</span>
+          <span className="text-gray-600">Asset Item</span>
+        </div>
 
-        {/* Top Right Action Buttons */}
-        <div className="flex items-center gap-2">
-          {/* Group Hierarchy Button -> Link Component */}
-          <Link
-            href="/dashboard/accounts/group-hierarchy" // আপনার পছন্দের Route দেওয়া যাবে
-            className="flex items-center gap-1 px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-all shadow-sm active:scale-95 cursor-pointer"
-          >
-            <Network className="w-4 h-4" />
-            Group Hierarchy
-          </Link>
-
-          {/* Chart of Group Add Button -> Opens Modal */}
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-all shadow-sm active:scale-95 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            Chart of Group Add
+        <div className="flex items-center space-x-2">
+          <button onClick={handleAddClick} className="bg-[#6b58e8] hover:bg-[#5844d0] text-white px-4 py-1.5 rounded text-sm flex items-center transition">
+            <Plus className="w-4 h-4 mr-1" /> Item Add
+          </button>
+          <button className="bg-[#e34949] hover:bg-[#c93b3b] text-white px-4 py-1.5 rounded text-sm flex items-center transition">
+            PDF
+          </button>
+          <button onClick={fetchChartOfGroups} className="bg-[#17b5c5] hover:bg-[#1399a7] text-white p-2 rounded transition">
+            <RefreshCcw className={`w-4 h-4 ${isGroupsLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
-      {/* Main Container */}
-      <div className="flex-1 min-h-0 bg-white dark:bg-[#0b0f19] rounded-xl shadow-sm border border-slate-200 dark:border-slate-800/80 p-3 flex flex-col overflow-hidden">
+      {/* TABLE SECTION */}
+      <div className="bg-white rounded shadow-sm border border-gray-100 p-4">
         
-        {/* Show Entries & Search Controls */}
-        <div className="flex items-center justify-between gap-2 mb-2.5 shrink-0">
-          <div className="flex items-center gap-2 text-xs md:text-sm text-slate-600 dark:text-slate-400">
+        {/* Table Controls (Search & Show Entries) */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
+          <div className="flex items-center space-x-2 text-gray-600">
             <span>Show</span>
-            <select
+            <select 
               value={entriesPerPage}
               onChange={(e) => setEntriesPerPage(Number(e.target.value))}
-              className="bg-slate-50 dark:bg-[#030712] border border-slate-200 dark:border-slate-800 rounded-md px-2 py-1 text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+              className="border border-gray-300 rounded px-2 py-1 outline-none focus:border-[#6b58e8]"
             >
+              <option value={5}>5</option>
               <option value={10}>10</option>
-              <option value={20}>20</option>
+              <option value={25}>25</option>
               <option value={50}>50</option>
             </select>
             <span>entries</span>
           </div>
 
-          <div className="flex items-center gap-2 text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium">
-            <span>Search:</span>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-44 sm:w-56 px-2.5 py-1 text-xs md:text-sm bg-slate-50 dark:bg-[#030712] border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
-            />
+          <div className="flex items-center space-x-2">
+            <span className="text-gray-600">Search:</span>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+                className="border border-gray-300 rounded px-3 py-1.5 outline-none focus:border-[#6b58e8] w-48 pl-8"
+              />
+              <Search className="w-4 h-4 text-gray-400 absolute left-2 top-2" />
+            </div>
           </div>
         </div>
 
-        {/* Scrollable Table View */}
-        <div className="flex-1 min-h-0 overflow-auto border border-slate-200 dark:border-slate-800/80 rounded-lg">
-          <table className="w-full text-left border-collapse text-xs md:text-sm">
-            <thead className="sticky top-0 z-10 bg-indigo-600 dark:bg-indigo-700 text-white font-semibold uppercase tracking-wider text-[11px] md:text-xs">
-              <tr>
-                <th className="px-3 py-2.5 border-r border-indigo-400/30 w-12">
-                  <div className="flex items-center justify-between">
-                    <span>SL</span>
-                    <ChevronsUpDown className="w-3 h-3 opacity-70" />
-                  </div>
-                </th>
-                <th className="px-3 py-2.5 border-r border-indigo-400/30">
-                  <div className="flex items-center justify-between">
-                    <span>CODE</span>
-                    <ChevronsUpDown className="w-3 h-3 opacity-70" />
-                  </div>
-                </th>
-                <th className="px-3 py-2.5 border-r border-indigo-400/30">
-                  <div className="flex items-center justify-between">
-                    <span>NAME</span>
-                    <ChevronsUpDown className="w-3 h-3 opacity-70" />
-                  </div>
-                </th>
-                <th className="px-3 py-2.5 border-r border-indigo-400/30">
-                  <div className="flex items-center justify-between">
-                    <span>REPORT SECTION</span>
-                    <ChevronsUpDown className="w-3 h-3 opacity-70" />
-                  </div>
-                </th>
-                <th className="px-3 py-2.5 border-r border-indigo-400/30">
-                  <div className="flex items-center justify-between">
-                    <span>UNDER</span>
-                    <ChevronsUpDown className="w-3 h-3 opacity-70" />
-                  </div>
-                </th>
-                <th className="px-3 py-2.5 border-r border-indigo-400/30">
-                  <div className="flex items-center justify-between">
-                    <span>CHART OF SECTION</span>
-                    <ChevronsUpDown className="w-3 h-3 opacity-70" />
-                  </div>
-                </th>
-                <th className="px-3 py-2.5 w-24">
-                  <div className="flex items-center justify-between">
-                    <span>ACTION</span>
-                    <ChevronsUpDown className="w-3 h-3 opacity-70" />
-                  </div>
-                </th>
+        {/* Table */}
+        <div className="overflow-x-auto border border-gray-200 rounded-sm">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[#6b58e8] text-white text-xs uppercase font-semibold">
+                <th className="p-3 border-r border-[#8271eb]">ID</th>
+                <th className="p-3 border-r border-[#8271eb]">Code</th>
+                <th className="p-3 border-r border-[#8271eb]">Name</th>
+                <th className="p-3 border-r border-[#8271eb]">Category</th>
+                <th className="p-3 border-r border-[#8271eb]">Unit</th>
+                <th className="p-3 border-r border-[#8271eb]">Brand</th>
+                <th className="p-3 border-r border-[#8271eb]">Purchase Price</th>
+                <th className="p-3 border-r border-[#8271eb]">Group</th>
+                <th className="p-3 text-center">Action</th>
               </tr>
             </thead>
-
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 bg-white dark:bg-[#0b0f19]">
-              {chartData.map((item) => (
-                <tr
-                  key={item.id}
-                  className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors odd:bg-slate-50/30 dark:odd:bg-[#060911]"
-                >
-                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400 font-medium border-r border-slate-100 dark:border-slate-800/60">
-                    {item.sl}
-                  </td>
-                  <td className="px-3 py-2 font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap border-r border-slate-100 dark:border-slate-800/60">
-                    {item.code}
-                  </td>
-                  <td className="px-3 py-2 text-indigo-600 dark:text-indigo-400 font-medium hover:underline cursor-pointer border-r border-slate-100 dark:border-slate-800/60">
-                    {item.name}
-                  </td>
-                  <td className="px-3 py-2 text-slate-600 dark:text-slate-300 border-r border-slate-100 dark:border-slate-800/60">
-                    {item.reportSection}
-                  </td>
-                  <td className="px-3 py-2 text-slate-600 dark:text-slate-300 border-r border-slate-100 dark:border-slate-800/60">
-                    {item.under}
-                  </td>
-                  <td className="px-3 py-2 text-slate-600 dark:text-slate-300 border-r border-slate-100 dark:border-slate-800/60">
-                    {item.chartOfSection}
-                  </td>
-                  
-                  {/* Action Icons Column */}
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="p-1 rounded bg-cyan-500 hover:bg-cyan-600 text-white transition-colors cursor-pointer"
-                        title="Edit"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-
-                      {item.hasDelete && (
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="p-1 rounded bg-rose-500 hover:bg-rose-600 text-white transition-colors cursor-pointer"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
+            <tbody className="text-gray-700 text-sm">
+              {currentEntries.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="text-center py-6 text-gray-500">
+                    No data available in table
                   </td>
                 </tr>
-              ))}
+              ) : (
+                currentEntries.map((item) => (
+                  <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                    <td className="p-3 border-r border-gray-100 font-medium">{item.id}</td>
+                    <td className="p-3 border-r border-gray-100">{item.code}</td>
+                    <td className="p-3 border-r border-gray-100 font-semibold text-gray-800">{item.name}</td>
+                    <td className="p-3 border-r border-gray-100">{item.category}</td>
+                    <td className="p-3 border-r border-gray-100">{item.unit}</td>
+                    <td className="p-3 border-r border-gray-100">{item.brand}</td>
+                    <td className="p-3 border-r border-gray-100">{item.price.toFixed(2)}</td>
+                    <td className="p-3 border-r border-gray-100">{item.group}</td>
+                    <td className="p-3 flex items-center justify-center space-x-2">
+                      <button onClick={() => handleEditClick(item)} className="bg-blue-500 hover:bg-blue-600 text-white p-1.5 rounded transition">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(item.id)} className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded transition">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination Section */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-2 text-xs md:text-sm text-slate-500 dark:text-slate-400 shrink-0">
+        {/* Pagination Controls */}
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-4 text-gray-600 gap-3">
           <div>
-            Showing <span className="font-semibold text-slate-700 dark:text-slate-200">1</span> to{" "}
-            <span className="font-semibold text-slate-700 dark:text-slate-200">10</span> of{" "}
-            <span className="font-semibold text-slate-700 dark:text-slate-200">30</span> entries
+            Showing {totalEntries > 0 ? indexOfFirstEntry + 1 : 0} to {Math.min(indexOfLastEntry, totalEntries)} of {totalEntries} entries
           </div>
-          
-          <div className="flex items-center gap-1">
-            <button
-              className="px-3 py-1 rounded-md bg-slate-100 dark:bg-[#030712] text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 border border-transparent dark:border-slate-800 disabled:opacity-50 transition-colors"
+          <div className="flex space-x-2">
+            <button 
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
+              className={`px-3 py-1.5 border border-gray-200 rounded ${
+                currentPage === 1 ? 'bg-[#f8f9fa] text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
             >
               Previous
             </button>
-            <button className="px-3 py-1 rounded-md bg-indigo-600 text-white font-medium">
-              1
-            </button>
-            <button className="px-3 py-1 rounded-md bg-slate-100 dark:bg-[#030712] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border border-transparent dark:border-slate-800 transition-colors">
-              2
-            </button>
-            <button className="px-3 py-1 rounded-md bg-slate-100 dark:bg-[#030712] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border border-transparent dark:border-slate-800 transition-colors">
-              3
-            </button>
-            <button className="px-3 py-1 rounded-md bg-slate-100 dark:bg-[#030712] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border border-transparent dark:border-slate-800 transition-colors">
+            <div className="flex items-center px-3 bg-[#6b58e8] text-white rounded">
+              {currentPage} / {totalPages === 0 ? 1 : totalPages}
+            </div>
+            <button 
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages || totalPages === 0}
+              className={`px-3 py-1.5 border border-gray-200 rounded ${
+                currentPage === totalPages || totalPages === 0 ? 'bg-[#f8f9fa] text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
               Next
             </button>
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 pt-1 mt-1 shrink-0">
-        <div>2026 © Somikoron IT LTD</div>
-        <div>Design &amp; Developed by Somikoron IT LTD</div>
-      </footer>
-
-      {/* Modal: Chart of Group Add */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 overflow-hidden">
-          <div className="bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden">
-            
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800/80 shrink-0">
-              <h3 className="text-base font-bold text-slate-800 dark:text-white">
-                Add Chart of Group
-              </h3>
-              <button
-                onClick={() => setIsAddModalOpen(false)}
-                className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-[#030712] hover:bg-rose-500 hover:text-white text-slate-500 transition-colors cursor-pointer"
-              >
+      {/* ADD / EDIT MODAL */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-[#fcfbfa] rounded shadow-lg w-full max-w-3xl overflow-hidden relative border border-gray-200">
+            <div className="bg-white px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+              <h2 className="text-base font-semibold text-gray-800">
+                {modalMode === 'edit' ? 'Edit Item' : 'New Item'}
+              </h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 bg-gray-100 p-1 rounded">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Modal Form */}
-            <form onSubmit={handleAddSubmit} className="p-5 space-y-3.5 text-xs md:text-sm">
-              <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Code <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="code"
-                  required
-                  placeholder="Enter Code"
-                  value={formData.code}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-[#030712] border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
-                />
+            <form onSubmit={handleSubmit}>
+              <div className="p-6 bg-[#fbf8f9]">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+                  
+                  {/* Category */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-800 mb-1.5">Category</label>
+                    <div className="relative">
+                      <select name="category" value={formData.category} onChange={handleInputChange} className="w-full border border-gray-300 rounded px-3 py-2 appearance-none bg-white" required>
+                        <option value="">Select Category</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Furniture">Furniture</option>
+                        <option value="Stationery">Stationery</option>
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* Brand */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-800 mb-1.5">Brand</label>
+                    <div className="flex space-x-2">
+                      <div className="relative flex-1">
+                        <select name="brand" value={formData.brand} onChange={handleInputChange} className="w-full border border-gray-300 rounded px-3 py-2 appearance-none bg-white" required>
+                          <option value="">Select Brand</option>
+                          <option value="Global Link">Global Link</option>
+                          <option value="Dell">Dell</option>
+                          <option value="HP">HP</option>
+                          <option value="Local">Local</option>
+                          <option value="Samsung">Samsung</option>
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
+                      </div>
+                      <button type="button" className="bg-[#6b58e8] text-white px-3 py-2 rounded"><Plus className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+
+                  {/* Item Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-800 mb-1.5">Item Name</label>
+                    <input type="text" name="name" value={formData.name} onChange={handleInputChange} placeholder="Item Name" className="w-full border border-gray-300 rounded px-3 py-2 bg-white" required />
+                  </div>
+
+                  {/* Unit */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-800 mb-1.5">Unit</label>
+                    <div className="relative">
+                      <select name="unit" value={formData.unit} onChange={handleInputChange} className="w-full border border-gray-300 rounded px-3 py-2 appearance-none bg-white" required>
+                        <option value="">Select Unit</option>
+                        <option value="Pcs">Pcs</option>
+                        <option value="Kg">Kg</option>
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* Purchase Price */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-800 mb-1.5">Purchase Price</label>
+                    <input type="number" step="0.01" name="price" value={formData.price} onChange={handleInputChange} placeholder="Enter Price" className="w-full border border-gray-300 rounded px-3 py-2 bg-white" required />
+                  </div>
+
+                  {/* Chart Of Groups (API CONNECTED) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-800 mb-1.5">Chart Of Groups*</label>
+                    <div className="relative">
+                      <select 
+                        name="group" 
+                        value={formData.group} 
+                        onChange={handleInputChange} 
+                        className="w-full border border-gray-300 rounded px-3 py-2 appearance-none bg-white" 
+                        required
+                      >
+                        <option value="">
+                          {isGroupsLoading ? 'Loading groups...' : 'Select One Option'}
+                        </option>
+                        
+                        {chartGroups.length > 0 ? (
+                          chartGroups.map((group: any) => (
+                            <option key={group.id} value={group.name}>
+                              {group.name}
+                            </option>
+                          ))
+                        ) : (
+                          !isGroupsLoading && <option value="" disabled>No groups found</option>
+                        )}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
+                    </div>
+                  </div>
+
+                </div>
               </div>
 
-              <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  placeholder="Enter Name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-[#030712] border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Report Section
-                </label>
-                <input
-                  type="text"
-                  name="reportSection"
-                  placeholder="e.g. operating_expense"
-                  value={formData.reportSection}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-[#030712] border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Under <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  name="under"
-                  required
-                  value={formData.under}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-[#030712] border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
-                >
-                  <option value="">Select Option</option>
-                  <option value="Current Liabilities">Current Liabilities</option>
-                  <option value="Direct Expense">Direct Expense</option>
-                  <option value="Primary">Primary</option>
-                  <option value="Current Assets">Current Assets</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Chart Of Section <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  name="chartOfSection"
-                  required
-                  value={formData.chartOfSection}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-[#030712] border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
-                >
-                  <option value="">Select Option</option>
-                  <option value="Liabilites">Liabilites</option>
-                  <option value="Expense">Expense</option>
-                  <option value="Assets">Assets</option>
-                </select>
-              </div>
-
-              {/* Modal Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800/80 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 text-xs md:text-sm font-medium rounded-md bg-slate-200 dark:bg-[#030712] hover:bg-slate-300 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-transparent dark:border-slate-800 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs md:text-sm font-medium rounded-md bg-indigo-600 hover:bg-indigo-700 text-white transition-colors cursor-pointer"
-                >
-                  Save Group
+              <div className="bg-white px-6 py-4 border-t border-gray-100 flex justify-end space-x-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2 bg-gray-500 text-white rounded">Close</button>
+                <button type="submit" className="px-5 py-2 bg-[#6b58e8] text-white rounded">
+                  {modalMode === 'edit' ? 'Update' : 'Submit'}
                 </button>
               </div>
             </form>

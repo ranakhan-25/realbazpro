@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import toast, { Toaster } from "react-hot-toast";
 import {
   Plus,
   ChevronDown,
@@ -11,11 +12,13 @@ import {
   Trash2,
   FileText,
   Search,
+  RotateCcw,
 } from "lucide-react";
 
 // Types structured for future API integration
 export interface ContraVoucherItem {
   id: string;
+  uuid: string;
   sl: number;
   date: string;
   type: string;
@@ -32,6 +35,8 @@ export interface ContraVoucherItem {
 }
 
 export default function ContraVoucherListPage() {
+  const [loading, setLoading] = useState(false);
+  const [deletingUuid, setDeletingUuid] = useState("");
   // --- Filter State ---
   const [filters, setFilters] = useState({
     dateRange: "1 September, 2026 - 30 September, 2026",
@@ -48,40 +53,97 @@ export default function ContraVoucherListPage() {
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
 
   // --- Voucher List State (Ready for API response payload) ---
-  const [vouchers, setVouchers] = useState<ContraVoucherItem[]>([
-    {
-      id: "1",
-      sl: 1,
-      date: "13/09/2026",
-      type: "Contra",
-      code: "CV-001",
-      debit: 15000.0,
-      credit: 15000.0,
-      total: 15000.0,
-      comment: "Cash Transfer to Bank",
-      addedBy: "Admin",
-      editedBy: "—",
-      approveStatus: "Approved",
-      attachment: "doc_01.pdf",
-      status: "Approved",
-    },
-    {
-      id: "2",
-      sl: 2,
-      date: "12/09/2026",
-      type: "Contra",
-      code: "CV-002",
-      debit: 8500.0,
-      credit: 8500.0,
-      total: 8500.0,
-      comment: "Petty Cash Deposit",
-      addedBy: "Accountant",
-      editedBy: "—",
-      approveStatus: "Pending",
-      attachment: null,
-      status: "Pending",
-    },
-  ]);
+  const [vouchers, setVouchers] = useState<ContraVoucherItem[]>([]);
+
+  const unwrapRecords = (result: Record<string, unknown>): Record<string, unknown>[] => {
+    const nested = result.data as Record<string, unknown> | unknown[] | undefined;
+    if (Array.isArray(nested)) return nested as Record<string, unknown>[];
+    if (nested && typeof nested === "object") {
+      const data = (nested as Record<string, unknown>).data;
+      if (Array.isArray(data)) return data as Record<string, unknown>[];
+      const items = (nested as Record<string, unknown>).items;
+      if (Array.isArray(items)) return items as Record<string, unknown>[];
+    }
+    if (Array.isArray(result.items)) return result.items as Record<string, unknown>[];
+    return [];
+  };
+
+  const requestJson = async (url: string, method = "GET", payload?: unknown) => {
+    const response = await fetch(url, {
+      method,
+      headers: payload ? { "Content-Type": "application/json" } : undefined,
+      body: payload ? JSON.stringify(payload) : undefined,
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.success === false) {
+      throw new Error(result.message || result.error || `Request failed (${response.status}).`);
+    }
+    return result;
+  };
+
+  const fetchVouchers = async () => {
+    setLoading(true);
+    try {
+      const result = await requestJson("/api/backend/contra-vouchers");
+      const records = unwrapRecords(result);
+      setVouchers(records.map((record, index) => {
+        const status = String(record.status ?? "Pending");
+        return {
+          id: String(record.uuid ?? record.id ?? index),
+          uuid: String(record.uuid ?? record.id ?? ""),
+          sl: Number(record.sl ?? index + 1),
+          date: String(record.date ?? record.voucherDate ?? ""),
+          type: String(record.type ?? "Contra"),
+          code: String(record.voucherNo ?? record.code ?? record.voucherCode ?? `CV-${index + 1}`),
+          debit: Number(record.totalDebit ?? record.debit ?? 0),
+          credit: Number(record.totalCredit ?? record.credit ?? 0),
+          total: Number(record.total ?? record.totalDebit ?? record.totalAmount ?? 0),
+          comment: String(record.comment ?? record.note ?? "—"),
+          addedBy: String(record.addedBy ?? record.createdBy ?? "—"),
+          editedBy: String(record.editedBy ?? record.updatedBy ?? "—"),
+          approveStatus: String(record.approveStatus ?? record.approvalStatus ?? status),
+          attachment: record.attachment ? String(record.attachment) : null,
+          status: status === "Approved" ? "Approved" : status === "Rejected" ? "Rejected" : "Pending",
+        };
+      }));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Contra vouchers could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchVouchers();
+  }, []);
+
+  const deleteVoucher = async (row: ContraVoucherItem) => {
+    if (!row.uuid || !confirm(`Delete voucher ${row.code}?`)) return;
+    setDeletingUuid(row.uuid);
+    try {
+      await requestJson(`/api/backend/contra-vouchers/${encodeURIComponent(row.uuid)}`, "DELETE");
+      toast.success(`Voucher ${row.code} deleted successfully.`);
+      await fetchVouchers();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Contra voucher could not be deleted.");
+    } finally {
+      setDeletingUuid("");
+      setActiveDropdownId(null);
+    }
+  };
+
+  const restoreVoucher = async (row: ContraVoucherItem) => {
+    if (!row.uuid) return;
+    try {
+      await requestJson(`/api/backend/contra-vouchers/${encodeURIComponent(row.uuid)}/restore`, "PATCH");
+      toast.success(`Voucher ${row.code} restored successfully.`);
+      await fetchVouchers();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Contra voucher could not be restored.");
+    } finally {
+      setActiveDropdownId(null);
+    }
+  };
 
   // Toggle Action Dropdown
   const toggleActionDropdown = (id: string) => {
@@ -97,6 +159,7 @@ export default function ContraVoucherListPage() {
 
   return (
     <div className="w-full max-w-full overflow-x-hidden min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 p-2.5 text-xs flex flex-col justify-between">
+      <Toaster position="top-right" />
       <div>
         {/* Top Header Navigation & Add New Button */}
         <div className="flex items-center justify-between gap-2 mb-3 w-full">
@@ -114,7 +177,7 @@ export default function ContraVoucherListPage() {
 
           {/* Add New Link Button */}
           <Link
-            href="/dashboard/accounts/voucher/journal-voucher/add-new"
+            href="/dashboard/accounts/voucher/contra-voucher/add-new"
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-[#635BFF] hover:bg-indigo-700 text-white transition-colors shadow-xs shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -322,26 +385,31 @@ export default function ContraVoucherListPage() {
                       {activeDropdownId === row.id && (
                         <div className="absolute right-2 mt-1 w-28 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded shadow-lg z-50 py-1 text-left animate-in fade-in duration-100">
                           <Link
-                            href={`/accounts/contra-voucher/view/${row.id}`}
+                            href={`/dashboard/accounts/voucher/contra-voucher/add-new?uuid=${encodeURIComponent(row.uuid)}&mode=view`}
                             className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                           >
                             <Eye className="w-3 h-3 text-slate-400" /> View
                           </Link>
                           <Link
-                            href={`/accounts/contra-voucher/edit/${row.id}`}
+                            href={`/dashboard/accounts/voucher/contra-voucher/add-new?uuid=${encodeURIComponent(row.uuid)}`}
                             className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-indigo-600 dark:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                           >
                             <Edit className="w-3 h-3" /> Edit
                           </Link>
                           <button
                             type="button"
-                            onClick={() => {
-                              alert(`Delete voucher ${row.code}`);
-                              setActiveDropdownId(null);
-                            }}
+                            onClick={() => void deleteVoucher(row)}
+                            disabled={deletingUuid === row.uuid}
                             className="w-full flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                           >
                             <Trash2 className="w-3 h-3" /> Delete
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void restoreVoucher(row)}
+                            className="w-full flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-emerald-600 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                          >
+                            <RotateCcw className="w-3 h-3" /> Restore
                           </button>
                         </div>
                       )}

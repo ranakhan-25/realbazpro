@@ -82,6 +82,21 @@ export const menuGroups: AdminMenuItem[] = [
         href: "/admin/organization",
         icon: User,
       },
+      {
+        label: "Permissions",
+        href: "/admin/permissions",
+        icon: KeyRound,
+      },
+      {
+        label: "Features",
+        href: "/admin/features",
+        icon: FileCog,
+      },
+      {
+        label: "Modules",
+        href: "/admin/modules",
+        icon: Boxes,
+      },
     ],
   },
   {
@@ -97,21 +112,6 @@ export const menuGroups: AdminMenuItem[] = [
         label: "Roles",
         href: "/admin/roles",
         icon: ShieldCheck,
-      },
-      {
-        label: "Permissions",
-        href: "/admin/permissions",
-        icon: KeyRound,
-      },
-      {
-        label: "Features",
-        href: "/admin/features",
-        icon: FileCog,
-      },
-      {
-        label: "Modules",
-        href: "/admin/modules",
-        icon: Boxes,
       },
     ],
   },

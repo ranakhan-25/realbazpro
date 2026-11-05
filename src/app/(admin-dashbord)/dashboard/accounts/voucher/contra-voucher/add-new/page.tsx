@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import toast, { Toaster } from "react-hot-toast";
 import {
   ArrowLeft,
   Plus,
@@ -14,6 +16,7 @@ import {
 // Types
 export interface TableRowItem {
   id: string;
+  accountUuid?: string;
   accountName: string;
   debit: number;
   credit: number;
@@ -29,6 +32,11 @@ export interface ChartOfAccountOption {
 }
 
 export default function ContraVoucherCreatePage() {
+  const router = useRouter();
+  const [editingUuid, setEditingUuid] = useState("");
+  const [isReadOnly, setIsReadOnly] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingVoucher, setLoadingVoucher] = useState(false);
   // --- Form Header State ---
   const [headerState, setHeaderState] = useState({
     voucherNo: "CON00001",
@@ -75,21 +83,103 @@ export default function ContraVoucherCreatePage() {
   const totalDebit = rows.reduce((sum, r) => sum + r.debit, 0);
   const totalCredit = rows.reduce((sum, r) => sum + r.credit, 0);
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        const response = await fetch("/api/backend/chart-of-accounts", { cache: "no-store" });
+        const result = await response.json();
+        const records = Array.isArray(result.data)
+          ? result.data
+          : Array.isArray(result.data?.data)
+            ? result.data.data
+            : [];
+        if (response.ok && records.length > 0) {
+          setAccountOptions(records.map((account: Record<string, unknown>) => ({
+            id: String(account.uuid ?? account.id),
+            code: String(account.code ?? ""),
+            name: String(account.name ?? account.accountName ?? ""),
+            group: String(account.group ?? account.under ?? ""),
+          })));
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    const uuid = new URLSearchParams(window.location.search).get("uuid");
+    if (!uuid) return;
+    setEditingUuid(uuid);
+    setIsReadOnly(new URLSearchParams(window.location.search).get("mode") === "view");
+    setLoadingVoucher(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/backend/contra-vouchers/${encodeURIComponent(uuid)}`, { cache: "no-store" });
+        const result = await response.json();
+        if (!response.ok || result.success === false) throw new Error(result.message || "Contra voucher could not be loaded.");
+        const record = (result.data?.data ?? result.data ?? result) as Record<string, unknown>;
+        setHeaderState({
+          voucherNo: String(record.voucherNo ?? record.code ?? ""),
+          date: String(record.date ?? record.voucherDate ?? "").slice(0, 10),
+          projectType: String(record.projectType ?? ""),
+          titleOfWork: String(record.titleOfWork ?? ""),
+          project: String(record.project ?? ""),
+          site: String(record.site ?? ""),
+          task: String(record.task ?? ""),
+        });
+        setComment(String(record.comment ?? record.note ?? ""));
+        const details = Array.isArray(record.items) ? record.items
+          : Array.isArray(record.details) ? record.details
+            : Array.isArray(record.contraVoucherDetails) ? record.contraVoucherDetails
+              : [];
+        setRows(details.map((detail, index) => {
+          const item = detail as Record<string, unknown>;
+          const account = typeof item.chartOfAccount === "object" && item.chartOfAccount
+            ? item.chartOfAccount as Record<string, unknown>
+            : item.account as Record<string, unknown> | undefined;
+          return {
+            id: String(item.uuid ?? item.id ?? index),
+            accountUuid: String(
+              item.accountId ??
+              item.accountUuid ??
+              item.chartOfAccountUuid ??
+              item.chartOfAccountId ??
+              account?.uuid ??
+              account?.id ??
+              "",
+            ),
+            accountName: String(account?.name ?? item.accountName ?? item.name ?? "Account"),
+            debit: Number(item.debit ?? 0),
+            credit: Number(item.credit ?? 0),
+            chqReceipt: String(item.chqReceipt ?? item.chequeReceipt ?? item.receiptNo ?? "—"),
+            note: String(item.note ?? item.description ?? "—"),
+          };
+        }));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Contra voucher could not be loaded.");
+      } finally {
+        setLoadingVoucher(false);
+      }
+    })();
+  }, []);
+
   // Add Item to Table Handler
   const handleAddRow = () => {
     if (!selectedAccountId) {
-      alert("Please select a Chart of Account!");
+      toast.error("Please select a Chart of Account!");
       return;
     }
     const numericAmount = parseFloat(amountInput);
     if (isNaN(numericAmount) || numericAmount <= 0) {
-      alert("Please enter a valid amount!");
+      toast.error("Please enter a valid amount!");
       return;
     }
 
     const selectedAcc = accountOptions.find((a) => a.id === selectedAccountId);
     const newRow: TableRowItem = {
       id: Date.now().toString(),
+      accountUuid: selectedAcc?.id,
       accountName: selectedAcc
         ? `${selectedAcc.name} (${selectedAcc.code})`
         : "Account",
@@ -117,7 +207,7 @@ export default function ContraVoucherCreatePage() {
   const handleModalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!modalData.name || !modalData.code) {
-      alert("Please fill in the account code and name.");
+      toast.error("Please fill in the account code and name.");
       return;
     }
 
@@ -135,30 +225,91 @@ export default function ContraVoucherCreatePage() {
   };
 
   // Main Voucher Submit Handler (API Payload Ready)
-  const handleMainSubmit = (e: React.FormEvent) => {
+  const handleMainSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (rows.length === 0) {
-      alert("Please add at least one account entry to the table!");
+      toast.error("Please add at least one account entry to the table!");
       return;
     }
+    const resolvedRows = rows.map((row) => {
+      const accountUuid = row.accountUuid?.trim() ?? "";
+      const matchedOption = accountUuid
+        ? accountOptions.find((option) => option.id === accountUuid)
+        : undefined;
+      const nameMatchedOption = matchedOption ?? accountOptions.find((option) =>
+        row.accountName === option.name ||
+        row.accountName === `${option.name} (${option.code})` ||
+        row.accountName.startsWith(`${option.name} `),
+      );
 
+      return {
+        ...row,
+        accountUuid: matchedOption?.id ?? nameMatchedOption?.id ?? accountUuid,
+      };
+    });
+    if (resolvedRows.some((row) =>
+      !row.accountUuid &&
+      (!row.accountName || row.accountName === "Account"),
+    )) {
+      toast.error("Please select an account for every voucher entry!");
+      return;
+    }
     const payload = {
-      header: headerState,
-      items: rows,
+      ...headerState,
+      voucherNo: headerState.voucherNo,
+      date: /^\d{4}-\d{2}-\d{2}$/.test(headerState.date)
+        ? headerState.date
+        : headerState.date.includes("/")
+          ? headerState.date.split("/").reverse().join("-")
+          : headerState.date,
+      items: resolvedRows.map((row) => ({
+        entryType: row.debit > 0 ? "DEBIT" : "CREDIT",
+        accountId: row.accountUuid,
+        accountName: row.accountName,
+        debit: row.debit,
+        credit: row.credit,
+        chequeReceiptNo: row.chqReceipt === "—" ? "" : row.chqReceipt,
+        note: row.note === "—" ? "" : row.note,
+      })),
       totalDebit,
       totalCredit,
       comment,
-      attachmentName: attachment ? attachment.name : null,
+      attachmentUrl: attachment?.name ?? "",
     };
 
-    console.log("Contra Voucher API Payload Ready:", payload);
-    alert(
-      `Contra Voucher ${headerState.voucherNo} created successfully! (Check console for API payload)`,
-    );
+    setIsSubmitting(true);
+    try {
+      const url = editingUuid
+        ? `/api/backend/contra-vouchers/${encodeURIComponent(editingUuid)}`
+        : "/api/backend/contra-vouchers";
+      let response = await fetch(url, {
+        method: editingUuid ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (editingUuid && !response.ok) {
+        response = await fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || result.error || "Contra voucher could not be saved.");
+      }
+      toast.success(editingUuid ? "Contra voucher updated successfully." : "Contra voucher created successfully.");
+      router.push("/dashboard/accounts/voucher/contra-voucher");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Contra voucher could not be saved.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="w-full max-w-full overflow-x-hidden min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 p-2.5 text-xs flex flex-col justify-between">
+      <Toaster position="top-right" />
       {/* Top Header Navigation */}
       <div>
         <div className="flex items-center justify-between gap-2 mb-2 w-full">
@@ -180,7 +331,7 @@ export default function ContraVoucherCreatePage() {
           </nav>
 
           <Link
-            href="/accounts/contra-voucher"
+            href="/dashboard/accounts/voucher/contra-voucher"
             className="flex items-center gap-1 px-3 py-1 text-[11px] font-semibold rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors shadow-xs"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -502,13 +653,16 @@ export default function ContraVoucherCreatePage() {
 
         {/* Center Submit Button */}
         <div className="flex justify-center mb-4">
-          <button
-            type="button"
-            onClick={handleMainSubmit}
-            className="px-8 py-2 bg-[#635BFF] hover:bg-indigo-700 text-white font-semibold rounded-md shadow-md transition-colors cursor-pointer text-sm"
-          >
-            Submit
-          </button>
+          {!isReadOnly && (
+            <button
+              type="button"
+              onClick={handleMainSubmit}
+              disabled={isSubmitting || loadingVoucher}
+              className="px-8 py-2 bg-[#635BFF] hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold rounded-md shadow-md transition-colors cursor-pointer text-sm"
+            >
+              {isSubmitting ? "Saving..." : editingUuid ? "Update" : "Submit"}
+            </button>
+          )}
         </div>
       </div>
 

@@ -1,382 +1,582 @@
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-  ChevronDown,
+  Home,
+  ChevronRight,
   Plus,
-  X,
   Edit,
   Trash2,
-  ArrowUpDown,
-  MoreVertical,
+  X,
+  Loader2,
+  Save,
+  Folder,
 } from "lucide-react";
 
+// ==================== TYPES ====================
 export interface BoqTitleItem {
-  id: number;
-  sl: number;
-  projectType: string;
+  id: number | string;
+  uuid: string;
+  projectId: string;
   title: string;
+  status?: string;
 }
 
+interface ProjectOption {
+  uuid: string;
+  name: string;
+}
+
+// ==================== API CONFIG ====================
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
+const API_PREFIX = "/realbizpro/api/v1";
+
+const BOQ_API = `${API_BASE_URL}${API_PREFIX}/boq`;
+const PROJECT_API = `${API_BASE_URL}${API_PREFIX}/project`;
+
+// ==================== API FUNCTIONS ====================
+async function fetchProjects(): Promise<ProjectOption[]> {
+  try {
+    const query = new URLSearchParams({ page: "1", limit: "100" });
+    const res = await fetch(`${PROJECT_API}?${query}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const rows =
+      json?.data?.data ?? (Array.isArray(json?.data) ? json.data : null) ?? [];
+    return Array.isArray(rows)
+      ? rows
+          .filter((p: any) => p?.uuid)
+          .map((p: any) => ({
+            uuid: String(p.uuid),
+            name: String(p.name || p.projectName || p.code || "Unnamed"),
+          }))
+      : [];
+  } catch (err) {
+    console.error("fetchProjects error:", err);
+    return [];
+  }
+}
+
+async function fetchBoqTitles(): Promise<BoqTitleItem[]> {
+  const query = new URLSearchParams({ page: "1", limit: "100" });
+  const res = await fetch(`${BOQ_API}?${query}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      err?.message || `Failed to fetch boq titles: ${res.status}`,
+    );
+  }
+  const json = await res.json();
+  const rows = json?.data?.data ?? json?.data ?? [];
+
+  return Array.isArray(rows)
+    ? rows.map((item: any) => ({
+        id: item.id ?? item.uuid,
+        uuid: item.uuid,
+        projectId: item.projectId || item.project?.uuid || "",
+        title: item.titleOfWork || item.title || "",
+        status: item.status || "active",
+      }))
+    : [];
+}
+
+async function createBoqTitle(payload: Record<string, any>) {
+  console.log("POST payload →", payload);
+  const res = await fetch(BOQ_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    console.error("POST error →", err);
+    throw new Error(err?.message || "Create boq title failed");
+  }
+  return res.json();
+}
+
+async function updateBoqTitle(uuid: string, payload: Record<string, any>) {
+  console.log("PUT", uuid, "payload →", payload);
+  const res = await fetch(`${BOQ_API}/${uuid}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    console.error("PUT error →", err);
+    throw new Error(err?.message || "Update boq title failed");
+  }
+  return res.json();
+}
+
+async function deleteBoqTitle(uuid: string) {
+  const res = await fetch(`${BOQ_API}/${uuid}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || "Delete boq title failed");
+  }
+  return res.json().catch(() => ({}));
+}
+
+// ==================== MAIN PAGE ====================
 export default function BoqTitleListPage() {
-  // Main Data State (API Ready)
-  const [items, setItems] = useState<BoqTitleItem[]>([
-    { id: 1, sl: 1, projectType: "General", title: "Design Cost" },
-    { id: 2, sl: 2, projectType: "General", title: "Project Overhead" },
-    { id: 3, sl: 3, projectType: "General", title: "Indirect Common Cost" },
-    { id: 4, sl: 4, projectType: "General", title: "Direct Common Cost" },
-    { id: 5, sl: 5, projectType: "Building", title: "Paints Works" },
-    { id: 6, sl: 6, projectType: "Building", title: "Sanitary Works" },
-    { id: 7, sl: 7, projectType: "Building", title: "Thai & Glass Works" },
-    { id: 8, sl: 8, projectType: "Electrical", title: "Electric Works" },
-    { id: 9, sl: 9, projectType: "Interior", title: "Tiles & Marble Works" },
-    { id: 10, sl: 10, projectType: "Structural", title: "MS & SS Works" },
-  ]);
+  const [items, setItems] = useState<BoqTitleItem[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Controls & Filter States
-  const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Action Dropdown State
-  const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  // Modal States
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<BoqTitleItem | null>(null);
 
-  // Modal Form Inputs
-  const [projectType, setProjectType] = useState("");
-  const [boqTitle, setBoqTitle] = useState("");
+  const [formData, setFormData] = useState({
+    projectId: "",
+    title: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Open Add Modal
-  const handleOpenAddModal = () => {
-    setEditingItem(null);
-    setProjectType("");
-    setBoqTitle("");
-    setIsModalOpen(true);
-  };
-
-  // Open Edit Modal
-  const handleOpenEditModal = (item: BoqTitleItem) => {
-    setEditingItem(item);
-    setProjectType(item.projectType);
-    setBoqTitle(item.title);
-    setIsModalOpen(true);
-    setActiveDropdownId(null);
-  };
-
-  // Form Submit (API Add/Edit connection point)
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (editingItem) {
-      const updatedPayload = {
-        projectType: projectType || "General",
-        title: boqTitle,
-      };
-      console.log(
-        "Edit Boq Title API Payload:",
-        editingItem.id,
-        updatedPayload,
-      );
-
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === editingItem.id ? { ...item, ...updatedPayload } : item,
-        ),
-      );
-    } else {
-      const newPayload = {
-        id: Date.now(),
-        sl: items.length + 1,
-        projectType: projectType || "General",
-        title: boqTitle,
-      };
-      console.log("Create Boq Title API Payload:", newPayload);
-
-      setItems((prev) => [...prev, newPayload]);
+  // ==================== LOAD ====================
+  const loadItems = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchBoqTitles();
+      setItems(data);
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || "Failed to load boq titles");
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    setIsModalOpen(false);
-  };
+  useEffect(() => {
+    loadItems();
+    fetchProjects()
+      .then(setProjects)
+      .catch((e) => console.error("projects:", e));
+  }, [loadItems]);
 
-  // Delete Action
-  const handleDelete = (id: number) => {
-    console.log("Delete Boq Title API Request for ID:", id);
-    setItems((prev) => prev.filter((item) => item.id !== id));
-    setActiveDropdownId(null);
-  };
-
-  // Search Filtering
-  const filteredItems = items.filter((item) => {
-    return (
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.projectType.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+  // ==================== FILTER ====================
+  const filtered = items.filter((item) => {
+    const q = searchQuery.toLowerCase();
+    return item.title.toLowerCase().includes(q);
   });
 
+  const totalPages = Math.ceil(filtered.length / entriesPerPage) || 1;
+  const startIndex = (currentPage - 1) * entriesPerPage;
+  const paginated = filtered.slice(startIndex, startIndex + entriesPerPage);
+
+  // ==================== RESET ====================
+  const resetForm = () => {
+    setFormData({ projectId: "", title: "" });
+    setFormError(null);
+  };
+
+  const handleOpenAdd = () => {
+    resetForm();
+    setIsAddOpen(true);
+  };
+
+  const handleOpenEdit = (item: BoqTitleItem) => {
+    setEditingItem(item);
+    setFormData({
+      projectId: item.projectId || "",
+      title: item.title || "",
+    });
+    setFormError(null);
+  };
+
+  // ==================== CREATE ====================
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.projectId) {
+      setFormError("Project is required");
+      return;
+    }
+    if (!formData.title.trim()) {
+      setFormError("Boq Title is required");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setFormError(null);
+
+      const now = new Date().toISOString();
+
+      await createBoqTitle({
+        projectId: formData.projectId,
+        titleOfWork: formData.title,
+        task: formData.title,
+        date: now,
+        budget: 0,
+        percentageOfTotalBudget: 0,
+        perSftBudget: 0,
+        cost: 0,
+        available: 0,
+      });
+
+      setIsAddOpen(false);
+      resetForm();
+      await loadItems();
+    } catch (err: any) {
+      setFormError(err?.message || "Create failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ==================== UPDATE ====================
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem?.uuid) return;
+
+    if (!formData.projectId) {
+      setFormError("Project is required");
+      return;
+    }
+    if (!formData.title.trim()) {
+      setFormError("Boq Title is required");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setFormError(null);
+
+      await updateBoqTitle(editingItem.uuid, {
+        projectId: formData.projectId,
+        titleOfWork: formData.title,
+        task: formData.title,
+      });
+
+      setEditingItem(null);
+      resetForm();
+      await loadItems();
+    } catch (err: any) {
+      setFormError(err?.message || "Update failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ==================== DELETE ====================
+  const handleDelete = async (item: BoqTitleItem) => {
+    if (!item.uuid) return;
+    if (!confirm(`Delete boq title "${item.title}"?`)) return;
+    try {
+      setActionLoading(true);
+      await deleteBoqTitle(item.uuid);
+      setItems((prev) => prev.filter((c) => c.uuid !== item.uuid));
+    } catch (err: any) {
+      alert(err?.message || "Delete failed");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ==================== RENDER ====================
   return (
-    <div className="w-full max-w-full overflow-x-hidden min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 p-3 text-xs flex flex-col justify-between">
-      <div>
-        {/* Top Header & Breadcrumb */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <nav className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 font-medium">
-            <Link
-              href="/"
-              className="text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
+    <div className="min-h-screen bg-slate-50 text-slate-900 p-4 sm:p-6 font-sans">
+      <div className="max-w-[1400px] mx-auto space-y-4">
+        {/* HEADER */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+            <div className="flex items-center gap-1 hover:text-indigo-600 cursor-pointer">
+              <Home className="w-3.5 h-3.5" />
               Home
-            </Link>
-            <span>&gt;</span>
-            <span className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 cursor-pointer">
-              Accounts <ChevronDown className="w-3 h-3" />
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-slate-600">Accounts</span>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-indigo-600 font-semibold">
+              Bog Title List
             </span>
-            <span>&gt;</span>
-            <span className="text-slate-400 font-normal truncate">
-              Boq Title List
-            </span>
-          </nav>
+          </div>
 
           <button
             type="button"
-            onClick={handleOpenAddModal}
-            className="flex items-center gap-1 px-3 py-1.5 bg-[#635BFF] hover:bg-indigo-700 text-white font-medium rounded transition-colors shadow-xs cursor-pointer text-xs"
+            onClick={handleOpenAdd}
+            className="inline-flex items-center gap-1.5 bg-[#5949d6] hover:bg-[#4d3ec2] text-white text-xs font-semibold px-4 py-2 rounded shadow-sm transition-all cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" />
-            Title Add
+            <Plus className="w-4 h-4" />
+            +Title Add
           </button>
         </div>
 
-        {/* Entries Selector & Search Input */}
-        <div className="bg-white dark:bg-slate-900 rounded-t border border-b-0 border-slate-200 dark:border-slate-800 p-2.5 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
-            <span>Show</span>
-            <select
-              value={entriesPerPage}
-              onChange={(e) => setEntriesPerPage(Number(e.target.value))}
-              className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-0.5 outline-none"
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
-            <span>entries</span>
+        {/* TABLE CARD */}
+        <div className="bg-white rounded border border-slate-200 shadow-2xs">
+          {/* SHOW + SEARCH */}
+          <div className="flex flex-col sm:flex-row items-center justify-between p-3 gap-3">
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <span>Show</span>
+              <select
+                value={entriesPerPage}
+                onChange={(e) => {
+                  setEntriesPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <span>entries</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-600">Search:</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-48 px-3 py-1.5 text-xs border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-600 dark:text-slate-400">Search:</span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-0.5 outline-none focus:border-indigo-500"
-            />
-          </div>
-        </div>
+          {/* ERROR */}
+          {error && (
+            <div className="mx-3 mb-2 bg-rose-50 border border-rose-200 text-rose-700 px-4 py-2 rounded text-xs flex items-center justify-between">
+              <span>{error}</span>
+              <button onClick={loadItems} className="underline text-xs">
+                Retry
+              </button>
+            </div>
+          )}
 
-        {/* Data Table */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-          <table className="w-full table-fixed text-left border-collapse text-xs">
-            <thead className="bg-[#635BFF] text-white font-semibold uppercase text-[10px] tracking-wider">
-              <tr>
-                <th className="w-[8%] px-3 py-2">
-                  <div className="flex items-center justify-between">
-                    SL <ArrowUpDown className="w-2.5 h-2.5 opacity-70" />
-                  </div>
-                </th>
-                <th className="w-[27%] px-3 py-2">
-                  <div className="flex items-center justify-between">
-                    PROJECT TYPE{" "}
-                    <ArrowUpDown className="w-2.5 h-2.5 opacity-70" />
-                  </div>
-                </th>
-                <th className="w-[53%] px-3 py-2">
-                  <div className="flex items-center justify-between">
-                    TITLE <ArrowUpDown className="w-2.5 h-2.5 opacity-70" />
-                  </div>
-                </th>
-                <th className="w-[12%] px-3 py-2 text-center">
-                  <div className="flex items-center justify-center">ACTION</div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-              {filteredItems.length > 0 ? (
-                filteredItems.map((item, index) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                  >
-                    <td className="px-3 py-2.5 text-slate-800 dark:text-slate-100">
-                      {index + 1}
-                    </td>
-                    <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 truncate">
-                      {item.projectType || "-"}
-                    </td>
-                    <td className="px-3 py-2.5 text-slate-700 dark:text-slate-300 font-medium truncate">
-                      {item.title}
-                    </td>
-                    <td className="px-3 py-2.5 text-center relative">
-                      {/* Action Dropdown Trigger Button */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setActiveDropdownId(
-                            activeDropdownId === item.id ? null : item.id,
-                          )
-                        }
-                        className="p-1 rounded bg-[#00B5D8] hover:bg-cyan-600 text-white transition-colors cursor-pointer inline-flex items-center justify-center"
-                        title="Actions"
-                      >
-                        <MoreVertical className="w-3.5 h-3.5" />
-                      </button>
-
-                      {/* Dropdown Menu (Edit & Delete inside) */}
-                      {activeDropdownId === item.id && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-10"
-                            onClick={() => setActiveDropdownId(null)}
-                          />
-                          <div className="absolute right-3 mt-1 w-28 bg-white dark:bg-slate-900 rounded-md shadow-lg border border-slate-200 dark:border-slate-800 z-20 py-1 text-left">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditModal(item)}
-                              className="w-full flex items-center gap-2 px-3 py-1.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs cursor-pointer"
-                            >
-                              <Edit className="w-3.5 h-3.5 text-indigo-500" />
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(item.id)}
-                              className="w-full flex items-center gap-2 px-3 py-1.5 text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
+          {/* TABLE */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="bg-[#5949d6] text-white font-semibold uppercase tracking-wide">
+                  <th className="py-2.5 px-3 w-16">SL</th>
+                  <th className="py-2.5 px-3">PROJECT TYPE</th>
+                  <th className="py-2.5 px-3">TITLE</th>
+                  <th className="py-2.5 px-3 text-center w-28">ACTION</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {loading ? (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="text-center py-10 text-slate-400"
+                    >
+                      <Loader2 className="w-5 h-5 animate-spin mx-auto" />
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="px-3 py-4 text-center text-slate-400 italic"
-                  >
-                    No matching titles found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : paginated.length > 0 ? (
+                  paginated.map((item, index) => (
+                    <tr
+                      key={item.uuid || item.id}
+                      className="hover:bg-indigo-50/40 transition-colors"
+                    >
+                      <td className="py-2.5 px-3 text-slate-600">
+                        {startIndex + index + 1}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-700">
+                        {item.projectId
+                          ? projects.find((p) => p.uuid === item.projectId)
+                              ?.name || "-"
+                          : "-"}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-800">
+                        <div className="flex items-center gap-2">
+                          <Folder className="w-3.5 h-3.5 text-slate-700" />
+                          <span className="font-medium">{item.title}</span>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(item)}
+                            title="Edit"
+                            className="bg-cyan-400 hover:bg-cyan-500 text-white p-1.5 rounded transition-colors"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(item)}
+                            disabled={actionLoading}
+                            title="Delete"
+                            className="bg-rose-500 hover:bg-rose-600 text-white p-1.5 rounded transition-colors disabled:opacity-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="text-center py-10 text-slate-400 font-medium"
+                    >
+                      No boq titles found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-        {/* Pagination Footer */}
-        <div className="bg-white dark:bg-slate-900 rounded-b border border-t-0 border-slate-200 dark:border-slate-800 p-2.5 flex items-center justify-between text-slate-500 dark:text-slate-400 mb-4">
-          <div>Showing 1 to {filteredItems.length} of 16 entries</div>
-
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled
-              className="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              className="px-3 py-1 rounded bg-[#635BFF] text-white font-medium"
-            >
-              1
-            </button>
-            <button
-              type="button"
-              className="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"
-            >
-              2
-            </button>
-            <button
-              type="button"
-              className="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-            >
-              Next
-            </button>
+          {/* PAGINATION */}
+          <div className="flex flex-col sm:flex-row items-center justify-between p-3 border-t border-slate-200 gap-2 text-xs text-slate-500">
+            <div>
+              Showing {filtered.length === 0 ? 0 : startIndex + 1} to{" "}
+              {Math.min(startIndex + entriesPerPage, filtered.length)} of{" "}
+              {filtered.length} entries
+            </div>
+            <div className="inline-flex items-center gap-1">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1 rounded border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setCurrentPage(p)}
+                  className={`px-3 py-1 rounded font-semibold ${
+                    currentPage === p
+                      ? "bg-[#5949d6] text-white"
+                      : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                className="px-3 py-1 rounded border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* DEPARTMENT / TITLE ADD OR EDIT MODAL (Image 10_2.PNG) */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-3">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-md shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-              <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
-                Department
-              </h3>
+      {/* ==================== ADD MODAL ==================== */}
+      {isAddOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white w-full max-w-md rounded shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-slate-200">
+              <h3 className="text-sm font-semibold text-slate-800">Boq</h3>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="p-0.5 rounded border border-slate-300 dark:border-slate-700 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                onClick={() => setIsAddOpen(false)}
+                className="text-slate-400 hover:text-slate-600"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Modal Form */}
-            <form onSubmit={handleFormSubmit} className="p-4 space-y-3.5">
-              {/* Field 1: Project Type */}
+            <form
+              onSubmit={handleCreateSubmit}
+              className="p-5 space-y-4 text-xs"
+            >
+              {/* PROJECT */}
               <div>
-                <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Project Type
+                <label className="block font-medium text-slate-700 mb-1">
+                  Project <span className="text-rose-500">*</span>
                 </label>
                 <select
-                  value={projectType}
-                  onChange={(e) => setProjectType(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
+                  required
+                  value={formData.projectId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, projectId: e.target.value })
+                  }
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 >
-                  <option value="">Select value</option>
-                  <option value="General">General</option>
-                  <option value="Building">Building</option>
-                  <option value="Electrical">Electrical</option>
-                  <option value="Interior">Interior</option>
-                  <option value="Structural">Structural</option>
+                  <option value="">Select Project</option>
+                  {projects.map((p) => (
+                    <option key={p.uuid} value={p.uuid}>
+                      {p.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              {/* Field 2: Department / Boq Title */}
+              {/* BOQ TITLE */}
               <div>
-                <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Department<span className="text-red-500">*</span>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Boq Title <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="Boq Title"
                   required
-                  value={boqTitle}
-                  onChange={(e) => setBoqTitle(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
+                  value={formData.title}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
+                  placeholder="Boq Title"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
 
-              {/* Modal Actions */}
-              <div className="flex items-center justify-center gap-2 pt-3">
+              {formError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded">
+                  {formError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-1.5 rounded bg-slate-400 hover:bg-slate-500 text-white font-medium text-xs transition-colors cursor-pointer"
+                  onClick={() => setIsAddOpen(false)}
+                  className="px-5 py-2 bg-slate-500 hover:bg-slate-600 text-white rounded font-semibold"
                 >
                   Close
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-1.5 rounded bg-[#635BFF] hover:bg-indigo-700 text-white font-medium text-xs transition-colors cursor-pointer shadow-xs"
+                  disabled={submitting}
+                  className="px-6 py-2 bg-[#5949d6] hover:bg-[#4d3ec2] text-white rounded font-semibold disabled:opacity-50 flex items-center gap-1.5"
                 >
+                  {submitting ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
                   Submit
                 </button>
               </div>
@@ -385,11 +585,92 @@ export default function BoqTitleListPage() {
         </div>
       )}
 
-      {/* Page Footer */}
-      <footer className="flex items-center justify-between text-[9px] text-slate-400 pt-2 border-t border-slate-200 dark:border-slate-800">
-        <div>2026 © Somikoron IT LTD</div>
-        <div>Design &amp; Developed by Somikoron IT LTD</div>
-      </footer>
+      {/* ==================== EDIT MODAL ==================== */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white w-full max-w-md rounded shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-slate-200">
+              <h3 className="text-sm font-semibold text-slate-800">
+                Edit Boq — {editingItem.title}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingItem(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="p-5 space-y-4 text-xs">
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Project <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  required
+                  value={formData.projectId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, projectId: e.target.value })
+                  }
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="">Select Project</option>
+                  {projects.map((p) => (
+                    <option key={p.uuid} value={p.uuid}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Boq Title <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.title}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
+                  placeholder="Boq Title"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              {formError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded">
+                  {formError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  className="px-5 py-2 bg-slate-500 hover:bg-slate-600 text-white rounded font-semibold"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-6 py-2 bg-[#5949d6] hover:bg-[#4d3ec2] text-white rounded font-semibold disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {submitting ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  Update
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

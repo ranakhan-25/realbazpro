@@ -5,47 +5,47 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Loader2, ArrowRight, Building2, Sparkles } from "lucide-react";
 
 import { loginUniversalSession } from "@/lib/admin-auth/adminAuthApi";
 import {
   getStoredAccessToken,
   setStoredTokens,
 } from "@/lib/admin-auth/adminAuthStorage";
-import { SiteShell } from "@/components/site/SiteNav";
 
 const slides = [
   {
     image:
       "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1400&q=90",
-    badge: "RealBiz OS Enterprise",
+    badge: "HERMES WORKSPACE",
     title: "Command center for high-performance teams.",
     description:
-      "Streamline your pipeline, analyze operational metrics, and scale growth securely from a unified workspace.",
+      "Streamline operations, manage civil projects, track lead pipelines, and monitor financial statements in real time.",
   },
   {
     image:
       "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1400&q=90",
-    badge: "Smart Operations",
-    title: "Everything your business needs in one place.",
+    badge: "OPERATIONAL AGILITY",
+    title: "Everything your enterprise needs in one place.",
     description:
-      "Manage sales, projects, finance, customers, vendors, and daily operations from one powerful platform.",
+      "Connect sales, inventory, procurement, human resources, and credit realisation from a unified hub.",
   },
   {
     image:
       "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1400&q=90",
-    badge: "Business Intelligence",
-    title: "Turn your business data into better decisions.",
+    badge: "DATA INTELLIGENCE",
+    title: "Turn daily transactions into strategic decisions.",
     description:
-      "Track performance, monitor cash flow, understand your numbers, and make faster decisions with real-time insights.",
+      "Track milestones, monitor store requisitions, verify voucher entries, and scale organizational productivity.",
   },
 ];
 
-function RegularLoginPage() {
+export default function RegularLoginPage() {
   const router = useRouter();
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -97,14 +97,20 @@ function RegularLoginPage() {
     }
   };
 
+  const handleUseDemo = () => {
+    setIdentifier("admin@admin.com");
+    setPassword("12345678");
+    setError("");
+  };
+
   const slide = slides[currentSlide];
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-12 text-zinc-900">
+    <div className="flex min-h-screen items-center justify-center bg-slate-100/80 px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
       {/* Main Container */}
-      <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm lg:grid lg:grid-cols-2">
-        {/* LEFT SIDE - IMAGE SLIDER */}
-        <div className="relative hidden min-h-[680px] overflow-hidden lg:block">
+      <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl lg:grid lg:grid-cols-2">
+        {/* LEFT SIDE - IMAGE SLIDER WITH VIBRANT ENTERPRISE VISUALS */}
+        <div className="relative hidden min-h-[640px] overflow-hidden lg:block bg-slate-900">
           <AnimatePresence initial={false} mode="sync">
             <motion.div
               key={currentSlide}
@@ -122,8 +128,9 @@ function RegularLoginPage() {
                 alt={slide.title}
                 className="h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-black/35" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/10" />
+              {/* Soft directional gradients so the photograph stays completely clear and vibrant */}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-transparent to-transparent" />
             </motion.div>
           </AnimatePresence>
 
@@ -135,21 +142,20 @@ function RegularLoginPage() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/20 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white backdrop-blur-md"
+                transition={{ duration: 0.4 }}
+                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/40 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white backdrop-blur-md shadow-sm"
               >
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#00D2FF]" />
                 {slide.badge}
               </motion.div>
             </AnimatePresence>
 
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-black/20 px-3.5 py-2 text-xs font-medium text-white backdrop-blur-md transition hover:bg-white hover:text-zinc-900"
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-black/40 px-3.5 py-2 text-xs font-semibold text-white backdrop-blur-md transition hover:bg-white hover:text-slate-900 shadow-sm"
             >
-              ← Back
-            </button>
+              ← Portal Home
+            </Link>
           </div>
 
           {/* Bottom Content */}
@@ -167,22 +173,22 @@ function RegularLoginPage() {
                 }}
                 className="max-w-xl"
               >
-                <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">
-                  RealBiz Pro Workspace
+                <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#00D2FF] font-bold drop-shadow-sm">
+                  RealBiz Enterprise Operations
                 </p>
 
-                <h2 className="font-sans text-3xl font-semibold leading-tight tracking-tight text-white xl:text-4xl">
+                <h2 className="text-2xl font-black leading-tight tracking-tight text-white xl:text-3xl drop-shadow-md">
                   {slide.title}
                 </h2>
 
-                <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/75">
+                <p className="mt-3 max-w-lg text-xs leading-relaxed text-slate-200 drop-shadow-sm">
                   {slide.description}
                 </p>
               </motion.div>
             </AnimatePresence>
 
             {/* Slider Indicators */}
-            <div className="mt-8 flex items-center gap-2">
+            <div className="mt-6 flex items-center gap-2">
               {slides.map((_, index) => (
                 <button
                   key={index}
@@ -192,10 +198,10 @@ function RegularLoginPage() {
                   className="group py-2"
                 >
                   <span
-                    className={`block h-1 rounded-full transition-all duration-500 ${
+                    className={`block h-1.5 rounded-full transition-all duration-500 ${
                       currentSlide === index
-                        ? "w-10 bg-white"
-                        : "w-4 bg-white/35 group-hover:bg-white/60"
+                        ? "w-8 bg-[#0000F2] shadow-sm shadow-blue-500/50"
+                        : "w-3 bg-white/40 group-hover:bg-white/70"
                     }`}
                   />
                 </button>
@@ -203,37 +209,77 @@ function RegularLoginPage() {
             </div>
 
             {/* Footer Metadata */}
-            <div className="mt-6 flex items-center justify-between border-t border-white/15 pt-4 text-[10px] uppercase tracking-wider text-white/50">
-              <span>Enterprise Grade Security</span>
+            <div className="mt-6 flex items-center justify-between border-t border-white/15 pt-4 text-[10px] uppercase tracking-wider text-slate-300">
+              <span>Hermes Security Architecture</span>
               <span>Universal Workspace Access</span>
             </div>
           </div>
         </div>
 
-        {/* RIGHT SIDE - LOGIN FORM (CLEAN, NO QUICK FILL) */}
-        <div className="flex flex-col justify-center bg-white p-8 sm:p-12">
+        {/* RIGHT SIDE - LOGIN FORM */}
+        <div className="flex min-h-[640px] flex-col justify-center bg-white p-8 sm:p-12">
           <div className="mx-auto w-full max-w-md">
+            {/* RealBiz Brand Logo */}
+            <div className="mb-6">
+              <Link href="/" className="inline-block" aria-label="RealBiz Home">
+                <img
+                  src="/logo.svg"
+                  alt="RealBiz Pro"
+                  className="h-10 w-auto object-contain"
+                />
+              </Link>
+            </div>
+
             {/* Form Header */}
             <div className="space-y-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
+              <div className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                <Building2 className="h-4 w-4 text-[#0000F2]" />
+                <span>Enterprise Workspace Access</span>
+              </div>
+
+              <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
                 Welcome back
               </h1>
 
-              <p className="text-sm text-zinc-600">
-                Sign in with your organization account to access your workspace.
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Sign in with your organization account to access your assigned operational workspaces.
               </p>
             </div>
 
+            {/* Quick Fill Info */}
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                Quick Fill:
+              </span>
+              <button
+                type="button"
+                onClick={handleUseDemo}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-[#0000F2] hover:bg-blue-100 hover:border-blue-300 transition active:scale-95 shadow-sm"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-[#0000F2]" />
+                Workspace Demo
+              </button>
+            </div>
+
             {/* Login Form */}
-            <form onSubmit={submit} className="mt-8 space-y-4">
+            <form onSubmit={submit} className="mt-6 space-y-4">
               {/* Email / Username */}
               <div className="space-y-1.5">
-                <label
-                  htmlFor="identifier"
-                  className="text-xs font-medium uppercase tracking-wider text-zinc-500"
-                >
-                  Work Email or Username
-                </label>
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="identifier"
+                    className="text-xs font-semibold uppercase tracking-wider text-slate-600"
+                  >
+                    Work Email or Username
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleUseDemo}
+                    className="text-[11px] font-bold text-[#0000F2] hover:underline"
+                  >
+                    Fill Demo
+                  </button>
+                </div>
 
                 <input
                   id="identifier"
@@ -243,45 +289,55 @@ function RegularLoginPage() {
                   disabled={isSubmitting}
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 disabled:opacity-60"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#0000F2] focus:ring-2 focus:ring-[#0000F2]/20 disabled:cursor-not-allowed disabled:bg-slate-50"
                   placeholder="name@company.com or username"
                 />
               </div>
 
-              {/* Password */}
+              {/* Password with Eye Toggle */}
               <div className="space-y-1.5">
                 <label
                   htmlFor="password"
-                  className="text-xs font-medium uppercase tracking-wider text-zinc-500"
+                  className="text-xs font-semibold uppercase tracking-wider text-slate-600"
                 >
                   Password
                 </label>
 
-                <input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  disabled={isSubmitting}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 disabled:opacity-60"
-                  placeholder="••••••••"
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    required
+                    disabled={isSubmitting}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 pr-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#0000F2] focus:ring-2 focus:ring-[#0000F2]/20 disabled:cursor-not-allowed disabled:bg-slate-50"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((p) => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </div>
               </div>
 
               {/* Error */}
               {error ? (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-600">
+                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600">
                   {error}
                 </div>
               ) : null}
 
-              {/* Submit */}
+              {/* Submit Button with Hermes Accent */}
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0000F2] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition hover:bg-[#0000F2]/90 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>
@@ -298,32 +354,24 @@ function RegularLoginPage() {
             </form>
 
             {/* Bottom Links */}
-            <div className="mt-8 flex items-center justify-between border-t border-zinc-200 pt-6">
+            <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-6">
               <Link
                 href="/"
-                className="text-xs font-medium text-zinc-600 transition hover:text-zinc-950"
+                className="text-xs font-semibold text-slate-500 transition hover:text-slate-900"
               >
                 ← Return to main site
               </Link>
 
-              {/* <Link
+              <Link
                 href="/login"
-                className="text-xs font-medium text-blue-600 transition hover:text-blue-800"
+                className="text-xs font-bold text-[#0000F2] transition hover:underline"
               >
                 Super Admin Login →
-              </Link> */}
+              </Link>
             </div>
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    // <SiteShell>
-      <RegularLoginPage />
-    // </SiteShell>
   );
 }

@@ -23,6 +23,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useTheme } from "@/lib/theme";
 import ModuleTreeBuilderModal from "@/components/modules/ModuleTreeBuilderModal";
+import ModuleHierarchicalTree from "@/components/modules/ModuleHierarchicalTree";
 import {
   getModuleTree,
   deleteModule,
@@ -172,6 +173,8 @@ export default function ModuleManagementPage() {
   const [isTreeModalOpen, setIsTreeModalOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<ModuleTreeNode | null>(null);
   const [selectedFeatureIndex, setSelectedFeatureIndex] = useState<number | null>(null);
+  const [selectedParentGroup, setSelectedParentGroup] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"tree" | "visual-cards">("tree");
 
   // Collapsible Accordion State
   const [expandedModuleIds, setExpandedModuleIds] = useState<Record<string, boolean>>({
@@ -230,12 +233,22 @@ export default function ModuleManagementPage() {
   const handleOpenCreateModal = () => {
     setSelectedModule(null);
     setSelectedFeatureIndex(null);
+    setSelectedParentGroup(null);
     setIsTreeModalOpen(true);
   };
 
   const handleOpenEditModal = (mod: ModuleTreeNode) => {
     setSelectedModule(mod);
     setSelectedFeatureIndex(null);
+    setSelectedParentGroup(null);
+    setIsTreeModalOpen(true);
+    setActiveDropdownId(null);
+  };
+
+  const handleOpenAddFeatureModal = (mod: ModuleTreeNode, parentGroup?: string) => {
+    setSelectedModule(mod);
+    setSelectedFeatureIndex(null);
+    setSelectedParentGroup(parentGroup || null);
     setIsTreeModalOpen(true);
     setActiveDropdownId(null);
   };
@@ -243,6 +256,7 @@ export default function ModuleManagementPage() {
   const handleOpenEditFeatureModal = (mod: ModuleTreeNode, featureIndex: number) => {
     setSelectedModule(mod);
     setSelectedFeatureIndex(featureIndex);
+    setSelectedParentGroup(null);
     setIsTreeModalOpen(true);
     setActiveDropdownId(null);
   };
@@ -447,7 +461,32 @@ export default function ModuleManagementPage() {
             />
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+            <div className="flex items-center rounded-lg bg-slate-200/70 p-0.5 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setViewMode("tree")}
+                className={`px-2.5 py-1 rounded-md transition ${
+                  viewMode === "tree"
+                    ? "bg-white text-indigo-600 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Hierarchical Tree
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("visual-cards")}
+                className={`px-2.5 py-1 rounded-md transition ${
+                  viewMode === "visual-cards"
+                    ? "bg-white text-indigo-600 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Visual Branches
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={handleExpandAll}
@@ -576,95 +615,18 @@ export default function ModuleManagementPage() {
                         exit={{ opacity: 0, height: 0 }}
                         className="overflow-hidden bg-slate-50/60 border-t border-slate-100"
                       >
-                        <div className="p-4 sm:pl-16 sm:pr-8 py-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                              Nested Features Hierarchy ({mod.name})
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditModal(mod)}
-                              className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                            >
-                              <Plus className="h-3 w-3" />
-                              Add Feature to this module
-                            </button>
-                          </div>
-
-                          {featureCount === 0 ? (
-                            <div className="rounded-xl border border-dashed border-slate-200 p-4 text-center text-xs text-slate-400 bg-white">
-                              No nested features attached yet. Click &quot;Add Feature&quot; to configure sub-actions.
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              {mod.features.map((feat, featIdx) => {
-                                const actionColor =
-                                  feat.actionType === "manage"
-                                    ? "bg-purple-50 text-purple-700 border-purple-200"
-                                    : feat.actionType === "write"
-                                      ? "bg-blue-50 text-blue-700 border-blue-200"
-                                      : feat.actionType === "delete"
-                                        ? "bg-rose-50 text-rose-700 border-rose-200"
-                                        : "bg-slate-100 text-slate-700 border-slate-200";
-
-                                return (
-                                  <div
-                                    key={feat.id || feat.code}
-                                    className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-xs hover:border-slate-300 transition"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                                      <div>
-                                        <div className="flex items-center gap-2">
-                                          <p className="text-sm font-semibold text-slate-800">
-                                            {feat.name}
-                                          </p>
-                                          <span className="font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                                            {feat.code}
-                                          </span>
-                                          {feat.routePath && (
-                                            <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-500">
-                                              {feat.routePath}
-                                            </span>
-                                          )}
-                                          <span
-                                            className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border ${actionColor}`}
-                                          >
-                                            {feat.actionType || "read"}
-                                          </span>
-                                        </div>
-                                        {feat.description && (
-                                          <p className="text-xs text-slate-400 mt-0.5">
-                                            {feat.description}
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleOpenEditFeatureModal(mod, featIdx)}
-                                        className="h-8 w-8 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 bg-white flex items-center justify-center transition shadow-xs"
-                                        title="Edit this feature"
-                                      >
-                                        <Edit3 className="h-3.5 w-3.5" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        disabled={deletingFeatureId === (feat.id || feat.code)}
-                                        onClick={() => handleDeleteFeature(mod.id || mod.code, feat)}
-                                        className="h-8 w-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 bg-white flex items-center justify-center transition shadow-xs disabled:opacity-50"
-                                        title="Delete feature"
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
+                        <div className="p-4 sm:pl-12 sm:pr-8 py-3">
+                          <ModuleHierarchicalTree
+                            module={mod}
+                            variant={viewMode}
+                            primaryColor={primaryColor}
+                            searchQuery={search}
+                            onEditModule={handleOpenEditModal}
+                            onDeleteModule={handleDeleteModule}
+                            onAddFeature={(m, grp) => handleOpenAddFeatureModal(m, grp)}
+                            onEditFeature={(m, idx) => handleOpenEditFeatureModal(m, idx)}
+                            onDeleteFeature={(m, feat) => handleDeleteFeature(m.id || m.code, feat)}
+                          />
                         </div>
                       </motion.div>
                     )}
@@ -682,6 +644,7 @@ export default function ModuleManagementPage() {
         onClose={() => setIsTreeModalOpen(false)}
         initialModule={selectedModule}
         initialFeatureIndex={selectedFeatureIndex}
+        initialParentGroup={selectedParentGroup}
         onSuccess={handleModalSuccess}
       />
     </div>

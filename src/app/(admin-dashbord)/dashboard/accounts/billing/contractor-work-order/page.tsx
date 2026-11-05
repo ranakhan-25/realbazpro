@@ -1,527 +1,523 @@
-'use client';
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
 
-import React, { useState } from 'react';
-import { 
-  ChevronRight, 
-  Plus, 
-  Search, 
-  X, 
-  Trash2, 
-  Bold, 
-  Italic, 
-  AlignLeft, 
-  AlignCenter, 
-  AlignRight, 
-  AlignJustify, 
-  List, 
-  ListOrdered, 
-  Image as ImageIcon, 
-  Printer, 
-  Eye, 
-  Smile 
-} from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Plus, X, Loader2, Edit3, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 
-interface ContractorWorkOrderItem {
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
+const API_PATH = `${API_BASE}/realbizpro/api/v1`;
+
+// ====================== TYPES ======================
+interface WorkOrder {
   id: string;
-  itemName: string;
+  uuid: string;
+  code: string;
+  title: string;
+  recordDate: string;
+  amount: string;
+  status: string;
   description: string;
-  unit: string;
-  quantity: number;
-  rate: number;
-  amount: number;
+  project?: { name: string; uuid: string };
+  details?: {
+    supplierName?: string;
+    projectType?: string;
+    site?: string;
+    categoryId?: string;
+    brand?: string;
+    under?: string;
+    itemName?: string;
+    vat?: number;
+    ait?: number;
+  };
+  deletedAt?: string;
 }
 
 export default function ContractorWorkOrderPage() {
-  // Main Modal State for Contractor Work Order Add
-  const [isMainModalOpen, setIsMainModalOpen] = useState(false);
+  const [dataList, setDataList] = useState<WorkOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<WorkOrder | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState("");
 
-  // Sub-Modals States
-  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
-  const [isContractorModalOpen, setIsContractorModalOpen] = useState(false);
+  // ড্রপডাউন ডাটা
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [projectTypes, setProjectTypes] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [sites, setSites] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
+  const [unders, setUnders] = useState<any[]>([]);
 
-  // Form Field States
-  const [date, setDate] = useState('09/16/2026');
-  const [supplier, setSupplier] = useState('');
-  const [code, setCode] = useState('CW00001');
-  const [projectType, setProjectType] = useState('');
-  const [project, setProject] = useState('');
-  const [site, setSite] = useState('');
-  const [category, setCategory] = useState('');
-  const [selectItem, setSelectItem] = useState('');
+  // ফর্ম ডাটা
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split("T")[0],
+    supplierId: "",
+    supplierName: "",
+    code: `CWO${Math.floor(1000 + Math.random() * 9000)}`,
+    projectType: "",
+    projectId: "",
+    site: "",
+    categoryId: "",
+    brand: "",
+    under: "",
+    itemName: "",
+    quantity: 1,
+    rate: 0,
+    description: "",
+    attachment: "",
+    contentBody: "",
+    vat: 0,
+    ait: 0,
+  });
 
-  // Rich Text Editors Content State
-  const [contentBody, setContentBody] = useState('');
-  const [contentFooter, setContentFooter] = useState('');
-
-  // Sub-modal temporary inputs for Item Add
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemDesc, setNewItemDesc] = useState('');
-  const [newItemUnit, setNewItemUnit] = useState('');
-  const [newItemRate, setNewItemRate] = useState<number>(0);
-
-  // Items List in Table
-  const [itemsList, setItemsList] = useState<ContractorWorkOrderItem[]>([
-    { id: '1', itemName: 'Labor Service (Subcontract)', description: 'Foundation casting support', unit: 'Days', quantity: 10, rate: 1200, amount: 12000 }
-  ]);
-
-  // Financial configuration
-  const [vatPercent, setVatPercent] = useState<number>(5);
-  const [vatInclude, setVatInclude] = useState<boolean>(false);
-  const [aitPercent, setAitPercent] = useState<number>(2);
-  const [aitInclude, setAitInclude] = useState<boolean>(false);
-
-  // Calculations
-  const subtotal = itemsList.reduce((acc, curr) => acc + curr.amount, 0);
-  const vatAmount = (subtotal * vatPercent) / 100;
-  const aitAmount = (subtotal * aitPercent) / 100;
-  const grandTotal = subtotal + (vatInclude ? vatAmount : 0) + (aitInclude ? aitAmount : 0);
-
-  // Handle Add Item from Sub-Modal
-  const handleSaveItem = (e: React.FormEvent) => {
-    e.preventDefault();
-    const qty = 3;
-    const rate = newItemRate || 1000;
-    const newItem: ContractorWorkOrderItem = {
-      id: Date.now().toString(),
-      itemName: newItemName || 'Contractor Task Item',
-      description: newItemDesc || 'Contractor specialized task',
-      unit: newItemUnit || 'Jobs',
-      quantity: qty,
-      rate: rate,
-      amount: qty * rate
-    };
-    setItemsList([...itemsList, newItem]);
-    setNewItemName('');
-    setNewItemDesc('');
-    setNewItemUnit('');
-    setNewItemRate(0);
-    setIsItemModalOpen(false);
+  // ====================== FETCH LISTS ======================
+  const fetchWorkOrders = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_PATH}/project-billing/contractor-work-orders`);
+      const json = await res.json();
+      if (json.success) {
+        setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
+      }
+    } catch (err) {
+      toast.error("Failed to load work orders");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-100 p-4 font-sans text-slate-800">
+  // ====================== FETCH DROPDOWNS ======================
+  const fetchDropdowns = async () => {
+    try {
+      // ১. সাপ্লায়ার (ফিক্স করা হয়েছে)
+      const resSup = await fetch(`${API_PATH}/inventory/suppliers?page=1&limit=100`);
+      const jsonSup = await resSup.json();
       
-      {/* ================= BREADCRUMB HEADER ================= */}
-      <div className="flex items-center text-sm text-slate-600 mb-4 space-x-2">
-        <span className="hover:text-blue-600 cursor-pointer">Home</span>
-        <ChevronRight className="w-4 h-4 text-slate-400" />
-        <span className="hover:text-blue-600 cursor-pointer">Billing</span>
-        <ChevronRight className="w-4 h-4 text-slate-400" />
-        <span className="font-semibold text-slate-800">Contractor Work Order List</span>
+      const supplierData = jsonSup.data?.data || jsonSup.data || jsonSup;
+      if (Array.isArray(supplierData)) {
+        setSuppliers(supplierData);
+      } else {
+        console.warn("Supplier data is not an array:", supplierData);
+      }
+
+      // ২. প্রজেক্ট টাইপ
+      const resType = await fetch(`${API_PATH}/project-type`);
+      const jsonType = await resType.json();
+      if (jsonType.success) setProjectTypes(jsonType.data.data || jsonType.data || []);
+
+      // ৩. প্রজেক্ট
+      const resProj = await fetch(`${API_PATH}/project`);
+      const jsonProj = await resProj.json();
+      if (jsonProj.success) setProjects(jsonProj.data.data || jsonProj.data || []);
+
+      // ৪. সাইট
+      const resSite = await fetch(`${API_PATH}/project-sites`);
+      const jsonSite = await resSite.json();
+      if (jsonSite.success) setSites(jsonSite.data.data || jsonSite.data || []);
+
+      // ৫. ক্যাটাগরি
+      const resCat = await fetch(`${API_PATH}/category?page=1&limit=100`);
+      const jsonCat = await resCat.json();
+      if (jsonCat.success) setCategories(jsonCat.data.data || jsonCat.data || []);
+
+      // ৬. ব্র্যান্ড
+      const resBrand = await fetch(`${API_PATH}/procurement/brand?page=1&limit=100`);
+      const jsonBrand = await resBrand.json();
+      if (jsonBrand.success) setBrands(jsonBrand.data.data || jsonBrand.data || []);
+
+      // ৭. আন্ডার (Under)
+      const resUnder = await fetch(`${API_PATH}/under?page=1&limit=100`);
+      const jsonUnder = await resUnder.json();
+      if (jsonUnder.success) setUnders(jsonUnder.data.data || jsonUnder.data || []);
+
+    } catch (err) {
+      console.error("Error fetching dropdowns:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchWorkOrders();
+    fetchDropdowns();
+  }, []);
+
+  // ====================== SUBMIT (POST / PATCH) ======================
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    const payload = {
+      projectId: formData.projectId,
+      title: formData.contentBody || "Work Order Title",
+      code: formData.code,
+      recordDate: formData.date,
+      amount: Number(formData.quantity) * Number(formData.rate),
+      status: "active",
+      description: formData.description,
+      details: {
+        supplierName: formData.supplierName,
+        projectType: formData.projectType,
+        site: formData.site,
+        categoryId: formData.categoryId,
+        brand: formData.brand,
+        under: formData.under,
+        itemName: formData.itemName,
+        vat: formData.vat,
+        ait: formData.ait,
+      },
+    };
+
+    try {
+      const isEdit = !!editingItem;
+      const url = isEdit
+        ? `${API_PATH}/project-billing/contractor-work-orders/${editingItem!.uuid}`
+        : `${API_PATH}/project-billing/contractor-work-orders`;
+      const method = isEdit ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (res.ok || json.success) {
+        toast.success(isEdit ? "Updated successfully!" : "Created successfully!");
+        setIsModalOpen(false);
+        setEditingItem(null);
+        fetchWorkOrders();
+      } else {
+        toast.error(json.message || "Failed to save");
+      }
+    } catch (err: any) {
+      toast.error("Network Error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ====================== DELETE ======================
+  const handleDelete = async (item: WorkOrder) => {
+    if (!window.confirm(`Delete "${item.title}"?`)) return;
+    try {
+      const res = await fetch(`${API_PATH}/project-billing/contractor-work-orders/${item.uuid}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Deleted successfully!");
+        setDataList((prev) => prev.filter((row) => row.uuid !== item.uuid));
+      } else {
+        toast.error("Failed to delete");
+      }
+    } catch (err) {
+      toast.error("Error deleting");
+    }
+  };
+
+  // ====================== OPEN MODAL ======================
+  const handleCreate = () => {
+    setFormData({
+      date: new Date().toISOString().split("T")[0],
+      supplierId: "",
+      supplierName: "",
+      code: `CWO${Math.floor(1000 + Math.random() * 9000)}`,
+      projectType: "",
+      projectId: "",
+      site: "",
+      categoryId: "",
+      brand: "",
+      under: "",
+      itemName: "",
+      quantity: 1,
+      rate: 0,
+      description: "",
+      attachment: "",
+      contentBody: "",
+      vat: 0,
+      ait: 0,
+    });
+    setEditingItem(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (item: WorkOrder) => {
+    setEditingItem(item);
+    setFormData({
+      date: item.recordDate,
+      supplierId: "",
+      supplierName: item.details?.supplierName || "",
+      code: item.code,
+      projectType: item.details?.projectType || "",
+      projectId: item.project?.uuid || "",
+      site: item.details?.site || "",
+      categoryId: item.details?.categoryId || "",
+      brand: item.details?.brand || "",
+      under: item.details?.under || "",
+      itemName: item.details?.itemName || "",
+      quantity: 1,
+      rate: Number(item.amount),
+      description: item.description,
+      attachment: "",
+      contentBody: item.title,
+      vat: item.details?.vat || 0,
+      ait: item.details?.ait || 0,
+    });
+    setIsModalOpen(true);
+  };
+
+  // সাব-টোটাল ক্যালকুলেশন
+  const subTotal = Number(formData.quantity) * Number(formData.rate);
+  const vatAmount = (subTotal * formData.vat) / 100;
+  const aitAmount = (subTotal * formData.ait) / 100;
+  const grandTotal = subTotal + vatAmount + aitAmount;
+
+  const filteredData = dataList.filter((item) =>
+    item.title?.toLowerCase().includes(search.toLowerCase()) ||
+    item.code?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // ====================== RENDER ======================
+  return (
+    <div className="min-h-screen bg-gray-50 p-6 font-sans text-gray-800">
+      
+      {/* Top Header */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="text-sm text-gray-500">Home &gt; Billing &gt; Contractor Work Order</div>
+        <button onClick={handleCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm flex items-center gap-1">
+          <Plus className="w-4 h-4" /> Contractor Work Order
+        </button>
       </div>
 
-      {/* ================= MAIN CONTAINER ================= */}
-      <div className="bg-white rounded-md shadow-sm border border-slate-200 p-5 space-y-4">
-        
-        {/* Top Action Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100">
-          <div className="flex items-center space-x-2">
-            <button className="bg-emerald-600 text-white px-3 py-1.5 rounded text-xs font-medium">Excel</button>
-            <button className="bg-rose-600 text-white px-3 py-1.5 rounded text-xs font-medium">PDF</button>
-            <div className="flex items-center text-xs text-slate-600 space-x-1 ml-2">
-              <span>Show</span>
-              <select className="border border-slate-300 rounded px-2 py-1 bg-white"><option>10</option></select>
-              <span>entries</span>
-            </div>
+      {/* List Table */}
+      <div className="bg-white p-4 border rounded shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex gap-2">
+            <button className="bg-green-600 text-white px-3 py-1 rounded text-xs">Excel</button>
+            <button className="bg-red-600 text-white px-3 py-1 rounded text-xs">PDF</button>
           </div>
-
-          <button 
-            onClick={() => setIsMainModalOpen(true)}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm px-4 py-2 rounded flex items-center shadow transition shrink-0"
-          >
-            <Plus className="w-4 h-4 mr-1.5" /> +Contractor Work Order
-          </button>
+          <div className="flex gap-2 items-center text-sm">
+            <span>Search:</span>
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="border rounded px-2 py-1" />
+          </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="flex items-center justify-end space-x-2 pt-2">
-          <span className="text-xs text-slate-600">Search:</span>
-          <input type="text" className="border border-slate-300 rounded px-3 py-1 text-sm w-full sm:w-48" />
-        </div>
-
-        {/* Data Table */}
-        <div className="overflow-x-auto border border-purple-300 rounded">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#6b58e8] text-white text-[11px] uppercase tracking-wider">
-                <th className="p-2.5 border-r border-purple-400">ID</th>
-                <th className="p-2.5 border-r border-purple-400">Contractor Name</th>
-                <th className="p-2.5 border-r border-purple-400">W/O No</th>
-                <th className="p-2.5 border-r border-purple-400">Ref Invoice No</th>
-                <th className="p-2.5 border-r border-purple-400">Date</th>
-                <th className="p-2.5 border-r border-purple-400">Sub Total</th>
-                <th className="p-2.5 border-r border-purple-400">Vat</th>
-                <th className="p-2.5 border-r border-purple-400">Discount</th>
-                <th className="p-2.5 border-r border-purple-400">Grand Total</th>
-                <th className="p-2.5 border-r border-purple-400">Added By</th>
-                <th className="p-2.5 border-r border-purple-400">Approve</th>
-                <th className="p-2.5 border-r border-purple-400">Attachment</th>
-                <th className="p-2.5">Action</th>
+        {loading ? (
+          <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>
+        ) : (
+          <table className="w-full text-sm text-left whitespace-nowrap">
+            <thead className="bg-indigo-600 text-white">
+              <tr>
+                {["ID", "CONTRACTOR NAME", "WO NO", "REF INVOICE NO", "DATE", "SUB TOTAL", "VAT", "DISCOUNT", "GRAND TOTAL", "ADDED BY", "APPROVE", "ATTACHMENT", "ACTION"].map(h => (
+                  <th key={h} className="px-3 py-2 font-medium">{h}</th>
+                ))}
               </tr>
             </thead>
-            <tbody className="text-xs bg-white text-slate-700">
-              <tr>
-                <td colSpan={13} className="text-center py-8 text-slate-400 italic bg-slate-50">
-                  No data available in table
-                </td>
-              </tr>
+            <tbody className="divide-y divide-gray-200">
+              {filteredData.length === 0 ? (
+                <tr><td colSpan={13} className="text-center py-8 text-gray-500">No data available in table</td></tr>
+              ) : (
+                filteredData.map((item) => (
+                  <tr key={item.uuid} className="hover:bg-gray-50">
+                    <td className="px-3 py-2">{item.id}</td>
+                    <td className="px-3 py-2 font-medium">{item.project?.name || "Unknown"}</td>
+                    <td className="px-3 py-2">{item.code}</td>
+                    <td className="px-3 py-2">-</td>
+                    <td className="px-3 py-2">{item.recordDate}</td>
+                    <td className="px-3 py-2">{item.amount}</td>
+                    <td className="px-3 py-2">0</td>
+                    <td className="px-3 py-2">0</td>
+                    <td className="px-3 py-2 font-bold">{item.amount}</td>
+                    <td className="px-3 py-2">Admin</td>
+                    <td className="px-3 py-2 text-center"><input type="checkbox" /></td>
+                    <td className="px-3 py-2">-</td>
+                    <td className="px-3 py-2 flex gap-1">
+                      <button onClick={() => handleEdit(item)} className="bg-teal-500 text-white p-1.5 rounded hover:bg-teal-600"><Edit3 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => handleDelete(item)} className="bg-red-500 text-white p-1.5 rounded hover:bg-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
-        </div>
-
-        <div className="flex items-center justify-between text-xs text-slate-500 pt-2">
-          <span>Showing 0 to 0 of 0 entries</span>
-          <div className="flex space-x-1">
-            <button className="px-3 py-1 bg-slate-100 rounded text-slate-400 cursor-not-allowed" disabled>Previous</button>
-            <button className="px-3 py-1 bg-slate-100 rounded text-slate-400 cursor-not-allowed" disabled>Next</button>
-          </div>
-        </div>
-
+        )}
       </div>
 
-      {/* ================= MAIN MODAL: CONTRACTOR WORKORDER ADD ================= */}
-      {isMainModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 overflow-y-auto">
-          <div className="bg-slate-50 w-full max-w-7xl rounded-lg shadow-2xl border border-slate-300 overflow-hidden flex flex-col max-h-[95vh]">
+      {/* ====================== ADD/EDIT MODAL ====================== */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-6xl max-h-[95vh] overflow-y-auto">
             
             {/* Modal Header */}
-            <div className="bg-[#6b58e8] text-white px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-xs sm:text-sm">
-                <span>Home</span><span>›</span>
-                <span>Billing</span><span>›</span>
-                <span className="font-semibold">Contractor Workorder</span>
-              </div>
-              <button onClick={() => setIsMainModalOpen(false)} className="text-white hover:bg-white/20 p-1 rounded-full">
-                <X className="w-5 h-5" />
-              </button>
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-lg font-bold">{editingItem ? "Edit Work Order" : "Contractor Work Order"}</h2>
+              <button onClick={() => setIsModalOpen(false)}><X className="w-5 h-5 text-gray-500" /></button>
             </div>
 
-            {/* Modal Content */}
-            <div className="p-4 overflow-y-auto space-y-4 flex-1">
+            {/* Modal Body */}
+            <form onSubmit={handleSubmit} className="p-4 space-y-4">
               
-              {/* Top Action Navigation Buttons */}
-              <div className="flex justify-end space-x-2">
-                <button onClick={() => setIsItemModalOpen(true)} className="bg-purple-600 hover:bg-purple-700 text-white text-xs px-3 py-1.5 rounded shadow-sm">
-                  Add Item
-                </button>
-                <button onClick={() => setIsContractorModalOpen(true)} className="bg-cyan-500 hover:bg-cyan-600 text-white text-xs px-3 py-1.5 rounded shadow-sm">
-                  +Contractor/Worker Add
-                </button>
-                <button onClick={() => setIsMainModalOpen(false)} className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-3 py-1.5 rounded shadow-sm">
-                  Work Order List
-                </button>
-              </div>
-
-              {/* Form Inputs Grid */}
-              <div className="bg-white p-3 rounded border border-slate-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 text-xs">
+              {/* Top Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                 <div>
-                  <label className="block text-slate-600 font-medium mb-1">Date</label>
-                  <input type="text" value={date} onChange={(e) => setDate(e.target.value)} className="w-full border rounded px-2.5 py-1.5 bg-white" />
+                  <label className="block text-xs text-gray-600 mb-1">Date</label>
+                  <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm" />
                 </div>
                 <div>
-                  <label className="block text-slate-600 font-medium mb-1">Supplier</label>
-                  <select value={supplier} onChange={(e) => setSupplier(e.target.value)} className="w-full border rounded px-2.5 py-1.5 bg-white">
+                  <label className="block text-xs text-gray-600 mb-1">Supplier</label>
+                  <select value={formData.supplierId} onChange={(e) => {
+                    const sup = suppliers.find(s => s.uuid === e.target.value);
+                    // ✅ supplierName বা name যেটাই থাকুক সেটা ধরবে
+                    setFormData({ ...formData, supplierId: e.target.value, supplierName: sup?.supplierName || sup?.name || "" });
+                  }} className="w-full border rounded px-3 py-1.5 text-sm">
                     <option value="">Select One Option</option>
-                    <option value="Supplier A">Supplier A</option>
+                    {suppliers.map(s => (
+                      <option key={s.uuid} value={s.uuid}>{s.supplierName || s.name || "Unknown"}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-600 font-medium mb-1">Code</label>
-                  <input type="text" value={code} onChange={(e) => setCode(e.target.value)} className="w-full border rounded px-2.5 py-1.5 bg-white" />
+                  <label className="block text-xs text-gray-600 mb-1">Code</label>
+                  <input type="text" value={formData.code} readOnly className="w-full border rounded px-3 py-1.5 text-sm bg-gray-50" />
                 </div>
                 <div>
-                  <label className="block text-slate-600 font-medium mb-1">Project Type</label>
-                  <select value={projectType} onChange={(e) => setProjectType(e.target.value)} className="w-full border rounded px-2.5 py-1.5 bg-white">
+                  <label className="block text-xs text-gray-600 mb-1">Project Type</label>
+                  <select value={formData.projectType} onChange={(e) => setFormData({ ...formData, projectType: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
                     <option value="">Select value</option>
-                    <option value="Commercial">Commercial</option>
+                    {projectTypes.map(p => <option key={p.uuid} value={p.name}>{p.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-600 font-medium mb-1">Project</label>
-                  <select value={project} onChange={(e) => setProject(e.target.value)} className="w-full border rounded px-2.5 py-1.5 bg-white">
+                  <label className="block text-xs text-gray-600 mb-1">Project</label>
+                  <select value={formData.projectId} onChange={(e) => setFormData({ ...formData, projectId: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
                     <option value="">Select Project</option>
-                    <option value="Project Alpha">Project Alpha</option>
+                    {projects.map(p => <option key={p.uuid} value={p.uuid}>{p.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-600 font-medium mb-1">Site</label>
-                  <input type="text" placeholder="Select Site" value={site} onChange={(e) => setSite(e.target.value)} className="w-full border rounded px-2.5 py-1.5 bg-white" />
+                  <label className="block text-xs text-gray-600 mb-1">Site</label>
+                  <select value={formData.site} onChange={(e) => setFormData({ ...formData, site: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
+                    <option value="">Select Site</option>
+                    {sites.map(s => <option key={s.uuid} value={s.name}>{s.name}</option>)}
+                  </select>
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-slate-600 font-medium mb-1">Attachment</label>
-                  <input type="file" className="text-[11px] w-full border rounded px-2 py-1 bg-white" />
-                </div>
+              </div>
+
+              {/* Second Row Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-slate-600 font-medium mb-1">Category</label>
-                  <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full border rounded px-2.5 py-1.5 bg-white">
+                  <label className="block text-xs text-gray-600 mb-1">Category</label>
+                  <select value={formData.categoryId} onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
                     <option value="">Select Category</option>
-                    <option value="Cat 1">Cat 1</option>
+                    {categories.map(c => <option key={c.uuid} value={c.uuid}>{c.name}</option>)}
                   </select>
                 </div>
-                <div className="md:col-span-3">
-                  <label className="block text-slate-600 font-medium mb-1">Select Item</label>
-                  <div className="flex space-x-1">
-                    <select value={selectItem} onChange={(e) => setSelectItem(e.target.value)} className="w-full border rounded px-2.5 py-1.5 bg-white">
-                      <option value="">Select Item</option>
-                      <option value="Item 1">Item 1</option>
-                    </select>
-                    <button type="button" onClick={() => setIsItemModalOpen(true)} className="bg-purple-600 text-white px-3 rounded hover:bg-purple-700">+</button>
-                  </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Brand</label>
+                  <select value={formData.brand} onChange={(e) => setFormData({ ...formData, brand: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
+                    <option value="">Select Brand</option>
+                    {brands.map(b => <option key={b.uuid} value={b.name}>{b.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Select Item</label>
+                  <input type="text" value={formData.itemName} onChange={(e) => setFormData({ ...formData, itemName: e.target.value })} placeholder="Search Item..." className="w-full border rounded px-3 py-1.5 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Under</label>
+                  <select value={formData.under} onChange={(e) => setFormData({ ...formData, under: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
+                    <option value="">Select Under</option>
+                    {unders.map(u => <option key={u.uuid} value={u.name}>{u.name}</option>)}
+                  </select>
                 </div>
               </div>
 
-              {/* ================= CONTENT BODY (TinyMCE Simulator) ================= */}
-              <div className="bg-white border border-slate-300 rounded overflow-hidden">
-                <div className="bg-slate-100 px-3 py-1.5 border-b text-xs font-semibold text-slate-700">Content Body</div>
-                <div className="bg-slate-50 border-b px-2 py-1 flex flex-wrap items-center gap-1 text-xs text-slate-600">
-                  <span className="hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer">File</span>
-                  <span className="hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer">Edit</span>
-                  <span className="hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer">View</span>
-                  <span className="hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer">Insert</span>
-                  <span className="hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer">Format</span>
-                  <span className="hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer">Tools</span>
-                  <span className="hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer">Table</span>
-                </div>
-                <div className="bg-slate-100/70 border-b px-2 py-1.5 flex flex-wrap items-center gap-2 text-slate-700">
-                  <button className="p-1 hover:bg-slate-200 rounded"><Bold className="w-3.5 h-3.5" /></button>
-                  <button className="p-1 hover:bg-slate-200 rounded"><Italic className="w-3.5 h-3.5" /></button>
-                  <div className="h-4 w-[1px] bg-slate-300 mx-1"></div>
-                  <button className="p-1 hover:bg-slate-200 rounded"><AlignLeft className="w-3.5 h-3.5" /></button>
-                  <button className="p-1 hover:bg-slate-200 rounded"><AlignCenter className="w-3.5 h-3.5" /></button>
-                  <button className="p-1 hover:bg-slate-200 rounded"><AlignRight className="w-3.5 h-3.5" /></button>
-                  <button className="p-1 hover:bg-slate-200 rounded"><AlignJustify className="w-3.5 h-3.5" /></button>
-                  <div className="h-4 w-[1px] bg-slate-300 mx-1"></div>
-                  <button className="p-1 hover:bg-slate-200 rounded"><List className="w-3.5 h-3.5" /></button>
-                  <button className="p-1 hover:bg-slate-200 rounded"><ListOrdered className="w-3.5 h-3.5" /></button>
-                  <div className="h-4 w-[1px] bg-slate-300 mx-1"></div>
-                  <button className="p-1 hover:bg-slate-200 rounded"><ImageIcon className="w-3.5 h-3.5" /></button>
-                  <button className="p-1 hover:bg-slate-200 rounded"><Printer className="w-3.5 h-3.5" /></button>
-                  <button className="p-1 hover:bg-slate-200 rounded"><Eye className="w-3.5 h-3.5" /></button>
-                  <button className="p-1 hover:bg-slate-200 rounded"><Smile className="w-3.5 h-3.5" /></button>
-                </div>
-                <textarea 
-                  rows={4} 
-                  value={contentBody} 
-                  onChange={(e) => setContentBody(e.target.value)}
-                  placeholder="Type content body here..." 
-                  className="w-full p-3 text-xs focus:outline-none bg-white"
-                ></textarea>
-                <div className="bg-slate-50 px-3 py-1 border-t text-[10px] text-slate-400 text-right">0 WORDS POWERED BY TINY</div>
+              {/* Attachment & Content Body */}
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Attachment</label>
+                <input type="file" onChange={(e) => setFormData({ ...formData, attachment: e.target.files?.[0]?.name || "" })} className="w-full border rounded px-3 py-1 text-sm file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:bg-indigo-50 file:text-indigo-700" />
               </div>
 
-              {/* Items Table */}
-              <div className="overflow-x-auto border border-purple-300 rounded">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-[#6b58e8] text-white uppercase">
-                      <th className="p-2 border-r border-purple-400">Item Name</th>
-                      <th className="p-2 border-r border-purple-400">Description</th>
-                      <th className="p-2 border-r border-purple-400">Unit</th>
-                      <th className="p-2 border-r border-purple-400">Quantity</th>
-                      <th className="p-2 border-r border-purple-400">Rate</th>
-                      <th className="p-2 border-r border-purple-400">Image</th>
-                      <th className="p-2 border-r border-purple-400">Amount</th>
-                      <th className="p-2 text-center">Action <Plus className="w-3 h-3 inline ml-1 bg-emerald-500 rounded text-white" /></th>
+              {/* Content Body Mock Editor */}
+              <div className="border rounded">
+                <div className="p-2 border-b flex gap-3 text-sm text-gray-700 bg-gray-50"><span>File</span><span>Edit</span><span>View</span><span>Insert</span><span>Format</span><span>Tools</span><span>Table</span></div>
+                <div className="p-2 border-b flex gap-3 text-gray-600"><span>↶</span><span>↷</span><span>Paragraph ▾</span><span className="font-bold">B</span><span className="italic">I</span><span>U</span><span>≡</span></div>
+                <textarea value={formData.contentBody} onChange={(e) => setFormData({ ...formData, contentBody: e.target.value })} className="w-full h-24 p-3 text-sm focus:outline-none resize-none" placeholder="Content Body..."></textarea>
+              </div>
+
+              {/* Line Items Table */}
+              <div className="border rounded overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-indigo-500 text-white">
+                    <tr>
+                      {["ITEM NAME", "DESCRIPTION", "UNIT", "QUANTITY", "RATE", "IMAGE", "AMOUNT", "ACTION"].map(h => (
+                        <th key={h} className="px-3 py-2 font-medium">{h}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {itemsList.map((it, idx) => (
-                      <tr key={it.id} className="bg-white border-b border-slate-200">
-                        <td className="p-2"><input type="text" value={it.itemName} onChange={(e) => {
-                          const updated = [...itemsList];
-                          updated[idx].itemName = e.target.value;
-                          setItemsList(updated);
-                        }} className="border rounded px-1.5 py-1 w-full" /></td>
-                        <td className="p-2"><input type="text" value={it.description} onChange={(e) => {
-                          const updated = [...itemsList];
-                          updated[idx].description = e.target.value;
-                          setItemsList(updated);
-                        }} className="border rounded px-1.5 py-1 w-full" /></td>
-                        <td className="p-2"><input type="text" value={it.unit} onChange={(e) => {
-                          const updated = [...itemsList];
-                          updated[idx].unit = e.target.value;
-                          setItemsList(updated);
-                        }} className="border rounded px-1.5 py-1 w-full" /></td>
-                        <td className="p-2"><input type="number" value={it.quantity} onChange={(e) => {
-                          const q = Number(e.target.value);
-                          const updated = [...itemsList];
-                          updated[idx].quantity = q;
-                          updated[idx].amount = q * updated[idx].rate;
-                          setItemsList(updated);
-                        }} className="border rounded px-1.5 py-1 w-full" /></td>
-                        <td className="p-2"><input type="number" value={it.rate} onChange={(e) => {
-                          const r = Number(e.target.value);
-                          const updated = [...itemsList];
-                          updated[idx].rate = r;
-                          updated[idx].amount = updated[idx].quantity * r;
-                          setItemsList(updated);
-                        }} className="border rounded px-1.5 py-1 w-full" /></td>
-                        <td className="p-2 text-slate-400">No image</td>
-                        <td className="p-2 font-semibold">{it.amount}</td>
-                        <td className="p-2 text-center">
-                          <button onClick={() => setItemsList(itemsList.filter(i => i.id !== it.id))} className="text-rose-500">
-                            <Trash2 className="w-4 h-4 inline" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    <tr className="border-b">
+                      <td className="px-2 py-2"><input type="text" value={formData.itemName} onChange={(e) => setFormData({ ...formData, itemName: e.target.value })} className="w-full border rounded px-2 py-1 text-sm" /></td>
+                      <td className="px-2 py-2"><input type="text" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full border rounded px-2 py-1 text-sm" /></td>
+                      <td className="px-2 py-2"><input type="text" placeholder="Unit" className="w-16 border rounded px-2 py-1 text-sm" /></td>
+                      <td className="px-2 py-2"><input type="number" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })} className="w-20 border rounded px-2 py-1 text-sm" /></td>
+                      <td className="px-2 py-2"><input type="number" value={formData.rate} onChange={(e) => setFormData({ ...formData, rate: Number(e.target.value) })} className="w-24 border rounded px-2 py-1 text-sm" /></td>
+                      <td className="px-2 py-2"><input type="text" placeholder="Image URL" className="w-20 border rounded px-2 py-1 text-sm" /></td>
+                      <td className="px-2 py-2 font-medium">{subTotal.toFixed(2)}</td>
+                      <td className="px-2 py-2 text-center">
+                        <button type="button" className="bg-green-500 text-white w-6 h-6 rounded text-xs">+</button>
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
 
-              {/* ================= CONTENT FOOTER (TinyMCE Simulator) ================= */}
-              <div className="bg-white border border-slate-300 rounded overflow-hidden">
-                <div className="bg-slate-100 px-3 py-1.5 border-b text-xs font-semibold text-slate-700">Content Footer</div>
-                <div className="bg-slate-50 border-b px-2 py-1 flex flex-wrap items-center gap-1 text-xs text-slate-600">
-                  <span className="hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer">File</span>
-                  <span className="hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer">Edit</span>
-                  <span className="hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer">View</span>
-                  <span className="hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer">Insert</span>
-                  <span className="hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer">Format</span>
-                  <span className="hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer">Tools</span>
-                  <span className="hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer">Table</span>
+              {/* Footer Calculations */}
+              <div className="flex flex-col md:flex-row gap-6 border-t pt-4">
+                <div className="flex-1 border rounded">
+                  <div className="p-2 border-b bg-gray-50 text-xs font-medium">Content Footer</div>
+                  <textarea className="w-full h-20 p-2 text-sm focus:outline-none resize-none" placeholder="Notes..."></textarea>
                 </div>
-                <div className="bg-slate-100/70 border-b px-2 py-1.5 flex flex-wrap items-center gap-2 text-slate-700">
-                  <button className="p-1 hover:bg-slate-200 rounded"><Bold className="w-3.5 h-3.5" /></button>
-                  <button className="p-1 hover:bg-slate-200 rounded"><Italic className="w-3.5 h-3.5" /></button>
-                  <div className="h-4 w-[1px] bg-slate-300 mx-1"></div>
-                  <button className="p-1 hover:bg-slate-200 rounded"><AlignLeft className="w-3.5 h-3.5" /></button>
-                  <button className="p-1 hover:bg-slate-200 rounded"><AlignCenter className="w-3.5 h-3.5" /></button>
-                  <button className="p-1 hover:bg-slate-200 rounded"><AlignRight className="w-3.5 h-3.5" /></button>
-                  <button className="p-1 hover:bg-slate-200 rounded"><AlignJustify className="w-3.5 h-3.5" /></button>
-                  <div className="h-4 w-[1px] bg-slate-300 mx-1"></div>
-                  <button className="p-1 hover:bg-slate-200 rounded"><List className="w-3.5 h-3.5" /></button>
-                  <button className="p-1 hover:bg-slate-200 rounded"><ListOrdered className="w-3.5 h-3.5" /></button>
-                </div>
-                <textarea 
-                  rows={3} 
-                  value={contentFooter} 
-                  onChange={(e) => setContentFooter(e.target.value)}
-                  placeholder="Type content footer here..." 
-                  className="w-full p-3 text-xs focus:outline-none bg-white"
-                ></textarea>
-                <div className="bg-slate-50 px-3 py-1 border-t text-[10px] text-slate-400 text-right">0 WORDS POWERED BY TINY</div>
-              </div>
-
-              {/* Financial Calculation Panel */}
-              <div className="bg-white p-4 rounded border border-purple-300 max-w-xl ml-auto space-y-2 text-xs">
-                <div className="grid grid-cols-2 items-center border-b pb-2">
-                  <span className="font-semibold text-slate-700">Subtotal :</span>
-                  <div className="bg-slate-100 p-1.5 rounded font-bold text-slate-800">{subtotal}</div>
-                </div>
-
-                <div className="grid grid-cols-2 items-center border-b pb-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-semibold text-slate-700">VAT(%) :</span>
-                    <span className="text-blue-600 cursor-pointer">If Include:</span>
-                    <input type="checkbox" checked={vatInclude} onChange={(e) => setVatInclude(e.target.checked)} />
+                <div className="flex-1 space-y-1 text-sm">
+                  <div className="flex justify-between items-center border rounded overflow-hidden">
+                    <span className="bg-gray-50 px-3 py-1 w-1/2 border-r">Subtotal :</span>
+                    <input type="text" value={subTotal.toFixed(2)} readOnly className="px-3 py-1 w-1/2 text-right bg-white outline-none" />
                   </div>
-                  <input type="number" value={vatPercent} onChange={(e) => setVatPercent(Number(e.target.value))} className="border rounded px-2 py-1 w-full" />
-                </div>
-
-                <div className="grid grid-cols-2 items-center border-b pb-2">
-                  <span className="font-semibold text-slate-700">VAT(Amount) :</span>
-                  <div className="bg-orange-50 p-1.5 rounded text-slate-800">{vatInclude ? vatAmount : 0.00}</div>
-                </div>
-
-                <div className="grid grid-cols-2 items-center border-b pb-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-semibold text-slate-700">AIT(%) :</span>
-                    <span className="text-emerald-600 cursor-pointer">If Include:</span>
-                    <input type="checkbox" checked={aitInclude} onChange={(e) => setAitInclude(e.target.checked)} />
+                  <div className="flex justify-between items-center border rounded overflow-hidden">
+                    <span className="bg-gray-50 px-3 py-1 w-1/2 border-r">Vat(%) :</span>
+                    <input type="number" value={formData.vat} onChange={(e) => setFormData({ ...formData, vat: Number(e.target.value) })} className="px-3 py-1 w-1/2 text-right bg-white outline-none" />
                   </div>
-                  <input type="number" value={aitPercent} onChange={(e) => setAitPercent(Number(e.target.value))} className="border rounded px-2 py-1 w-full" />
-                </div>
-
-                <div className="grid grid-cols-2 items-center border-b pb-2">
-                  <span className="font-semibold text-slate-700">AIT(Amount) :</span>
-                  <div className="bg-orange-50 p-1.5 rounded text-slate-800">{aitInclude ? aitAmount : 0.00}</div>
-                </div>
-
-                <div className="grid grid-cols-2 items-center pt-1">
-                  <span className="font-bold text-slate-800">Grand Total :</span>
-                  <div className="bg-emerald-500 text-white p-1.5 rounded font-bold">{grandTotal}</div>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Modal Submit Footer */}
-            <div className="bg-slate-100 px-4 py-3 border-t border-slate-200 flex justify-end">
-              <button 
-                onClick={() => setIsMainModalOpen(false)}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-medium px-6 py-2 rounded shadow text-sm transition"
-              >
-                Submit
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* ================= SUB-MODAL 1: ADD ITEM ================= */}
-      {isItemModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="bg-white w-full max-w-lg rounded-lg shadow-2xl border border-purple-300 overflow-hidden">
-            <div className="bg-[#6b58e8] text-white px-4 py-3 flex items-center justify-between">
-              <h3 className="font-semibold text-sm">Add New Item</h3>
-              <button onClick={() => setIsItemModalOpen(false)} className="text-white hover:bg-white/20 p-1 rounded-full"><X className="w-4 h-4" /></button>
-            </div>
-            <form onSubmit={handleSaveItem} className="p-4 space-y-3 text-xs">
-              <div>
-                <label className="block font-medium text-slate-600 mb-1">Item Name*</label>
-                <input type="text" required placeholder="Enter item name" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} className="w-full border rounded px-3 py-2" />
-              </div>
-              <div>
-                <label className="block font-medium text-slate-600 mb-1">Description</label>
-                <input type="text" placeholder="Enter description" value={newItemDesc} onChange={(e) => setNewItemDesc(e.target.value)} className="w-full border rounded px-3 py-2" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-slate-600 mb-1">Unit</label>
-                  <input type="text" placeholder="Jobs / Days" value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} className="w-full border rounded px-3 py-2" />
-                </div>
-                <div>
-                  <label className="block font-medium text-slate-600 mb-1">Rate*</label>
-                  <input type="number" required placeholder="0.00" value={newItemRate} onChange={(e) => setNewItemRate(Number(e.target.value))} className="w-full border rounded px-3 py-2" />
+                  <div className="flex justify-between items-center border rounded overflow-hidden">
+                    <span className="bg-gray-50 px-3 py-1 w-1/2 border-r">Vat(Amount) :</span>
+                    <input type="text" value={vatAmount.toFixed(2)} readOnly className="px-3 py-1 w-1/2 text-right bg-white outline-none" />
+                  </div>
+                  <div className="flex justify-between items-center border rounded overflow-hidden">
+                    <span className="bg-gray-50 px-3 py-1 w-1/2 border-r">AIT(%) :</span>
+                    <input type="number" value={formData.ait} onChange={(e) => setFormData({ ...formData, ait: Number(e.target.value) })} className="px-3 py-1 w-1/2 text-right bg-white outline-none" />
+                  </div>
+                  <div className="flex justify-between items-center border rounded overflow-hidden">
+                    <span className="bg-gray-50 px-3 py-1 w-1/2 border-r">AIT(Amount) :</span>
+                    <input type="text" value={aitAmount.toFixed(2)} readOnly className="px-3 py-1 w-1/2 text-right bg-white outline-none" />
+                  </div>
+                  <div className="flex justify-between items-center border rounded overflow-hidden bg-green-50">
+                    <span className="bg-green-100 px-3 py-1 w-1/2 border-r font-bold text-green-800">Grand Total :</span>
+                    <input type="text" value={grandTotal.toFixed(2)} readOnly className="px-3 py-1 w-1/2 text-right bg-green-50 font-bold text-green-800 outline-none" />
+                  </div>
                 </div>
               </div>
-              <div className="flex justify-end space-x-2 pt-3">
-                <button type="button" onClick={() => setIsItemModalOpen(false)} className="px-4 py-1.5 border rounded bg-slate-100 text-slate-600">Cancel</button>
-                <button type="submit" className="px-4 py-1.5 bg-purple-600 text-white rounded font-medium hover:bg-purple-700">Save Item</button>
+
+              {/* Modal Footer Buttons */}
+              <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="bg-gray-400 text-white px-4 py-2 rounded text-sm">Close</button>
+                <button type="submit" disabled={submitting} className="bg-indigo-600 text-white px-6 py-2 rounded text-sm flex items-center gap-2">
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />} Submit
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
-      {/* ================= SUB-MODAL 2: CONTRACTOR/WORKER ADD ================= */}
-      {isContractorModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="bg-white w-full max-w-md rounded-lg shadow-2xl border border-purple-300 overflow-hidden">
-            <div className="bg-cyan-600 text-white px-4 py-3 flex items-center justify-between">
-              <h3 className="font-semibold text-sm">+Contractor/Worker Add</h3>
-              <button onClick={() => setIsContractorModalOpen(false)} className="text-white hover:bg-white/20 p-1 rounded-full"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="p-4 space-y-3 text-xs">
-              <div>
-                <label className="block font-medium text-slate-600 mb-1">Contractor Name*</label>
-                <input type="text" placeholder="Enter contractor name" className="w-full border rounded px-3 py-2" />
-              </div>
-              <div>
-                <label className="block font-medium text-slate-600 mb-1">Phone Number</label>
-                <input type="text" placeholder="01XXXXXXXXX" className="w-full border rounded px-3 py-2" />
-              </div>
-              <div className="flex justify-end space-x-2 pt-3">
-                <button type="button" onClick={() => setIsContractorModalOpen(false)} className="px-4 py-1.5 border rounded bg-slate-100 text-slate-600">Cancel</button>
-                <button type="button" onClick={() => { alert('Contractor Saved Successfully!'); setIsContractorModalOpen(false); }} className="px-4 py-1.5 bg-cyan-600 text-white rounded font-medium hover:bg-cyan-700">Save Contractor</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

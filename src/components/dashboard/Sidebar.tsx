@@ -18,6 +18,7 @@ import { MENUS, MODULES, type MenuNode, type ModuleKey } from "@/lib/menus";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
 import { useUserAccess } from "@/context/UserAccessContext";
+import { useSidebar } from "@/context/SidebarContext";
 
 const LAMS_ICONS: Record<string, React.ElementType> = {
   dashboard: LayoutDashboard,
@@ -79,25 +80,27 @@ function filterTree(nodes: MenuNode[], q: string): MenuNode[] {
   return out;
 }
 
+function cloneTree(nodes: MenuNode[] | undefined): MenuNode[] {
+  return (nodes ?? []).map((node) => ({
+    ...node,
+    children: node.children ? cloneTree(node.children) : undefined,
+  }));
+}
+
 export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const { primaryColor } = useTheme();
   const brandColor = primaryColor || FALLBACK_PRIMARY;
   const { accessibleModules, hasAccessToRoute } = useUserAccess();
+  const { isCollapsed, toggleCollapse } = useSidebar();
 
   const displayModules = useMemo(() => {
     if (accessibleModules && accessibleModules.length > 0) {
-      const unique = new Map<string, { key: ModuleKey; label: string }>();
-      for (const m of accessibleModules) {
-        const key = String(m.key ?? "").trim();
-        if (!key || unique.has(key.toLowerCase())) continue;
-        unique.set(key.toLowerCase(), {
-          key: key as ModuleKey,
-          label: m.name,
-        });
-      }
-      return [...unique.values()];
+      return accessibleModules.map((m) => ({
+        key: m.key as ModuleKey,
+        label: m.name,
+      }));
     }
     return MODULES;
   }, [accessibleModules]);
@@ -111,13 +114,17 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
   }, [accessibleModules, module]);
 
   const permittedTree = useMemo(() => {
+    let base: MenuNode[] = [];
     if (
       currentAccessibleMod?.menuTree &&
       currentAccessibleMod.menuTree.length > 0
     ) {
-      return currentAccessibleMod.menuTree;
+      base = currentAccessibleMod.menuTree;
+    } else {
+      const rawTree = MENUS[module] || [];
+      base = pruneTreeByAccess(rawTree, module, hasAccessToRoute);
     }
-    let base = pruneTreeByAccess(MENUS[module], module, hasAccessToRoute);
+    // let base = pruneTreeByAccess(MENUS[module], module, hasAccessToRoute);
     if (module === "procurement") {
       base = base.filter(
         (n) => n.slug !== "approvals" && n.slug !== "vendors"
@@ -184,11 +191,20 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
       style={depth > 0 ? { borderColor: `${brandColor}33` } : undefined}
     >
       {nodes.map((n) => {
+        const cleanNodePath = n.path
+          .replace(/^\//, "")
+          .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+        const cleanActivePath = activePath
+          .replace(/^\//, "")
+          .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
         const isActive =
+          cleanNodePath === cleanActivePath ||
           n.path === activePath ||
-          (!activePath && (n.slug === "dashboard" || n.path === "dashboard"));
-        const isAncestor = activePath.startsWith(n.path + "/");
-        const isOpen = !!q || expanded.has(n.path);
+          (!cleanActivePath && (n.slug === "dashboard" || cleanNodePath === "dashboard"));
+        const isAncestor = Boolean(
+          cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")
+        );
+        const isOpen = !!q || expanded.has(n.path) || expanded.has(cleanNodePath);
         const Icon = module === "lams" ? LAMS_ICONS[n.slug] : null;
 
         if (n.children?.length) {
@@ -237,14 +253,16 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           );
         }
 
+        const href = n.path.startsWith("/")
+          ? n.path
+          : n.path.startsWith("http")
+            ? n.path
+            : `/dashboard/${module}/${n.path}`;
+
         return (
           <li key={n.path}>
             <Link
-              href={
-                n.path
-                  ? `/dashboard/${module}/${n.path}`
-                  : `/dashboard/${module}`
-              }
+              href={href}
               onClick={onClose}
               className={cn(
                 "group flex items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition",
@@ -283,6 +301,105 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
     </ul>
   );
 
+  const renderCollapsedNodes = (nodes: MenuNode[]) => (
+    <ul className="space-y-1.5 py-1">
+      {nodes.map((n) => {
+        const cleanNodePath = n.path
+          .replace(/^\//, "")
+          .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+        const cleanActivePath = activePath
+          .replace(/^\//, "")
+          .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+        const isActive =
+          cleanNodePath === cleanActivePath ||
+          n.path === activePath ||
+          (!cleanActivePath && (n.slug === "dashboard" || cleanNodePath === "dashboard"));
+        const isAncestor = Boolean(
+          cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")
+        );
+        const Icon = module === "lams" ? LAMS_ICONS[n.slug] : null;
+
+        if (n.children?.length) {
+          return (
+            <li key={n.path} className="relative group">
+              <button
+                type="button"
+                onClick={() => {
+                  toggleCollapse();
+                  toggle(n.path);
+                }}
+                className={cn(
+                  "flex h-10 w-10 mx-auto items-center justify-center rounded-xl transition",
+                  isAncestor
+                    ? "text-white shadow-md shadow-blue-500/20"
+                    : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
+                )}
+                style={
+                  isAncestor
+                    ? { backgroundColor: brandColor }
+                    : undefined
+                }
+                title={n.label}
+              >
+                {Icon ? (
+                  <Icon className="h-4.5 w-4.5" />
+                ) : (
+                  <span className="text-xs font-bold tracking-tight">
+                    {n.label.slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+              </button>
+
+              <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 z-50 rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
+                {n.label}
+                <span className="ml-1 text-[10px] text-slate-300">({n.children.length})</span>
+              </div>
+            </li>
+          );
+        }
+
+        const href = n.path.startsWith("/")
+          ? n.path
+          : n.path.startsWith("http")
+            ? n.path
+            : `/dashboard/${module}/${n.path}`;
+
+        return (
+          <li key={n.path} className="relative group">
+            <Link
+              href={href}
+              onClick={onClose}
+              className={cn(
+                "flex h-10 w-10 mx-auto items-center justify-center rounded-xl transition",
+                isActive
+                  ? "text-white shadow-md shadow-blue-500/20"
+                  : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
+              )}
+              style={
+                isActive
+                  ? { backgroundColor: brandColor }
+                  : undefined
+              }
+              title={n.label}
+            >
+              {Icon ? (
+                <Icon className="h-4.5 w-4.5" />
+              ) : (
+                <span className="text-xs font-bold tracking-tight">
+                  {n.label.slice(0, 2).toUpperCase()}
+                </span>
+              )}
+            </Link>
+
+            <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 z-50 rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
+              {n.label}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
   return (
     <>
       {open ? (
@@ -294,12 +411,32 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform lg:sticky lg:top-16 lg:z-0 lg:h-[calc(100vh-4rem)] lg:translate-x-0",
-          open ? "translate-x-0" : "-translate-x-full",
+          "fixed inset-y-0 left-0 z-50 flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out lg:sticky lg:top-16 lg:z-0 lg:h-[calc(100vh-4rem)] lg:translate-x-0",
+          isCollapsed ? "lg:w-20" : "lg:w-72",
+          open ? "w-72 translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0",
         )}
       >
         {/* Module Select */}
-        <div className="border-b border-sidebar-border p-4">
+        {isCollapsed ? (
+          <div className="hidden lg:flex flex-col items-center py-4 border-b border-sidebar-border gap-2.5">
+            <Link
+              href="/dashboard"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition shadow-sm"
+              title="Return to Universal Workspace Hub"
+            >
+              <LayoutDashboard className="h-5 w-5" />
+            </Link>
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-[11px] font-black uppercase text-white shadow-sm"
+              style={{ backgroundColor: brandColor }}
+              title={`Active Module: ${module.toUpperCase()}`}
+            >
+              {module.slice(0, 2).toUpperCase()}
+            </div>
+          </div>
+        ) : null}
+
+        <div className={cn("border-b border-sidebar-border p-4", isCollapsed && "lg:hidden")}>
           <div className="mb-2 flex items-center justify-between">
             <Link
               href="/dashboard"
@@ -347,7 +484,14 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         {/* Menu Tree */}
         <nav className="grow overflow-y-auto px-3 py-3">
           {tree.length ? (
-            renderNodes(tree)
+            isCollapsed ? (
+              <>
+                <div className="hidden lg:block">{renderCollapsedNodes(tree)}</div>
+                <div className="lg:hidden">{renderNodes(tree)}</div>
+              </>
+            ) : (
+              renderNodes(tree)
+            )
           ) : (
             <p className="px-2 text-sm text-muted-foreground">
               No menu matches.
@@ -355,7 +499,10 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           )}
         </nav>
 
-        <div className="border-t border-sidebar-border px-4 py-3 text-[11px] text-muted-foreground">
+        <div className={cn(
+          "border-t border-sidebar-border px-4 py-3 text-[11px] text-muted-foreground",
+          isCollapsed && "lg:hidden"
+        )}>
           Menu follows the selected module.
         </div>
       </aside>
