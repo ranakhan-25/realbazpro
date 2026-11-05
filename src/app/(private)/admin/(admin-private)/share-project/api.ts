@@ -154,11 +154,24 @@ export async function unpublishProject(uuid: string) {
   await api.post(`/share-project/admin/projects/${encodeURIComponent(uuid)}/unpublish`);
 }
 
-export async function getInvestments(params: { page?: number; limit?: number; projectUuid?: string } = {}) {
+export async function getInvestments(params: { page?: number; limit?: number; projectUuid?: string; trash?: boolean } = {}) {
   const response = await api.get("/share-project/admin/investments", {
-    params: { page: params.page || 1, limit: params.limit || 100, ...(params.projectUuid ? { projectUuid: params.projectUuid } : {}) },
+    params: {
+      page: params.page || 1,
+      limit: params.limit || 100,
+      ...(params.projectUuid ? { projectUuid: params.projectUuid } : {}),
+      ...(params.trash ? { trash: "true" } : {}),
+    },
   });
   return unwrap<any>(response.data);
+}
+
+export async function softDeleteInvestment(uuid: string) {
+  await api.delete(`/share-project/admin/investments/${encodeURIComponent(uuid)}`);
+}
+
+export async function restoreInvestment(uuid: string) {
+  await api.patch(`/share-project/admin/investments/${encodeURIComponent(uuid)}/restore`);
 }
 
 

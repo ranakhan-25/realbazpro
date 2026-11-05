@@ -13,6 +13,7 @@ import {
   Mail,
   Phone,
   Receipt,
+  Trash2,
   User,
   Users,
   XCircle,
@@ -26,6 +27,7 @@ import {
   publishProject,
   rejectInvestment,
   rejectProject,
+  softDeleteInvestment,
   unpublishProject,
 } from "../../api";
 import type { ShareProjectRecord } from "../../types";
@@ -134,6 +136,27 @@ export default function ShareProjectDetailsPage({ params }: { params: Promise<{ 
       }
     } catch (e) {
       alert(e instanceof Error ? e.message : "Failed to reject investment");
+      if (project?.uuid) {
+        const invs = await getInvestments({ projectUuid: project.uuid });
+        setInvestments(invs);
+      }
+    } finally {
+      setActionLoadingUuid(null);
+    }
+  }
+
+  async function handleDeleteInvestment(invUuid: string) {
+    if (!window.confirm("Are you sure you want to soft delete this investment?")) return;
+    setActionLoadingUuid(invUuid);
+    setInvestments((prev) => prev.filter((i) => String(i.uuid) !== String(invUuid)));
+    try {
+      await softDeleteInvestment(invUuid);
+      if (project?.uuid) {
+        const invs = await getInvestments({ projectUuid: project.uuid });
+        setInvestments(invs);
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to delete investment");
       if (project?.uuid) {
         const invs = await getInvestments({ projectUuid: project.uuid });
         setInvestments(invs);
@@ -467,6 +490,15 @@ export default function ShareProjectDetailsPage({ params }: { params: Promise<{ 
                                   </button>
                                 </>
                               )}
+                              <button
+                                type="button"
+                                title="Soft Delete Investment"
+                                disabled={actionLoadingUuid === inv.uuid}
+                                onClick={() => handleDeleteInvestment(String(inv.uuid))}
+                                className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
                             </div>
                           </td>
                         </tr>
