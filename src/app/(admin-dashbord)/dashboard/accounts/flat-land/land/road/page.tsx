@@ -1,260 +1,289 @@
-'use client';
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
 
-import React, { useState } from 'react';
-import { 
-  ChevronRight, 
-  Search, 
-  X, 
-  Edit, 
-  Trash2 
-} from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Plus, X, Loader2, Edit3, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 
-interface RoadItem {
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
+const API_PATH = `${API_BASE}/realbizpro/api/v1`;
+
+// ====================== TYPES ======================
+interface ProjectRoad {
   id: string;
-  sl: number;
-  projectName: string;
-  roadNo: string;
+  uuid: string;
+  projectId: string;
+  kind: string;
+  name: string;
+  size: string;
+  details: string;
+  project?: { name: string; uuid: string };
+  deletedAt?: string;
 }
 
 export default function PropertyRoadPage() {
-  // Modal States
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [currentRoad, setCurrentRoad] = useState<RoadItem | null>(null);
+  const [dataList, setDataList] = useState<ProjectRoad[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<ProjectRoad | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState("");
+  const [entriesLimit, setEntriesLimit] = useState(10);
 
-  // Form States
-  const [formProjectName, setFormProjectName] = useState('');
-  const [formRoadNo, setFormRoadNo] = useState('');
+  // Dropdown Data
+  const [projects, setProjects] = useState<any[]>([]);
 
-  // Search & Entries States
-  const [searchQuery, setSearchQuery] = useState('');
-  const [entries, setEntries] = useState('10');
-
-  // Road List Data State (Matching Image Data)
-  const [roads, setRoads] = useState<RoadItem[]>([
-    { id: '1', sl: 1, projectName: 'Estern 19', roadNo: '3/A' },
-    { id: '2', sl: 2, projectName: 'Estern 19', roadNo: '2/A' },
-    { id: '3', sl: 3, projectName: 'N/A', roadNo: '7' },
-    { id: '4', sl: 4, projectName: 'N/A', roadNo: 'Road 10' },
-    { id: '5', sl: 5, projectName: 'N/A', roadNo: '7' },
-    { id: '6', sl: 6, projectName: 'N/A', roadNo: '2' },
-    { id: '7', sl: 7, projectName: 'N/A', roadNo: '1' },
-  ]);
-
-  // Handle Edit Click
-  const handleEditClick = (road: RoadItem) => {
-    setCurrentRoad(road);
-    setFormProjectName(road.projectName);
-    setFormRoadNo(road.roadNo);
-    setIsEditModalOpen(true);
-  };
-
-  // Filtered Data
-  const filteredRoads = roads.filter(r => {
-    return searchQuery 
-      ? r.projectName.toLowerCase().includes(searchQuery.toLowerCase()) || r.roadNo.toLowerCase().includes(searchQuery.toLowerCase())
-      : true;
+  // Form Data
+  const [formData, setFormData] = useState({
+    projectId: "",
+    name: "",
+    size: "",
+    details: "",
   });
 
+  // ====================== FETCH LISTS ======================
+  const fetchRoads = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_PATH}/land-infrastructure/roads`);
+      const json = await res.json();
+      if (json.success) {
+        setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
+      }
+    } catch (err) {
+      toast.error("Failed to load roads");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ====================== FETCH DROPDOWNS ======================
+  const fetchDropdowns = async () => {
+    try {
+      const resProj = await fetch(`${API_PATH}/project`);
+      const jsonProj = await resProj.json();
+      if (jsonProj.success) setProjects(jsonProj.data.data || jsonProj.data || []);
+    } catch (err) {
+      console.error("Error fetching dropdowns:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchRoads();
+    fetchDropdowns();
+  }, []);
+
+  // ====================== SUBMIT (POST / PATCH) ======================
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    const payload = {
+      projectId: formData.projectId,
+      kind: "road",
+      name: formData.name,
+      size: formData.size || null,
+      details: formData.details || null,
+    };
+
+    try {
+      const isEdit = !!editingItem;
+      const url = isEdit
+        ? `${API_PATH}/land-infrastructure/roads/${editingItem!.uuid}`
+        : `${API_PATH}/land-infrastructure/roads`;
+      const method = isEdit ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (res.ok || json.success) {
+        toast.success(isEdit ? "Updated successfully!" : "Created successfully!");
+        setIsModalOpen(false);
+        setEditingItem(null);
+        fetchRoads();
+      } else {
+        toast.error(json.message || "Failed to save");
+      }
+    } catch (err: any) {
+      toast.error("Network Error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ====================== DELETE ======================
+  const handleDelete = async (item: ProjectRoad) => {
+    if (!window.confirm(`Delete Road "${item.name}"?`)) return;
+    try {
+      const res = await fetch(`${API_PATH}/land-infrastructure/roads/${item.uuid}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Deleted successfully!");
+        setDataList((prev) => prev.filter((row) => row.uuid !== item.uuid));
+      } else {
+        toast.error("Failed to delete");
+      }
+    } catch (err) {
+      toast.error("Error deleting");
+    }
+  };
+
+  // ====================== OPEN MODAL ======================
+  const handleCreate = () => {
+    setFormData({
+      projectId: "",
+      name: "",
+      size: "",
+      details: "",
+    });
+    setEditingItem(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (item: ProjectRoad) => {
+    setEditingItem(item);
+    setFormData({
+      projectId: item.projectId || "",
+      name: item.name || "",
+      size: item.size || "",
+      details: item.details || "",
+    });
+    setIsModalOpen(true);
+  };
+
+  // ====================== FILTERING ======================
+  const filteredData = dataList.filter((item) =>
+    item.name?.toLowerCase().includes(search.toLowerCase()) ||
+    item.project?.name?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // ====================== RENDER ======================
   return (
-    <div className="min-h-screen bg-slate-100 p-4 font-sans text-slate-800">
+    <div className="min-h-screen bg-gray-50 p-6 font-sans text-gray-800">
       
-      {/* ================= BREADCRUMB HEADER ================= */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center text-sm text-slate-600 space-x-2">
-          <span className="hover:text-blue-600 cursor-pointer">Home</span>
-          <ChevronRight className="w-4 h-4 text-slate-400" />
-          <span className="hover:text-blue-600 cursor-pointer">Flat/Land</span>
-          <ChevronRight className="w-4 h-4 text-slate-400" />
-          <span className="font-semibold text-slate-800">Property Road List</span>
-        </div>
-        <button 
-          onClick={() => {
-            setCurrentRoad(null);
-            setFormProjectName('');
-            setFormRoadNo('');
-            setIsEditModalOpen(true);
-          }}
-          className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium px-4 py-2 rounded flex items-center shadow transition"
-        >
-          +Road Add
+      {/* Top Header */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="text-sm text-gray-500">Home &gt; Flat/Land &gt; Property Road List</div>
+        <button onClick={handleCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm flex items-center gap-1">
+          <Plus className="w-4 h-4" /> Road Add
         </button>
       </div>
 
-      {/* ================= MAIN CONTAINER ================= */}
-      <div className="bg-white rounded-md shadow-sm border border-slate-200 p-5 space-y-4">
-        
-        {/* Top Controls: Show entries & Search */}
-        <div className="flex flex-wrap items-center justify-between gap-4 py-2">
-          <div className="flex items-center text-xs text-slate-600 space-x-1">
+      {/* List Table */}
+      <div className="bg-white p-4 border rounded shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-2 text-sm">
             <span>Show</span>
-            <select 
-              value={entries} 
-              onChange={(e) => setEntries(e.target.value)}
-              className="border border-slate-300 rounded px-2 py-1 bg-white text-xs"
-            >
-              <option value="10">10</option>
-              <option value="25">25</option>
-              <option value="50">50</option>
+            <select value={entriesLimit} onChange={(e) => setEntriesLimit(Number(e.target.value))} className="border rounded px-2 py-1">
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
             </select>
             <span>entries</span>
           </div>
-
-          <div className="flex items-center space-x-2">
-            <span className="text-xs text-slate-600">Search:</span>
-            <input 
-              type="text" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="border border-slate-300 rounded px-3 py-1 text-xs w-full sm:w-48 focus:outline-none focus:border-purple-500" 
-            />
+          <div className="flex gap-2 items-center text-sm">
+            <span>Search:</span>
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="border rounded px-2 py-1" />
           </div>
         </div>
 
-        {/* Data Table */}
-        <div className="overflow-x-auto border border-purple-300 rounded">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-[#6b58e8] text-white text-[11px] font-semibold uppercase tracking-wider">
-                <th className="p-2.5 border-r border-purple-400 w-16">SL</th>
-                <th className="p-2.5 border-r border-purple-400">PROJECT NAME</th>
-                <th className="p-2.5 border-r border-purple-400">ROAD NO</th>
-                <th className="p-2.5 text-center w-28">ACTION</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white text-slate-700">
-              {filteredRoads.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left whitespace-nowrap">
+              <thead className="bg-indigo-600 text-white">
                 <tr>
-                  <td colSpan={4} className="text-center py-8 text-slate-400 italic bg-slate-50">
-                    No data available in table
-                  </td>
+                  {["SL", "PROJECT NAME", "ROAD NO", "ACTION"].map(h => (
+                    <th key={h} className="px-3 py-2 font-medium">{h}</th>
+                  ))}
                 </tr>
-              ) : (
-                filteredRoads.map((road) => (
-                  <tr key={road.id} className="border-b border-slate-200 hover:bg-slate-50">
-                    <td className="p-2.5 border-r">{road.sl}</td>
-                    <td className="p-2.5 border-r">{road.projectName}</td>
-                    <td className="p-2.5 border-r font-medium">{road.roadNo}</td>
-                    <td className="p-2.5 text-center space-x-1.5 flex justify-center items-center">
-                      <button 
-                        onClick={() => handleEditClick(road)} 
-                        className="bg-sky-400 hover:bg-sky-500 text-white p-1.5 rounded shadow-sm transition"
-                        title="Edit Road"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                      </button>
-                      <button 
-                        onClick={() => {
-                          setRoads(roads.filter(r => r.id !== road.id));
-                        }} 
-                        className="bg-rose-500 hover:bg-rose-600 text-white p-1.5 rounded shadow-sm transition"
-                        title="Delete Road"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredData.length === 0 ? (
+                  <tr><td colSpan={4} className="text-center py-8 text-gray-500">No data available in table</td></tr>
+                ) : (
+                  filteredData.map((item, index) => (
+                    <tr key={item.uuid} className="hover:bg-gray-50">
+                      <td className="px-3 py-2">{index + 1}</td>
+                      <td className="px-3 py-2">{item.project?.name || "N/A"}</td>
+                      <td className="px-3 py-2">{item.name}</td>
+                      <td className="px-3 py-2 flex gap-1">
+                        <button onClick={() => handleEdit(item)} className="bg-teal-400 text-white p-1.5 rounded hover:bg-teal-500"><Edit3 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleDelete(item)} className="bg-red-500 text-white p-1.5 rounded hover:bg-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-        {/* Footer Pagination */}
-        <div className="flex items-center justify-between text-xs text-slate-500 pt-2">
-          <span>Showing 1 to {filteredRoads.length} of {filteredRoads.length} entries</span>
-          <div className="flex space-x-1">
-            <button className="px-3 py-1 bg-slate-100 rounded text-slate-400 cursor-not-allowed" disabled>Previous</button>
-            <button className="px-3 py-1 bg-purple-600 text-white rounded font-medium">1</button>
-            <button className="px-3 py-1 bg-slate-100 rounded text-slate-600 hover:bg-slate-200">Next</button>
+        {/* Footer Pagination Info */}
+        <div className="flex justify-between items-center mt-4 text-sm text-gray-500">
+          <div>
+            Showing 1 to {filteredData.length} of {filteredData.length} entries
+          </div>
+          <div className="flex gap-1">
+            <button className="px-3 py-1 border rounded bg-gray-100 text-gray-400 cursor-not-allowed">Previous</button>
+            <button className="px-3 py-1 border rounded bg-indigo-600 text-white">1</button>
+            <button className="px-3 py-1 border rounded bg-gray-100 text-gray-400 cursor-not-allowed">Next</button>
           </div>
         </div>
-
       </div>
 
-      {/* ================= MODAL: PROPERTY ROAD ADD / EDIT ================= */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white w-full max-w-lg rounded shadow-2xl border border-slate-300 overflow-hidden">
+      {/* ====================== ADD/EDIT MODAL ====================== */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg shadow-xl">
             
             {/* Modal Header */}
-            <div className="px-4 py-3 flex items-center justify-between border-b border-slate-200 bg-white">
-              <h3 className="font-bold text-sm text-slate-800">
-                {currentRoad ? 'Property Road Edit' : 'Property Road Add'}
-              </h3>
-              <button 
-                onClick={() => setIsEditModalOpen(false)} 
-                className="text-slate-500 hover:bg-slate-100 p-1 rounded border border-slate-300"
-              >
-                <X className="w-4 h-4" />
-              </button>
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-lg font-bold">{editingItem ? "Edit Property Road" : "Property Road Add"}</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700"><X className="w-5 h-5" /></button>
             </div>
 
-            {/* Modal Body Form */}
-            <div className="p-5 space-y-4 text-xs">
+            {/* Modal Body */}
+            <form onSubmit={handleSubmit} className="p-4 space-y-4">
+              
               <div>
-                <label className="block text-slate-700 font-medium mb-1">
-                  Project Name <span className="text-rose-500">*</span>
-                </label>
-                <input 
-                  type="text" 
-                  value={formProjectName} 
-                  onChange={(e) => setFormProjectName(e.target.value)} 
-                  placeholder="Estern 19"
-                  className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500" 
-                />
+                <label className="block text-sm text-gray-700 mb-1">Project Name <span className="text-red-500">*</span></label>
+                <select required value={formData.projectId} onChange={(e) => setFormData({ ...formData, projectId: e.target.value })} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                  <option value="">Select Project</option>
+                  {projects.map(p => <option key={p.uuid} value={p.uuid}>{p.name}</option>)}
+                </select>
               </div>
 
               <div>
-                <label className="block text-slate-700 font-medium mb-1">
-                  Road No <span className="text-rose-500">*</span>
-                </label>
-                <input 
-                  type="text" 
-                  value={formRoadNo} 
-                  onChange={(e) => setFormRoadNo(e.target.value)} 
-                  placeholder="3/A"
-                  className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-slate-800 focus:outline-none focus:border-purple-500" 
-                />
+                <label className="block text-sm text-gray-700 mb-1">Road No <span className="text-red-500">*</span></label>
+                <input required type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Enter Road No (e.g., Road 1, Road 2)" className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" />
               </div>
-            </div>
 
-            {/* Modal Footer Buttons */}
-            <div className="bg-white px-5 py-3 border-t border-slate-200 flex justify-end space-x-2">
-              <button 
-                onClick={() => setIsEditModalOpen(false)}
-                className="bg-slate-500 hover:bg-slate-600 text-white font-medium px-4 py-2 rounded text-xs transition"
-              >
-                Close
-              </button>
-              <button 
-                onClick={() => {
-                  if (currentRoad) {
-                    // Update existing
-                    setRoads(roads.map(r => r.id === currentRoad.id ? { 
-                      ...r, 
-                      projectName: formProjectName, 
-                      roadNo: formRoadNo 
-                    } : r));
-                    alert('Property Road Updated Successfully!');
-                  } else {
-                    // Add new
-                    const newRoad: RoadItem = {
-                      id: String(Date.now()),
-                      sl: roads.length + 1,
-                      projectName: formProjectName || 'N/A',
-                      roadNo: formRoadNo || 'N/A'
-                    };
-                    setRoads([...roads, newRoad]);
-                    alert('Property Road Added Successfully!');
-                  }
-                  setIsEditModalOpen(false);
-                }} 
-                className="bg-[#6b58e8] hover:bg-purple-700 text-white font-medium px-5 py-2 rounded text-xs shadow transition"
-              >
-                Submit
-              </button>
-            </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Size (Optional)</label>
+                <input type="text" value={formData.size} onChange={(e) => setFormData({ ...formData, size: e.target.value })} placeholder="e.g., 30 ft" className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              </div>
 
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Details (Optional)</label>
+                <textarea value={formData.details} onChange={(e) => setFormData({ ...formData, details: e.target.value })} placeholder="Additional details" className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" rows={3}></textarea>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="bg-gray-400 text-white px-6 py-2 rounded text-sm hover:bg-gray-500">Close</button>
+                <button type="submit" disabled={submitting} className="bg-indigo-600 text-white px-6 py-2 rounded text-sm flex items-center gap-2 hover:bg-indigo-700">
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />} Submit
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

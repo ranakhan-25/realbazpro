@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { SiteShell } from "@/components/site/SiteNav";
 
 import Hero from "@/components/home/Hero";
