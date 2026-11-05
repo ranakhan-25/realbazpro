@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   FileText,
@@ -16,9 +17,11 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
+import toast from "react-hot-toast";
 
 interface ExpenseRow {
   id: number;
+  uuid: string;
   sl: number;
   date: string;
   voucher: string;
@@ -35,28 +38,6 @@ interface ExpenseRow {
   attachment: number;
   status: string;
 }
-
-// Hardcoded for now — API wiring comes later
-const initialExpenses: ExpenseRow[] = [
-  {
-    id: 1,
-    sl: 1,
-    date: "11 Sept 2026",
-    voucher: "EXP00002",
-    project: "Rifat Eyecon City",
-    titleOfWork: "",
-    debit: "Office Salary",
-    credit: "Cash",
-    staffName: "",
-    amount: 800.0,
-    note: "",
-    addedBy: "Admin",
-    editedBy: "",
-    approvalSteps: ["All Approvals Completed", "Admin"],
-    attachment: 0,
-    status: "",
-  },
-];
 
 const tableHeaders = [
   "SL",
@@ -103,15 +84,70 @@ const rowActionMenu: {
 ];
 
 export default function ExpenseListPage() {
-  const [expenses] = useState<ExpenseRow[]>(initialExpenses);
+  const router = useRouter();
+  const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [openActionId, setOpenActionId] = useState<number | null>(null);
 
-  const handleRowAction = (key: RowActionKey, row: ExpenseRow) => {
-    // Hooked up once the API is in place
-    console.log(key, row.id);
+  const fetchExpenses = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/backend/expenses", { headers: { accept: "application/json" } });
+      const result = await response.json();
+      const payload = result.data?.data ?? result.data?.items ?? result.data ?? [];
+      const rows = (Array.isArray(payload) ? payload : []).map((expense: Record<string, unknown>, index: number) => ({
+        id: index + 1,
+        uuid: String(expense.uuid ?? expense.id ?? ""),
+        sl: index + 1,
+        date: expense.date ? String(expense.date).slice(0, 10) : "",
+        voucher: String(expense.voucherNo ?? ""),
+        project: String(expense.project ?? ""),
+        titleOfWork: String(expense.titleOfWork ?? ""),
+        debit: Array.isArray(expense.items) && expense.items.length ? expense.items.map((item: Record<string, unknown>) => String(item.accountId ?? "")).join(", ") : "",
+        credit: String(expense.cashOrBank ?? ""),
+        staffName: "",
+        amount: Number(expense.totalAmount ?? 0),
+        note: String(expense.comment ?? ""),
+        addedBy: String(expense.addedBy ?? ""),
+        editedBy: "",
+        approvalSteps: [],
+        attachment: expense.attachmentUrl ? 1 : 0,
+        status: "",
+      }));
+      setExpenses(rows);
+    } catch (error) {
+      console.error("Failed to load expenses", error);
+      setExpenses([]);
+      toast.error(error instanceof Error ? error.message : "Failed to load expenses.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExpenses();
+  }, []);
+
+  const handleRowAction = async (key: RowActionKey, row: ExpenseRow) => {
+    if (key === "edit") {
+      router.push(`/dashboard/accounts/voucher/expense/expense-list-add?uuid=${encodeURIComponent(row.uuid)}`);
+    } else if (key === "view") {
+      window.open(`/api/backend/expenses/${encodeURIComponent(row.uuid)}`, "_blank");
+    } else if (key === "delete" && window.confirm("Delete this expense?")) {
+      try {
+        const response = await fetch(`/api/backend/expenses/${encodeURIComponent(row.uuid)}`, { method: "DELETE" });
+        if (!response.ok) throw new Error("Expense could not be deleted.");
+        await fetchExpenses();
+        toast.success("Expense deleted successfully.");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Expense could not be deleted.");
+      }
+    } else if (key === "duplicate") {
+      router.push("/dashboard/accounts/voucher/expense/expense-list-add");
+    }
     setOpenActionId(null);
   };
 
@@ -403,7 +439,7 @@ export default function ExpenseListPage() {
                     colSpan={tableHeaders.length}
                     className="px-3 py-6 text-center text-slate-400 dark:text-slate-500"
                   >
-                    No data available in table
+                    {isLoading ? "Loading expenses..." : "No data available in table"}
                   </td>
                 </tr>
               )}

@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 export default function AllDashboard() {
   const cards = [
     { label: "Projects", value: "38", tone: "bg-emerald-500/10 text-emerald-600" },

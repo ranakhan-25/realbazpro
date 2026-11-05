@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import toast, { Toaster } from "react-hot-toast";
 import {
   Plus,
   ArrowLeft,
@@ -14,11 +16,13 @@ import {
   Printer,
   FileSpreadsheet,
   Check,
+  RotateCcw,
 } from "lucide-react";
 
 // Types & Data Structures for API integration
 export interface JournalVoucherRow {
   id: number;
+  uuid: string;
   sl: number;
   date: string;
   titleOfWork: string;
@@ -38,6 +42,7 @@ export interface JournalVoucherRow {
 const initialJournalVouchers: JournalVoucherRow[] = [
   {
     id: 1,
+    uuid: "",
     sl: 1,
     date: "08 Sept 2026",
     titleOfWork: "—",
@@ -55,6 +60,7 @@ const initialJournalVouchers: JournalVoucherRow[] = [
   },
   {
     id: 2,
+    uuid: "",
     sl: 2,
     date: "08 Sept 2026",
     titleOfWork: "—",
@@ -72,7 +78,7 @@ const initialJournalVouchers: JournalVoucherRow[] = [
   },
 ];
 
-type ActionKey = "view" | "print" | "mail" | "edit" | "delete" | "duplicate";
+type ActionKey = "view" | "print" | "mail" | "edit" | "delete" | "duplicate" | "restore";
 
 const actionMenuItems: { key: ActionKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "view", label: "View Voucher", icon: Eye, color: "bg-indigo-500 hover:bg-indigo-600" },
@@ -81,9 +87,13 @@ const actionMenuItems: { key: ActionKey; label: string; icon: React.ElementType;
   { key: "edit", label: "Edit Voucher", icon: Pencil, color: "bg-amber-500 hover:bg-amber-600" },
   { key: "delete", label: "Delete", icon: Trash2, color: "bg-red-500 hover:bg-red-600" },
   { key: "duplicate", label: "Duplicate", icon: Copy, color: "bg-teal-500 hover:bg-teal-600" },
+  { key: "restore", label: "Restore", icon: RotateCcw, color: "bg-emerald-500 hover:bg-emerald-600" },
 ];
 
 export default function JournalVoucherListPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [deletingUuid, setDeletingUuid] = useState<string | null>(null);
   // Filter States (API ready)
   const [filters, setFilters] = useState({
     dateRange: "1 September, 2026 - 30 September, 2026",
@@ -96,7 +106,7 @@ export default function JournalVoucherListPage() {
   });
 
   // Table Data & Search States
-  const [vouchers, setVouchers] = useState<JournalVoucherRow[]>(initialJournalVouchers);
+  const [vouchers, setVouchers] = useState<JournalVoucherRow[]>([]);
   const [search, setSearch] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -104,6 +114,62 @@ export default function JournalVoucherListPage() {
   // Action Dropdown State
   const [openActionId, setOpenActionId] = useState<number | null>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
+
+  const unwrapData = (result: unknown): Record<string, unknown>[] => {
+    if (!result || typeof result !== "object") return [];
+    const root = result as Record<string, unknown>;
+    const nested = root.data as Record<string, unknown> | unknown[] | undefined;
+    if (Array.isArray(nested)) return nested as Record<string, unknown>[];
+    if (nested && typeof nested === "object") {
+      const data = (nested as Record<string, unknown>).data;
+      if (Array.isArray(data)) return data as Record<string, unknown>[];
+      const items = (nested as Record<string, unknown>).items;
+      if (Array.isArray(items)) return items as Record<string, unknown>[];
+    }
+    if (Array.isArray(root.items)) return root.items as Record<string, unknown>[];
+    return [];
+  };
+
+  const fetchVouchers = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/backend/journal-vouchers", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || "Journal vouchers could not be loaded.");
+      }
+
+      const records = unwrapData(result);
+      const mapped = records.map((record, index) => ({
+        id: Number(record.id ?? index + 1),
+        uuid: String(record.uuid ?? record.id ?? ""),
+        sl: Number(record.sl ?? index + 1),
+        date: String(record.date ?? record.voucherDate ?? ""),
+        titleOfWork: String(record.titleOfWork ?? record.title ?? "—"),
+        type: String(record.type ?? "Journal"),
+        code: String(record.voucherNo ?? record.code ?? record.voucherCode ?? `JV-${index + 1}`),
+        debit: String(record.debitAccount ?? record.debit ?? "—"),
+        credit: String(record.creditAccount ?? record.credit ?? "—"),
+        total: Number(record.total ?? record.totalDebit ?? record.totalAmount ?? 0),
+        comment: String(record.comment ?? record.note ?? "—"),
+        addedBy: String(record.addedBy ?? (typeof record.createdBy === "object" && record.createdBy ? (record.createdBy as Record<string, unknown>).name : record.createdBy) ?? "Admin"),
+        editedBy: String(record.editedBy ?? (typeof record.updatedBy === "object" && record.updatedBy ? (record.updatedBy as Record<string, unknown>).name : record.updatedBy) ?? "—"),
+        approval: Array.isArray(record.approval) ? record.approval.map(String) : [],
+        attachment: Number(record.attachmentCount ?? (record.attachment ? 1 : 0)),
+        status: String(record.status ?? "Pending"),
+      }));
+      setVouchers(mapped);
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : "Journal vouchers could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchVouchers();
+  }, []);
 
   useEffect(() => {
     const handleClose = () => setOpenActionId(null);
@@ -130,14 +196,73 @@ export default function JournalVoucherListPage() {
     }
   };
 
-  const handleAction = (key: ActionKey, row: JournalVoucherRow) => {
+  const requestJson = async (url: string, method = "GET", payload?: unknown) => {
+    const response = await fetch(url, {
+      method,
+      headers: payload ? { "Content-Type": "application/json" } : undefined,
+      body: payload ? JSON.stringify(payload) : undefined,
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.success === false) {
+      throw new Error(result.message || `Request failed (${response.status}).`);
+    }
+    return result;
+  };
+
+  const handleAction = async (key: ActionKey, row: JournalVoucherRow) => {
     setOpenActionId(null);
     if (key === "delete") {
       if (confirm(`Are you sure you want to delete voucher ${row.code}?`)) {
-        setVouchers((prev) => prev.filter((v) => v.id !== row.id));
+        setDeletingUuid(row.uuid);
+        try {
+          await requestJson(`/api/backend/journal-vouchers/${encodeURIComponent(row.uuid)}`, "DELETE");
+          toast.success(`Voucher ${row.code} deleted successfully.`);
+          await fetchVouchers();
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Voucher could not be deleted.");
+        } finally {
+          setDeletingUuid(null);
+        }
       }
-    } else {
-      alert(`Action "${key.toUpperCase()}" triggered for voucher ${row.code}`);
+      return;
+    }
+    if (!row.uuid) {
+      toast.error("This voucher has no valid API identifier.");
+      return;
+    }
+    if (key === "view") {
+      try {
+        const result = await requestJson(`/api/backend/journal-vouchers/${encodeURIComponent(row.uuid)}`);
+        sessionStorage.setItem(`journal-voucher:${row.uuid}`, JSON.stringify(result.data ?? result));
+        router.push(`/dashboard/accounts/voucher/journal-voucher/add-new?uuid=${encodeURIComponent(row.uuid)}&mode=view`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Voucher details could not be loaded.");
+      }
+    } else if (key === "edit") {
+      router.push(`/dashboard/accounts/voucher/journal-voucher/add-new?uuid=${encodeURIComponent(row.uuid)}`);
+    } else if (key === "duplicate") {
+      try {
+        const result = await requestJson(`/api/backend/journal-vouchers/${encodeURIComponent(row.uuid)}`);
+        const voucher = (result.data?.data ?? result.data ?? result) as Record<string, unknown>;
+        const duplicate = { ...voucher, voucherNo: `${row.code}-COPY`, uuid: undefined, id: undefined };
+        await requestJson("/api/backend/journal-vouchers", "POST", duplicate);
+        toast.success(`Voucher ${row.code} duplicated successfully.`);
+        await fetchVouchers();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Voucher could not be duplicated.");
+      }
+    } else if (key === "print") {
+      window.print();
+    } else if (key === "mail") {
+      window.location.href = `mailto:?subject=${encodeURIComponent(`Journal Voucher ${row.code}`)}&body=${encodeURIComponent(`Journal voucher ${row.code} is ready for review.`)}`;
+    } else if (key === "restore") {
+      try {
+        await requestJson(`/api/backend/journal-vouchers/${encodeURIComponent(row.uuid)}/restore`, "PATCH");
+        toast.success(`Voucher ${row.code} restored successfully.`);
+        await fetchVouchers();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Voucher could not be restored.");
+      }
     }
   };
 
@@ -157,6 +282,7 @@ export default function JournalVoucherListPage() {
 
   return (
     <div className="w-full max-w-full overflow-x-hidden flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 p-2 text-xs min-h-screen">
+      <Toaster position="top-right" />
       {/* Top Header & Navigation Bar */}
       <div className="flex items-center justify-between gap-2 mb-2 w-full">
         <nav className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 font-medium truncate">

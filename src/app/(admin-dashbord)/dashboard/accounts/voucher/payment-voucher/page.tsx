@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import {
   Plus,
   X,
@@ -9,16 +10,17 @@ import {
   FileSpreadsheet,
   ChevronDown,
   Eye,
-  Pencil,
   Trash2,
   Copy,
   Mail,
   Printer,
   CheckCircle2,
+  Pencil,
 } from "lucide-react";
 
 interface PaymentVoucherRow {
   id: number;
+  uuid: string;
   sl: number;
   date: string;
   project: string;
@@ -36,45 +38,6 @@ interface PaymentVoucherRow {
   status: string;
 }
 
-const initialPaymentVouchers: PaymentVoucherRow[] = [
-  {
-    id: 1,
-    sl: 1,
-    date: "07 Sept 2026",
-    project: "Rifat Eyecon",
-    titleOfWork: "Material Purchase",
-    code: "P00004",
-    debit: "Riva Steel Mils",
-    credit: "Cash",
-    total: 8000.0,
-    comment: "Steel rod payment",
-    chequeReceipt: "—",
-    addedBy: "Admin",
-    editedBy: "—",
-    approval: ["Approved", "Admin"],
-    attachment: 0,
-    status: "Approved",
-  },
-  {
-    id: 2,
-    sl: 2,
-    date: "08 Sept 2026",
-    project: "Rifat Eyecon",
-    titleOfWork: "Labor Bill",
-    code: "P00003",
-    debit: "Riva Steel Mils",
-    credit: "Cash",
-    total: 10000.0,
-    comment: "Weekly labor bill",
-    chequeReceipt: "—",
-    addedBy: "Admin",
-    editedBy: "—",
-    approval: ["Approved", "Admin"],
-    attachment: 0,
-    status: "Approved",
-  },
-];
-
 type ActionKey = "view" | "print" | "mail" | "edit" | "delete" | "duplicate";
 
 const actionMenuItems: { key: ActionKey; label: string; icon: React.ElementType; color: string }[] = [
@@ -88,6 +51,11 @@ const actionMenuItems: { key: ActionKey; label: string; icon: React.ElementType;
 
 export default function PaymentVoucherPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [viewVoucher, setViewVoucher] = useState<Record<string, unknown> | null>(null);
+  const [editUuid, setEditUuid] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [accounts, setAccounts] = useState<Array<{ id?: string | number; uuid?: string; name?: string }>>([]);
 
   // Form States
   const [projectType, setProjectType] = useState("");
@@ -114,7 +82,8 @@ export default function PaymentVoucherPage() {
   const [modalDefaultModule, setModalDefaultModule] = useState("");
 
   // Table Data & Filter States
-  const [vouchers, setVouchers] = useState<PaymentVoucherRow[]>(initialPaymentVouchers);
+  const [vouchers, setVouchers] = useState<PaymentVoucherRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -143,6 +112,64 @@ export default function PaymentVoucherPage() {
     };
   }, []);
 
+  const normalizeArray = (value: unknown): Record<string, unknown>[] => {
+    if (Array.isArray(value)) return value as Record<string, unknown>[];
+    if (!value || typeof value !== "object") return [];
+    for (const nested of Object.values(value)) {
+      const found = normalizeArray(nested);
+      if (found.length) return found;
+    }
+    return [];
+  };
+
+  const fetchVouchers = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/backend/payment-vouchers", { headers: { accept: "application/json" } });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "Payment vouchers could not be loaded.");
+      const rows = normalizeArray(result.data);
+      setVouchers(rows.map((voucher, index) => ({
+        id: Number(voucher.id ?? index + 1),
+        uuid: String(voucher.uuid ?? ""),
+        sl: index + 1,
+        date: String(voucher.date ?? "").slice(0, 10),
+        project: String(voucher.projectId ?? ""),
+        titleOfWork: String(voucher.workId ?? ""),
+        code: String(voucher.voucherNo ?? ""),
+        debit: String(voucher.accountId ?? normalizeArray(voucher.entries)[0]?.debitAccount ?? ""),
+        credit: String(voucher.paymentMethod ?? ""),
+        total: Number(voucher.amount ?? 0),
+        comment: String(voucher.comment ?? "—"),
+        chequeReceipt: String(voucher.chequeNo ?? "—"),
+        addedBy: "Admin",
+        editedBy: "—",
+        approval: [String(voucher.status ?? "Pending")],
+        attachment: voucher.attachmentUrl ? 1 : 0,
+        status: String(voucher.status ?? "Pending"),
+      })));
+    } catch (error) {
+      console.error("Failed to load payment vouchers", error);
+      toast.error(error instanceof Error ? error.message : "Payment vouchers could not be loaded.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVouchers();
+    const fetchAccounts = async () => {
+      try {
+        const response = await fetch("/api/backend/chart-of-accounts", { headers: { accept: "application/json" } });
+        const result = await response.json();
+        setAccounts(normalizeArray(result.data) as Array<{ id?: string | number; uuid?: string; name?: string }>);
+      } catch (error) {
+        console.error("Failed to load accounts", error);
+      }
+    };
+    fetchAccounts();
+  }, []);
+
   const toggleActionMenu = (e: React.MouseEvent<HTMLButtonElement>, id: number) => {
     e.stopPropagation();
     if (openActionId === id) {
@@ -158,42 +185,81 @@ export default function PaymentVoucherPage() {
     }
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedAccount || !paymentMethod || !amount) {
-      alert("Please fill in required fields (*)");
+    if (!selectedAccount.trim() || !paymentMethod.trim() || !amount.trim()) {
+      toast.error("Please fill in required fields (*)");
       return;
     }
-
-    const newVoucher: PaymentVoucherRow = {
-      id: Date.now(),
-      sl: vouchers.length + 1,
-      date,
-      project: project || "Default Project",
-      titleOfWork: titleOfWork || "General Work",
-      code: voucherNo,
-      debit: selectedAccount,
-      credit: paymentMethod,
-      total: parseFloat(amount) || 0,
-      comment: comment || "—",
-      chequeReceipt: chequeNo || "—",
-      addedBy: "Admin",
-      editedBy: "—",
-      approval: ["Approved"],
-      attachment: attachment ? 1 : 0,
-      status: "Approved",
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      toast.error("Please enter a valid amount greater than zero.");
+      return;
+    }
+    const payload = {
+      date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : date.includes("/") ? date.split("/").reverse().join("-") : date,
+      projectType,
+      projectId: project,
+      workId: titleOfWork,
+      taskId: ifTask,
+      siteId: site,
+      accountId: selectedAccount,
+      paymentMethod,
+      isCheque,
+      chequeNo,
+      comment,
+      amount: numericAmount,
+      invoiceId: selectInvoice,
+      itemId: selectItem,
+      attachmentUrl: attachment?.name ?? "",
+      entries: [{
+        projectId: project,
+        titleId: titleOfWork,
+        code: voucherNo,
+        debitAccount: selectedAccount,
+        creditAccount: paymentMethod,
+        total: numericAmount,
+        comment,
+        cheque: chequeNo,
+        addedBy: "Admin",
+        editedBy: "Admin",
+      }],
     };
 
-    setVouchers((prev) => [newVoucher, ...prev]);
-    alert("Payment Voucher Submitted Successfully!");
-    setAmount("");
-    setComment("");
-    setChequeNo("");
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/backend/payment-vouchers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || "Payment voucher could not be saved.");
+      }
+      toast.success(editUuid ? "Payment voucher replacement created successfully." : "Payment voucher created successfully.");
+      if (editUuid) {
+        const deleteResponse = await fetch(`/api/backend/payment-vouchers/${encodeURIComponent(editUuid)}`, { method: "DELETE" });
+        if (!deleteResponse.ok) {
+          toast.error("New voucher created, but the old voucher could not be deleted.");
+        }
+      }
+      setIsEditModalOpen(false);
+      setEditUuid("");
+      setAmount("");
+      setComment("");
+      setChequeNo("");
+      await fetchVouchers();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Payment voucher could not be saved.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleModalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Account "${modalName}" Added Successfully!`);
+    toast.success(`Account "${modalName}" added successfully.`);
     setIsModalOpen(false);
     setModalGroup("");
     setModalCode("");
@@ -201,14 +267,122 @@ export default function PaymentVoucherPage() {
     setModalDefaultModule("");
   };
 
-  const handleAction = (key: ActionKey, row: PaymentVoucherRow) => {
+  const handleAction = async (key: ActionKey, row: PaymentVoucherRow) => {
     setOpenActionId(null);
     if (key === "delete") {
-      if (confirm(`Delete voucher ${row.code}?`)) {
-        setVouchers((prev) => prev.filter((v) => v.id !== row.id));
+      toast((notification) => (
+        <div className="flex items-center gap-3">
+          <span>Delete voucher {row.code}?</span>
+          <button type="button" onClick={async () => {
+            toast.dismiss(notification.id);
+            const loadingToast = toast.loading("Deleting voucher...");
+            try {
+              const response = await fetch(`/api/backend/payment-vouchers/${encodeURIComponent(row.uuid)}`, { method: "DELETE" });
+              if (!response.ok) throw new Error("Payment voucher could not be deleted.");
+              toast.success("Payment voucher deleted successfully.", { id: loadingToast });
+              await fetchVouchers();
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : "Payment voucher could not be deleted.", { id: loadingToast });
+            }
+          }} className="rounded bg-red-500 px-2 py-1 text-xs font-medium text-white hover:bg-red-600">Delete</button>
+          <button type="button" onClick={() => toast.dismiss(notification.id)} className="rounded bg-slate-200 px-2 py-1 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-white">Cancel</button>
+        </div>
+      ), { duration: 8000 });
+    } else if (key === "view" && row.uuid) {
+      try {
+        const response = await fetch(`/api/backend/payment-vouchers/${encodeURIComponent(row.uuid)}`);
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Payment voucher could not be loaded.");
+        const detail = result.data?.data ?? result.data ?? result;
+        setViewVoucher(detail && typeof detail === "object" ? detail as Record<string, unknown> : null);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Payment voucher could not be loaded.");
+      }
+    } else if (key === "print") {
+      setViewVoucher({
+        Voucher: row.code,
+        Date: row.date,
+        Project: row.project,
+        Title: row.titleOfWork,
+        Debit: row.debit,
+        Credit: row.credit,
+        Amount: row.total,
+        Comment: row.comment,
+      });
+      window.setTimeout(() => window.print(), 100);
+    } else if (key === "mail") {
+      window.location.href = `mailto:?subject=${encodeURIComponent(`Payment Voucher ${row.code}`)}&body=${encodeURIComponent(`Voucher: ${row.code}\nAmount: ${row.total}\nProject: ${row.project}\nComment: ${row.comment}`)}`;
+      toast.success("Mail application opened.");
+    } else if (key === "edit" && row.uuid) {
+      try {
+        const response = await fetch(`/api/backend/payment-vouchers/${encodeURIComponent(row.uuid)}`);
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Payment voucher could not be loaded.");
+        const detail = result.data?.data ?? result.data ?? result;
+        if (!detail || typeof detail !== "object") throw new Error("Payment voucher details were invalid.");
+        const voucher = detail as Record<string, unknown>;
+        setEditUuid(row.uuid);
+        setDate(String(voucher.date ?? "").slice(0, 10));
+        setProjectType(String(voucher.projectType ?? ""));
+        setProject(String(voucher.projectId ?? ""));
+        setTitleOfWork(String(voucher.workId ?? ""));
+        setIfTask(String(voucher.taskId ?? ""));
+        setSite(String(voucher.siteId ?? ""));
+        setSelectedAccount(String(voucher.accountId ?? ""));
+        setPaymentMethod(String(voucher.paymentMethod ?? ""));
+        setIsCheque(Boolean(voucher.isCheque));
+        setChequeNo(String(voucher.chequeNo ?? ""));
+        setComment(String(voucher.comment ?? ""));
+        setAmount(String(voucher.amount ?? ""));
+        setSelectInvoice(String(voucher.invoiceId ?? ""));
+        setSelectItem(String(voucher.itemId ?? ""));
+        setIsEditModalOpen(true);
+        toast.success("Voucher loaded for editing.");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Payment voucher could not be loaded for editing.");
+      }
+    } else if (key === "duplicate" && row.uuid) {
+      try {
+        const response = await fetch(`/api/backend/payment-vouchers/${encodeURIComponent(row.uuid)}`);
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Payment voucher could not be loaded.");
+        const detail = result.data?.data ?? result.data?.data?.data ?? result.data ?? result;
+        if (!detail || typeof detail !== "object") throw new Error("Payment voucher details were invalid.");
+        const voucher = detail as Record<string, unknown>;
+        const entries = Array.isArray(voucher.entries) ? voucher.entries : [];
+        const createResponse = await fetch("/api/backend/payment-vouchers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", accept: "application/json" },
+          body: JSON.stringify({
+            date: String(voucher.date ?? "").slice(0, 10),
+            projectType: voucher.projectType ?? "",
+            projectId: voucher.projectId ?? "",
+            workId: voucher.workId ?? "",
+            taskId: voucher.taskId ?? "",
+            siteId: voucher.siteId ?? "",
+            accountId: voucher.accountId ?? "",
+            paymentMethod: voucher.paymentMethod ?? "",
+            isCheque: Boolean(voucher.isCheque),
+            chequeNo: voucher.chequeNo ?? "",
+            comment: `Copy of ${voucher.comment ?? row.comment}`,
+            amount: Number(voucher.amount ?? row.total),
+            invoiceId: voucher.invoiceId ?? "",
+            itemId: voucher.itemId ?? "",
+            attachmentUrl: voucher.attachmentUrl ?? "",
+            entries,
+          }),
+        });
+        const createResult = await createResponse.json();
+        if (!createResponse.ok || createResult.success === false) {
+          throw new Error(createResult.message || "Payment voucher could not be duplicated.");
+        }
+        toast.success("Payment voucher duplicated successfully.");
+        await fetchVouchers();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Payment voucher could not be duplicated.");
       }
     } else {
-      alert(`Action ${key.toUpperCase()} executed for voucher ${row.code}`);
+      toast(`${key.toUpperCase()} action is ready for voucher ${row.code}`);
     }
   };
 
@@ -225,6 +399,22 @@ export default function PaymentVoucherPage() {
   const startIdx = (safePage - 1) * entriesPerPage;
   const visibleRows = filteredRows.slice(startIdx, startIdx + entriesPerPage);
 
+  const exportFilteredRows = () => {
+    const header = ["Voucher No", "Date", "Project", "Title", "Debit Account", "Payment Method", "Amount", "Comment", "Status"];
+    const escapeCsv = (value: string | number) => `"${String(value).replaceAll('"', '""')}"`;
+    const lines = filteredRows.map((row) => [
+      row.code, row.date, row.project, row.titleOfWork, row.debit, row.credit, row.total, row.comment, row.status,
+    ].map(escapeCsv).join(","));
+    const blob = new Blob([[header.map(escapeCsv).join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `payment-vouchers-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("Payment voucher Excel-compatible CSV downloaded.");
+  };
+
   return (
     <div className="w-full max-w-full overflow-x-hidden flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 p-2 text-xs">
       {/* Top Header Bar */}
@@ -240,7 +430,7 @@ export default function PaymentVoucherPage() {
         </nav>
 
         <button
-          onClick={() => alert("Going back")}
+          onClick={() => window.history.back()}
           className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded bg-[#E55353] hover:bg-rose-600 text-white transition-colors cursor-pointer shrink-0 shadow-xs"
         >
           <ArrowLeft className="w-3 h-3" />
@@ -353,11 +543,18 @@ export default function PaymentVoucherPage() {
                 <select
                   value={selectedAccount}
                   onChange={(e) => setSelectedAccount(e.target.value)}
+                  required
                   className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-1 text-[11px] focus:outline-none focus:border-indigo-500 truncate"
                 >
                   <option value="">Select Chart Of Account_id</option>
-                  <option value="Riva Steel Mils">Riva Steel Mils</option>
-                  <option value="Sagor Kumar">Sagor Kumar</option>
+                  {accounts.map((account) => {
+                    const accountId = String(account.uuid ?? account.id ?? "");
+                    return (
+                      <option key={accountId} value={accountId}>
+                        {account.name ?? accountId}
+                      </option>
+                    );
+                  })}
                 </select>
                 <button
                   type="button"
@@ -391,6 +588,7 @@ export default function PaymentVoucherPage() {
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
+                required
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-1 text-[11px] focus:outline-none focus:border-indigo-500"
               >
                 <option value="">Select Payment Method</option>
@@ -432,6 +630,7 @@ export default function PaymentVoucherPage() {
                 placeholder="Amount"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                required
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-1 text-[11px] focus:outline-none focus:border-indigo-500"
               />
             </div>
@@ -486,9 +685,10 @@ export default function PaymentVoucherPage() {
           <div className="pt-0.5 flex justify-center">
             <button
               type="submit"
+              disabled={isSubmitting}
               className="px-5 py-1 bg-[#635BFF] hover:bg-indigo-700 text-white font-semibold text-xs rounded transition-colors cursor-pointer shadow-xs"
             >
-              Submit
+              {isSubmitting ? (editUuid ? "Replacing..." : "Saving...") : editUuid ? "Save Edited Voucher" : "Submit"}
             </button>
           </div>
         </form>
@@ -579,14 +779,14 @@ export default function PaymentVoucherPage() {
 
                 <button
                   type="button"
-                  onClick={() => alert("Export PDF")}
+                  onClick={() => window.print()}
                   className="px-2 py-0.5 bg-[#E55353] hover:bg-rose-600 text-white rounded text-[10px] font-bold shrink-0 flex items-center gap-0.5 cursor-pointer"
                 >
                   <FileText className="w-3 h-3" /> PDF
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Export Excel")}
+                  onClick={exportFilteredRows}
                   className="px-2 py-0.5 bg-[#2EB85C] hover:bg-emerald-600 text-white rounded text-[10px] font-bold shrink-0 flex items-center gap-0.5 cursor-pointer"
                 >
                   <FileSpreadsheet className="w-3 h-3" /> Excel
@@ -645,7 +845,13 @@ export default function PaymentVoucherPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-                {visibleRows.length > 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={16} className="px-3 py-6 text-center text-slate-500">
+                      Loading payment vouchers...
+                    </td>
+                  </tr>
+                ) : visibleRows.length > 0 ? (
                   visibleRows.map((row) => (
                     <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                       <td className="px-1 py-1 truncate">{row.sl}</td>
@@ -857,6 +1063,89 @@ export default function PaymentVoucherPage() {
                   className="px-4 py-1 bg-[#635BFF] hover:bg-indigo-700 text-white text-xs rounded cursor-pointer"
                 >
                   Submit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {viewVoucher && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3">
+          <div className="max-h-[85vh] w-full max-w-lg overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-slate-800">
+              <h3 className="text-xs font-semibold text-slate-800 dark:text-slate-100">Payment Voucher Details</h3>
+              <button
+                type="button"
+                onClick={() => setViewVoucher(null)}
+                className="rounded bg-[#E55353] p-0.5 text-white hover:bg-rose-600"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="grid max-h-[70vh] grid-cols-2 gap-x-3 gap-y-2 overflow-y-auto p-3 text-[11px]">
+              {Object.entries(viewVoucher).map(([key, value]) => (
+                <div key={key} className="border-b border-slate-100 pb-1 dark:border-slate-800">
+                  <div className="font-medium text-slate-500">{key}</div>
+                  <div className="break-words text-slate-800 dark:text-slate-100">
+                    {value === null || value === undefined ? "—" : typeof value === "object" ? JSON.stringify(value) : String(value)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-xs">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Edit Payment Voucher</h3>
+              <button
+                type="button"
+                onClick={() => { setIsEditModalOpen(false); setEditUuid(""); }}
+                className="rounded bg-[#E55353] p-1 text-white hover:bg-rose-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <form onSubmit={handleFormSubmit} className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
+              <label className="space-y-1 text-[11px]">Date
+                <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-950" />
+              </label>
+              <label className="space-y-1 text-[11px]">Project
+                <input required value={project} onChange={(e) => setProject(e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-950" />
+              </label>
+              <label className="space-y-1 text-[11px]">Title of work
+                <input value={titleOfWork} onChange={(e) => setTitleOfWork(e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-950" />
+              </label>
+              <label className="space-y-1 text-[11px]">Account
+                <select required value={selectedAccount} onChange={(e) => setSelectedAccount(e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-950">
+                  <option value="">Select account</option>
+                  {accounts.map((account) => <option key={String(account.uuid ?? account.id)} value={String(account.uuid ?? account.id)}>{account.name ?? account.uuid ?? account.id}</option>)}
+                </select>
+              </label>
+              <label className="space-y-1 text-[11px]">Payment method
+                <select required value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-950">
+                  <option value="">Select payment method</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Bank Check">Bank Check</option>
+                </select>
+              </label>
+              <label className="space-y-1 text-[11px]">Amount
+                <input type="number" min="0.01" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-950" />
+              </label>
+              <label className="space-y-1 text-[11px]">Cheque number
+                <input value={chequeNo} onChange={(e) => setChequeNo(e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-950" />
+              </label>
+              <label className="space-y-1 text-[11px] sm:col-span-2">Comment
+                <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} className="w-full rounded border border-slate-300 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-950" />
+              </label>
+              <div className="flex justify-end gap-2 sm:col-span-2">
+                <button type="button" onClick={() => { setIsEditModalOpen(false); setEditUuid(""); }} className="rounded bg-slate-400 px-4 py-1.5 text-xs text-white">Cancel</button>
+                <button type="submit" disabled={isSubmitting} className="rounded bg-[#635BFF] px-4 py-1.5 text-xs text-white disabled:opacity-50">
+                  {isSubmitting ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>
