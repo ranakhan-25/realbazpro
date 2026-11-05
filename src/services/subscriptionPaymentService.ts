@@ -67,3 +67,18 @@ export async function getSubscriptionPaymentHistory(params: {
   const response = await api.get("/subscription-payments/history", { params });
   return response.data?.data ?? response.data;
 }
+
+/**
+ * Returns the backend URL for the invoice of a specific transaction.
+ * Opens as a printable HTML page in the browser by default.
+ * Pass format="pdf" to trigger a direct PDF download.
+ */
+export function getInvoiceUrl(
+  tranId: string,
+  format: "html" | "pdf" = "html",
+): string {
+  const base =
+    process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ??
+    "http://localhost:5002/realbizpro/api/v1";
+  return `${base}/subscription-payments/${encodeURIComponent(tranId)}/invoice?format=${format}`;
+}
