@@ -8,6 +8,7 @@ import {
   Clock3,
   FolderClosed,
   Landmark,
+  RotateCcw,
   Trash2,
   Users,
 } from "lucide-react";
@@ -18,6 +19,8 @@ import {
   getProjects,
   getShareUsers,
   rejectInvestment,
+  restoreInvestment,
+  softDeleteInvestment,
 } from "./api";
 import type { ShareProjectRecord } from "./types";
 import { ShareProjectPage } from "./_components/ShareProjectPage";
@@ -46,10 +49,30 @@ export default function ShareProjectDashboardPage() {
   const [categoryCount, setCategoryCount] = useState<number | null>(null);
   const [trashCount, setTrashCount] = useState<number | null>(null);
   const [investments, setInvestments] = useState<any[]>([]);
+  const [trashInvestments, setTrashInvestments] = useState<any[]>([]);
+  const [investmentTrashView, setInvestmentTrashView] = useState(false);
   const [investmentActionError, setInvestmentActionError] = useState("");
   const [actionLoadingUuid, setActionLoadingUuid] = useState<string | null>(
     null,
   );
+
+  async function loadInvestments() {
+    try {
+      const rows = await getInvestments();
+      setInvestments(rows);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function loadTrashInvestments() {
+    try {
+      const rows = await getInvestments({ trash: true });
+      setTrashInvestments(rows);
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   async function handleApproveInvestment(uuid: string) {
     if (!window.confirm("Approve this investment?")) return;
@@ -64,14 +87,12 @@ export default function ShareProjectDashboardPage() {
     );
     try {
       await approveInvestment(uuid);
-      const rows = await getInvestments();
-      setInvestments(rows);
+      await loadInvestments();
     } catch (e) {
       const msg =
         e instanceof Error ? e.message : "Failed to approve investment.";
       setInvestmentActionError(msg);
-      const rows = await getInvestments();
-      setInvestments(rows);
+      await loadInvestments();
     } finally {
       setActionLoadingUuid(null);
     }
@@ -91,18 +112,53 @@ export default function ShareProjectDashboardPage() {
     );
     try {
       await rejectInvestment(uuid, reason.trim());
-      const rows = await getInvestments();
-      setInvestments(rows);
+      await loadInvestments();
     } catch (e) {
       const msg =
         e instanceof Error ? e.message : "Failed to reject investment.";
       setInvestmentActionError(msg);
-      const rows = await getInvestments();
-      setInvestments(rows);
+      await loadInvestments();
     } finally {
       setActionLoadingUuid(null);
     }
   }
+
+  async function handleDeleteInvestment(uuid: string) {
+    if (!window.confirm("Are you sure you want to soft delete this investment?")) return;
+    setActionLoadingUuid(uuid);
+    setInvestmentActionError("");
+    setInvestments((prev) => prev.filter((inv) => String(inv.uuid) !== String(uuid)));
+    try {
+      await softDeleteInvestment(uuid);
+      await Promise.all([loadInvestments(), loadTrashInvestments()]);
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : "Failed to delete investment.";
+      setInvestmentActionError(msg);
+      await loadInvestments();
+    } finally {
+      setActionLoadingUuid(null);
+    }
+  }
+
+  async function handleRestoreInvestment(uuid: string) {
+    if (!window.confirm("Are you sure you want to restore this investment?")) return;
+    setActionLoadingUuid(uuid);
+    setInvestmentActionError("");
+    setTrashInvestments((prev) => prev.filter((inv) => String(inv.uuid) !== String(uuid)));
+    try {
+      await restoreInvestment(uuid);
+      await Promise.all([loadInvestments(), loadTrashInvestments()]);
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : "Failed to restore investment.";
+      setInvestmentActionError(msg);
+      await loadTrashInvestments();
+    } finally {
+      setActionLoadingUuid(null);
+    }
+  }
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -114,14 +170,16 @@ export default function ShareProjectDashboardPage() {
       getCategories(),
       getProjects({ trash: true }),
       getInvestments(),
+      getInvestments({ trash: true }),
     ])
       .then(
-        ([projectRows, userRows, categoryRows, trashRows, investmentRows]) => {
+        ([projectRows, userRows, categoryRows, trashRows, investmentRows, trashInvestmentRows]) => {
           setProjects(projectRows);
           setUserCount(userRows.length);
           setCategoryCount(categoryRows.length);
           setTrashCount(trashRows.length);
           setInvestments(investmentRows);
+          setTrashInvestments(trashInvestmentRows);
         },
       )
       .catch((cause) =>
@@ -347,19 +405,175 @@ export default function ShareProjectDashboardPage() {
         )}
         {activeTab === "investments" && (
           <div className={card}>
-            <div className="border-b border-slate-100 pb-4">
-              <h2 className="font-semibold text-slate-900">
-                Prepared Investments
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Confirmed investments submitted from public project pages.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="font-semibold text-slate-900">
+                  {investmentTrashView ? "Trash Investments" : "Prepared Investments"}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {investmentTrashView
+                    ? "Soft-deleted investments. Super Admin can restore them anytime."
+                    : "Confirmed and prepared investments submitted from public project pages."}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInvestmentTrashView(false);
+                    void loadInvestments();
+                  }}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${
+                    !investmentTrashView
+                      ? "bg-[#2ed573] text-white shadow-sm"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  Active ({investments.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInvestmentTrashView(true);
+                    void loadTrashInvestments();
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition ${
+                    investmentTrashView
+                      ? "bg-red-500 text-white shadow-sm"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Trash ({trashInvestments.length})
+                </button>
+              </div>
             </div>
+
+            {investmentActionError && (
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {investmentActionError}
+              </div>
+            )}
+
             {loading ? (
               <p className="py-6 text-sm text-slate-500">Loading...</p>
-            ) : investments.length === 0 ? (
+            ) : !investmentTrashView ? (
+              investments.length === 0 ? (
+                <p className="py-8 text-center text-sm text-slate-500">
+                  No active investments found.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-xs text-slate-500">
+                        <th className="py-3 pr-4">Investor</th>
+                        <th className="py-3 pr-4">Project</th>
+                        <th className="py-3 pr-4">Shares</th>
+                        <th className="py-3 pr-4">Total</th>
+                        <th className="py-3 pr-4">Status</th>
+                        <th className="py-3 pr-4">Date</th>
+                        <th className="py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {investments.map((investment) => (
+                        <tr
+                          key={String(investment.uuid)}
+                          className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50"
+                        >
+                          <td className="py-3 pr-4 font-medium text-slate-800">
+                            {investment.investor?.name ||
+                              investment.investorName ||
+                              investment.investor?.email ||
+                              investment.investorEmail ||
+                              "-"}
+                          </td>
+                          <td className="py-3 pr-4">
+                            {investment.project?.uuid ||
+                            investment.projectUuid ? (
+                              <Link
+                                href={`/admin/share-project/projects/${investment.project?.uuid || investment.projectUuid}`}
+                                className="font-semibold text-emerald-600 hover:underline"
+                              >
+                                {investment.project?.name || "View Project"}
+                              </Link>
+                            ) : (
+                              <span>{investment.project?.name || "-"}</span>
+                            )}
+                          </td>
+                          <td className="py-3 pr-4">{investment.quantity}</td>
+                          <td className="py-3 pr-4 font-semibold text-slate-900">
+                            {Number(investment.totalAmount || 0).toLocaleString()}
+                          </td>
+                          <td className="py-3 pr-4">
+                            <span
+                              className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                                investment.status === "confirmed"
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : investment.status === "cancelled"
+                                  ? "bg-red-50 text-red-700"
+                                  : "bg-amber-50 text-amber-700"
+                              }`}
+                            >
+                              {investment.status}
+                            </span>
+                          </td>
+                          <td className="py-3 pr-4 text-slate-500">
+                            {investment.createdAt
+                              ? new Date(investment.createdAt).toLocaleDateString(
+                                  "en-GB",
+                                )
+                              : "-"}
+                          </td>
+                          <td className="py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {investment.status === "prepared" && (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={actionLoadingUuid === investment.uuid}
+                                    onClick={() =>
+                                      handleApproveInvestment(String(investment.uuid))
+                                    }
+                                    className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                                  >
+                                    {actionLoadingUuid === investment.uuid ? "..." : "Approve"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={actionLoadingUuid === investment.uuid}
+                                    onClick={() =>
+                                      handleRejectInvestment(String(investment.uuid))
+                                    }
+                                    className="rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                                  >
+                                    {actionLoadingUuid === investment.uuid ? "..." : "Reject"}
+                                  </button>
+                                </>
+                              )}
+                              <button
+                                type="button"
+                                title="Soft Delete Investment"
+                                disabled={actionLoadingUuid === investment.uuid}
+                                onClick={() =>
+                                  handleDeleteInvestment(String(investment.uuid))
+                                }
+                                className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            ) : trashInvestments.length === 0 ? (
               <p className="py-8 text-center text-sm text-slate-500">
-                No investments found.
+                No soft-deleted investments found in trash.
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -371,18 +585,21 @@ export default function ShareProjectDashboardPage() {
                       <th className="py-3 pr-4">Shares</th>
                       <th className="py-3 pr-4">Total</th>
                       <th className="py-3 pr-4">Status</th>
-                      <th className="py-3">Date</th>
+                      <th className="py-3 pr-4">Deleted At</th>
+                      <th className="py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {investments.map((investment) => (
+                    {trashInvestments.map((investment) => (
                       <tr
                         key={String(investment.uuid)}
-                        className="border-b border-slate-100 last:border-0"
+                        className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50"
                       >
                         <td className="py-3 pr-4 font-medium text-slate-800">
                           {investment.investor?.name ||
+                            investment.investorName ||
                             investment.investor?.email ||
+                            investment.investorEmail ||
                             "-"}
                         </td>
                         <td className="py-3 pr-4">
@@ -403,72 +620,31 @@ export default function ShareProjectDashboardPage() {
                           {Number(investment.totalAmount || 0).toLocaleString()}
                         </td>
                         <td className="py-3 pr-4">
-                          <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+                          <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
                             {investment.status}
                           </span>
                         </td>
-                        <td className="py-3 text-slate-500">
-                          {investment.createdAt
-                            ? new Date(investment.createdAt).toLocaleDateString(
+                        <td className="py-3 pr-4 text-slate-500">
+                          {investment.deletedAt
+                            ? new Date(investment.deletedAt).toLocaleDateString(
                                 "en-GB",
                               )
                             : "-"}
                         </td>
-                        <td className="py-3">
-                          <div className="flex items-center gap-2">
-                            {investment.status === "prepared" && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (
-                                      window.confirm("Approve this investment?")
-                                    )
-                                      void approveInvestment(
-                                        String(investment.uuid),
-                                      )
-                                        .then(() =>
-                                          getInvestments().then(setInvestments),
-                                        )
-                                        .catch((e) =>
-                                          setInvestmentActionError(
-                                            e instanceof Error
-                                              ? e.message
-                                              : "Failed",
-                                          ),
-                                        );
-                                  }}
-                                  className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const reason =
-                                      window.prompt("Rejection reason:");
-                                    if (reason)
-                                      void rejectInvestment(
-                                        String(investment.uuid),
-                                        reason,
-                                      )
-                                        .then(() =>
-                                          getInvestments().then(setInvestments),
-                                        )
-                                        .catch((e) =>
-                                          setInvestmentActionError(
-                                            e instanceof Error
-                                              ? e.message
-                                              : "Failed",
-                                          ),
-                                        );
-                                  }}
-                                  className="rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
-                                >
-                                  Reject
-                                </button>
-                              </>
-                            )}
+                        <td className="py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              title="Restore Investment"
+                              disabled={actionLoadingUuid === investment.uuid}
+                              onClick={() =>
+                                handleRestoreInvestment(String(investment.uuid))
+                              }
+                              className="flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition disabled:opacity-50"
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                              {actionLoadingUuid === investment.uuid ? "..." : "Restore"}
+                            </button>
                           </div>
                         </td>
                       </tr>
