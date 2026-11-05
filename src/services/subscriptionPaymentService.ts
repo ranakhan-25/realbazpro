@@ -57,13 +57,15 @@ export async function initiateSubscriptionPayment(
   return response.data?.data ?? response.data;
 }
 
-export async function getSubscriptionPaymentHistory(params: {
-  page?: number;
-  limit?: number;
-  status?: string;
-  organizationId?: number | string;
-  search?: string;
-} = {}) {
+export async function getSubscriptionPaymentHistory(
+  params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    organizationId?: number | string;
+    search?: string;
+  } = {},
+) {
   const response = await api.get("/subscription-payments/history", { params });
   return response.data?.data ?? response.data;
 }
@@ -81,4 +83,50 @@ export function getInvoiceUrl(
     process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ??
     "http://localhost:5002/realbizpro/api/v1";
   return `${base}/subscription-payments/${encodeURIComponent(tranId)}/invoice?format=${format}`;
+}
+
+export interface PublicCheckoutPayload {
+  planId: number | string;
+  billingCycle?: "monthly" | "quarterly" | "half_yearly" | "yearly";
+  organizationName: string;
+  organizationCode?: string;
+  adminName: string;
+  adminEmail: string;
+  adminUsername?: string;
+  adminPassword: string;
+  adminPhone?: string;
+  organizationAddress?: string;
+}
+
+export interface PublicCheckoutResponse {
+  success: boolean;
+  isFree?: boolean;
+  gatewayUrl?: string;
+  tranId?: string;
+  amount?: number;
+  currency?: string;
+  planName?: string;
+  billingCycle?: string;
+  message?: string;
+  loginUrl?: string;
+  organization?: {
+    id: number | string;
+    name: string;
+    code: string;
+  };
+  user?: {
+    id: number | string;
+    username: string;
+    email: string;
+  };
+}
+
+export async function publicSubscriptionCheckout(
+  payload: PublicCheckoutPayload,
+): Promise<PublicCheckoutResponse> {
+  const response = await api.post(
+    "/subscription-payments/public-checkout",
+    payload,
+  );
+  return response.data?.data ?? response.data;
 }
