@@ -1129,29 +1129,41 @@ function PermissionForm({
     setFeatureId(idStr);
     const selected = featuresList.find((f) => String(f.id) === idStr);
     const rawName = selected?.name || `feature_${idStr}`;
-    // Generate clean semantic slug without pipes or spaces (e.g. "inbound_cargo_customs" or "shipments.inbound")
-    const cleanSegments = rawName
+
+    // Split hierarchy into segments and format into clean dot notation (e.g. "Shipments & Freight | Inbound Cargo Customs" -> "cargo.customs")
+    const cleanWords = rawName
       .toLowerCase()
       .split(/\s*\|\s*|\s*>\s*|\s*::\s*/)
       .map((s) =>
         s
           .trim()
-          .replace(/[^a-z0-9_-]+/g, "_")
-          .replace(/^_+|_+$/g, ""),
+          .replace(/[^a-z0-9]+/g, ".")
+          .replace(/^\.+|\.+$/g, ""),
       )
       .filter(Boolean);
+
+    // Prefer specific sub-feature terms in dot notation
+    const lastPart = cleanWords[cleanWords.length - 1] || "feature";
+    const subSegments = lastPart
+      .split(".")
+      .filter((w) => !["inbound", "outbound", "and", "&"].includes(w));
     const baseSlug =
-      cleanSegments.length > 1
-        ? cleanSegments.slice(-1)[0]
-        : cleanSegments[0] || `feature_${idStr}`;
-    setResource(baseSlug);
+      subSegments.length >= 2
+        ? `${subSegments[0]}.${subSegments[1]}`
+        : lastPart;
+
+    setResource(baseSlug.replace(/\./g, "_"));
     setKey(`${baseSlug}.${action}`);
   };
 
   const handleSelectAction = (act: string) => {
     setAction(act);
-    const baseSlug = resource || "permission";
-    setKey(`${baseSlug}.${act}`);
+    const currentBase = key
+      ? key.substring(0, key.lastIndexOf("."))
+      : resource
+        ? resource.replace(/_/g, ".")
+        : "permission";
+    setKey(`${currentBase}.${act}`);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -1189,7 +1201,7 @@ function PermissionForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {formError && (
         <div
           role="alert"
@@ -1199,32 +1211,32 @@ function PermissionForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {/* FEATURE SELECTOR */}
-        <div className="sm:col-span-2">
-          <SearchablePermissionSelect
-            id="perm-feature"
-            label="Pick Feature"
-            placeholder={
-              loadingFeatures
-                ? "Loading available features..."
-                : "Search and pick a feature..."
-            }
-            value={featureId}
-            options={featuresList.map((feature) => ({
-              value: String(feature.id),
-              label: feature.name,
-              description: feature.module?.name
-                ? `Module: ${feature.module.name}`
-                : undefined,
-            }))}
-            primaryColor={primaryColor}
-            disabled={saving || loadingFeatures}
-            required
-            onChange={handleSelectFeature}
-          />
-        </div>
+      {/* FEATURE SELECTOR */}
+      <div>
+        <SearchablePermissionSelect
+          id="perm-feature"
+          label="Pick Feature"
+          placeholder={
+            loadingFeatures
+              ? "Loading available features..."
+              : "Search and pick a feature..."
+          }
+          value={featureId}
+          options={featuresList.map((feature) => ({
+            value: String(feature.id),
+            label: feature.name,
+            description: feature.module?.name
+              ? `Module: ${feature.module.name}`
+              : undefined,
+          }))}
+          primaryColor={primaryColor}
+          disabled={saving || loadingFeatures}
+          required
+          onChange={handleSelectFeature}
+        />
+      </div>
 
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* ACCESS ACTION */}
         <div>
           <SearchablePermissionSelect
@@ -1258,7 +1270,7 @@ function PermissionForm({
             id="perm-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. View Customer Invoices"
+            placeholder="e.g. View Cargo Customs"
             maxLength={150}
             required
             disabled={saving}
@@ -1273,96 +1285,43 @@ function PermissionForm({
             }}
           />
         </div>
+      </div>
 
-        {/* GENERATED PERMISSION KEY & DEVELOPER GUARD USAGE */}
-        <div className="sm:col-span-2 space-y-3">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {/* KEY (READ ONLY) */}
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label
-                  htmlFor="perm-key"
-                  className="block text-sm font-medium text-slate-700"
-                >
-                  Permission Key (System Code)
-                </label>
-                <span className="text-[11px] font-semibold text-slate-400">
-                  Read Only
-                </span>
-              </div>
+      {/* DYNAMIC PERMISSION KEY (DISABLED INPUT BAR) */}
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label
+            htmlFor="perm-key"
+            className="block text-sm font-medium text-slate-700"
+          >
+            Permission Key (Controller Guard)
+          </label>
+          <span className="text-[11px] font-semibold text-slate-400">
+            Auto-Generated
+          </span>
+        </div>
 
-              <div className="relative">
-                <input
-                  id="perm-key"
-                  value={key}
-                  readOnly
-                  placeholder="Auto-generated on feature & action select..."
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-100/80 px-3 pr-20 font-mono text-xs font-semibold text-slate-800 outline-none select-all cursor-not-allowed"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (key) {
-                      navigator.clipboard.writeText(key);
-                      toast.success(`Copied permission key: ${key}`);
-                    }
-                  }}
-                  disabled={!key}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 shadow-2xs border border-slate-200 hover:bg-slate-50 disabled:opacity-40"
-                >
-                  Copy Key
-                </button>
-              </div>
-            </div>
-
-            {/* RESOURCE (READ ONLY) */}
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label
-                  htmlFor="perm-resource"
-                  className="block text-sm font-medium text-slate-700"
-                >
-                  Resource Slug
-                </label>
-                <span className="text-[11px] font-semibold text-slate-400">
-                  Read Only
-                </span>
-              </div>
-
-              <input
-                id="perm-resource"
-                value={resource}
-                readOnly
-                placeholder="Auto-generated resource slug..."
-                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-100/80 px-3 font-mono text-xs text-slate-600 outline-none select-all cursor-not-allowed"
-              />
-            </div>
-          </div>
-
-          {/* DEVELOPER CODE SNIPPET PREVIEW */}
-          {key && (
-            <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 text-xs text-blue-900">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-blue-800 flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-blue-600 inline-block" />
-                  Developer Controller Guard Usage:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(`@Permissions('${key}')`);
-                    toast.success("Copied @Permissions snippet to clipboard!");
-                  }}
-                  className="font-bold text-blue-700 hover:underline text-[11px]"
-                >
-                  Copy Snippet
-                </button>
-              </div>
-              <code className="mt-1 block font-mono text-xs bg-white px-2.5 py-1.5 rounded-lg border border-blue-200 text-blue-950 font-bold">
-                @Permissions(&apos;{key}&apos;)
-              </code>
-            </div>
-          )}
+        <div className="relative">
+          <input
+            id="perm-key"
+            value={key ? `@Permissions('${key}')` : ""}
+            disabled
+            placeholder="@Permissions('cargo.customs.read')"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-100/90 px-3.5 pr-24 font-mono text-xs font-bold text-blue-900 outline-none select-all cursor-not-allowed opacity-90 shadow-2xs"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (key) {
+                navigator.clipboard.writeText(`@Permissions('${key}')`);
+                toast.success(`Copied @Permissions('${key}') to clipboard!`);
+              }
+            }}
+            disabled={!key}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-white px-3 py-1.5 text-[11px] font-bold text-blue-700 shadow-2xs border border-blue-200 hover:bg-blue-50 disabled:opacity-40 transition"
+          >
+            Copy Guard
+          </button>
         </div>
       </div>
 
