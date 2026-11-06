@@ -483,11 +483,21 @@ export default function ShareProjectDashboardPage() {
                           className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50"
                         >
                           <td className="py-3 pr-4 font-medium text-slate-800">
-                            {investment.investor?.name ||
-                              investment.investorName ||
-                              investment.investor?.email ||
-                              investment.investorEmail ||
-                              "-"}
+                            <div className="font-semibold text-slate-900">
+                              {investment.investorName ||
+                                investment.investor?.name ||
+                                investment.investorEmail ||
+                                investment.investor?.email ||
+                                "-"}
+                            </div>
+                            {(investment.investorEmail || investment.investorPhone || investment.investor?.email) && (
+                              <div className="text-xs text-slate-400">
+                                {investment.investorEmail || investment.investor?.email}
+                                {(investment.investorPhone || investment.investor?.phone)
+                                  ? ` • ${investment.investorPhone || investment.investor?.phone}`
+                                  : ""}
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 pr-4">
                             {investment.project?.uuid ||
@@ -596,11 +606,21 @@ export default function ShareProjectDashboardPage() {
                         className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50"
                       >
                         <td className="py-3 pr-4 font-medium text-slate-800">
-                          {investment.investor?.name ||
-                            investment.investorName ||
-                            investment.investor?.email ||
-                            investment.investorEmail ||
-                            "-"}
+                          <div className="font-semibold text-slate-900">
+                              {investment.investorName ||
+                                investment.investor?.name ||
+                                investment.investorEmail ||
+                                investment.investor?.email ||
+                                "-"}
+                            </div>
+                            {(investment.investorEmail || investment.investorPhone || investment.investor?.email) && (
+                              <div className="text-xs text-slate-400">
+                                {investment.investorEmail || investment.investor?.email}
+                                {(investment.investorPhone || investment.investor?.phone)
+                                  ? ` • ${investment.investorPhone || investment.investor?.phone}`
+                                  : ""}
+                              </div>
+                            )}
                         </td>
                         <td className="py-3 pr-4">
                           {investment.project?.uuid ||
