@@ -188,13 +188,10 @@ export interface GetOrganizationUsersResponse {
    HEADERS
 ========================================================= */
 
+import { getStoredAccessToken } from "@/lib/admin-auth/adminAuthStorage";
+
 function getHeaders(): HeadersInit {
-  const token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("admin_access_token") ||
-        localStorage.getItem("access_token") ||
-        localStorage.getItem("token")
-      : null;
+  const token = getStoredAccessToken();
 
   return {
     Accept: "application/json",
