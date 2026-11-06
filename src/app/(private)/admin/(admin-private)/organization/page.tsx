@@ -2,7 +2,11 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { useTheme } from "@/lib/theme";
+import SubscriptionPaymentModal from "@/components/modules/SubscriptionPaymentModal";
+import PaymentHistoryTable from "@/components/modules/PaymentHistoryTable";
 import {
   getOrganizations,
   getOrganization,
@@ -51,8 +55,27 @@ export default function UserOrganizationPage() {
   const [selectedOrg, setSelectedOrg] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [editModalTab, setEditModalTab] = useState<"general" | "entitlements">("general");
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const paymentStatus = searchParams?.get("payment");
+    const tranId = searchParams?.get("tran_id");
+    const message = searchParams?.get("message");
+
+    if (paymentStatus === "success") {
+      toast.success(`Subscription payment succeeded! Transaction: ${tranId || ""}`);
+    } else if (paymentStatus === "failed") {
+      toast.error(`Payment failed or was declined. ${message || ""}`);
+    } else if (paymentStatus === "cancelled") {
+      toast.info("Payment checkout was cancelled.");
+    } else if (paymentStatus === "error") {
+      toast.error(`Payment verification failed: ${message || ""}`);
+    }
+  }, [searchParams]);
 
   // Module Accordion & Tree States
   const [expandedModuleKeys, setExpandedModuleKeys] = useState<Set<string | number>>(new Set());
@@ -449,9 +472,19 @@ export default function UserOrganizationPage() {
                     Subscription Lifecycle & Limits
                   </h3>
                 </div>
-                <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  {selectedOrg.plan?.billingCycle || "Monthly"} Cycle
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    {selectedOrg.plan?.billingCycle || "Monthly"} Cycle
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition active:scale-95"
+                  >
+                    <CreditCard className="w-3.5 h-3.5" />
+                    Renew / Pay Plan
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -874,12 +907,26 @@ export default function UserOrganizationPage() {
         </div>
       </div>
 
+      {/* Payment History with Invoices */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
+        <PaymentHistoryTable organizationId={selectedOrg?.id} />
+      </div>
+
       <OrgEditModal
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
         orgData={selectedOrg}
         initialTab={editModalTab}
         onUpdate={handleOrgUpdated}
+      />
+
+      <SubscriptionPaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        organization={selectedOrg}
+        onSuccess={() => {
+          loadData();
+        }}
       />
     </div>
   );

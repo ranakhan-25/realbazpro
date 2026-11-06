@@ -1,9 +1,16 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import type { Role } from "@/services/roleService";
-import { getFeaturesTreePermissions, type FeatureTreeNode } from "@/services/roleService";
+import {
+  getFeaturesTreePermissions,
+  type FeatureTreeNode,
+} from "@/services/roleService";
 import { getUserAccess } from "@/services/userAccessService";
-import { deleteModule, type ModuleTreeNode } from "@/services/moduleTreeService";
+import {
+  deleteModule,
+  type ModuleTreeNode,
+} from "@/services/moduleTreeService";
 import ModuleTreeBuilderModal from "@/components/modules/ModuleTreeBuilderModal";
 import { useTheme } from "@/lib/theme";
 import { AnimatePresence, motion } from "framer-motion";
@@ -18,6 +25,9 @@ import {
   ChevronDown,
   Plus,
   Edit3,
+  Edit,
+  Eye,
+  Check,
   Trash2,
   Layers,
   Sparkles,
@@ -209,12 +219,13 @@ function Checkbox({
 ========================================================= */
 
 function formatSegmentName(seg: string): string {
-  return seg
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return seg.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function buildPathNestedTree(features: FeatureItem[], modulePath?: string): PathTreeNode[] {
+function buildPathNestedTree(
+  features: FeatureItem[],
+  modulePath?: string,
+): PathTreeNode[] {
   if (!features || features.length === 0) return [];
 
   const paths = features.map((f) => f.routePath).filter(Boolean) as string[];
@@ -231,7 +242,9 @@ function buildPathNestedTree(features: FeatureItem[], modulePath?: string): Path
     }
   }
   if (!commonPrefix && modulePath) {
-    commonPrefix = modulePath.endsWith("/") ? modulePath.slice(0, -1) : modulePath;
+    commonPrefix = modulePath.endsWith("/")
+      ? modulePath.slice(0, -1)
+      : modulePath;
   }
 
   interface RawNode {
@@ -254,7 +267,9 @@ function buildPathNestedTree(features: FeatureItem[], modulePath?: string): Path
   };
 
   for (const f of features) {
-    let p = (f.routePath || (f.code ? f.code.toLowerCase().replace(/_/g, "/") : f.name)).trim();
+    let p = (
+      f.routePath || (f.code ? f.code.toLowerCase().replace(/_/g, "/") : f.name)
+    ).trim();
     if (commonPrefix && p.startsWith(commonPrefix)) {
       p = p.slice(commonPrefix.length);
     }
@@ -307,9 +322,13 @@ function buildPathNestedTree(features: FeatureItem[], modulePath?: string): Path
       const children = finalize(raw.children, depth + 1);
       const isFolder = raw.isFolder || children.length > 0;
 
-      const selfPermIds = (raw.feature?.permissions || []).map((p) => String(p.id));
+      const selfPermIds = (raw.feature?.permissions || []).map((p) =>
+        String(p.id),
+      );
       const childPermIds = children.flatMap((c) => c.allSubtreePermissionIds);
-      const allSubtreePermissionIds = Array.from(new Set([...selfPermIds, ...childPermIds]));
+      const allSubtreePermissionIds = Array.from(
+        new Set([...selfPermIds, ...childPermIds]),
+      );
 
       return {
         key: raw.key,
@@ -377,12 +396,10 @@ function flattenTreeForDisplay(
 
     if (hasChildren && !isCollapsed) {
       result.push(
-        ...flattenTreeForDisplay(
-          node.children,
-          collapsedKeys,
-          searchQuery,
-          [...ancestorIsLast, isLast],
-        ),
+        ...flattenTreeForDisplay(node.children, collapsedKeys, searchQuery, [
+          ...ancestorIsLast,
+          isLast,
+        ]),
       );
     }
   });
@@ -404,7 +421,9 @@ export default function RolePermissionModal({
   const { primaryColor } = useTheme();
 
   const [modules, setModules] = useState<ModuleTabItem[]>([]);
-  const [activeModuleId, setActiveModuleId] = useState<string | number | null>(null);
+  const [activeModuleId, setActiveModuleId] = useState<string | number | null>(
+    null,
+  );
   const [roleName, setRoleName] = useState("");
   const [roleDescription, setRoleDescription] = useState("");
   const [roleLevel, setRoleLevel] = useState<number>(4);
@@ -413,7 +432,9 @@ export default function RolePermissionModal({
   const [saving, setSaving] = useState(false);
 
   // Global set of selected permission IDs across ALL modules
-  const [selectedPermissionIds, setSelectedPermissionIds] = useState<Set<string>>(new Set());
+  const [selectedPermissionIds, setSelectedPermissionIds] = useState<
+    Set<string>
+  >(new Set());
 
   // Tree collapsible state
   const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
@@ -421,7 +442,9 @@ export default function RolePermissionModal({
   // Module Tree Builder Modal state
   const [isTreeModalOpen, setIsTreeModalOpen] = useState(false);
   const [moduleToEdit, setModuleToEdit] = useState<ModuleTreeNode | null>(null);
-  const [selectedFeatureIndex, setSelectedFeatureIndex] = useState<number | null>(null);
+  const [selectedFeatureIndex, setSelectedFeatureIndex] = useState<
+    number | null
+  >(null);
 
   const loadLiveTree = useCallback(async () => {
     try {
@@ -433,18 +456,28 @@ export default function RolePermissionModal({
 
       // If user is a tenant admin or staff, enforce their entitled modules
       const allowedModuleIds =
-        userAccess && !userAccess.user?.isSuperUser && Array.isArray(userAccess.accessibleModules)
+        userAccess &&
+        !userAccess.user?.isSuperUser &&
+        Array.isArray(userAccess.accessibleModules)
           ? new Set(userAccess.accessibleModules.map((m) => String(m.id)))
           : null;
 
       // Group features by module
       const moduleMap = new Map<
         string,
-        { id: string | number; name: string; code?: string; pathRoute?: string; features: FeatureItem[] }
+        {
+          id: string | number;
+          name: string;
+          code?: string;
+          pathRoute?: string;
+          features: FeatureItem[];
+        }
       >();
 
       for (const feat of featureTree) {
-        const modId = feat.module?.id || (feat.moduleId ? String(feat.moduleId) : "general");
+        const modId =
+          feat.module?.id ||
+          (feat.moduleId ? String(feat.moduleId) : "general");
         const modName = feat.module?.name || "General Modules";
         const modCode = feat.module?.code;
         const modPath = feat.module?.pathRoute;
@@ -523,7 +556,9 @@ export default function RolePermissionModal({
 
   const activeModule = useMemo(() => {
     if (!modules.length || activeModuleId === null) return null;
-    return modules.find((m) => String(m.id) === String(activeModuleId)) ?? modules[0];
+    return (
+      modules.find((m) => String(m.id) === String(activeModuleId)) ?? modules[0]
+    );
   }, [modules, activeModuleId]);
 
   // Construct hierarchical path tree for the active module
@@ -563,6 +598,76 @@ export default function RolePermissionModal({
       return next;
     });
   }, []);
+
+  const toggleFeatureOp = useCallback(
+    (feature: FeatureItem, op: "view" | "write" | "delete") => {
+      const perms = feature.permissions || [];
+      if (perms.length === 0) return;
+
+      const viewPerms = perms.filter((p) => {
+        const act = (p.action || "").toLowerCase();
+        return act === "read" || act === "list" || act === "view";
+      });
+      const writePerms = perms.filter((p) => {
+        const act = (p.action || "").toLowerCase();
+        return (
+          act === "write" ||
+          act === "create" ||
+          act === "update" ||
+          act === "edit"
+        );
+      });
+      const deletePerms = perms.filter((p) => {
+        const act = (p.action || "").toLowerCase();
+        return act === "delete";
+      });
+
+      setSelectedPermissionIds((prev) => {
+        const next = new Set(prev);
+
+        const hasView =
+          viewPerms.length > 0 &&
+          viewPerms.every((p) => next.has(String(p.id)));
+        const hasWrite =
+          writePerms.length > 0 &&
+          writePerms.every((p) => next.has(String(p.id)));
+        const hasDelete =
+          deletePerms.length > 0 &&
+          deletePerms.every((p) => next.has(String(p.id)));
+
+        if (op === "view") {
+          const nextView = !hasView;
+          if (nextView) {
+            viewPerms.forEach((p) => next.add(String(p.id)));
+          } else {
+            // Turning view off also clears write & delete
+            perms.forEach((p) => next.delete(String(p.id)));
+          }
+        } else if (op === "write") {
+          const nextWrite = !hasWrite;
+          if (nextWrite) {
+            writePerms.forEach((p) => next.add(String(p.id)));
+            // Writing requires view access
+            viewPerms.forEach((p) => next.add(String(p.id)));
+          } else {
+            writePerms.forEach((p) => next.delete(String(p.id)));
+          }
+        } else if (op === "delete") {
+          const nextDelete = !hasDelete;
+          if (nextDelete) {
+            deletePerms.forEach((p) => next.add(String(p.id)));
+            // Deleting requires view access
+            viewPerms.forEach((p) => next.add(String(p.id)));
+          } else {
+            deletePerms.forEach((p) => next.delete(String(p.id)));
+          }
+        }
+
+        return next;
+      });
+    },
+    [],
+  );
 
   const toggleTreeNode = useCallback((node: PathTreeNode) => {
     const ids = node.allSubtreePermissionIds;
@@ -649,7 +754,10 @@ export default function RolePermissionModal({
   const handleEditActiveModule = useCallback(() => {
     if (!activeModule) return;
     const modNode: ModuleTreeNode = {
-      id: typeof activeModule.id === "number" ? activeModule.id : Number(activeModule.id) || undefined,
+      id:
+        typeof activeModule.id === "number"
+          ? activeModule.id
+          : Number(activeModule.id) || undefined,
       name: activeModule.name,
       code: activeModule.code || "",
       pathRoute: activeModule.pathRoute,
@@ -671,7 +779,10 @@ export default function RolePermissionModal({
   const handleAddFeatureToActiveModule = useCallback(() => {
     if (!activeModule) return;
     const modNode: ModuleTreeNode = {
-      id: typeof activeModule.id === "number" ? activeModule.id : Number(activeModule.id) || undefined,
+      id:
+        typeof activeModule.id === "number"
+          ? activeModule.id
+          : Number(activeModule.id) || undefined,
       name: activeModule.name,
       code: activeModule.code || "",
       pathRoute: activeModule.pathRoute,
@@ -692,7 +803,11 @@ export default function RolePermissionModal({
 
   const handleDeleteActiveModule = useCallback(async () => {
     if (!activeModule || !activeModule.id) return;
-    if (!window.confirm(`Are you sure you want to delete module "${activeModule.name}" and all its features?`)) {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete module "${activeModule.name}" and all its features?`,
+      )
+    ) {
       return;
     }
     try {
@@ -716,7 +831,9 @@ export default function RolePermissionModal({
 
     modules.forEach((mod) => {
       mod.features.forEach((feat) => {
-        if (feat.permissions.some((p) => selectedPermissionIds.has(String(p.id)))) {
+        if (
+          feat.permissions.some((p) => selectedPermissionIds.has(String(p.id)))
+        ) {
           featureIds.push(feat.id);
         }
       });
@@ -737,7 +854,15 @@ export default function RolePermissionModal({
     } finally {
       setSaving(false);
     }
-  }, [role, roleName, roleDescription, roleLevel, selectedPermissionIds, modules, onSave]);
+  }, [
+    role,
+    roleName,
+    roleDescription,
+    roleLevel,
+    selectedPermissionIds,
+    modules,
+    onSave,
+  ]);
 
   if (!open) return null;
 
@@ -760,12 +885,21 @@ export default function RolePermissionModal({
             <div className="flex items-center gap-2">
               <div
                 className="flex h-8 w-8 items-center justify-center rounded-lg"
-                style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+                style={{
+                  backgroundColor: `${primaryColor}15`,
+                  color: primaryColor,
+                }}
               >
                 <ShieldCheck className="h-4 w-4" />
               </div>
-              <h2 id="role-permission-modal-title" className="text-base font-bold text-[var(--foreground)]">
-                {title || (role ? "Edit Role & Dynamic Permissions" : "Create Role & Dynamic Permissions")}
+              <h2
+                id="role-permission-modal-title"
+                className="text-base font-bold text-[var(--foreground)]"
+              >
+                {title ||
+                  (role
+                    ? "Edit Role & Dynamic Permissions"
+                    : "Create Role & Dynamic Permissions")}
               </h2>
             </div>
             <button
@@ -779,7 +913,10 @@ export default function RolePermissionModal({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-1">
-              <label htmlFor="role-name" className="mb-1 block text-xs font-semibold text-[var(--foreground)]">
+              <label
+                htmlFor="role-name"
+                className="mb-1 block text-xs font-semibold text-[var(--foreground)]"
+              >
                 <span className="mr-1 text-red-500">*</span>Role Name
               </label>
               <input
@@ -793,7 +930,10 @@ export default function RolePermissionModal({
             </div>
 
             <div className="md:col-span-1">
-              <label htmlFor="role-description" className="mb-1 block text-xs font-semibold text-[var(--foreground)]">
+              <label
+                htmlFor="role-description"
+                className="mb-1 block text-xs font-semibold text-[var(--foreground)]"
+              >
                 Description
               </label>
               <input
@@ -807,7 +947,10 @@ export default function RolePermissionModal({
             </div>
 
             <div className="md:col-span-1">
-              <label htmlFor="role-level" className="mb-1 block text-xs font-semibold text-[var(--foreground)]">
+              <label
+                htmlFor="role-level"
+                className="mb-1 block text-xs font-semibold text-[var(--foreground)]"
+              >
                 Authority Tier
               </label>
               <select
@@ -852,7 +995,9 @@ export default function RolePermissionModal({
                   {selectedCount > 0 ? (
                     <span
                       className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                        isActive ? "bg-white text-blue-700" : "bg-blue-100 text-blue-700"
+                        isActive
+                          ? "bg-white text-blue-700"
+                          : "bg-blue-100 text-blue-700"
                       }`}
                     >
                       {selectedCount}
@@ -933,7 +1078,8 @@ export default function RolePermissionModal({
             </div>
           ) : !activeModule ? (
             <div className="flex min-h-[220px] items-center justify-center text-xs text-slate-400">
-              No modules or features available. Click &quot;Add Module&quot; to create one.
+              No modules or features available. Click &quot;Add Module&quot; to
+              create one.
             </div>
           ) : (
             <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xs">
@@ -983,7 +1129,11 @@ export default function RolePermissionModal({
                   <span className="text-[11px] font-medium text-slate-500">
                     Module selected:{" "}
                     <strong className="text-blue-600 font-bold">
-                      {activeModulePermissionIds.filter((id) => selectedPermissionIds.has(id)).length}
+                      {
+                        activeModulePermissionIds.filter((id) =>
+                          selectedPermissionIds.has(id),
+                        ).length
+                      }
                     </strong>{" "}
                     / {activeModulePermissionIds.length}
                   </span>
@@ -1001,11 +1151,13 @@ export default function RolePermissionModal({
                 flattenedRows.map((row) => {
                   const node = row.node;
                   const totalPerms = node.allSubtreePermissionIds.length;
-                  const selectedCount = node.allSubtreePermissionIds.filter((id) =>
-                    selectedPermissionIds.has(id),
+                  const selectedCount = node.allSubtreePermissionIds.filter(
+                    (id) => selectedPermissionIds.has(id),
                   ).length;
-                  const allSelected = totalPerms > 0 && selectedCount === totalPerms;
-                  const partiallySelected = selectedCount > 0 && selectedCount < totalPerms;
+                  const allSelected =
+                    totalPerms > 0 && selectedCount === totalPerms;
+                  const partiallySelected =
+                    selectedCount > 0 && selectedCount < totalPerms;
 
                   return (
                     <div
@@ -1033,24 +1185,45 @@ export default function RolePermissionModal({
                             type="button"
                             onClick={() => toggleCollapse(node.key)}
                             className="flex items-center gap-1 text-amber-500 hover:text-amber-600 focus:outline-none shrink-0"
-                            title={row.isCollapsed ? "Expand folder" : "Collapse folder"}
+                            title={
+                              row.isCollapsed
+                                ? "Expand folder"
+                                : "Collapse folder"
+                            }
                           >
                             {row.isCollapsed ? (
-                              <ChevronRight size={13} className="text-slate-400" />
+                              <ChevronRight
+                                size={13}
+                                className="text-slate-400"
+                              />
                             ) : (
-                              <ChevronDown size={13} className="text-slate-400" />
+                              <ChevronDown
+                                size={13}
+                                className="text-slate-400"
+                              />
                             )}
-                            {row.isCollapsed ? <Folder size={15} /> : <FolderOpen size={15} />}
+                            {row.isCollapsed ? (
+                              <Folder size={15} />
+                            ) : (
+                              <FolderOpen size={15} />
+                            )}
                           </button>
                         ) : (
-                          <FileCode2 size={15} className="text-blue-500 shrink-0 ml-4" />
+                          <FileCode2
+                            size={15}
+                            className="text-blue-500 shrink-0 ml-4"
+                          />
                         )}
 
                         {/* Node Name and Route Tag */}
                         <div className="flex items-center gap-1.5 min-w-0">
                           <button
                             type="button"
-                            onClick={() => (row.hasChildren ? toggleCollapse(node.key) : toggleTreeNode(node))}
+                            onClick={() =>
+                              row.hasChildren
+                                ? toggleCollapse(node.key)
+                                : toggleTreeNode(node)
+                            }
                             className={`truncate text-left text-xs transition hover:text-blue-600 ${
                               row.hasChildren
                                 ? "font-bold text-[var(--foreground)]"
@@ -1068,35 +1241,149 @@ export default function RolePermissionModal({
 
                       {/* Right: Granular Operations or Subtree Summary */}
                       <div className="flex items-center bg-[var(--card)] px-3 py-2">
-                        {node.feature?.permissions && node.feature.permissions.length > 0 ? (
-                          <div className="grid w-full grid-cols-2 sm:grid-cols-4 gap-2">
-                            {node.feature.permissions.map((perm) => {
-                              const checked = selectedPermissionIds.has(String(perm.id));
+                        {node.feature?.permissions &&
+                        node.feature.permissions.length > 0 ? (
+                          (() => {
+                            const perms = node.feature.permissions;
+                            const viewPerms = perms.filter((p) => {
+                              const act = (p.action || "").toLowerCase();
                               return (
-                                <label
-                                  key={String(perm.id)}
-                                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition ${
-                                    checked
-                                      ? "border-blue-500 bg-blue-50/60 text-blue-900 font-medium"
-                                      : "border-slate-100 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-slate-200"
-                                  }`}
-                                >
-                                  <Checkbox
-                                    checked={checked}
-                                    onChange={() => togglePermission(perm.id)}
-                                    ariaLabel={perm.name}
-                                  />
-                                  <span className="truncate">{perm.name}</span>
-                                </label>
+                                act === "read" ||
+                                act === "list" ||
+                                act === "view"
                               );
-                            })}
-                          </div>
+                            });
+                            const writePerms = perms.filter((p) => {
+                              const act = (p.action || "").toLowerCase();
+                              return (
+                                act === "write" ||
+                                act === "create" ||
+                                act === "update" ||
+                                act === "edit"
+                              );
+                            });
+                            const deletePerms = perms.filter((p) => {
+                              const act = (p.action || "").toLowerCase();
+                              return act === "delete";
+                            });
+
+                            const hasView =
+                              viewPerms.length > 0 &&
+                              viewPerms.every((p) =>
+                                selectedPermissionIds.has(String(p.id)),
+                              );
+                            const hasWrite =
+                              writePerms.length > 0 &&
+                              writePerms.every((p) =>
+                                selectedPermissionIds.has(String(p.id)),
+                              );
+                            const hasDelete =
+                              deletePerms.length > 0 &&
+                              deletePerms.every((p) =>
+                                selectedPermissionIds.has(String(p.id)),
+                              );
+
+                            const feat = node.feature;
+
+                            return (
+                              <div className="flex w-full items-center justify-between gap-3 flex-wrap">
+                                {/* READ, WRITE & DELETE Interactive Toggle Buttons */}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {/* READ Toggle Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      toggleFeatureOp(feat, "view")
+                                    }
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                                      hasView
+                                        ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-2xs hover:bg-emerald-200/80"
+                                        : "bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/60"
+                                    }`}
+                                    title={
+                                      hasView
+                                        ? "Click to revoke READ access"
+                                        : "Click to grant READ access"
+                                    }
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    READ
+                                    {hasView && (
+                                      <Check className="w-3 h-3 text-emerald-600 ml-0.5" />
+                                    )}
+                                  </button>
+
+                                  {/* WRITE Toggle Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      toggleFeatureOp(feat, "write")
+                                    }
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                                      hasWrite
+                                        ? "bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-800 shadow-2xs hover:bg-blue-200/80"
+                                        : "bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/60"
+                                    }`}
+                                    title={
+                                      hasWrite
+                                        ? "Click to revoke WRITE access"
+                                        : "Click to grant WRITE access"
+                                    }
+                                  >
+                                    <Edit className="w-3.5 h-3.5" />
+                                    WRITE
+                                    {hasWrite && (
+                                      <Check className="w-3 h-3 text-blue-600 ml-0.5" />
+                                    )}
+                                  </button>
+
+                                  {/* DELETE Toggle Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      toggleFeatureOp(feat, "delete")
+                                    }
+                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                                      hasDelete
+                                        ? "bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shadow-2xs hover:bg-rose-200/80"
+                                        : "bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/60"
+                                    }`}
+                                    title={
+                                      hasDelete
+                                        ? "Click to revoke DELETE access"
+                                        : "Click to grant DELETE access"
+                                    }
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    DELETE
+                                    {hasDelete && (
+                                      <Check className="w-3 h-3 text-rose-600 ml-0.5" />
+                                    )}
+                                  </button>
+                                </div>
+
+                                {/* Granular Operations Counter Badge */}
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-medium text-slate-400">
+                                    {
+                                      perms.filter((p) =>
+                                        selectedPermissionIds.has(String(p.id)),
+                                      ).length
+                                    }{" "}
+                                    / {perms.length} perms
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()
                         ) : (
                           <div className="flex w-full items-center justify-between rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-3 py-1.5 text-xs text-slate-500">
                             <span>
                               Directory container •{" "}
-                              <strong className="text-slate-700 font-semibold">{selectedCount}</strong> of{" "}
-                              {totalPerms} operations selected in subtree
+                              <strong className="text-slate-700 font-semibold">
+                                {selectedCount}
+                              </strong>{" "}
+                              of {totalPerms} operations selected in subtree
                             </span>
                             <div className="flex items-center gap-2 shrink-0">
                               <button
@@ -1130,7 +1417,10 @@ export default function RolePermissionModal({
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <ShieldCheck size={16} className="text-blue-600" />
             <span>
-              <strong className="font-bold text-slate-800">{selectedPermissionIds.size}</strong> total permissions selected across all modules
+              <strong className="font-bold text-slate-800">
+                {selectedPermissionIds.size}
+              </strong>{" "}
+              total permissions selected across all modules
             </span>
           </div>
 
