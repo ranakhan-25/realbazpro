@@ -1294,7 +1294,7 @@ function PermissionForm({
             htmlFor="perm-key"
             className="block text-sm font-medium text-slate-700"
           >
-            Permission Key (Controller Guard)
+            Permission Key
           </label>
           <span className="text-[11px] font-semibold text-slate-400">
             Auto-Generated
@@ -1304,23 +1304,23 @@ function PermissionForm({
         <div className="relative">
           <input
             id="perm-key"
-            value={key ? `@Permissions('${key}')` : ""}
+            value={key || ""}
             disabled
-            placeholder="@Permissions('cargo.customs.read')"
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-100/90 px-3.5 pr-24 font-mono text-xs font-bold text-blue-900 outline-none select-all cursor-not-allowed opacity-90 shadow-2xs"
+            placeholder="e.g. cargo.customs.read"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-100/90 px-3.5 pr-20 font-mono text-xs font-bold text-blue-900 outline-none select-all cursor-not-allowed opacity-90 shadow-2xs"
           />
           <button
             type="button"
             onClick={() => {
               if (key) {
-                navigator.clipboard.writeText(`@Permissions('${key}')`);
-                toast.success(`Copied @Permissions('${key}') to clipboard!`);
+                navigator.clipboard.writeText(key);
+                toast.success(`Copied "${key}" to clipboard!`);
               }
             }}
             disabled={!key}
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-white px-3 py-1.5 text-[11px] font-bold text-blue-700 shadow-2xs border border-blue-200 hover:bg-blue-50 disabled:opacity-40 transition"
           >
-            Copy Guard
+            Copy
           </button>
         </div>
       </div>
