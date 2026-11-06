@@ -41,7 +41,7 @@ const projectRoutes = [
   },
   {
     label: "Inventory",
-    href: "/inventory",
+    href: "/dashboard/inventory",
     icon: Boxes,
     color: "text-blue-600 bg-blue-50",
   },
