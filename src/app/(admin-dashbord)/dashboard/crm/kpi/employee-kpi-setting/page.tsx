@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Plus, Edit, Trash2, X } from "lucide-react";
+import { API_BASE, crmFetch } from "../../crm-fetch";
 
 // ==========================================
 // 1. TYPES & INTERFACES
@@ -53,11 +54,7 @@ interface KpiFormData {
 // ==========================================
 // 2. ENV & ENDPOINT SETUP
 // ==========================================
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
-
-// আপনার দেওয়া স্পেসিফিক এন্ডপয়েন্টটি এখানে যুক্ত করা হলো
-const API_BASE_URL = `${BASE_URL}/realbizpro/api/v1/crm/kpi/employee-kpi`;
+const API_BASE_URL = `${API_BASE}/crm/kpi/employee-kpi`;
 
 // ==========================================
 // 3. MAIN PAGE COMPONENT
@@ -98,13 +95,7 @@ export default function EmployeeKpiPage() {
   // ==========================================
   const safeFetch = async (url: string, options?: RequestInit) => {
     try {
-      const res = await fetch(url, {
-        ...options,
-        headers: {
-          Accept: "application/json",
-          ...options?.headers,
-        },
-      });
+      const res = await crmFetch(url, options);
 
       const contentType = res.headers.get("content-type");
 

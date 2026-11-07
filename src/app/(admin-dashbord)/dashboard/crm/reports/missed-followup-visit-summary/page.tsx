@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { crmFetch, API_ORIGIN } from "../../crm-fetch";
 
 // --- Types for Dropdowns API ---
 interface TeamOption {
@@ -61,7 +62,7 @@ interface ReportResponse {
 }
 
 export default function MissedFollowupVisitSummaryPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const baseUrl = API_ORIGIN;
 
   // --- States ---
   const [dropdownData, setDropdownData] = useState<
@@ -85,10 +86,10 @@ export default function MissedFollowupVisitSummaryPage() {
       setErrorMsg(null);
       try {
         const [dropdownRes, reportRes] = await Promise.all([
-          fetch(
+          crmFetch(
             `${baseUrl}/realbizpro/api/v1/crm/reports/missed-followup-visit-summary/dropdowns`,
           ),
-          fetch(
+          crmFetch(
             `${baseUrl}/realbizpro/api/v1/crm/reports/missed-followup-visit-summary?date=${selectedDate}&page=1&limit=100`,
           ), // High limit for client-side filtering
         ]);

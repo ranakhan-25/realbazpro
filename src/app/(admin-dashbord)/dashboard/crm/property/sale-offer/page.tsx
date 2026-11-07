@@ -60,10 +60,7 @@ export default function SaleOfferPage() {
           defaultValue: new Date().toISOString().slice(0, 10),
         },
       ]}
-      rows={[
-        { id: "1", code: "SO-3301", clientName: "Rafiq Islam", unit: "Unit 7C, Aurora Heights", price: "৳1,80,00,000", status: "Sent", date: "2026-09-05" },
-        { id: "2", code: "SO-3298", clientName: "Sharmin Akter", unit: "Plot 14B, Purbachal", price: "৳2,40,00,000", status: "Accepted", date: "2026-09-01" },
-      ]}
+      rows={[]}
     />
   );
 }

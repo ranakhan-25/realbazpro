@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Search } from "lucide-react";
+import { API_BASE, crmFetch } from "../../../crm-fetch";
 
 // ==========================================
 // 1. TYPES & INTERFACES
@@ -30,9 +31,7 @@ interface ReportData {
 // ==========================================
 // 2. ENV SETUP
 // ==========================================
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
-const API_REPORT_URL = `${BASE_URL}/realbizpro/api/v1/crm/kpi/team-kpi-report`;
+const API_REPORT_URL = `${API_BASE}/crm/kpi/team-kpi-report`;
 const API_DROPDOWN_URL = `${API_REPORT_URL}/dropdowns`;
 
 // ==========================================
@@ -58,10 +57,7 @@ export default function TeamKpiReportPage() {
   // ==========================================
   const safeFetch = async (url: string, options?: RequestInit) => {
     try {
-      const res = await fetch(url, {
-        ...options,
-        headers: { Accept: "application/json", ...options?.headers },
-      });
+      const res = await crmFetch(url, options);
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         throw new Error(

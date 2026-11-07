@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from "react";
 import { Sparkles, Search, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, AlertTriangle, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { crmFetch } from "../../crm-fetch";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
 const API_PATH = `${API_BASE}/realbizpro/api/v1`;
@@ -68,7 +69,7 @@ export default function CampaignPage() {
       setLoading(true);
       const url = `${API_PATH}/crm/configuration/campaigns?page=${page}&limit=${entriesPerPage}&search=${search}`;
       
-      const res = await fetch(url);
+      const res = await crmFetch(url);
       const json = await res.json();
       
       if (json.success) {
@@ -86,11 +87,11 @@ export default function CampaignPage() {
 
   const fetchDropdowns = async () => {
     try {
-      const resSource = await fetch(`${API_PATH}/crm/configuration/campaigns/dropdown/lead-sources`);
+      const resSource = await crmFetch(`${API_PATH}/crm/configuration/campaigns/dropdown/lead-sources`);
       const jsonSource = await resSource.json();
       if (jsonSource.success) setLeadSources(jsonSource.data.data || jsonSource.data || []);
 
-      const resStatus = await fetch(`${API_PATH}/crm/configuration/campaigns/dropdown/statuses`);
+      const resStatus = await crmFetch(`${API_PATH}/crm/configuration/campaigns/dropdown/statuses`);
       const jsonStatus = await resStatus.json();
       if (jsonStatus.success) setStatuses(jsonStatus.data.data || jsonStatus.data || []);
       
@@ -177,7 +178,7 @@ export default function CampaignPage() {
         : `${API_PATH}/crm/configuration/campaigns`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await crmFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -209,7 +210,7 @@ export default function CampaignPage() {
     if (!selectedCampaignToDelete) return;
     
     try {
-      const res = await fetch(`${API_PATH}/crm/configuration/campaigns/${selectedCampaignToDelete.uuid}`, {
+      const res = await crmFetch(`${API_PATH}/crm/configuration/campaigns/${selectedCampaignToDelete.uuid}`, {
         method: "DELETE",
       });
       

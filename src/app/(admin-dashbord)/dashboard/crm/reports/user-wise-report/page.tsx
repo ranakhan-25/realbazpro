@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { crmFetch, API_ORIGIN } from "../../crm-fetch";
 
 // --- Types for Dropdowns API ---
 interface DropdownItem {
@@ -116,7 +117,7 @@ const ReportTable = ({
 
 // --- Main Page Component ---
 export default function UserWiseReportPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const baseUrl = API_ORIGIN;
 
   // --- States ---
   const [dropdownData, setDropdownData] = useState<
@@ -142,8 +143,8 @@ export default function UserWiseReportPage() {
       setLoading(true);
       try {
         const [dropdownRes, reportRes] = await Promise.all([
-          fetch(`${baseUrl}/realbizpro/api/v1/crm/reports/user-wise/dropdowns`),
-          fetch(
+          crmFetch(`${baseUrl}/realbizpro/api/v1/crm/reports/user-wise/dropdowns`),
+          crmFetch(
             `${baseUrl}/realbizpro/api/v1/crm/reports/user-wise?dateFrom=${dateFrom}&dateTo=${dateTo}`,
           ),
         ]);
