@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from "react";
 import { Plus, X, Loader2, Edit3, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { crmFetch } from "../../crm-fetch";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
 const API_PATH = `${API_BASE}/realbizpro/api/v1`;
@@ -49,7 +50,7 @@ export default function CommunicationStatusPage() {
     try {
       setLoading(true);
       // আপনার স্ক্রিনশটের API পাথ অনুযায়ী
-      const res = await fetch(`${API_PATH}/crm/configuration/communication-status?page=1&limit=${entriesLimit}&skip=0&search=${search}`);
+      const res = await crmFetch(`${API_PATH}/crm/configuration/communication-status?page=1&limit=${entriesLimit}&skip=0&search=${search}`);
       const json = await res.json();
       if (json.success) {
         setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
@@ -65,7 +66,7 @@ export default function CommunicationStatusPage() {
   const fetchDropdowns = async () => {
     try {
       // লিড স্টেজ ড্রপডাউন API
-      const resStage = await fetch(`${API_PATH}/crm/configuration/communication-status/lead-stage-dropdown`);
+      const resStage = await crmFetch(`${API_PATH}/crm/configuration/communication-status/lead-stage-dropdown`);
       const jsonStage = await resStage.json();
       if (jsonStage.success) setLeadStages(jsonStage.data || []);
     } catch (err) {
@@ -99,7 +100,7 @@ export default function CommunicationStatusPage() {
         : `${API_PATH}/crm/configuration/communication-status`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await crmFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -125,7 +126,7 @@ export default function CommunicationStatusPage() {
   const handleDelete = async (item: CommunicationStatus) => {
     if (!window.confirm(`Delete "${item.name}"?`)) return;
     try {
-      const res = await fetch(`${API_PATH}/crm/configuration/communication-status/${item.uuid}`, {
+      const res = await crmFetch(`${API_PATH}/crm/configuration/communication-status/${item.uuid}`, {
         method: "DELETE",
       });
       if (res.ok) {

@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from "react";
 import { Sparkles, Search, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, AlertTriangle, Loader2, RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
+import { crmFetch } from "../../crm-fetch";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
 const API_PATH = `${API_BASE}/realbizpro/api/v1`;
@@ -72,7 +73,7 @@ export default function AreaPage() {
       setLoading(true);
       const url = `${API_PATH}/crm/configuration/areas?page=${page}&limit=${entriesPerPage}&search=${search}&withDeleted=${showDeleted}`;
       
-      const res = await fetch(url);
+      const res = await crmFetch(url);
       const json = await res.json();
       
       if (json.success) {
@@ -145,7 +146,7 @@ export default function AreaPage() {
         : `${API_PATH}/crm/configuration/areas`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await crmFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -194,7 +195,7 @@ export default function AreaPage() {
     setSelectedAreaToDelete(null);
 
     try {
-      const res = await fetch(`${API_PATH}/crm/configuration/areas/${selectedAreaToDelete.uuid}`, {
+      const res = await crmFetch(`${API_PATH}/crm/configuration/areas/${selectedAreaToDelete.uuid}`, {
         method: "DELETE",
       });
       
@@ -218,7 +219,7 @@ export default function AreaPage() {
   const handleRestore = async (item: AreaRecord) => {
     if (!window.confirm(`Restore area "${item.name}"?`)) return;
     try {
-      const res = await fetch(`${API_PATH}/crm/configuration/areas/${item.uuid}/restore`, {
+      const res = await crmFetch(`${API_PATH}/crm/configuration/areas/${item.uuid}/restore`, {
         method: "PATCH",
       });
       if (res.ok) {

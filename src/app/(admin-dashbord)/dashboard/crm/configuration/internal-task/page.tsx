@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Sparkles, Search, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, AlertTriangle, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { crmFetch } from "../../crm-fetch";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
 const API_PATH = `${API_BASE}/realbizpro/api/v1`;
@@ -67,7 +68,7 @@ export default function TaskPage() {
         const url = `${API_PATH}/crm/tasks?page=${page}&limit=${limit}&search=${search}`;
         console.log("📥 FETCH:", url);
 
-        const res = await fetch(url, { cache: "no-store" });
+        const res = await crmFetch(url, { cache: "no-store" });
         const json = await res.json().catch(() => ({}));
         console.log("📥 RESPONSE:", json);
 
@@ -116,7 +117,7 @@ export default function TaskPage() {
 
   const fetchDropdowns = async () => {
     try {
-      const resDropdown = await fetch(`${API_PATH}/crm/tasks/dropdowns`, { cache: "no-store" });
+      const resDropdown = await crmFetch(`${API_PATH}/crm/tasks/dropdowns`, { cache: "no-store" });
       const jsonDropdown = await resDropdown.json().catch(() => ({}));
 
       if (jsonDropdown.success) {
@@ -215,7 +216,7 @@ export default function TaskPage() {
 
       console.log("📤 SUBMIT:", method, url, payload);
 
-      const res = await fetch(url, {
+      const res = await crmFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -267,7 +268,7 @@ export default function TaskPage() {
     setSelectedItemToDelete(null);
 
     try {
-      const res = await fetch(`${API_PATH}/crm/tasks/${deletedUuid}`, {
+      const res = await crmFetch(`${API_PATH}/crm/tasks/${deletedUuid}`, {
         method: "DELETE",
         cache: "no-store",
       });

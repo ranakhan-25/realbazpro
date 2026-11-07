@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { crmFetch, API_ORIGIN } from "../../crm-fetch";
 
 // --- Types ---
 interface DropdownItem {
@@ -139,7 +140,7 @@ const DataTable = ({
 
 // --- Main Page Component ---
 export default function UserActivityReportPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const baseUrl = API_ORIGIN;
 
   // --- States ---
   const [dropdownData, setDropdownData] = useState<
@@ -166,10 +167,10 @@ export default function UserActivityReportPage() {
       setErrorMsg(null);
       try {
         const [dropdownRes, reportRes] = await Promise.all([
-          fetch(
+          crmFetch(
             `${baseUrl}/realbizpro/api/v1/crm/reports/user-activity/dropdowns`,
           ),
-          fetch(
+          crmFetch(
             `${baseUrl}/realbizpro/api/v1/crm/reports/user-activity?dateFrom=${dateFrom}&dateTo=${dateTo}&page=1&limit=100`,
           ), // limit বড়িয়ে দেওয়া হলো যাতে সব ডেটা আসে
         ]);

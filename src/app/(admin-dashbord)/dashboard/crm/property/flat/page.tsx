@@ -47,11 +47,7 @@ export default function FlatPage() {
         },
         { key: "subtotal", label: "Price (BDT)", type: "number", placeholder: "e.g. 14500000" },
       ]}
-      rows={[
-        { id: "1", flatNo: "4B", project: "Skyline Residency", floor: "4", size: "1450", status: "Ready", price: "৳1,45,00,000" },
-        { id: "2", flatNo: "2A", project: "Palm Court", floor: "2", size: "1100", status: "Booked", price: "৳98,00,000" },
-        { id: "3", flatNo: "7C", project: "Aurora Heights", floor: "7", size: "1850", status: "Available", price: "৳1,85,00,000" },
-      ]}
+      rows={[]}
     />
   );
 }

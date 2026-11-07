@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { crmFetch, API_ORIGIN } from "../../crm-fetch";
 
 // --- Types for Dropdowns API ---
 interface UserDropdown {
@@ -47,7 +48,7 @@ interface ReportResponse {
 }
 
 export default function SalesProbabilityPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const baseUrl = API_ORIGIN;
 
   // --- States ---
   const [dropdownData, setDropdownData] = useState<
@@ -71,7 +72,7 @@ export default function SalesProbabilityPage() {
   useEffect(() => {
     const fetchDropdowns = async () => {
       try {
-        const res = await fetch(
+        const res = await crmFetch(
           `${baseUrl}/realbizpro/api/v1/crm/reports/sales-probability/dropdowns`,
         );
         const json: DropdownsResponse = await res.json();
@@ -98,7 +99,7 @@ export default function SalesProbabilityPage() {
 
         if (userId) params.append("userId", userId);
 
-        const res = await fetch(
+        const res = await crmFetch(
           `${baseUrl}/realbizpro/api/v1/crm/reports/sales-probability?${params.toString()}`,
         );
         const json: ReportResponse = await res.json();

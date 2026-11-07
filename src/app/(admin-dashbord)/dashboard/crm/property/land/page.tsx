@@ -44,10 +44,7 @@ export default function LandPage() {
         },
         { key: "subtotal", label: "Price (BDT)", type: "number", placeholder: "e.g. 25000000" },
       ]}
-      rows={[
-        { id: "1", plotNo: "14B", location: "Purbachal, Dhaka", size: "5", status: "Available", price: "৳2,50,00,000" },
-        { id: "2", plotNo: "R-09", location: "Savar, Dhaka", size: "10", status: "Sold", price: "৳4,00,00,000" },
-      ]}
+      rows={[]}
     />
   );
 }
