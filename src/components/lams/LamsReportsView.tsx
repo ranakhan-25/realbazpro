@@ -55,8 +55,9 @@ export function LamsReportsView({
     return leads.filter((l) => {
       const matchesStatus = statusFilter === "ALL" || l.status === statusFilter;
       let matchesDate = true;
-      if (fromDate && l.created_at && l.created_at < fromDate) matchesDate = false;
-      if (toDate && l.created_at && l.created_at > toDate) matchesDate = false;
+      const createdAt = l.createdAt;
+      if (fromDate && createdAt && createdAt < fromDate) matchesDate = false;
+      if (toDate && createdAt && createdAt > toDate) matchesDate = false;
       return matchesStatus && matchesDate;
     });
   }, [leads, statusFilter, fromDate, toDate]);
@@ -73,7 +74,7 @@ export function LamsReportsView({
     // Total Land Area (sum of land_area or estimate)
     let totalAreaDecimals = 0;
     filteredLeads.forEach((l) => {
-      const area = parseFloat(l.land_area as any) || 0;
+      const area = parseFloat(String(l.landArea ?? l.area_decimal ?? 0)) || 0;
       totalAreaDecimals += area;
     });
 
@@ -93,7 +94,7 @@ export function LamsReportsView({
       const mouza = l.mouza || l.location || "Unspecified";
       if (!mouzaMap[mouza]) mouzaMap[mouza] = { count: 0, totalArea: 0 };
       mouzaMap[mouza].count += 1;
-      mouzaMap[mouza].totalArea += parseFloat(l.land_area as any) || 0;
+      mouzaMap[mouza].totalArea += parseFloat(String(l.landArea ?? l.area_decimal ?? 0)) || 0;
     });
 
     // Funnel Counts
@@ -488,7 +489,7 @@ export function LamsReportsView({
                     </td>
                     <td className="py-2.5 px-3 text-slate-500">{s.scheduled_at}</td>
                     <td className="py-2.5 px-3 text-center">
-                      <LamsStatusBadge status={s.status} type="settlement" />
+                      <LamsStatusBadge status={s.status} />
                     </td>
                   </tr>
                 );

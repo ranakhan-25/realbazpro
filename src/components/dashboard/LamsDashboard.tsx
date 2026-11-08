@@ -279,7 +279,7 @@ export default function LamsDashboard({
       await createAcquisitionApproval(rec);
     });
   };
-  const handleActionApproval = (id: string, action: "Approved" | "Rejected", comment?: string) => {
+  const handleActionApproval = (id: string, action: "approved" | "rejected", comment?: string) => {
     startTransition(async () => {
       await actionApproval(id, action, comment);
     });
@@ -304,7 +304,7 @@ export default function LamsDashboard({
   };
   const handleRecordPayment = (payment: any) => {
     startTransition(async () => {
-      await recordSettlementPayment(payment);
+      await recordSettlementPayment(payment.settlement_id, payment);
     });
   };
 
@@ -432,11 +432,11 @@ export default function LamsDashboard({
         {/* Feature 02.05: Legal Title Verification */}
         {activeTab === "legal" && (
           <LegalVerificationView
-            records={initialLegalRecords}
+            verifications={initialLegalRecords || []}
             acquisitionLeads={initialLeads}
-            onAddRecord={handleAddLegal}
-            onEditRecord={handleEditLegal}
-            onDeleteRecord={handleDeleteLegal}
+            onAddVerification={handleAddLegal}
+            onEditVerification={handleEditLegal}
+            onDeleteVerification={handleDeleteLegal}
           />
         )}
 

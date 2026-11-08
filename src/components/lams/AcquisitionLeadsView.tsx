@@ -475,12 +475,12 @@ export function AcquisitionLeadsView({
           setSelectedIds([]);
         }}
         statusOptions={[
-          { label: "Draft", value: "Draft" },
-          { label: "Submitted", value: "Submitted" },
-          { label: "Qualified", value: "Qualified" },
-          { label: "In Negotiation", value: "In Negotiation" },
-          { label: "Approved", value: "Approved" },
-          { label: "Rejected", value: "Rejected" },
+          "Draft",
+          "Submitted",
+          "Qualified",
+          "In Negotiation",
+          "Approved",
+          "Rejected",
         ]}
       />
 
@@ -489,8 +489,8 @@ export function AcquisitionLeadsView({
         {displayedLeads.length === 0 ? (
           <LamsEmptyState
             title="No acquisition leads found"
-            subtitle="Create your first land lead or modify filter criteria to view properties."
-            buttonText="Create Acquisition Lead"
+            description="Create your first land lead or modify filter criteria to view properties."
+            actionLabel="Create Acquisition Lead"
             onAction={() => openForm()}
             icon={Compass}
           />
@@ -612,7 +612,7 @@ export function AcquisitionLeadsView({
                       {/* Status */}
                       {isColVisible("status") && (
                         <td className="py-3 px-3.5 text-center">
-                          <LamsStatusBadge status={statusKey} type="lead" />
+                          <LamsStatusBadge status={statusKey} />
                         </td>
                       )}
 
@@ -862,7 +862,7 @@ export function AcquisitionLeadsView({
                           setFormData({
                             ...formData,
                             owner_id: owner.uuid || owner.id,
-                            owner_name: owner.name,
+                            owner_name: owner.name || owner.ownerName || "",
                             owner_phone: owner.phone,
                             owner_nid: owner.nid || "",
                           });
@@ -1052,13 +1052,13 @@ export function AcquisitionLeadsView({
         <AdvanceStageRemarksModal
           isOpen={Boolean(remarksModalLead)}
           onClose={() => setRemarksModalLead(null)}
-          leadId={remarksModalLead.uuid || remarksModalLead.id}
-          leadCode={remarksModalLead.lead_code || remarksModalLead.code || remarksModalLead.title || "LEAD"}
-          currentStage={remarksModalLead.status || "Lead"}
-          action={remarksModalAction}
-          onConfirm={(remarks, nextStage) => {
+          leadCode={remarksModalLead.leadCode || remarksModalLead.code || remarksModalLead.title || "LEAD"}
+          currentStage={remarksModalLead.status || remarksModalLead.leadStage || "Draft"}
+          targetStage={remarksModalAction === "reject" ? "Rejected" : "Qualified"}
+          isReject={remarksModalAction === "reject"}
+          onConfirm={(remarks: string) => {
             if (remarksModalAction === "advance") {
-              onAdvanceStage?.(remarksModalLead.uuid || remarksModalLead.id, nextStage, remarks);
+              onAdvanceStage?.(remarksModalLead.uuid || remarksModalLead.id, "Qualified", remarks);
             } else {
               onRejectLead?.(remarksModalLead.uuid || remarksModalLead.id, remarks);
             }

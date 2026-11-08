@@ -280,7 +280,7 @@ export function NegotiationProcessView({
               <option value="ALL">All Acquisition Leads</option>
               {acquisitionLeads.map((l) => (
                 <option key={l.id || l.uuid} value={l.id || l.uuid}>
-                  {l.lead_code || l.title}
+                  {l.leadCode || l.code || l.title}
                 </option>
               ))}
             </select>
@@ -375,10 +375,10 @@ export function NegotiationProcessView({
           setSelectedIds([]);
         }}
         statusOptions={[
-          { label: "In Progress", value: "In Progress" },
-          { label: "Agreed", value: "Agreed" },
-          { label: "Revision Needed", value: "Revision Needed" },
-          { label: "Declined", value: "Declined" },
+          "In Progress",
+          "Agreed",
+          "Revision Needed",
+          "Declined",
         ]}
       />
 
@@ -387,8 +387,8 @@ export function NegotiationProcessView({
         {displayedNegotiations.length === 0 ? (
           <LamsEmptyState
             title="No negotiation records found"
-            subtitle="Start a negotiation process or adjust filters to view historical offer rounds."
-            buttonText="Add Negotiation Round"
+            description="Start a negotiation process or adjust filters to view historical offer rounds."
+            actionLabel="Add Negotiation Round"
             onAction={() => {
               setEditingNegotiation(null);
               setIsAddModalOpen(true);

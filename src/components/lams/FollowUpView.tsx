@@ -274,10 +274,10 @@ export function FollowUpView({
           setSelectedIds([]);
         }}
         statusOptions={[
-          { label: "Pending", value: "Pending" },
-          { label: "Completed", value: "Completed" },
-          { label: "Rescheduled", value: "Rescheduled" },
-          { label: "Cancelled", value: "Cancelled" },
+          "Pending",
+          "Completed",
+          "Rescheduled",
+          "Cancelled",
         ]}
       />
 
@@ -286,8 +286,8 @@ export function FollowUpView({
         {displayedFollowUps.length === 0 ? (
           <LamsEmptyState
             title="No scheduled follow-up meetings"
-            subtitle="Add a follow-up appointment or adjust filters to review scheduled dates."
-            buttonText="Schedule Follow-Up"
+            description="Add a follow-up appointment or adjust filters to review scheduled dates."
+            actionLabel="Schedule Follow-Up"
             onAction={() => {
               setEditingFollowUp(null);
               setIsAddModalOpen(true);

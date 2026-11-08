@@ -317,8 +317,8 @@ export function LandOwnersView({
         {displayedOwners.length === 0 ? (
           <LamsEmptyState
             title="No landowners found"
-            subtitle="Add a landowner profile or clear filters to view registered landowners."
-            buttonText="Add Landowner Profile"
+            description="Add a landowner profile or clear filters to view registered landowners."
+            actionLabel="Add Landowner Profile"
             onAction={() => openForm()}
             icon={Users}
           />

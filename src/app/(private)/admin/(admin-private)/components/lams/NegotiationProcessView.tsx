@@ -48,6 +48,21 @@ const STATUS_CONFIG: Record<
     text: "text-rose-700",
     icon: XCircle,
   },
+  ongoing: {
+    bg: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+    text: "text-blue-700",
+    icon: Clock,
+  },
+  agreed: {
+    bg: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+    text: "text-emerald-700",
+    icon: CheckCircle2,
+  },
+  failed: {
+    bg: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
+    text: "text-rose-700",
+    icon: XCircle,
+  },
 };
 
 export function NegotiationProcessView({
@@ -174,7 +189,7 @@ export function NegotiationProcessView({
                   const isExpanded = expandedId === item.uuid;
                   const statusInfo = STATUS_CONFIG[item.negotiationStatus as NegotiationStatus] || { bg: "bg-slate-100 text-slate-800", text: "text-slate-700", icon: AlertTriangle };
                   const StatusIcon = statusInfo.icon;
-                  const priceGap = item.counterOfferByOwner - item.offeredTotalPrice;
+                  const priceGap = (item.counterOfferByOwner ?? 0) - (item.offeredTotalPrice ?? 0);
 
                   return (
                     <React.Fragment key={item.uuid}>
@@ -203,19 +218,19 @@ export function NegotiationProcessView({
                         </td>
 
                         <td className="py-3 px-3.5 font-bold text-slate-900 dark:text-white">
-                          ৳{(item.offeredTotalPrice / 10000000).toFixed(2)} Cr
+                          ৳{item.offeredTotalPrice !== undefined ? (item.offeredTotalPrice / 10000000).toFixed(2) : "0.00"} Cr
                         </td>
 
                         <td className="py-3 px-3.5 text-cyan-600 dark:text-cyan-400 font-semibold font-mono">
-                          ৳{(item.offeredPricePerDecimal).toLocaleString()}
+                          ৳{(item.offeredPricePerDecimal ?? 0).toLocaleString()}
                         </td>
 
                         <td className="py-3 px-3.5 font-bold text-amber-600 dark:text-amber-400">
-                          ৳{(item.counterOfferByOwner / 10000000).toFixed(2)} Cr
+                          ৳{item.counterOfferByOwner !== undefined ? (item.counterOfferByOwner / 10000000).toFixed(2) : "0.00"} Cr
                         </td>
 
                         <td className="py-3 px-3.5 text-amber-600 dark:text-amber-400 font-semibold font-mono">
-                          ৳{(item.counterPricePerDecimal).toLocaleString()}
+                          ৳{(item.counterPricePerDecimal ?? 0).toLocaleString()}
                         </td>
 
                         <td className="py-3 px-3 text-center">
@@ -258,7 +273,9 @@ export function NegotiationProcessView({
                                   {priceGap > 0 ? `+৳${(priceGap / 100000).toFixed(1)} Lakh Counter Gap` : "Agreed at Offered Price"}
                                 </p>
                                 <p className="text-[11px] text-slate-500 mt-0.5">
-                                  Owner asking {(((item.counterOfferByOwner - item.offeredTotalPrice) / item.offeredTotalPrice) * 100).toFixed(1)}% above initial valuation
+                                  {item.offeredTotalPrice && item.counterOfferByOwner
+                                    ? `Owner asking ${(((item.counterOfferByOwner - item.offeredTotalPrice) / item.offeredTotalPrice) * 100).toFixed(1)}% above initial valuation`
+                                    : "Price details pending"}
                                 </p>
                               </div>
 

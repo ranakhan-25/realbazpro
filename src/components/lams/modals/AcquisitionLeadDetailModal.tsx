@@ -39,7 +39,7 @@ export function AcquisitionLeadDetailModal({
 }: AcquisitionLeadDetailModalProps) {
   if (!isOpen || !lead) return null;
 
-  const currentStageIdx = STAGE_ORDER.indexOf(lead.leadStage);
+  const currentStageIdx = lead.leadStage ? STAGE_ORDER.indexOf(lead.leadStage) : -1;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
@@ -171,19 +171,19 @@ export function AcquisitionLeadDetailModal({
               <div>
                 <p className="text-[10px] font-medium text-slate-400">Owner Expected Price</p>
                 <p className="text-base font-bold text-slate-900 dark:text-white mt-0.5 font-display">
-                  ৳{(lead.expectedPrice / 10000000).toFixed(2)} Crore
+                  ৳{lead.expectedPrice !== undefined ? (lead.expectedPrice / 10000000).toFixed(2) : "0.00"} Crore
                 </p>
                 <p className="text-[10px] text-slate-400">
-                  ≈ ৳{Math.round(lead.expectedPrice / lead.landArea).toLocaleString()} / Decimal
+                  ≈ ৳{lead.expectedPrice !== undefined && lead.landArea ? Math.round(lead.expectedPrice / lead.landArea).toLocaleString() : "0"} / Decimal
                 </p>
               </div>
               <div>
                 <p className="text-[10px] font-medium text-slate-400">Company Offered Price</p>
                 <p className="text-base font-bold text-cyan-600 dark:text-cyan-400 mt-0.5 font-display">
-                  ৳{(lead.offeredPrice / 10000000).toFixed(2)} Crore
+                  ৳{lead.offeredPrice !== undefined ? (lead.offeredPrice / 10000000).toFixed(2) : "0.00"} Crore
                 </p>
                 <p className="text-[10px] text-slate-400">
-                  ≈ ৳{Math.round(lead.offeredPrice / lead.landArea).toLocaleString()} / Decimal
+                  ≈ ৳{lead.offeredPrice !== undefined && lead.landArea ? Math.round(lead.offeredPrice / lead.landArea).toLocaleString() : "0"} / Decimal
                 </p>
               </div>
               <div>

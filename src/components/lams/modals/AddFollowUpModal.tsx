@@ -56,7 +56,7 @@ export function AddFollowUpModal({
       acquisitionLeadId: effectiveLeadId,
       landDetails: lead ? `${lead.title} (${lead.mouza}), ${lead.landArea} Dec` : "Land Parcel",
       ownerDetails: lead ? `${lead.ownerName} (Owner)` : "Land Owner",
-      contact: lead ? lead.ownerPhone : "+880 1711-000000",
+      contact: lead?.ownerPhone || "+880 1711-000000",
       followUpType,
       status,
       note: note || "Routine follow up with landowner.",

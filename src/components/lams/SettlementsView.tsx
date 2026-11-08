@@ -273,8 +273,8 @@ export function SettlementsView({
             >
               <option value="ALL">All Acquisition Leads</option>
               {acquisitionLeads.map((l) => (
-                <option key={l.id || l.uuid} value={l.lead_code || l.id}>
-                  {l.lead_code || l.title}
+                <option key={l.id || l.uuid} value={l.leadCode || l.code || l.id}>
+                  {l.leadCode || l.code || l.title}
                 </option>
               ))}
             </select>
@@ -388,10 +388,10 @@ export function SettlementsView({
           setSelectedIds([]);
         }}
         statusOptions={[
-          { label: "Pending", value: "Pending" },
-          { label: "Partially Paid", value: "Partially Paid" },
-          { label: "Settled", value: "Settled" },
-          { label: "Overdue", value: "Overdue" },
+          "Pending",
+          "Partially Paid",
+          "Settled",
+          "Overdue",
         ]}
       />
 
@@ -400,8 +400,8 @@ export function SettlementsView({
         {displayedSettlements.length === 0 ? (
           <LamsEmptyState
             title="No settlement agreements found"
-            subtitle="Create a settlement agreement or adjust filters to view purchase payment records."
-            buttonText="Create Settlement Agreement"
+            description="Create a settlement agreement or adjust filters to view purchase payment records."
+            actionLabel="Create Settlement Agreement"
             onAction={() => {
               setEditingSettlement(null);
               setIsAddModalOpen(true);
@@ -546,7 +546,7 @@ export function SettlementsView({
                       {/* Status */}
                       {isColVisible("status") && (
                         <td className="py-3 px-3.5 text-center">
-                          <LamsStatusBadge status={item.status} type="settlement" />
+                          <LamsStatusBadge status={item.status} />
                         </td>
                       )}
 
