@@ -1,4 +1,4 @@
-/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { motion } from "framer-motion";
@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import {
   createPermission,
@@ -346,7 +347,9 @@ export default function PermissionsPage() {
 
         if (requestId !== loadRequestIdRef.current) return;
 
-        const permissionList = Array.isArray(response?.data) ? response.data : [];
+        const permissionList = Array.isArray(response?.data)
+          ? response.data
+          : [];
 
         if (permissionList.length === 0) {
           setPermissions(DEMO_PERMISSIONS);
@@ -480,7 +483,8 @@ export default function PermissionsPage() {
             Permission Management
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Configure dynamic permissions for platform resources or review built in system permissions.
+            Configure dynamic permissions for platform resources or review built
+            in system permissions.
           </p>
 
           <div className="mt-4 flex items-center gap-2">
@@ -1124,16 +1128,42 @@ function PermissionForm({
   const handleSelectFeature = (idStr: string) => {
     setFeatureId(idStr);
     const selected = featuresList.find((f) => String(f.id) === idStr);
+    const rawName = selected?.name || `feature_${idStr}`;
+
+    // Split hierarchy into segments and format into clean dot notation (e.g. "Shipments & Freight | Inbound Cargo Customs" -> "cargo.customs")
+    const cleanWords = rawName
+      .toLowerCase()
+      .split(/\s*\|\s*|\s*>\s*|\s*::\s*/)
+      .map((s) =>
+        s
+          .trim()
+          .replace(/[^a-z0-9]+/g, ".")
+          .replace(/^\.+|\.+$/g, ""),
+      )
+      .filter(Boolean);
+
+    // Prefer specific sub-feature terms in dot notation
+    const lastPart = cleanWords[cleanWords.length - 1] || "feature";
+    const subSegments = lastPart
+      .split(".")
+      .filter((w) => !["inbound", "outbound", "and", "&"].includes(w));
     const baseSlug =
-      selected?.name?.toLowerCase().replace(/\s+/g, "_") || `feature_${idStr}`;
-    setResource(baseSlug);
+      subSegments.length >= 2
+        ? `${subSegments[0]}.${subSegments[1]}`
+        : lastPart;
+
+    setResource(baseSlug.replace(/\./g, "_"));
     setKey(`${baseSlug}.${action}`);
   };
 
   const handleSelectAction = (act: string) => {
     setAction(act);
-    const baseSlug = resource || "permission";
-    setKey(`${baseSlug}.${act}`);
+    const currentBase = key
+      ? key.substring(0, key.lastIndexOf("."))
+      : resource
+        ? resource.replace(/_/g, ".")
+        : "permission";
+    setKey(`${currentBase}.${act}`);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -1171,7 +1201,7 @@ function PermissionForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {formError && (
         <div
           role="alert"
@@ -1181,32 +1211,32 @@ function PermissionForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {/* FEATURE SELECTOR */}
-        <div className="sm:col-span-2">
-          <SearchablePermissionSelect
-            id="perm-feature"
-            label="Pick Feature"
-            placeholder={
-              loadingFeatures
-                ? "Loading available features..."
-                : "Search and pick a feature..."
-            }
-            value={featureId}
-            options={featuresList.map((feature) => ({
-              value: String(feature.id),
-              label: feature.name,
-              description: feature.module?.name
-                ? `Module: ${feature.module.name}`
-                : undefined,
-            }))}
-            primaryColor={primaryColor}
-            disabled={saving || loadingFeatures}
-            required
-            onChange={handleSelectFeature}
-          />
-        </div>
+      {/* FEATURE SELECTOR */}
+      <div>
+        <SearchablePermissionSelect
+          id="perm-feature"
+          label="Pick Feature"
+          placeholder={
+            loadingFeatures
+              ? "Loading available features..."
+              : "Search and pick a feature..."
+          }
+          value={featureId}
+          options={featuresList.map((feature) => ({
+            value: String(feature.id),
+            label: feature.name,
+            description: feature.module?.name
+              ? `Module: ${feature.module.name}`
+              : undefined,
+          }))}
+          primaryColor={primaryColor}
+          disabled={saving || loadingFeatures}
+          required
+          onChange={handleSelectFeature}
+        />
+      </div>
 
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* ACCESS ACTION */}
         <div>
           <SearchablePermissionSelect
@@ -1240,7 +1270,7 @@ function PermissionForm({
             id="perm-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. View Customer Invoices"
+            placeholder="e.g. View Cargo Customs"
             maxLength={150}
             required
             disabled={saving}
@@ -1255,61 +1285,43 @@ function PermissionForm({
             }}
           />
         </div>
+      </div>
 
-        {/* KEY */}
-        <div>
+      {/* DYNAMIC PERMISSION KEY (DISABLED INPUT BAR) */}
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
           <label
             htmlFor="perm-key"
-            className="mb-1.5 block text-sm font-medium text-slate-700"
+            className="block text-sm font-medium text-slate-700"
           >
-            Permission Key (Code)
+            Permission Key
           </label>
-
-          <input
-            id="perm-key"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            placeholder="e.g. invoice.read"
-            maxLength={150}
-            disabled={saving}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 font-mono text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:bg-white"
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = primaryColor;
-              e.currentTarget.style.boxShadow = `0 0 0 4px ${primaryColor}1A`;
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = "";
-              e.currentTarget.style.boxShadow = "";
-            }}
-          />
+          <span className="text-[11px] font-semibold text-slate-400">
+            Auto-Generated
+          </span>
         </div>
 
-        {/* RESOURCE */}
-        <div>
-          <label
-            htmlFor="perm-resource"
-            className="mb-1.5 block text-sm font-medium text-slate-700"
-          >
-            Resource Slug
-          </label>
-
+        <div className="relative">
           <input
-            id="perm-resource"
-            value={resource}
-            onChange={(e) => setResource(e.target.value)}
-            placeholder="e.g. invoices"
-            maxLength={150}
-            disabled={saving}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:bg-white"
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = primaryColor;
-              e.currentTarget.style.boxShadow = `0 0 0 4px ${primaryColor}1A`;
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = "";
-              e.currentTarget.style.boxShadow = "";
-            }}
+            id="perm-key"
+            value={key || ""}
+            disabled
+            placeholder="e.g. cargo.customs.read"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-100/90 px-3.5 pr-20 font-mono text-xs font-bold text-blue-900 outline-none select-all cursor-not-allowed opacity-90 shadow-2xs"
           />
+          <button
+            type="button"
+            onClick={() => {
+              if (key) {
+                navigator.clipboard.writeText(key);
+                toast.success(`Copied "${key}" to clipboard!`);
+              }
+            }}
+            disabled={!key}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-white px-3 py-1.5 text-[11px] font-bold text-blue-700 shadow-2xs border border-blue-200 hover:bg-blue-50 disabled:opacity-40 transition"
+          >
+            Copy
+          </button>
         </div>
       </div>
 
@@ -1509,8 +1521,7 @@ function SearchablePermissionSelect({
                 className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none transition focus:bg-white"
                 onFocus={(event) => {
                   event.currentTarget.style.borderColor = primaryColor;
-                  event.currentTarget.style.boxShadow =
-                    `0 0 0 3px ${primaryColor}1A`;
+                  event.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}1A`;
                 }}
                 onBlur={(event) => {
                   event.currentTarget.style.borderColor = "";

@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
@@ -10,6 +9,7 @@ import { getSession, type Session } from "@/lib/auth";
 import { isModuleKey, type ModuleKey } from "@/lib/menus";
 import { UserAccessProvider, useUserAccess } from "@/context/UserAccessContext";
 import { SidebarProvider, useSidebar } from "@/context/SidebarContext";
+import { getInventoryPermissionPath } from "@/lib/inventoryRoutes";
 
 function DashboardAccessGuard({
   moduleKey,
@@ -23,7 +23,8 @@ function DashboardAccessGuard({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { accessibleModules, hasAccessToModule, hasAccessToRoute, isLoading } = useUserAccess();
+  const { accessibleModules, hasAccessToModule, hasAccessToRoute, isLoading } =
+    useUserAccess();
 
   if (isLoading) {
     return (
@@ -45,10 +46,16 @@ function DashboardAccessGuard({
 
   // Anti-sneak zero-trust validation
   const isModuleAllowed = hasAccessToModule(moduleKey);
-  const isRouteAllowed = isModuleAllowed && hasAccessToRoute(moduleKey, activePath);
+  const permissionPath =
+    moduleKey === "inventory"
+      ? getInventoryPermissionPath(activePath)
+      : activePath;
+  const isRouteAllowed =
+    isModuleAllowed && hasAccessToRoute(moduleKey, permissionPath);
 
   if (!isModuleAllowed || !isRouteAllowed) {
-    const fallbackModule = accessibleModules.length > 0 ? accessibleModules[0].key : null;
+    const fallbackModule =
+      accessibleModules.length > 0 ? accessibleModules[0].key : null;
     return (
       <div className="flex min-h-[75vh] flex-col items-center justify-center p-6 text-center">
         <div className="mx-auto max-w-lg rounded-3xl border border-red-200 bg-white p-8 shadow-xl shadow-red-500/5">
@@ -63,10 +70,13 @@ function DashboardAccessGuard({
           </h2>
           <p className="mt-2 text-sm text-slate-500 leading-relaxed">
             You do not possess entitlement permissions for module{" "}
-            <span className="font-semibold text-slate-800 uppercase">{moduleKey}</span>
+            <span className="font-semibold text-slate-800 uppercase">
+              {moduleKey}
+            </span>
             {activePath ? (
               <>
-                {" "}or path{" "}
+                {" "}
+                or path{" "}
                 <code className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
                   {activePath}
                 </code>
@@ -118,7 +128,9 @@ function DashboardContent({
   const rest = pathname.replace(/^\/dashboard\/?/, "");
   const [first = "", ...restParts] = rest.split("/").filter(Boolean);
   const defaultModuleKey: ModuleKey =
-    accessibleModules.length > 0 ? (accessibleModules[0].key as ModuleKey) : "project";
+    accessibleModules.length > 0
+      ? (accessibleModules[0].key as ModuleKey)
+      : "project";
   const moduleKey: ModuleKey = isModuleKey(first) ? first : defaultModuleKey;
   const activePath = restParts.join("/");
 
@@ -140,7 +152,9 @@ function DashboardContent({
         />
         <main
           className={`min-w-0 flex-1 transition-all duration-300 ease-in-out ${
-            isCollapsed ? "lg:max-w-[calc(100vw-5rem)]" : "lg:max-w-[calc(100vw-18rem)]"
+            isCollapsed
+              ? "lg:max-w-[calc(100vw-5rem)]"
+              : "lg:max-w-[calc(100vw-18rem)]"
           }`}
         >
           <DashboardAccessGuard

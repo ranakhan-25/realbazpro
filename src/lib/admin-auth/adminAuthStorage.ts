@@ -1,3 +1,5 @@
+import { getCookie, setCookie, removeCookie } from "@/lib/cookies";
+
 export interface AdminUserProfile {
   id?: number;
   uuid?: string;
@@ -21,17 +23,42 @@ export const ADMIN_AUTH_STORAGE_KEYS = {
 
 export function getStoredAccessToken(): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(ADMIN_AUTH_STORAGE_KEYS.accessToken);
+  // Primary: Read from cookies
+  const cookieToken =
+    getCookie(ADMIN_AUTH_STORAGE_KEYS.accessToken) ||
+    getCookie("access_token") ||
+    getCookie("token");
+  if (cookieToken) return cookieToken;
+
+  // Fallback: Read from localStorage
+  return (
+    window.localStorage.getItem(ADMIN_AUTH_STORAGE_KEYS.accessToken) ||
+    window.localStorage.getItem("access_token") ||
+    window.localStorage.getItem("token")
+  );
 }
 
 export function getStoredRefreshToken(): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(ADMIN_AUTH_STORAGE_KEYS.refreshToken);
+  // Primary: Read from cookies
+  const cookieRefresh =
+    getCookie(ADMIN_AUTH_STORAGE_KEYS.refreshToken) ||
+    getCookie("refresh_token") ||
+    getCookie("refreshToken");
+  if (cookieRefresh) return cookieRefresh;
+
+  // Fallback: Read from localStorage
+  return (
+    window.localStorage.getItem(ADMIN_AUTH_STORAGE_KEYS.refreshToken) ||
+    window.localStorage.getItem("refreshToken")
+  );
 }
 
 export function getStoredUserProfile(): AdminUserProfile | null {
   if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(ADMIN_AUTH_STORAGE_KEYS.userProfile);
+  const raw =
+    getCookie(ADMIN_AUTH_STORAGE_KEYS.userProfile) ||
+    window.localStorage.getItem(ADMIN_AUTH_STORAGE_KEYS.userProfile);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as AdminUserProfile;
@@ -48,15 +75,25 @@ export function setStoredTokens(
   if (typeof window === "undefined") return;
 
   if (accessToken) {
+    // Store in Cookies (7 days expiry, root path)
+    setCookie(ADMIN_AUTH_STORAGE_KEYS.accessToken, accessToken, { days: 7 });
+    setCookie("access_token", accessToken, { days: 7 });
+    setCookie("token", accessToken, { days: 7 });
+
+    // Also mirror to localStorage for legacy consumers
     window.localStorage.setItem(
       ADMIN_AUTH_STORAGE_KEYS.accessToken,
       accessToken,
     );
-    // Also synchronize shared access_token key for axios interceptors
     window.localStorage.setItem("access_token", accessToken);
   }
 
   if (refreshToken) {
+    // Store in Cookies (30 days expiry)
+    setCookie(ADMIN_AUTH_STORAGE_KEYS.refreshToken, refreshToken, { days: 30 });
+    setCookie("refresh_token", refreshToken, { days: 30 });
+
+    // Also mirror to localStorage
     window.localStorage.setItem(
       ADMIN_AUTH_STORAGE_KEYS.refreshToken,
       refreshToken,
@@ -64,9 +101,12 @@ export function setStoredTokens(
   }
 
   if (userProfile) {
+    const profileJson = JSON.stringify(userProfile);
+    setCookie(ADMIN_AUTH_STORAGE_KEYS.userProfile, profileJson, { days: 7 });
+
     window.localStorage.setItem(
       ADMIN_AUTH_STORAGE_KEYS.userProfile,
-      JSON.stringify(userProfile),
+      profileJson,
     );
     window.localStorage.setItem(
       "realbiz-session",
@@ -81,10 +121,20 @@ export function setStoredTokens(
 export function clearStoredTokens() {
   if (typeof window === "undefined") return;
 
+  // Remove cookies
+  removeCookie(ADMIN_AUTH_STORAGE_KEYS.accessToken);
+  removeCookie("access_token");
+  removeCookie("token");
+  removeCookie(ADMIN_AUTH_STORAGE_KEYS.refreshToken);
+  removeCookie("refresh_token");
+  removeCookie(ADMIN_AUTH_STORAGE_KEYS.userProfile);
+
+  // Clear localStorage
   window.localStorage.removeItem(ADMIN_AUTH_STORAGE_KEYS.accessToken);
   window.localStorage.removeItem(ADMIN_AUTH_STORAGE_KEYS.refreshToken);
   window.localStorage.removeItem(ADMIN_AUTH_STORAGE_KEYS.userProfile);
   window.localStorage.removeItem("access_token");
+  window.localStorage.removeItem("token");
   window.localStorage.removeItem("realbiz-session");
 }
 
