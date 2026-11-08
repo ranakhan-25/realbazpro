@@ -546,7 +546,7 @@ export function SettlementsView({
                       {/* Status */}
                       {isColVisible("status") && (
                         <td className="py-3 px-3.5 text-center">
-                          <LamsStatusBadge status={item.status} type="settlement" />
+                          <LamsStatusBadge status={item.status} />
                         </td>
                       )}
 

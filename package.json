@@ -8,8 +8,8 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "build:dev": "next build",
+    "build": "next build --webpack",
+    "build:dev": "next build --webpack",
     "preview": "next start",
     "lint": "eslint .",
     "format": "prettier --write .",
