@@ -33,6 +33,7 @@ import {
   Paperclip,
 } from "lucide-react";
 import MaterialRequisitionPrintModal from "./MaterialRequisitionPrintModal";
+import { procurementMaterialRequisitionApi } from "@/lib/procurement";
 
 // ==========================================
 // Types & Interfaces
@@ -44,6 +45,7 @@ export interface ApprovalStep {
 
 export interface RequisitionRow {
   id: number;
+  uuid?: string;
   projectType: string;
   project: string;
   titleOfWork: string;
@@ -324,22 +326,55 @@ export default function MaterialRequisitionList() {
   const [formItems, setFormItems] = useState<RequisitionItem[]>([]);
   const [boqSearch, setBoqSearch] = useState("");
 
-  // Load Initial Data
-  useEffect(() => {
+  // Fetch Real Requisitions from Backend API
+  const fetchRequisitions = useCallback(async () => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setRequisitions(parsed);
-          return;
-        }
-      }
-    } catch {
-      // ignore
+      const res = await procurementMaterialRequisitionApi.getRequisitions({
+        page: currentPage,
+        limit: entriesPerPage,
+        search: search.trim() || undefined,
+        withDeleted: false,
+      });
+
+      const mapped: RequisitionRow[] = (res.data || []).map((r, idx) => ({
+        id: (currentPage - 1) * entriesPerPage + idx + 1,
+        uuid: r.uuid,
+        projectType: r.projectType?.name || "Material",
+        project: r.project?.name || "—",
+        titleOfWork: r.titleOfWork?.name || "—",
+        siteEngineer: "—",
+        phone: "",
+        code: r.code,
+        ref: r.ref || "—",
+        date: r.date ? new Date(r.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—",
+        demandDate: r.demand_date ? new Date(r.demand_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—",
+        note: r.note || "",
+        addedBy: r.addedBy?.name || "Admin",
+        approvalSteps: [{ label: r.approval_layer || "All Approvals Completed", type: "approved" }],
+        attachment: r.attachment || "",
+        items: (r.items || []).map((li, lIdx) => ({
+          id: li.uuid || String(lIdx + 1),
+          itemCode: li.item_code,
+          itemName: li.item_name || "Material Item",
+          details: li.details || "",
+          unit: li.unit || "Pcs",
+          budgetQty: Number(li.budget_qty || 0),
+          alreadyPurchaseQty: Number(li.already_purchase_qty || 0),
+          availableQty: Number(li.available_qty || 0),
+          demandQty: Number(li.demand_qty || 0),
+          stock: Number(li.stock || 0),
+        })),
+      }));
+
+      setRequisitions(mapped);
+    } catch (err) {
+      console.error("Failed to load requisitions:", err);
     }
-    setRequisitions(INITIAL_REQUISITIONS);
-  }, []);
+  }, [currentPage, entriesPerPage, search]);
+
+  useEffect(() => {
+    fetchRequisitions();
+  }, [fetchRequisitions]);
 
   // Save changes to localStorage
   const saveRequisitions = useCallback((updated: RequisitionRow[]) => {
@@ -483,8 +518,16 @@ export default function MaterialRequisitionList() {
   };
 
   // Handle Delete Confirmation
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
+    if (deleteTarget.uuid) {
+      try {
+        await procurementMaterialRequisitionApi.deleteRequisition(deleteTarget.uuid);
+        fetchRequisitions();
+      } catch (e) {
+        console.error("Error deleting from backend:", e);
+      }
+    }
     const filtered = requisitions.filter((r) => r.id !== deleteTarget.id);
     saveRequisitions(filtered);
     showToast(`Requisition ${deleteTarget.code} deleted`, "info");
