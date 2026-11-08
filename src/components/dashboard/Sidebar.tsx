@@ -12,6 +12,12 @@ import {
   Handshake,
   FileCheck2,
   CalendarCheck2,
+  Calculator,
+  ShieldCheck,
+  ClipboardCheck,
+  Workflow,
+  CreditCard,
+  BarChart3,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MENUS, MODULES, type MenuNode, type ModuleKey } from "@/lib/menus";
@@ -22,10 +28,16 @@ import { useSidebar } from "@/context/SidebarContext";
 
 const LAMS_ICONS: Record<string, React.ElementType> = {
   dashboard: LayoutDashboard,
-  "land-owners": Users,
   "acquisition-leads": Compass,
+  "land-owners": Users,
+  valuations: Calculator,
+  "legal-verification": ShieldCheck,
+  "due-diligence": ClipboardCheck,
   "negotiation-process": Handshake,
+  approvals: Workflow,
+  settlements: CreditCard,
   "legal-documents": FileCheck2,
+  reports: BarChart3,
   "follow-up": CalendarCheck2,
 };
 

@@ -14,101 +14,305 @@ import {
   ArrowRight,
   CheckCircle,
   XCircle,
+  Compass,
+  FileSpreadsheet,
+  Layers,
+  MapPin,
+  Calendar,
 } from "lucide-react";
+import {
+  AcquisitionLead,
+  LandOwner,
+  LandValuation,
+  LegalVerification,
+  DueDiligenceRecord,
+  NegotiationRecord,
+  AcquisitionApproval,
+  SettlementRecord,
+  LegalDocument,
+} from "@/types/lams";
+import { LamsTableToolbar, ColumnDefinition } from "./common/LamsTableToolbar";
+import { LamsBulkActionBar } from "./common/LamsBulkActionBar";
+import { LamsEmptyState } from "./common/LamsEmptyState";
+import { LamsStatusBadge } from "./common/LamsStatusBadge";
+import { LeadDetailModal } from "./LeadDetailModal";
+import { AdvanceStageRemarksModal } from "./modals/AdvanceStageRemarksModal";
 
-// TypeScript এরর এড়াতে any[] ব্যবহার করা হয়েছে
 interface AcquisitionLeadsViewProps {
-  leads: any[];
+  leads: AcquisitionLead[];
+  landOwners?: LandOwner[];
+  valuations?: LandValuation[];
+  legalVerifications?: LegalVerification[];
+  dueDiligenceRecords?: DueDiligenceRecord[];
+  negotiations?: NegotiationRecord[];
+  approvals?: AcquisitionApproval[];
+  settlements?: SettlementRecord[];
+  documents?: LegalDocument[];
   onAddLead?: (lead: any) => void;
   onEditLead?: (uuid: string, data: any) => void;
   onDeleteLead?: (uuid: string) => void;
+  onAdvanceStage?: (leadId: string, nextStage: string, remarks: string) => void;
+  onQualifyLead?: (leadId: string) => void;
+  onRejectLead?: (leadId: string, remarks: string) => void;
+  onPaySettlement?: (payment: any) => void;
 }
 
-const SOURCES = ["Direct Owner", "Broker", "Referral", "Media / Ad", "Cold Contact", "Online Listing"];
-const USERS = ["Sakib Al Hasan", "Rezaul Karim", "Tanvir Hossain", "Shamim Khan", "Farhana Ahmed"];
-const STATUSES = ["Draft", "Submitted", "Qualified", "In Negotiation", "Approved", "Rejected"];
+const SOURCES = [
+  "Direct Owner",
+  "Broker",
+  "Referral",
+  "Media / Ad",
+  "Cold Contact",
+  "Online Listing",
+];
+const USERS = [
+  "Sakib Al Hasan",
+  "Rezaul Karim",
+  "Tanvir Hossain",
+  "Shamim Khan",
+  "Farhana Ahmed",
+];
+const STATUSES = [
+  "Draft",
+  "Submitted",
+  "Qualified",
+  "In Negotiation",
+  "Approved",
+  "Rejected",
+  "Purchased",
+];
 
-const STAGE_BADGES: Record<string, { bg: string; text: string; ring: string }> = {
-  Draft: { bg: "bg-slate-100", text: "text-slate-700", ring: "ring-slate-200" },
-  Submitted: { bg: "bg-blue-50", text: "text-blue-700", ring: "ring-blue-200" },
-  Qualified: { bg: "bg-emerald-50", text: "text-emerald-700", ring: "ring-emerald-200" },
-  "In Negotiation": { bg: "bg-amber-50", text: "text-amber-700", ring: "ring-amber-200" },
-  Approved: { bg: "bg-teal-50", text: "text-teal-700", ring: "ring-teal-200" },
-  Rejected: { bg: "bg-red-50", text: "text-red-700", ring: "ring-red-200" },
-};
+const DEFAULT_COLUMNS: ColumnDefinition[] = [
+  { key: "code", label: "Lead Code", visible: true },
+  { key: "location", label: "Location / Mouza", visible: true },
+  { key: "area_katha", label: "Area (Katha / Dec)", visible: true },
+  { key: "owner_name", label: "Owner Info", visible: true },
+  { key: "asking_price", label: "Asking Price", visible: true },
+  { key: "source", label: "Source", visible: true },
+  { key: "status", label: "Status", visible: true },
+  { key: "assignee", label: "Assignee", visible: true },
+];
 
 export function AcquisitionLeadsView({
-  leads,
+  leads = [],
+  landOwners = [],
+  valuations = [],
+  legalVerifications = [],
+  dueDiligenceRecords = [],
+  negotiations = [],
+  approvals = [],
+  settlements = [],
+  documents = [],
   onAddLead,
   onEditLead,
   onDeleteLead,
+  onAdvanceStage,
+  onQualifyLead,
+  onRejectLead,
+  onPaySettlement,
 }: AcquisitionLeadsViewProps) {
-  // লিস্ট ও ফিল্টার স্টেট
+  // Filter & Table States
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [sourceFilter, setSourceFilter] = useState("ALL");
   const [userFilter, setUserFilter] = useState("ALL");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [columns, setColumns] = useState<ColumnDefinition[]>(DEFAULT_COLUMNS);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // ফর্ম মডাল স্টেট
+  // Form Wizard Modal State
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<any>(null);
   const [formStep, setFormStep] = useState(1);
   const [formData, setFormData] = useState({
-    location: "", area_katha: "", area_sqft: "", source: "", 
-    owner_name: "", owner_phone: "", asking_price: "", notes: "",
-    owner_id: "", assigned_to: "", priority: "Medium"
+    title: "",
+    location: "",
+    mouza: "",
+    khatian_no: "",
+    dag_no: "",
+    area_katha: "",
+    area_sqft: "",
+    source: "",
+    owner_name: "",
+    owner_phone: "",
+    owner_nid: "",
+    asking_price: "",
+    notes: "",
+    owner_id: "",
+    assigned_to: "",
+    priority: "Medium",
   });
 
-  // ডিটেইলস মডাল স্টেট
-  const [selectedLead, setSelectedLead] = useState<any>(null);
-  const [detailTab, setDetailTab] = useState("Overview");
-  const [isRemarksModalOpen, setIsRemarksModalOpen] = useState(false);
+  // Comprehensive Detail Modal State
+  const [detailModalLead, setDetailModalLead] = useState<AcquisitionLead | null>(null);
+
+  // Advance / Reject Remarks Modal State
+  const [remarksModalLead, setRemarksModalLead] = useState<AcquisitionLead | null>(null);
+  const [remarksModalAction, setRemarksModalAction] = useState<"advance" | "reject">("advance");
 
   const safeLeads = Array.isArray(leads) ? leads : [];
 
   const resetFilters = () => {
-    setSearchTerm(""); setStatusFilter("ALL"); setSourceFilter("ALL"); setUserFilter("ALL");
+    setSearchTerm("");
+    setStatusFilter("ALL");
+    setSourceFilter("ALL");
+    setUserFilter("ALL");
+    setFromDate("");
+    setToDate("");
   };
 
   const filteredLeads = useMemo(() => {
     return safeLeads.filter((lead) => {
-      const l = lead as any; // Type casting to avoid TS errors
-      const matchesSearch = !searchTerm || 
-        (l.code || l.leadCode || "")?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (l.location || "")?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (l.owner_name || l.ownerName || "")?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus = statusFilter === "ALL" || (l.status || l.leadStage) === statusFilter;
-      const matchesSource = sourceFilter === "ALL" || l.source === sourceFilter;
-      const matchesUser = userFilter === "ALL" || (l.assignee || l.assignedUser) === userFilter;
+      const l = lead as any;
+      const codeStr = l.code || l.leadCode || l.lead_code || "";
+      const locStr = l.location || l.mouza || "";
+      const ownerStr = l.owner_name || l.ownerName || l.owner || "";
 
-      return matchesSearch && matchesStatus && matchesSource && matchesUser;
+      const term = searchTerm.toLowerCase();
+      const matchesSearch =
+        !term ||
+        codeStr.toLowerCase().includes(term) ||
+        locStr.toLowerCase().includes(term) ||
+        ownerStr.toLowerCase().includes(term);
+
+      const statusVal = l.status || l.leadStage || "Draft";
+      const matchesStatus = statusFilter === "ALL" || statusVal === statusFilter;
+
+      const sourceVal = l.source || "";
+      const matchesSource = sourceFilter === "ALL" || sourceVal === sourceFilter;
+
+      const userVal = l.assignee || l.assignedUser || l.assigned_to || "";
+      const matchesUser = userFilter === "ALL" || userVal === userFilter;
+
+      let matchesDate = true;
+      if (fromDate && l.created_at && l.created_at < fromDate) matchesDate = false;
+      if (toDate && l.created_at && l.created_at > toDate) matchesDate = false;
+
+      return matchesSearch && matchesStatus && matchesSource && matchesUser && matchesDate;
     });
-  }, [safeLeads, searchTerm, statusFilter, sourceFilter, userFilter]);
+  }, [safeLeads, searchTerm, statusFilter, sourceFilter, userFilter, fromDate, toDate]);
 
   const displayedLeads = filteredLeads.slice(0, entriesPerPage);
 
-  // ফর্ম ওপেন করা
+  const handleToggleColumn = (key: string) => {
+    setColumns(
+      columns.map((c) => (c.key === key ? { ...c, visible: !c.visible } : c))
+    );
+  };
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(displayedLeads.map((l: any) => l.uuid || l.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleExportCSV = () => {
+    const headers = [
+      "Code",
+      "Title / Location",
+      "Mouza",
+      "Khatian No",
+      "Dag No",
+      "Area (Katha)",
+      "Owner",
+      "Owner Phone",
+      "Asking Price (BDT)",
+      "Source",
+      "Status",
+      "Assignee",
+    ];
+    const rows = filteredLeads.map((l: any) => [
+      `"${l.code || l.leadCode || l.lead_code || ""}"`,
+      `"${l.location || l.title || ""}"`,
+      `"${l.mouza || ""}"`,
+      `"${l.khatian_no || ""}"`,
+      `"${l.dag_no || ""}"`,
+      l.area_katha || l.landArea || "",
+      `"${l.owner_name || l.ownerName || l.owner || ""}"`,
+      `"${l.owner_phone || l.ownerPhone || ""}"`,
+      l.asking_price || l.expectedPrice || "",
+      `"${l.source || ""}"`,
+      `"${l.status || l.leadStage || ""}"`,
+      `"${l.assignee || l.assignedUser || ""}"`,
+    ]);
+
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `acquisition_leads_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Open Form
   const openForm = (lead?: any) => {
     if (lead) {
       setEditingLead(lead);
       setFormData({
-        location: lead.location || "", area_katha: String(lead.area_katha || lead.landArea || ""), area_sqft: "",
-        source: lead.source || "", owner_name: lead.owner_name || lead.ownerName || "", owner_phone: lead.owner_phone || lead.ownerPhone || "",
-        asking_price: String(lead.asking_price || lead.expectedPrice || ""), notes: "", owner_id: "", assigned_to: lead.assignee || lead.assignedUser || "", priority: "Medium"
+        title: lead.title || lead.lead_code || "",
+        location: lead.location || "",
+        mouza: lead.mouza || "",
+        khatian_no: lead.khatian_no || "",
+        dag_no: lead.dag_no || "",
+        area_katha: String(lead.area_katha || lead.landArea || ""),
+        area_sqft: String(lead.area_sqft || ""),
+        source: lead.source || "",
+        owner_name: lead.owner_name || lead.ownerName || lead.owner || "",
+        owner_phone: lead.owner_phone || lead.ownerPhone || "",
+        owner_nid: lead.owner_nid || "",
+        asking_price: String(lead.asking_price || lead.expectedPrice || ""),
+        notes: lead.notes || "",
+        owner_id: lead.owner_id || "",
+        assigned_to: lead.assignee || lead.assignedUser || "",
+        priority: lead.priority || "Medium",
       });
     } else {
       setEditingLead(null);
-      setFormData({ location: "", area_katha: "", area_sqft: "", source: "", owner_name: "", owner_phone: "", asking_price: "", notes: "", owner_id: "", assigned_to: "", priority: "Medium" });
+      setFormData({
+        title: "",
+        location: "",
+        mouza: "",
+        khatian_no: "",
+        dag_no: "",
+        area_katha: "",
+        area_sqft: "",
+        source: "",
+        owner_name: "",
+        owner_phone: "",
+        owner_nid: "",
+        asking_price: "",
+        notes: "",
+        owner_id: "",
+        assigned_to: "",
+        priority: "Medium",
+      });
     }
     setFormStep(1);
     setIsFormModalOpen(true);
   };
 
-  // ফর্ম সাবমিট
+  // Submit Form
   const handleFormSubmit = (status: "Draft" | "Submitted") => {
-    const payload = { ...formData, status };
+    const payload = {
+      ...formData,
+      status,
+      landArea: Number(formData.area_katha) || 0,
+      asking_price: Number(formData.asking_price) || 0,
+    };
     if (editingLead && onEditLead) {
       onEditLead(editingLead.uuid || editingLead.id, payload);
     } else if (onAddLead) {
@@ -118,187 +322,696 @@ export function AcquisitionLeadsView({
     setEditingLead(null);
   };
 
-  return (
-    <div className="space-y-4 relative">
-      {/* 1. ফিল্টার বার */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-            <Filter className="w-3.5 h-3.5 text-cyan-600" /><span>Filter Leads</span>
-          </div>
-          {(statusFilter !== "ALL" || sourceFilter !== "ALL" || userFilter !== "ALL") && (
-            <button onClick={resetFilters} className="text-[11px] font-semibold text-cyan-600 flex items-center gap-1">
-              <RotateCcw className="w-3 h-3" /> Reset
-            </button>
-          )}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full px-2.5 py-1.5 rounded-xl border bg-slate-50 text-xs">
-            <option value="ALL">All Status</option>
-            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} className="w-full px-2.5 py-1.5 rounded-xl border bg-slate-50 text-xs">
-            <option value="ALL">All Sources</option>
-            {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <select value={userFilter} onChange={(e) => setUserFilter(e.target.value)} className="w-full px-2.5 py-1.5 rounded-xl border bg-slate-50 text-xs">
-            <option value="ALL">All Assignees</option>
-            {USERS.map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
-        </div>
-      </div>
+  const isColVisible = (key: string) => columns.find((c) => c.key === key)?.visible ?? true;
 
-      {/* 2. টেবিল কন্ট্রোল */}
-      <div className="bg-white p-4 rounded-2xl border flex justify-between items-center shadow-xs">
-        <div className="text-xs text-slate-600 flex items-center gap-2">
-          <span>Show</span>
-          <select value={entriesPerPage} onChange={(e) => setEntriesPerPage(Number(e.target.value))} className="px-2 py-1 border rounded bg-slate-50 font-bold">
-            <option value={10}>10</option><option value={25}>25</option><option value={50}>50</option>
-          </select>
-          <span>entries</span>
+  return (
+    <div className="space-y-6">
+      {/* 1. Header with Main CTA */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Compass className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+            Land Acquisition Leads
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Sourced land leads, landowner references, mouza/khatian info, and valuation transitions.
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" placeholder="Search leads..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 pr-3 py-2 rounded-xl border bg-slate-50 text-xs w-64" />
-          </div>
-          <button onClick={() => openForm()} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-cyan-600 text-white shadow-md">
-            <PlusCircle className="w-4 h-4" /> Create Lead
+
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => openForm()}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white text-xs font-bold shadow-md shadow-cyan-500/20 transition-all hover:scale-[1.01]"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Create Acquisition Lead</span>
           </button>
         </div>
       </div>
 
-      {/* 3. ডাটা টেবিল */}
-      <div className="bg-white rounded-2xl border shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b text-slate-700 font-bold uppercase tracking-wider">
-              <tr>
-                <th className="py-3 px-3.5">Code</th>
-                <th className="py-3 px-3.5">Location</th>
-                <th className="py-3 px-3.5">Area (Katha)</th>
-                <th className="py-3 px-3.5">Owner Info</th>
-                <th className="py-3 px-3.5">Asking Price</th>
-                <th className="py-3 px-3.5">Source</th>
-                <th className="py-3 px-3.5 text-center">Status</th>
-                <th className="py-3 px-3.5">Assignee</th>
-                <th className="py-3 px-3 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {displayedLeads.length === 0 ? (
-                <tr><td colSpan={9} className="py-12 text-center text-slate-400">No leads found.</td></tr>
-              ) : (
-                displayedLeads.map((lead, idx) => {
-                  const l = lead as any;
-                  const statusKey = l.status || l.leadStage || "Draft";
-                  const stageStyle = STAGE_BADGES[statusKey] || STAGE_BADGES.Draft;
-                  
+      {/* 2. Filter Bar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* Status filter */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+              Lead Status
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500/20"
+            >
+              <option value="ALL">All Statuses</option>
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Source filter */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+              Lead Source
+            </label>
+            <select
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value)}
+              className="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500/20"
+            >
+              <option value="ALL">All Sources</option>
+              {SOURCES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Assignee filter */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+              Assigned Officer
+            </label>
+            <select
+              value={userFilter}
+              onChange={(e) => setUserFilter(e.target.value)}
+              className="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500/20"
+            >
+              <option value="ALL">All Assignees</option>
+              {USERS.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* From Date */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+              Created From
+            </label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500/20"
+            />
+          </div>
+
+          {/* To Date */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+              Created To
+            </label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500/20"
+            />
+          </div>
+        </div>
+
+        {/* Universal Toolbar */}
+        <LamsTableToolbar
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search lead code, mouza, landowner name..."
+          columns={columns}
+          onToggleColumn={handleToggleColumn}
+          onExportCSV={handleExportCSV}
+          entriesPerPage={entriesPerPage}
+          onEntriesPerPageChange={setEntriesPerPage}
+          onResetFilters={resetFilters}
+          hasActiveFilters={
+            Boolean(searchTerm) ||
+            statusFilter !== "ALL" ||
+            sourceFilter !== "ALL" ||
+            userFilter !== "ALL" ||
+            Boolean(fromDate) ||
+            Boolean(toDate)
+          }
+        />
+      </div>
+
+      {/* 3. Bulk Action Bar */}
+      <LamsBulkActionBar
+        selectedCount={selectedIds.length}
+        onClearSelection={() => setSelectedIds([])}
+        onBulkDelete={() => {
+          if (confirm(`Are you sure you want to delete ${selectedIds.length} leads?`)) {
+            selectedIds.forEach((id) => onDeleteLead?.(id));
+            setSelectedIds([]);
+          }
+        }}
+        onBulkStatusChange={(newStatus) => {
+          selectedIds.forEach((id) =>
+            onEditLead?.(id, { status: newStatus as any })
+          );
+          setSelectedIds([]);
+        }}
+        statusOptions={[
+          { label: "Draft", value: "Draft" },
+          { label: "Submitted", value: "Submitted" },
+          { label: "Qualified", value: "Qualified" },
+          { label: "In Negotiation", value: "In Negotiation" },
+          { label: "Approved", value: "Approved" },
+          { label: "Rejected", value: "Rejected" },
+        ]}
+      />
+
+      {/* 4. Leads Data Table */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+        {displayedLeads.length === 0 ? (
+          <LamsEmptyState
+            title="No acquisition leads found"
+            subtitle="Create your first land lead or modify filter criteria to view properties."
+            buttonText="Create Acquisition Lead"
+            onAction={() => openForm()}
+            icon={Compass}
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200/80 dark:border-slate-800 text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
+                  <th className="py-3 px-3.5 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      onChange={handleSelectAll}
+                      checked={
+                        displayedLeads.length > 0 &&
+                        selectedIds.length === displayedLeads.length
+                      }
+                      className="rounded border-slate-300 dark:border-slate-600 text-cyan-600 focus:ring-cyan-500"
+                    />
+                  </th>
+                  {isColVisible("code") && <th className="py-3 px-3.5">Code</th>}
+                  {isColVisible("location") && <th className="py-3 px-3.5">Location / Mouza</th>}
+                  {isColVisible("area_katha") && <th className="py-3 px-3.5 text-right">Area</th>}
+                  {isColVisible("owner_name") && <th className="py-3 px-3.5">Owner Info</th>}
+                  {isColVisible("asking_price") && <th className="py-3 px-3.5 text-right">Asking Price</th>}
+                  {isColVisible("source") && <th className="py-3 px-3.5">Source</th>}
+                  {isColVisible("status") && <th className="py-3 px-3.5 text-center">Status</th>}
+                  {isColVisible("assignee") && <th className="py-3 px-3.5">Assignee</th>}
+                  <th className="py-3 px-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {displayedLeads.map((lead: any) => {
+                  const leadId = lead.uuid || lead.id;
+                  const isSelected = selectedIds.includes(leadId);
+                  const statusKey = lead.status || lead.leadStage || "Draft";
+                  const code = lead.code || lead.leadCode || lead.lead_code || lead.title || "LEAD";
+                  const area = lead.area_katha || lead.landArea || 0;
+                  const asking = lead.asking_price || lead.expectedPrice || 0;
+
                   return (
-                    <tr key={l.uuid || l.id || idx} className="hover:bg-slate-50">
-                      <td className="py-3 px-3.5 font-mono font-bold text-cyan-700">{l.code || l.leadCode}</td>
-                      <td className="py-3 px-3.5 font-medium">{l.location || "N/A"}</td>
-                      <td className="py-3 px-3.5 font-bold text-emerald-600">{l.area_katha || l.landArea || 0}</td>
-                      <td className="py-3 px-3.5">
-                        <p className="font-bold">{l.owner_name || l.ownerName || "N/A"}</p>
-                        <p className="text-[10px] text-slate-500">{l.owner_phone || l.ownerPhone || ""}</p>
-                      </td>
-                      <td className="py-3 px-3.5 font-bold">৳ {(l.asking_price || l.expectedPrice || 0).toLocaleString()}</td>
-                      <td className="py-3 px-3.5 text-slate-600">{l.source || "N/A"}</td>
+                    <tr
+                      key={leadId}
+                      className={`transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${
+                        isSelected ? "bg-cyan-50/40 dark:bg-cyan-950/20" : ""
+                      }`}
+                    >
                       <td className="py-3 px-3.5 text-center">
-                        <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${stageStyle.bg} ${stageStyle.text} ring-1 ${stageStyle.ring}`}>{statusKey}</span>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleSelectOne(leadId)}
+                          className="rounded border-slate-300 dark:border-slate-600 text-cyan-600 focus:ring-cyan-500"
+                        />
                       </td>
-                      <td className="py-3 px-3.5 font-medium">{l.assignee || l.assignedUser || "Unassigned"}</td>
-                      <td className="py-3 px-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => { setSelectedLead(lead); setDetailTab("Overview"); }} className="p-1.5 text-cyan-600 hover:bg-cyan-50 rounded-lg" title="View"><Eye className="w-4 h-4" /></button>
-                          <button onClick={() => openForm(lead)} className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Edit"><Pencil className="w-4 h-4" /></button>
-                          <button onClick={() => { if(confirm("Delete this lead?")) onDeleteLead?.(l.uuid || l.id); }} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg" title="Delete"><Trash2 className="w-4 h-4" /></button>
+
+                      {/* Code */}
+                      {isColVisible("code") && (
+                        <td className="py-3 px-3.5">
+                          <button
+                            onClick={() => setDetailModalLead(lead)}
+                            className="font-mono font-bold text-cyan-700 dark:text-cyan-400 hover:underline"
+                          >
+                            {code}
+                          </button>
+                        </td>
+                      )}
+
+                      {/* Location */}
+                      {isColVisible("location") && (
+                        <td className="py-3 px-3.5">
+                          <span className="font-semibold text-slate-800 dark:text-slate-100 block">
+                            {lead.location || lead.mouza || "N/A"}
+                          </span>
+                          {lead.khatian_no && (
+                            <span className="text-[10px] text-slate-400 block">
+                              Kh: {lead.khatian_no} • Dag: {lead.dag_no || "N/A"}
+                            </span>
+                          )}
+                        </td>
+                      )}
+
+                      {/* Area */}
+                      {isColVisible("area_katha") && (
+                        <td className="py-3 px-3.5 text-right">
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                            {area} Katha
+                          </span>
+                        </td>
+                      )}
+
+                      {/* Owner */}
+                      {isColVisible("owner_name") && (
+                        <td className="py-3 px-3.5">
+                          <span className="font-medium text-slate-800 dark:text-slate-200 block">
+                            {lead.owner_name || lead.ownerName || lead.owner || "N/A"}
+                          </span>
+                          {(lead.owner_phone || lead.ownerPhone) && (
+                            <span className="text-[10px] text-slate-400">
+                              {lead.owner_phone || lead.ownerPhone}
+                            </span>
+                          )}
+                        </td>
+                      )}
+
+                      {/* Asking Price */}
+                      {isColVisible("asking_price") && (
+                        <td className="py-3 px-3.5 text-right font-bold text-slate-900 dark:text-white">
+                          ৳ {Number(asking).toLocaleString()}
+                        </td>
+                      )}
+
+                      {/* Source */}
+                      {isColVisible("source") && (
+                        <td className="py-3 px-3.5 text-slate-600 dark:text-slate-300">
+                          {lead.source || "N/A"}
+                        </td>
+                      )}
+
+                      {/* Status */}
+                      {isColVisible("status") && (
+                        <td className="py-3 px-3.5 text-center">
+                          <LamsStatusBadge status={statusKey} type="lead" />
+                        </td>
+                      )}
+
+                      {/* Assignee */}
+                      {isColVisible("assignee") && (
+                        <td className="py-3 px-3.5 text-slate-600 dark:text-slate-300 font-medium">
+                          {lead.assignee || lead.assignedUser || "Unassigned"}
+                        </td>
+                      )}
+
+                      {/* Actions */}
+                      <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setDetailModalLead(lead)}
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-cyan-50 dark:hover:bg-cyan-950/50 text-cyan-600 dark:text-cyan-400 transition-all"
+                            title="View Complete Lead Details & Tabs"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            onClick={() => openForm(lead)}
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-all"
+                            title="Edit Lead"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+
+                          {statusKey !== "Qualified" && statusKey !== "Purchased" && (
+                            <button
+                              onClick={() => onQualifyLead?.(leadId)}
+                              className="p-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-emerald-600 transition-all"
+                              title="Qualify Lead"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              setRemarksModalLead(lead);
+                              setRemarksModalAction("advance");
+                            }}
+                            className="p-1.5 rounded-lg border border-cyan-200 dark:border-cyan-800 hover:bg-cyan-50 dark:hover:bg-cyan-950 text-cyan-600 transition-all"
+                            title="Advance Workflow Stage"
+                          >
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to delete lead "${code}"?`)) {
+                                onDeleteLead?.(leadId);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 transition-all"
+                            title="Delete Lead"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* ========================================== */}
-      {/* 4. Create / Edit Form Modal (Step 1, 2, 3) */}
-      {/* ========================================== */}
+      {/* 5. Create / Edit 3-Step Wizard Form Modal */}
       {isFormModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h2 className="font-bold text-lg">{editingLead ? "Edit Lead" : "Create New Lead"}</h2>
-              <button onClick={() => setIsFormModalOpen(false)} className="text-slate-400 hover:text-slate-700"><X className="w-5 h-5"/></button>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800">
+              <h2 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <Compass className="w-4 h-4 text-cyan-600" />
+                {editingLead ? "Edit Acquisition Lead" : "Create New Acquisition Lead"}
+              </h2>
+              <button
+                onClick={() => setIsFormModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            
-            <div className="p-6">
+
+            <div className="p-6 overflow-y-auto space-y-6">
               {/* Step Indicator */}
-              <div className="flex justify-between mb-6 border-b pb-4">
-                {[1, 2, 3].map(s => (
-                  <div key={s} className={`flex items-center gap-2 font-bold ${formStep === s ? "text-cyan-600" : "text-slate-400"}`}>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${formStep === s ? "bg-cyan-100" : "bg-slate-100"}`}>
-                      {formStep > s ? <Check className="w-3 h-3" /> : s}
+              <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                {[
+                  { s: 1, title: "Property & Land" },
+                  { s: 2, title: "Landowner Info" },
+                  { s: 3, title: "Assignment & Submission" },
+                ].map(({ s, title }) => (
+                  <div
+                    key={s}
+                    className={`flex items-center gap-2 font-bold text-xs ${
+                      formStep === s
+                        ? "text-cyan-600 dark:text-cyan-400"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                        formStep === s
+                          ? "bg-cyan-100 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 ring-2 ring-cyan-500/30"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                      }`}
+                    >
+                      {formStep > s ? <Check className="w-3.5 h-3.5" /> : s}
                     </div>
-                    <span className="text-xs">{s === 1 ? "Info" : s === 2 ? "Owner" : "Assign"}</span>
+                    <span>{title}</span>
                   </div>
                 ))}
               </div>
 
-              {/* Step 1: Info */}
+              {/* Step 1: Property & Land Info */}
               {formStep === 1 && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2"><label className="text-xs font-bold mb-1 block">Location *</label><input type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full border p-2 rounded text-sm" /></div>
-                  <div><label className="text-xs font-bold mb-1 block">Area (Katha) *</label><input type="number" value={formData.area_katha} onChange={e => setFormData({...formData, area_katha: e.target.value})} className="w-full border p-2 rounded text-sm" /></div>
-                  <div><label className="text-xs font-bold mb-1 block">Area (Sqft)</label><input type="number" value={formData.area_sqft} onChange={e => setFormData({...formData, area_sqft: e.target.value})} className="w-full border p-2 rounded text-sm" /></div>
-                  <div><label className="text-xs font-bold mb-1 block">Source *</label><select value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})} className="w-full border p-2 rounded text-sm"><option value="">Select</option>{SOURCES.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-                  <div><label className="text-xs font-bold mb-1 block">Owner Name *</label><input type="text" value={formData.owner_name} onChange={e => setFormData({...formData, owner_name: e.target.value})} className="w-full border p-2 rounded text-sm" /></div>
-                  <div><label className="text-xs font-bold mb-1 block">Owner Phone *</label><input type="text" value={formData.owner_phone} onChange={e => setFormData({...formData, owner_phone: e.target.value})} className="w-full border p-2 rounded text-sm" /></div>
-                  <div><label className="text-xs font-bold mb-1 block">Asking Price</label><input type="number" value={formData.asking_price} onChange={e => setFormData({...formData, asking_price: e.target.value})} className="w-full border p-2 rounded text-sm" /></div>
-                  <div className="col-span-2"><label className="text-xs font-bold mb-1 block">Notes</label><textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full border p-2 rounded text-sm" rows={2} /></div>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div className="col-span-2">
+                    <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                      Lead Title / Reference *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Uttara Sector 18 Commercial Plot"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                      Location / Address *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Uttara Sector 18, Dhaka"
+                      value={formData.location}
+                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                      Mouza Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Badda / Uttara"
+                      value={formData.mouza}
+                      onChange={(e) => setFormData({ ...formData, mouza: e.target.value })}
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                      Khatian No
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="CS/SA/RS/City Khatian"
+                      value={formData.khatian_no}
+                      onChange={(e) => setFormData({ ...formData, khatian_no: e.target.value })}
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                      Dag No (Plot)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 504 / 889"
+                      value={formData.dag_no}
+                      onChange={(e) => setFormData({ ...formData, dag_no: e.target.value })}
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                      Area (Katha) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g. 15.5"
+                      value={formData.area_katha}
+                      onChange={(e) => setFormData({ ...formData, area_katha: e.target.value })}
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                      Asking Price (BDT)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 50000000"
+                      value={formData.asking_price}
+                      onChange={(e) => setFormData({ ...formData, asking_price: e.target.value })}
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                      Source *
+                    </label>
+                    <select
+                      value={formData.source}
+                      onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                    >
+                      <option value="">Select Sourcing Channel</option>
+                      {SOURCES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               )}
 
-              {/* Step 2: Owner */}
+              {/* Step 2: Landowner Info */}
               {formStep === 2 && (
-                <div className="space-y-4">
-                  <div><label className="text-xs font-bold mb-1 block">Link Existing Owner</label><select className="w-full border p-2 rounded text-sm"><option value="">Select Owner...</option></select></div>
-                  <div className="text-center text-xs text-slate-400">-- OR --</div>
-                  <div className="bg-slate-50 p-4 rounded-xl border border-dashed">
-                    <h4 className="font-bold text-xs mb-2">Create New Owner Profile</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input type="text" placeholder="Name" className="border p-1.5 rounded text-xs" />
-                      <input type="text" placeholder="NID" className="border p-1.5 rounded text-xs" />
-                      <input type="text" placeholder="Phone" className="border p-1.5 rounded text-xs" />
-                      <input type="email" placeholder="Email" className="border p-1.5 rounded text-xs" />
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                      Link Existing Landowner
+                    </label>
+                    <select
+                      value={formData.owner_id}
+                      onChange={(e) => {
+                        const owner = landOwners.find((o) => (o.uuid || o.id) === e.target.value);
+                        if (owner) {
+                          setFormData({
+                            ...formData,
+                            owner_id: owner.uuid || owner.id,
+                            owner_name: owner.name,
+                            owner_phone: owner.phone,
+                            owner_nid: owner.nid || "",
+                          });
+                        } else {
+                          setFormData({ ...formData, owner_id: e.target.value });
+                        }
+                      }}
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                    >
+                      <option value="">Select Existing Landowner Profile</option>
+                      {landOwners.map((o) => (
+                        <option key={o.uuid || o.id} value={o.uuid || o.id}>
+                          {o.name} ({o.phone})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="text-center text-slate-400 font-bold text-[11px]">
+                    -- OR CREATE NEW OWNER DETAILS --
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                        Landowner Name *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Owner Full Name"
+                        value={formData.owner_name}
+                        onChange={(e) => setFormData({ ...formData, owner_name: e.target.value })}
+                        className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                        Contact Phone *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="017XXXXXXXX"
+                        value={formData.owner_phone}
+                        onChange={(e) => setFormData({ ...formData, owner_phone: e.target.value })}
+                        className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                        NID (10-17 Digits)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="National ID"
+                        value={formData.owner_nid}
+                        onChange={(e) => setFormData({ ...formData, owner_nid: e.target.value })}
+                        className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                      />
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Step 3: Assign */}
+              {/* Step 3: Assignment & Submission */}
               {formStep === 3 && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div><label className="text-xs font-bold mb-1 block">Assign To</label><select value={formData.assigned_to} onChange={e => setFormData({...formData, assigned_to: e.target.value})} className="w-full border p-2 rounded text-sm"><option value="">Select User</option>{USERS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
-                  <div><label className="text-xs font-bold mb-1 block">Priority</label><select value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})} className="w-full border p-2 rounded text-sm"><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select></div>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                      Assign To Officer
+                    </label>
+                    <select
+                      value={formData.assigned_to}
+                      onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                    >
+                      <option value="">Select Assignee</option>
+                      {USERS.map((u) => (
+                        <option key={u} value={u}>
+                          {u}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                      Priority Level
+                    </label>
+                    <select
+                      value={formData.priority}
+                      onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                    >
+                      <option value="High">High Priority</option>
+                      <option value="Medium">Medium Priority</option>
+                      <option value="Low">Low Priority</option>
+                    </select>
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                      Notes & Observations
+                    </label>
+                    <textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      rows={3}
+                      placeholder="Add any initial observations or inspection notes..."
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Form Actions */}
-            <div className="p-4 border-t bg-slate-50 flex justify-between">
-              <button disabled={formStep === 1} onClick={() => setFormStep(formStep - 1)} className="px-4 py-2 border rounded text-sm font-bold disabled:opacity-50">Previous</button>
+            {/* Form Actions Footer */}
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-between">
+              <button
+                disabled={formStep === 1}
+                onClick={() => setFormStep(formStep - 1)}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40"
+              >
+                Previous
+              </button>
+
               <div className="flex gap-2">
                 {formStep < 3 ? (
-                  <button onClick={() => setFormStep(formStep + 1)} className="px-4 py-2 bg-cyan-600 text-white rounded text-sm font-bold">Next</button>
+                  <button
+                    onClick={() => setFormStep(formStep + 1)}
+                    className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-bold shadow-md shadow-cyan-500/20"
+                  >
+                    Next Step
+                  </button>
                 ) : (
                   <>
-                    <button onClick={() => handleFormSubmit("Draft")} className="px-4 py-2 border rounded text-sm font-bold">Save Draft</button>
-                    <button onClick={() => handleFormSubmit("Submitted")} className="px-4 py-2 bg-green-600 text-white rounded text-sm font-bold">Submit</button>
+                    <button
+                      onClick={() => handleFormSubmit("Draft")}
+                      className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200"
+                    >
+                      Save Draft
+                    </button>
+                    <button
+                      onClick={() => handleFormSubmit("Submitted")}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20"
+                    >
+                      Submit Lead
+                    </button>
                   </>
                 )}
               </div>
@@ -307,73 +1020,51 @@ export function AcquisitionLeadsView({
         </div>
       )}
 
-      {/* ========================================== */}
-      {/* 5. Lead Details Modal (Overview, Info, Valuations, Workflow) */}
-      {/* ========================================== */}
-      {selectedLead && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Header */}
-            <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <span className="bg-white border text-cyan-700 font-mono font-bold px-3 py-1 rounded-md text-sm">{selectedLead.code || selectedLead.leadCode}</span>
-                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${STAGE_BADGES[selectedLead.status || selectedLead.leadStage || "Draft"]?.bg} ${STAGE_BADGES[selectedLead.status || selectedLead.leadStage || "Draft"]?.text}`}>{selectedLead.status || selectedLead.leadStage}</span>
-              </div>
-              <button onClick={() => setSelectedLead(null)} className="text-slate-400 hover:text-slate-700"><X className="w-5 h-5"/></button>
-            </div>
+      {/* 6. Comprehensive 10-Tab Detail Modal */}
+      <LeadDetailModal
+        isOpen={Boolean(detailModalLead)}
+        onClose={() => setDetailModalLead(null)}
+        lead={detailModalLead}
+        valuations={valuations}
+        legalVerifications={legalVerifications}
+        dueDiligenceRecords={dueDiligenceRecords}
+        negotiations={negotiations}
+        approvals={approvals}
+        settlements={settlements}
+        documents={documents}
+        onQualify={(id) => {
+          onQualifyLead?.(id);
+          setDetailModalLead(null);
+        }}
+        onReject={(id, remarks) => {
+          onRejectLead?.(id, remarks);
+          setDetailModalLead(null);
+        }}
+        onAdvance={(id, nextStage, remarks) => {
+          onAdvanceStage?.(id, nextStage, remarks);
+          setDetailModalLead(null);
+        }}
+        onPaySettlement={onPaySettlement}
+      />
 
-            {/* Action Buttons */}
-            <div className="px-4 py-2 border-b flex gap-2 bg-white">
-              <button className="px-3 py-1.5 text-xs font-bold bg-green-50 text-green-700 rounded border border-green-200 flex items-center gap-1"><CheckCircle className="w-3 h-3"/> Qualify</button>
-              <button className="px-3 py-1.5 text-xs font-bold bg-red-50 text-red-700 rounded border border-red-200 flex items-center gap-1"><XCircle className="w-3 h-3"/> Reject</button>
-              <button onClick={() => setIsRemarksModalOpen(true)} className="px-3 py-1.5 text-xs font-bold bg-cyan-600 text-white rounded flex items-center gap-1"><ArrowRight className="w-3 h-3"/> Advance</button>
-            </div>
-
-            {/* Tabs Nav */}
-            <div className="flex gap-4 px-4 border-b bg-white">
-              {["Overview", "Info", "Valuations", "Workflow"].map(tab => (
-                <button key={tab} onClick={() => setDetailTab(tab)} className={`py-3 text-xs font-bold border-b-2 ${detailTab === tab ? "border-cyan-600 text-cyan-600" : "border-transparent text-slate-500"}`}>{tab}</button>
-              ))}
-            </div>
-
-            {/* Tab Content */}
-            <div className="p-6 overflow-y-auto flex-1">
-              {detailTab === "Overview" && (
-                <div className="grid grid-cols-2 gap-6">
-                  <div><p className="text-[10px] text-slate-500 uppercase font-bold">Location</p><p className="font-bold text-sm">{selectedLead.location || "N/A"}</p></div>
-                  <div><p className="text-[10px] text-slate-500 uppercase font-bold">Area</p><p className="font-bold text-emerald-600 text-sm">{selectedLead.area_katha || selectedLead.landArea || 0} Katha</p></div>
-                  <div><p className="text-[10px] text-slate-500 uppercase font-bold">Owner Name</p><p className="font-bold text-sm">{selectedLead.owner_name || selectedLead.ownerName || "N/A"}</p></div>
-                  <div><p className="text-[10px] text-slate-500 uppercase font-bold">Owner Phone</p><p className="font-bold text-sm">{selectedLead.owner_phone || selectedLead.ownerPhone || "N/A"}</p></div>
-                  <div><p className="text-[10px] text-slate-500 uppercase font-bold">Asking Price</p><p className="font-bold text-sm">৳ {(selectedLead.asking_price || selectedLead.expectedPrice || 0).toLocaleString()}</p></div>
-                  <div><p className="text-[10px] text-slate-500 uppercase font-bold">Source</p><p className="font-bold text-sm">{selectedLead.source || "N/A"}</p></div>
-                </div>
-              )}
-              {detailTab === "Info" && <p className="text-sm text-slate-500">Land Information (Mouza, Khatian, Dag) coming soon...</p>}
-              {detailTab === "Valuations" && <p className="text-sm text-slate-500">Valuation details coming soon...</p>}
-              {detailTab === "Workflow" && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3"><div className="w-3 h-3 bg-cyan-600 rounded-full"></div><span className="text-sm font-bold">Lead Created</span></div>
-                  <div className="flex items-center gap-3"><div className="w-3 h-3 bg-slate-200 rounded-full"></div><span className="text-sm text-slate-500">Negotiation</span></div>
-                  <div className="flex items-center gap-3"><div className="w-3 h-3 bg-slate-200 rounded-full"></div><span className="text-sm text-slate-500">Approval</span></div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Remarks Modal for Advance/Reject */}
-      {isRemarksModalOpen && (
-        <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-xl w-96 shadow-xl">
-            <h3 className="font-bold text-sm mb-4">Advance Stage Remarks</h3>
-            <textarea placeholder="Enter remarks *" className="w-full border p-2 rounded text-sm mb-4" rows={3} required />
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setIsRemarksModalOpen(false)} className="px-3 py-1.5 border rounded text-xs font-bold">Cancel</button>
-              <button onClick={() => setIsRemarksModalOpen(false)} className="px-3 py-1.5 bg-cyan-600 text-white rounded text-xs font-bold">Confirm</button>
-            </div>
-          </div>
-        </div>
+      {/* 7. Advance / Reject Remarks Modal */}
+      {remarksModalLead && (
+        <AdvanceStageRemarksModal
+          isOpen={Boolean(remarksModalLead)}
+          onClose={() => setRemarksModalLead(null)}
+          leadId={remarksModalLead.uuid || remarksModalLead.id}
+          leadCode={remarksModalLead.lead_code || remarksModalLead.code || remarksModalLead.title || "LEAD"}
+          currentStage={remarksModalLead.status || "Lead"}
+          action={remarksModalAction}
+          onConfirm={(remarks, nextStage) => {
+            if (remarksModalAction === "advance") {
+              onAdvanceStage?.(remarksModalLead.uuid || remarksModalLead.id, nextStage, remarks);
+            } else {
+              onRejectLead?.(remarksModalLead.uuid || remarksModalLead.id, remarks);
+            }
+            setRemarksModalLead(null);
+          }}
+        />
       )}
     </div>
   );
