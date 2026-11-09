@@ -21,7 +21,13 @@ export function formatDate(v?: string) {
 
 export async function loadDropdown(apiPath: string) {
   try {
-    const res = await fetch(`${API_BASE}/realbizpro/api/v1/${apiPath}?page=1&limit=100&status=active&withDeleted=false`, { cache: "no-store" });
+    const token = typeof window !== "undefined" ? (localStorage.getItem("admin_access_token") || localStorage.getItem("access_token") || localStorage.getItem("token")) : null;
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}/realbizpro/api/v1/${apiPath}?page=1&limit=100&status=active&withDeleted=false`, {
+      cache: "no-store",
+      headers,
+    });
     const json = await res.json().catch(() => ({}));
     return (json?.data?.data || []).map((e: any) => ({ uuid: e.uuid, name: e.name || "Unnamed" }));
   } catch { return []; }
@@ -190,9 +196,13 @@ export function EmployeeFormModal({ isOpen, onClose, onSuccess, initialData }: {
         : `${API_BASE}/realbizpro/api/v1/employee-list`;
       const method = initialData?.uuid ? "PATCH" : "POST";
 
+      const token = typeof window !== "undefined" ? (localStorage.getItem("admin_access_token") || localStorage.getItem("access_token") || localStorage.getItem("token")) : null;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch(url, { 
         method, 
-        headers: { "Content-Type": "application/json" }, 
+        headers, 
         body: JSON.stringify(payload) 
       });
       

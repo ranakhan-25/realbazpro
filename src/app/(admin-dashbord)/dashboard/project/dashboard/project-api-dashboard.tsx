@@ -54,9 +54,18 @@ export default function ProjectApiDashboard({
       setLoading(true);
       setError("");
       try {
+        const token =
+          typeof window !== "undefined"
+            ? localStorage.getItem("admin_access_token") ||
+              localStorage.getItem("access_token") ||
+              localStorage.getItem("token")
+            : null;
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
         const response = await fetch(
           `${API_BASE}/realbizpro/api/v1/project?page=1&limit=100`,
-          { cache: "no-store" },
+          { cache: "no-store", headers },
         );
         const payload: unknown = await response.json().catch(() => null);
         if (!response.ok) {
