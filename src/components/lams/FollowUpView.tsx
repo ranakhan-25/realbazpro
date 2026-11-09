@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { Fragment, useState, useMemo } from "react";
 import {
   Search,
   CalendarCheck2,
@@ -238,12 +238,13 @@ export function FollowUpView({
               ) : (
                 displayedFollowUps.map((item, idx) => {
                   const itemId = item.uuid || item.id || `flw-${idx}`;
+                  const rowKey = `flw-row-${item.uuid || item.id || "item"}-${idx}`;
                   const isExpanded = expandedId === itemId;
                   const statusInfo = STATUS_BADGES[item.status as FollowUpStatus] || { bg: "bg-slate-100 text-slate-800", text: "text-slate-700", icon: Clock };
                   const StatusIcon = statusInfo.icon;
 
                   return (
-                    <React.Fragment key={itemId}>
+                    <Fragment key={rowKey}>
                       <tr
                         className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
                           isExpanded ? "bg-cyan-50/40 dark:bg-cyan-950/20" : ""
@@ -351,7 +352,7 @@ export function FollowUpView({
                           </td>
                         </tr>
                       )}
-                    </React.Fragment>
+                    </Fragment>
                   );
                 })
               )}
