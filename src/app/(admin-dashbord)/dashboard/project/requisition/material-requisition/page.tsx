@@ -2,6 +2,9 @@
 /* eslint-disable prettier/prettier */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useEffect, useState } from "react";
 import {
   Search,
@@ -149,7 +152,7 @@ async function fetchRelatedOptions(
   label: string,
 ): Promise<RelatedOption[]> {
   const query = new URLSearchParams({ page: "1", limit: "100" });
-  const res = await fetch(`${endpoint}?${query}`, {
+  const res = await projectFetch(`${endpoint}?${query}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -203,7 +206,7 @@ async function fetchRequisitions(params?: {
   });
   if (search) query.append("search", search);
 
-  const res = await fetch(`${REQUISITION_API}?${query}`, {
+  const res = await projectFetch(`${REQUISITION_API}?${query}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -268,7 +271,7 @@ async function fetchRequisitions(params?: {
 
 async function fetchProjects(): Promise<ProjectOption[]> {
   const query = new URLSearchParams({ page: "1", limit: "100" });
-  const res = await fetch(`${PROJECT_API}?${query}`, {
+  const res = await projectFetch(`${PROJECT_API}?${query}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -292,7 +295,7 @@ async function fetchProjects(): Promise<ProjectOption[]> {
 }
 
 async function fetchRequisitionById(uuid: string) {
-  const res = await fetch(`${REQUISITION_API}/${uuid}`, {
+  const res = await projectFetch(`${REQUISITION_API}/${uuid}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -307,7 +310,7 @@ async function fetchRequisitionById(uuid: string) {
 }
 
 async function createRequisition(payload: Record<string, any>) {
-  const res = await fetch(REQUISITION_API, {
+  const res = await projectFetch(REQUISITION_API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -320,7 +323,7 @@ async function createRequisition(payload: Record<string, any>) {
 }
 
 async function updateRequisition(uuid: string, payload: Record<string, any>) {
-  const res = await fetch(`${REQUISITION_API}/${uuid}`, {
+  const res = await projectFetch(`${REQUISITION_API}/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -333,7 +336,7 @@ async function updateRequisition(uuid: string, payload: Record<string, any>) {
 }
 
 async function softDeleteRequisition(uuid: string) {
-  const res = await fetch(`${REQUISITION_API}/${uuid}`, {
+  const res = await projectFetch(`${REQUISITION_API}/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

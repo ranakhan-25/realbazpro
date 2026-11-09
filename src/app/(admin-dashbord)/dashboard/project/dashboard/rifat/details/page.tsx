@@ -1,5 +1,8 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { Trash2, RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
@@ -49,7 +52,7 @@ export default function DetailsPage() {
   const fetchDetails = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/details`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/details`);
       if (!res.ok) throw new Error("Failed to fetch details");
 
       const data = await res.json();
@@ -140,14 +143,14 @@ export default function DetailsPage() {
 
       if (formData.uuid) {
         // UPDATE
-        res = await fetch(`${API_BASE}/realbizpro/api/v1/details/${formData.uuid}`, {
+        res = await projectFetch(`${API_BASE}/realbizpro/api/v1/details/${formData.uuid}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
       } else {
         // CREATE
-        res = await fetch(`${API_BASE}/realbizpro/api/v1/details`, {
+        res = await projectFetch(`${API_BASE}/realbizpro/api/v1/details`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -183,7 +186,7 @@ export default function DetailsPage() {
     if (!confirm("Are you sure you want to soft-delete these details?")) return;
 
     try {
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/details/${formData.uuid}`, {
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/details/${formData.uuid}`, {
         method: "DELETE",
       });
 
@@ -203,7 +206,7 @@ export default function DetailsPage() {
     if (!formData.uuid) return;
 
     try {
-      const res = await fetch(
+      const res = await projectFetch(
         `${API_BASE}/realbizpro/api/v1/details/${formData.uuid}/restore`,
         {
           method: "POST", // according to your API docs

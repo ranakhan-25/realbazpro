@@ -1,5 +1,8 @@
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+import { useVoucherOptions } from "../../voucher-options";
+
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -61,6 +64,7 @@ const normalizeDate = (input: string): string => {
 
 // ---------- Component ----------
 export default function JournalVoucherCreatePage() {
+  const voucherOptions = useVoucherOptions();
   const router = useRouter();
   const [editingUuid, setEditingUuid] = useState("");
   const [isReadOnly, setIsReadOnly] = useState(false);
@@ -116,7 +120,7 @@ export default function JournalVoucherCreatePage() {
   useEffect(() => {
     void (async () => {
       try {
-        const response = await fetch("/api/backend/chart-of-accounts", {
+        const response = await accountsFetch("/api/backend/chart-of-accounts", {
           cache: "no-store",
         });
         const result = await response.json();
@@ -163,7 +167,7 @@ export default function JournalVoucherCreatePage() {
 
     void (async () => {
       try {
-        const response = await fetch(
+        const response = await accountsFetch(
           `/api/backend/journal-vouchers/${encodeURIComponent(uuid)}`,
           { cache: "no-store" },
         );
@@ -313,7 +317,7 @@ export default function JournalVoucherCreatePage() {
     }
 
     try {
-      const response = await fetch("/api/backend/chart-of-accounts", {
+      const response = await accountsFetch("/api/backend/chart-of-accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -434,14 +438,14 @@ export default function JournalVoucherCreatePage() {
         : "/api/backend/journal-vouchers";
 
       // Create = POST, Update = PATCH, fail হলে PUT
-      let response = await fetch(url, {
+      let response = await accountsFetch(url, {
         method: editingUuid ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       if (editingUuid && !response.ok) {
-        response = await fetch(url, {
+        response = await accountsFetch(url, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -530,7 +534,7 @@ export default function JournalVoucherCreatePage() {
                   Voucher No
                 </label>
                 <input
-                  type="text"
+                  type="date"
                   readOnly
                   value={headerState.voucherNo}
                   className="flex-1 bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none"
@@ -542,7 +546,7 @@ export default function JournalVoucherCreatePage() {
                   Date
                 </label>
                 <input
-                  type="text"
+                  type="date"
                   value={headerState.date}
                   onChange={(e) =>
                     setHeaderState({ ...headerState, date: e.target.value })
@@ -566,8 +570,7 @@ export default function JournalVoucherCreatePage() {
                   className="flex-1 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
                 >
                   <option value="">Select Project Type</option>
-                  <option value="Commercial">Commercial</option>
-                  <option value="Residential">Residential</option>
+                  {voucherOptions.projectTypes.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                 </select>
               </div>
 
@@ -586,8 +589,7 @@ export default function JournalVoucherCreatePage() {
                   className="flex-1 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
                 >
                   <option value="">Select Title/Name of Work</option>
-                  <option value="Civil Work">Civil Work</option>
-                  <option value="Electrical Work">Electrical Work</option>
+                  {voucherOptions.workNames.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                 </select>
               </div>
             </div>
@@ -605,8 +607,7 @@ export default function JournalVoucherCreatePage() {
                   className="flex-1 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
                 >
                   <option value="">Select Project</option>
-                  <option value="Tower A">Tower A</option>
-                  <option value="Plaza B">Plaza B</option>
+                  {voucherOptions.projects.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                 </select>
               </div>
 
@@ -622,8 +623,7 @@ export default function JournalVoucherCreatePage() {
                   className="flex-1 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
                 >
                   <option value="">Select Site</option>
-                  <option value="Dhaka Site">Dhaka Site</option>
-                  <option value="Chittagong Site">Chittagong Site</option>
+                  {voucherOptions.sites.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                 </select>
               </div>
 
@@ -639,8 +639,7 @@ export default function JournalVoucherCreatePage() {
                   className="flex-1 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
                 >
                   <option value="">Select Task</option>
-                  <option value="Foundation">Foundation</option>
-                  <option value="Finishing">Finishing</option>
+                  {voucherOptions.tasks.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                 </select>
               </div>
             </div>
@@ -887,10 +886,7 @@ export default function JournalVoucherCreatePage() {
                   className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
                 >
                   <option value="">Select value</option>
-                  <option value="Assets">Assets</option>
-                  <option value="Liabilities">Liabilities</option>
-                  <option value="Expenses">Expenses</option>
-                  <option value="Income">Income</option>
+                  {voucherOptions.chartGroups.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                 </select>
               </div>
 

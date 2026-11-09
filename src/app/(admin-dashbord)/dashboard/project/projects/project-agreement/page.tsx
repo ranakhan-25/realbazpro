@@ -1,5 +1,8 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, {
   Suspense,
   useCallback,
@@ -91,7 +94,7 @@ const emptyForm = (projectUuid = ""): AgreementForm => ({
 async function request<T = unknown>(path: string, init?: RequestInit): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   try {
-    const response = await fetch(`${API_URL}${path}`, {
+    const response = await projectFetch(`${API_URL}${path}`, {
       ...init,
       headers: {
         Accept: "application/json",

@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import {
   Search,
@@ -53,7 +56,7 @@ async function fetchContractors(): Promise<{
   data: Contractor[];
   meta: any;
 }> {
-  const res = await fetch(
+  const res = await projectFetch(
     `${API_BASE}/realbizpro/api/v1/contractor?page=1&limit=100&skip=0&sortBy=createdAt&sortOrder=DESC&withDeleted=false&status=active`,
     {
       method: "GET",
@@ -91,7 +94,7 @@ async function fetchContractors(): Promise<{
 }
 
 async function createContractor(payload: Record<string, any>) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/contractor`, {
+  const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/contractor`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -110,7 +113,7 @@ async function createContractor(payload: Record<string, any>) {
 }
 
 async function updateContractor(uuid: string, payload: Record<string, any>) {
-  const res = await fetch(
+  const res = await projectFetch(
     `${API_BASE}/realbizpro/api/v1/contractor/${uuid}`,
     {
       method: "PATCH",
@@ -132,7 +135,7 @@ async function updateContractor(uuid: string, payload: Record<string, any>) {
 }
 
 async function softDeleteContractor(uuid: string) {
-  const res = await fetch(
+  const res = await projectFetch(
     `${API_BASE}/realbizpro/api/v1/contractor/${uuid}`,
     {
       method: "DELETE",

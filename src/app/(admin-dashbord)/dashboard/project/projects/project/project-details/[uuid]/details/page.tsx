@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -52,7 +55,7 @@ export default function DetailsPage() {
     const fetchDetails = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${API_BASE}/realbizpro/api/v1/details?projectId=${uuid}`);
+        const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/details?projectId=${uuid}`);
         const json = await res.json();
 
         if (json.success && json.data.data && json.data.data.length > 0) {
@@ -112,7 +115,7 @@ export default function DetailsPage() {
 
       const method = isUpdate ? "PUT" : "POST";
 
-      const res = await fetch(url, {
+      const res = await projectFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { Fragment, useState, useRef, useEffect } from "react";
 import { ChevronDown, Calendar, SlidersHorizontal } from "lucide-react";
 
 const shiftOptions = [
@@ -251,7 +251,7 @@ export default function DailyAttendanceReportPage() {
               </thead>
               <tbody>
                 {REPORT_DATA.map((group) => (
-                  <tr key={group.department} className="contents">
+                  <Fragment key={group.department}>
                     {/* Department Header Row */}
                     <tr>
                       <td
@@ -291,7 +291,7 @@ export default function DailyAttendanceReportPage() {
                         Total Employee: {group.total} Present: {group.present} Absent: {group.absent}
                       </td>
                     </tr>
-                  </tr>
+                  </Fragment>
                 ))}
               </tbody>
             </table>

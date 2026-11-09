@@ -1,6 +1,8 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
 import React, { useState, useEffect } from "react";
 import {
   Search,
@@ -49,7 +51,7 @@ async function fetchDepartments(): Promise<{
 }> {
   const url = `${API_BASE}/realbizpro/api/v1/department?page=1&limit=100&skip=0&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
   console.log("GET departments →", url);
-  const res = await fetch(url, {
+  const res = await hrmFetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -79,7 +81,7 @@ async function fetchEmployees(): Promise<OptionItem[]> {
     const url = `${API_BASE}/realbizpro/api/v1/employee-list?page=1&limit=100&status=active&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
     console.log("GET employees →", url);
 
-    const res = await fetch(url, {
+    const res = await hrmFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -107,7 +109,7 @@ async function fetchEmployees(): Promise<OptionItem[]> {
 
 async function createDepartment(payload: Record<string, any>) {
   console.log("POST payload →", payload);
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/department`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/department`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -119,7 +121,7 @@ async function createDepartment(payload: Record<string, any>) {
 
 async function updateDepartment(uuid: string, payload: Record<string, any>) {
   console.log("PATCH", uuid, "payload →", payload);
-  const res = await fetch(
+  const res = await hrmFetch(
     `${API_BASE}/realbizpro/api/v1/department/${uuid}`,
     {
       method: "PATCH",
@@ -134,7 +136,7 @@ async function updateDepartment(uuid: string, payload: Record<string, any>) {
 
 async function softDeleteDepartment(uuid: string) {
   console.log("DELETE →", uuid);
-  const res = await fetch(
+  const res = await hrmFetch(
     `${API_BASE}/realbizpro/api/v1/department/${uuid}`,
     {
       method: "DELETE",
@@ -148,7 +150,7 @@ async function softDeleteDepartment(uuid: string) {
 
 async function restoreDepartment(uuid: string) {
   console.log("PATCH restore →", uuid);
-  const res = await fetch(
+  const res = await hrmFetch(
     `${API_BASE}/realbizpro/api/v1/department/${uuid}/restore`,
     {
       method: "PATCH",

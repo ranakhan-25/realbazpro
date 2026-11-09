@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import {
   Plus,
@@ -71,7 +74,7 @@ async function fetchSuppliers(params?: {
   // status=active — tai soft-deleted (inactive) record ar list e asbe na
   const url = `${API_BASE}/realbizpro/api/v1/supplier-accounts?page=${page}&limit=${limit}&skip=0&status=active&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
 
-  const res = await fetch(url, {
+  const res = await projectFetch(url, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -109,7 +112,7 @@ async function fetchSuppliers(params?: {
 
 // POST /realbizpro/api/v1/supplier-accounts
 async function createSupplier(payload: Record<string, any>) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/supplier-accounts`, {
+  const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/supplier-accounts`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -119,7 +122,7 @@ async function createSupplier(payload: Record<string, any>) {
 
 // PATCH /realbizpro/api/v1/supplier-accounts/{uuid}
 async function updateSupplier(uuid: string, payload: Record<string, any>) {
-  const res = await fetch(
+  const res = await projectFetch(
     `${API_BASE}/realbizpro/api/v1/supplier-accounts/${uuid}`,
     {
       method: "PATCH",
@@ -132,7 +135,7 @@ async function updateSupplier(uuid: string, payload: Record<string, any>) {
 
 // DELETE /realbizpro/api/v1/supplier-accounts/{uuid}
 async function softDeleteSupplier(uuid: string) {
-  const res = await fetch(
+  const res = await projectFetch(
     `${API_BASE}/realbizpro/api/v1/supplier-accounts/${uuid}`,
     {
       method: "DELETE",
