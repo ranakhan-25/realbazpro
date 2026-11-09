@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, X, Plus, Search, Edit3 } from "lucide-react";
@@ -66,7 +69,7 @@ export default function FlatLandPage() {
   const fetchFlatLands = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/flat-land?page=1&limit=100`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/flat-land?page=1&limit=100`);
       const json = await res.json();
       if (json.success) {
         // ✅ deletedAt ফিল্টার
@@ -81,7 +84,7 @@ export default function FlatLandPage() {
 
   const fetchSites = async () => {
     try {
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/project-sites`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/project-sites`);
       const json = await res.json();
       if (json.success) setSites(json.data.data || []);
     } catch (err) {
@@ -91,7 +94,7 @@ export default function FlatLandPage() {
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/project`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/project`);
       const json = await res.json();
       if (json.success) setProjects(json.data.data || []);
     } catch (err) {
@@ -129,7 +132,7 @@ export default function FlatLandPage() {
         grandTotal: (Number(formData.size) || 0) * (Number(formData.pricePerUnit) || 0) + (Number(formData.parkingCost) || 0) + (Number(formData.utilityCharge) || 0),
       };
 
-      const res = await fetch(url, {
+      const res = await projectFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -155,7 +158,7 @@ export default function FlatLandPage() {
   const handleDelete = async (item: FlatLand) => {
     if (!window.confirm(`Delete "${item.flatLandNo}"?`)) return;
     try {
-      await fetch(`${API_BASE}/realbizpro/api/v1/flat-land/${item.uuid}`, {
+      await projectFetch(`${API_BASE}/realbizpro/api/v1/flat-land/${item.uuid}`, {
         method: "DELETE",
       });
       setDataList((prev) => prev.filter((row) => row.uuid !== item.uuid));

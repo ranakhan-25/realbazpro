@@ -84,14 +84,15 @@ export default function CommunicationStatusPage() {
     e.preventDefault();
     setSubmitting(true);
 
-    const payload = {
+    const payload: any = {
       name: formData.name,
       status: formData.status,
       description: formData.description,
       isDefault: formData.isDefault,
-      leadStageId: formData.leadStageId || null,
-      addedById: "string", // ডেমো আইডি, আপনার লগইন সিস্টেম অনুযায়ী পরিবর্তন করুন
     };
+    if (formData.leadStageId) {
+      payload.leadStageId = formData.leadStageId;
+    }
 
     try {
       const isEdit = !!editingItem;

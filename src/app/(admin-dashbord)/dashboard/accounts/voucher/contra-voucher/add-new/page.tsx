@@ -1,5 +1,8 @@
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+import { useVoucherOptions } from "../../voucher-options";
+
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,6 +35,7 @@ export interface ChartOfAccountOption {
 }
 
 export default function ContraVoucherCreatePage() {
+  const voucherOptions = useVoucherOptions();
   const router = useRouter();
   const [editingUuid, setEditingUuid] = useState("");
   const [isReadOnly, setIsReadOnly] = useState(false);
@@ -40,7 +44,7 @@ export default function ContraVoucherCreatePage() {
   // --- Form Header State ---
   const [headerState, setHeaderState] = useState({
     voucherNo: "CON00001",
-    date: "13/09/2026",
+    date: new Date().toISOString().slice(0, 10),
     projectType: "",
     titleOfWork: "",
     project: "",
@@ -49,12 +53,7 @@ export default function ContraVoucherCreatePage() {
   });
 
   // --- Dynamic Chart of Accounts Options State ---
-  const [accountOptions, setAccountOptions] = useState<ChartOfAccountOption[]>([
-    { id: "1", code: "1001", name: "Cash in Hand", group: "Assets" },
-    { id: "2", code: "1002", name: "Bank Account (DBBL)", group: "Assets" },
-    { id: "3", code: "1003", name: "Petty Cash", group: "Assets" },
-    { id: "4", code: "2001", name: "Sundry Creditors", group: "Liabilities" },
-  ]);
+  const [accountOptions, setAccountOptions] = useState<ChartOfAccountOption[]>([]);
 
   // --- Entry Form Inputs State ---
   const [entryType, setEntryType] = useState<"DEBIT" | "CREDIT">("DEBIT");
@@ -86,7 +85,7 @@ export default function ContraVoucherCreatePage() {
   useEffect(() => {
     void (async () => {
       try {
-        const response = await fetch("/api/backend/chart-of-accounts", { cache: "no-store" });
+        const response = await accountsFetch("/api/backend/chart-of-accounts", { cache: "no-store" });
         const result = await response.json();
         const records = Array.isArray(result.data)
           ? result.data
@@ -115,7 +114,7 @@ export default function ContraVoucherCreatePage() {
     setLoadingVoucher(true);
     void (async () => {
       try {
-        const response = await fetch(`/api/backend/contra-vouchers/${encodeURIComponent(uuid)}`, { cache: "no-store" });
+        const response = await accountsFetch(`/api/backend/contra-vouchers/${encodeURIComponent(uuid)}`, { cache: "no-store" });
         const result = await response.json();
         if (!response.ok || result.success === false) throw new Error(result.message || "Contra voucher could not be loaded.");
         const record = (result.data?.data ?? result.data ?? result) as Record<string, unknown>;
@@ -282,13 +281,13 @@ export default function ContraVoucherCreatePage() {
       const url = editingUuid
         ? `/api/backend/contra-vouchers/${encodeURIComponent(editingUuid)}`
         : "/api/backend/contra-vouchers";
-      let response = await fetch(url, {
+      let response = await accountsFetch(url, {
         method: editingUuid ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       if (editingUuid && !response.ok) {
-        response = await fetch(url, {
+        response = await accountsFetch(url, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -349,7 +348,7 @@ export default function ContraVoucherCreatePage() {
                   Voucher No
                 </label>
                 <input
-                  type="text"
+                  type="date"
                   readOnly
                   value={headerState.voucherNo}
                   className="flex-1 bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none font-medium"
@@ -361,7 +360,7 @@ export default function ContraVoucherCreatePage() {
                   Date
                 </label>
                 <input
-                  type="text"
+                  type="date"
                   value={headerState.date}
                   onChange={(e) =>
                     setHeaderState({ ...headerState, date: e.target.value })
@@ -385,8 +384,7 @@ export default function ContraVoucherCreatePage() {
                   className="flex-1 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
                 >
                   <option value="">Select Project Type</option>
-                  <option value="Commercial">Commercial</option>
-                  <option value="Residential">Residential</option>
+                  {voucherOptions.projectTypes.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                 </select>
               </div>
 
@@ -405,8 +403,7 @@ export default function ContraVoucherCreatePage() {
                   className="flex-1 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
                 >
                   <option value="">Select Title/Name of Work</option>
-                  <option value="Cash Transfer">Cash Transfer</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
+                  {voucherOptions.workNames.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                 </select>
               </div>
             </div>
@@ -425,8 +422,7 @@ export default function ContraVoucherCreatePage() {
                   className="flex-1 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
                 >
                   <option value="">Select Project</option>
-                  <option value="Project Alpha">Project Alpha</option>
-                  <option value="Project Beta">Project Beta</option>
+                  {voucherOptions.projects.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                 </select>
               </div>
 
@@ -442,8 +438,7 @@ export default function ContraVoucherCreatePage() {
                   className="flex-1 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
                 >
                   <option value="">Select Site</option>
-                  <option value="Main Branch">Main Branch</option>
-                  <option value="Site Office">Site Office</option>
+                  {voucherOptions.sites.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                 </select>
               </div>
 
@@ -459,10 +454,7 @@ export default function ContraVoucherCreatePage() {
                   className="flex-1 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
                 >
                   <option value="">Select Task</option>
-                  <option value="Fund Allocation">Fund Allocation</option>
-                  <option value="Inter-account Transfer">
-                    Inter-account Transfer
-                  </option>
+                  {voucherOptions.tasks.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                 </select>
               </div>
             </div>
@@ -698,10 +690,7 @@ export default function ContraVoucherCreatePage() {
                   className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
                 >
                   <option value="">Select value</option>
-                  <option value="Assets">Assets</option>
-                  <option value="Liabilities">Liabilities</option>
-                  <option value="Expenses">Expenses</option>
-                  <option value="Income">Income</option>
+                  {voucherOptions.chartGroups.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                 </select>
               </div>
 

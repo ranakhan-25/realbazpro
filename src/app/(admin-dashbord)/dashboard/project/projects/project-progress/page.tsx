@@ -1,5 +1,8 @@
 'use client';
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -108,7 +111,7 @@ export default function ProjectProgressPage() {
       if (fromDate) url += `&fromDate=${fromDate}`;
       if (toDate) url += `&toDate=${toDate}`;
 
-      const response = await fetch(url);
+      const response = await projectFetch(url);
       const result = await response.json();
       
       console.log("=== DEBUG: Fetched Progress Response ===", result);
@@ -167,7 +170,7 @@ export default function ProjectProgressPage() {
   // 2. FETCH SUMMARY
   const fetchSummary = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/project-progress/summary?projectUuid=${DEFAULT_PROJECT_UUID}`);
+      const response = await projectFetch(`${API_BASE_URL}/project-progress/summary?projectUuid=${DEFAULT_PROJECT_UUID}`);
       const result = await response.json();
       console.log("=== DEBUG: Fetched Summary ===", result);
 
@@ -245,7 +248,7 @@ export default function ProjectProgressPage() {
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}/project-progress`, {
+      const response = await projectFetch(`${API_BASE_URL}/project-progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { Plus, X, Loader2, Edit3, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -77,7 +80,7 @@ export default function ContractorWorkOrderPage() {
   const fetchWorkOrders = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_PATH}/project-billing/contractor-work-orders`);
+      const res = await projectFetch(`${API_PATH}/project-billing/contractor-work-orders`);
       const json = await res.json();
       if (json.success) {
         setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
@@ -93,7 +96,7 @@ export default function ContractorWorkOrderPage() {
   const fetchDropdowns = async () => {
     try {
       // ১. সাপ্লায়ার (ফিক্স করা হয়েছে)
-      const resSup = await fetch(`${API_PATH}/inventory/suppliers?page=1&limit=100`);
+      const resSup = await projectFetch(`${API_PATH}/inventory/suppliers?page=1&limit=100`);
       const jsonSup = await resSup.json();
       
       const supplierData = jsonSup.data?.data || jsonSup.data || jsonSup;
@@ -104,32 +107,32 @@ export default function ContractorWorkOrderPage() {
       }
 
       // ২. প্রজেক্ট টাইপ
-      const resType = await fetch(`${API_PATH}/project-type`);
+      const resType = await projectFetch(`${API_PATH}/project-type`);
       const jsonType = await resType.json();
       if (jsonType.success) setProjectTypes(jsonType.data.data || jsonType.data || []);
 
       // ৩. প্রজেক্ট
-      const resProj = await fetch(`${API_PATH}/project`);
+      const resProj = await projectFetch(`${API_PATH}/project`);
       const jsonProj = await resProj.json();
       if (jsonProj.success) setProjects(jsonProj.data.data || jsonProj.data || []);
 
       // ৪. সাইট
-      const resSite = await fetch(`${API_PATH}/project-sites`);
+      const resSite = await projectFetch(`${API_PATH}/project-sites`);
       const jsonSite = await resSite.json();
       if (jsonSite.success) setSites(jsonSite.data.data || jsonSite.data || []);
 
       // ৫. ক্যাটাগরি
-      const resCat = await fetch(`${API_PATH}/category?page=1&limit=100`);
+      const resCat = await projectFetch(`${API_PATH}/category?page=1&limit=100`);
       const jsonCat = await resCat.json();
       if (jsonCat.success) setCategories(jsonCat.data.data || jsonCat.data || []);
 
       // ৬. ব্র্যান্ড
-      const resBrand = await fetch(`${API_PATH}/procurement/brand?page=1&limit=100`);
+      const resBrand = await projectFetch(`${API_PATH}/procurement/brand?page=1&limit=100`);
       const jsonBrand = await resBrand.json();
       if (jsonBrand.success) setBrands(jsonBrand.data.data || jsonBrand.data || []);
 
       // ৭. আন্ডার (Under)
-      const resUnder = await fetch(`${API_PATH}/under?page=1&limit=100`);
+      const resUnder = await projectFetch(`${API_PATH}/under?page=1&limit=100`);
       const jsonUnder = await resUnder.json();
       if (jsonUnder.success) setUnders(jsonUnder.data.data || jsonUnder.data || []);
 
@@ -176,7 +179,7 @@ export default function ContractorWorkOrderPage() {
         : `${API_PATH}/project-billing/contractor-work-orders`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await projectFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -202,7 +205,7 @@ export default function ContractorWorkOrderPage() {
   const handleDelete = async (item: WorkOrder) => {
     if (!window.confirm(`Delete "${item.title}"?`)) return;
     try {
-      const res = await fetch(`${API_PATH}/project-billing/contractor-work-orders/${item.uuid}`, {
+      const res = await projectFetch(`${API_PATH}/project-billing/contractor-work-orders/${item.uuid}`, {
         method: "DELETE",
       });
       if (res.ok) {

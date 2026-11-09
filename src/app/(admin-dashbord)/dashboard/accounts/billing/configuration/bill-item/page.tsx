@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Home,
@@ -108,7 +110,7 @@ async function fetchRelatedOptions(
 ): Promise<RelatedOption[]> {
   try {
     const query = new URLSearchParams({ page: "1", limit: "100" });
-    const res = await fetch(`${endpoint}?${query}`, {
+    const res = await accountsFetch(`${endpoint}?${query}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -147,7 +149,7 @@ async function fetchRelatedOptions(
 async function fetchProjects(): Promise<ProjectOption[]> {
   try {
     const query = new URLSearchParams({ page: "1", limit: "100" });
-    const res = await fetch(`${PROJECT_API}?${query}`, {
+    const res = await accountsFetch(`${PROJECT_API}?${query}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -176,7 +178,7 @@ async function fetchProjects(): Promise<ProjectOption[]> {
 // ==================== API FUNCTIONS ====================
 async function fetchBillItems(): Promise<BillItem[]> {
   const query = new URLSearchParams({ page: "1", limit: "100" });
-  const res = await fetch(`${BILL_ITEM_API}?${query}`, {
+  const res = await accountsFetch(`${BILL_ITEM_API}?${query}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -223,7 +225,7 @@ async function fetchBillItems(): Promise<BillItem[]> {
 
 async function createBillItem(payload: Record<string, any>) {
   console.log("POST payload →", payload);
-  const res = await fetch(BILL_ITEM_API, {
+  const res = await accountsFetch(BILL_ITEM_API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -238,7 +240,7 @@ async function createBillItem(payload: Record<string, any>) {
 
 async function updateBillItem(uuid: string, payload: Record<string, any>) {
   console.log("PATCH", uuid, "payload →", payload);
-  const res = await fetch(`${BILL_ITEM_API}/${uuid}`, {
+  const res = await accountsFetch(`${BILL_ITEM_API}/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -252,7 +254,7 @@ async function updateBillItem(uuid: string, payload: Record<string, any>) {
 }
 
 async function deleteBillItem(uuid: string) {
-  const res = await fetch(`${BILL_ITEM_API}/${uuid}`, {
+  const res = await accountsFetch(`${BILL_ITEM_API}/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

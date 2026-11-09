@@ -1,5 +1,8 @@
 'use client';
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
@@ -102,7 +105,7 @@ export default function ProjectControlsPage() {
       if (selectedType !== 'All') url += `&controlType=${selectedType}`;
       if (selectedStatus !== 'All') url += `&status=${selectedStatus}`;
 
-      const response = await fetch(url);
+      const response = await projectFetch(url);
       const result = await response.json();
       
       console.log("Fetched Controls:", result); // ডিবাগ করার জন্য
@@ -166,7 +169,7 @@ export default function ProjectControlsPage() {
   // 2. FETCH SUMMARY
   const fetchSummary = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/project-controls/summary?projectUuid=${DEFAULT_PROJECT_UUID}`);
+      const response = await projectFetch(`${API_BASE_URL}/project-controls/summary?projectUuid=${DEFAULT_PROJECT_UUID}`);
       const result = await response.json();
       if (result && result.success && result.data) {
         setSummary(result.data);
@@ -210,7 +213,7 @@ export default function ProjectControlsPage() {
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}/project-controls`, {
+      const response = await projectFetch(`${API_BASE_URL}/project-controls`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

@@ -1,5 +1,8 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useCallback, useEffect, useState } from "react";
 import { Plus, Search, Edit3, Trash2, FileSpreadsheet, FileText, X, Bold, Italic, AlignLeft, List, Image as ImageIcon, Printer } from "lucide-react";
 
@@ -65,7 +68,7 @@ function rowsFrom<T>(value: unknown): T[] {
 async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token =
     typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
-  const response = await fetch(`${API_ROOT}${path}`, {
+  const response = await projectFetch(`${API_ROOT}${path}`, {
     ...options,
     headers: {
       Accept: "application/json",

@@ -1,5 +1,9 @@
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+import { useVoucherOptions } from "../voucher-options";
+import { VoucherDateRange } from "../voucher-date-range";
+
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -37,6 +41,8 @@ interface ExpenseRow {
   approvalSteps: string[];
   attachment: number;
   status: string;
+  site?: string;
+  task?: string;
 }
 
 const tableHeaders = [
@@ -84,18 +90,20 @@ const rowActionMenu: {
 ];
 
 export default function ExpenseListPage() {
+  const voucherOptions = useVoucherOptions();
   const router = useRouter();
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [filters, setFilters] = useState({ fromDate: "", toDate: "", debitAccount: "", creditAccount: "", project: "", work: "", site: "", task: "" });
   const [openActionId, setOpenActionId] = useState<number | null>(null);
 
   const fetchExpenses = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/backend/expenses", { headers: { accept: "application/json" } });
+      const response = await accountsFetch("/api/backend/expenses", { headers: { accept: "application/json" } });
       const result = await response.json();
       const payload = result.data?.data ?? result.data?.items ?? result.data ?? [];
       const rows = (Array.isArray(payload) ? payload : []).map((expense: Record<string, unknown>, index: number) => ({
@@ -104,8 +112,10 @@ export default function ExpenseListPage() {
         sl: index + 1,
         date: expense.date ? String(expense.date).slice(0, 10) : "",
         voucher: String(expense.voucherNo ?? ""),
-        project: String(expense.project ?? ""),
-        titleOfWork: String(expense.titleOfWork ?? ""),
+        project: String(expense.projectId ?? expense.project ?? ""),
+        titleOfWork: String(expense.workId ?? expense.titleOfWork ?? ""),
+        site: String(expense.siteId ?? expense.site ?? ""),
+        task: String(expense.taskId ?? expense.task ?? ""),
         debit: Array.isArray(expense.items) && expense.items.length ? expense.items.map((item: Record<string, unknown>) => String(item.accountId ?? "")).join(", ") : "",
         credit: String(expense.cashOrBank ?? ""),
         staffName: "",
@@ -138,7 +148,7 @@ export default function ExpenseListPage() {
       window.open(`/api/backend/expenses/${encodeURIComponent(row.uuid)}`, "_blank");
     } else if (key === "delete" && window.confirm("Delete this expense?")) {
       try {
-        const response = await fetch(`/api/backend/expenses/${encodeURIComponent(row.uuid)}`, { method: "DELETE" });
+        const response = await accountsFetch(`/api/backend/expenses/${encodeURIComponent(row.uuid)}`, { method: "DELETE" });
         if (!response.ok) throw new Error("Expense could not be deleted.");
         await fetchExpenses();
         toast.success("Expense deleted successfully.");
@@ -151,13 +161,10 @@ export default function ExpenseListPage() {
     setOpenActionId(null);
   };
 
-  const filteredRows = expenses.filter((r) =>
-    search.trim()
-      ? [r.project, r.voucher, r.debit, r.credit, r.addedBy].some((f) =>
-          f.toLowerCase().includes(search.trim().toLowerCase())
-        )
-      : true
-  );
+  const filteredRows = expenses.filter((r) => {
+    const matchesSearch = !search.trim() || [r.project, r.voucher, r.debit, r.credit, r.addedBy].some((f) => f.toLowerCase().includes(search.trim().toLowerCase()));
+    return matchesSearch && (!filters.fromDate || r.date >= filters.fromDate) && (!filters.toDate || r.date <= filters.toDate) && (!filters.debitAccount || r.debit.split(", ").includes(filters.debitAccount)) && (!filters.creditAccount || r.credit === filters.creditAccount) && (!filters.project || r.project === filters.project) && (!filters.work || r.titleOfWork === filters.work) && (!filters.site || r.site === filters.site) && (!filters.task || r.task === filters.task);
+  });
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / entriesPerPage));
   const safePage = Math.min(currentPage, totalPages);
@@ -209,35 +216,33 @@ export default function ExpenseListPage() {
             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-0.5 font-medium">
               Select Date
             </label>
-            <input
-              type="text"
-              readOnly
-              value="1 September, 2026 - 30 September, 2026"
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
+            <VoucherDateRange fromDate={filters.fromDate} toDate={filters.toDate} onFromDateChange={(value) => setFilters({ ...filters, fromDate: value })} onToDateChange={(value) => setFilters({ ...filters, toDate: value })} />
           </div>
           <div>
             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-0.5 font-medium">
               Debit Accounts
             </label>
-            <select className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <select value={filters.debitAccount} onChange={(e) => setFilters({ ...filters, debitAccount: e.target.value })} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
               <option>Select Chart Of Account</option>
+              {voucherOptions.accounts.map((option) => <option key={`expense-debit-${option.id}`} value={option.id}>{option.label}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-0.5 font-medium">
               Credit Accounts
             </label>
-            <select className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <select value={filters.creditAccount} onChange={(e) => setFilters({ ...filters, creditAccount: e.target.value })} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
               <option>Select Chart Of Account</option>
+              {voucherOptions.accounts.map((option) => <option key={`expense-credit-${option.id}`} value={option.id}>{option.label}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-0.5 font-medium">
               Select Project
             </label>
-            <select className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <select value={filters.project} onChange={(e) => setFilters({ ...filters, project: e.target.value })} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
               <option>Select Project</option>
+              {voucherOptions.projects.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
             </select>
           </div>
         </div>
@@ -247,24 +252,27 @@ export default function ExpenseListPage() {
             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-0.5 font-medium">
               Title/Name of Work
             </label>
-            <select className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <select value={filters.work} onChange={(e) => setFilters({ ...filters, work: e.target.value })} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
               <option>Select Title/Name of Work</option>
+              {voucherOptions.workNames.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-0.5 font-medium">
               Site
             </label>
-            <select className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <select value={filters.site} onChange={(e) => setFilters({ ...filters, site: e.target.value })} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
               <option>Select Site</option>
+              {voucherOptions.sites.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-0.5 font-medium">
               Task
             </label>
-            <select className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <select value={filters.task} onChange={(e) => setFilters({ ...filters, task: e.target.value })} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-2.5 py-1.5 text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500">
               <option>Select Task</option>
+              {voucherOptions.tasks.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
             </select>
           </div>
           <button className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs md:text-sm font-medium rounded-md bg-rose-500 hover:bg-rose-600 text-white transition-colors">

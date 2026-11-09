@@ -1,5 +1,9 @@
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+import { useVoucherOptions } from "../voucher-options";
+import { VoucherDateRange } from "../voucher-date-range";
+
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import toast, { Toaster } from "react-hot-toast";
@@ -32,14 +36,21 @@ export interface ContraVoucherItem {
   approveStatus: string;
   attachment: string | null;
   status: "Approved" | "Pending" | "Rejected";
+  project?: string;
+  site?: string;
+  task?: string;
+  debitAccount?: string;
+  creditAccount?: string;
 }
 
 export default function ContraVoucherListPage() {
+  const voucherOptions = useVoucherOptions();
   const [loading, setLoading] = useState(false);
   const [deletingUuid, setDeletingUuid] = useState("");
   // --- Filter State ---
   const [filters, setFilters] = useState({
-    dateRange: "1 September, 2026 - 30 September, 2026",
+    fromDate: "",
+    toDate: "",
     debitAccount: "",
     creditAccount: "",
     project: "",
@@ -69,7 +80,7 @@ export default function ContraVoucherListPage() {
   };
 
   const requestJson = async (url: string, method = "GET", payload?: unknown) => {
-    const response = await fetch(url, {
+    const response = await accountsFetch(url, {
       method,
       headers: payload ? { "Content-Type": "application/json" } : undefined,
       body: payload ? JSON.stringify(payload) : undefined,
@@ -104,6 +115,11 @@ export default function ContraVoucherListPage() {
           approveStatus: String(record.approveStatus ?? record.approvalStatus ?? status),
           attachment: record.attachment ? String(record.attachment) : null,
           status: status === "Approved" ? "Approved" : status === "Rejected" ? "Rejected" : "Pending",
+          project: String(record.projectId ?? record.project ?? ""),
+          site: String(record.siteId ?? record.site ?? ""),
+          task: String(record.taskId ?? record.task ?? ""),
+          debitAccount: String(record.debitAccountId ?? record.debitAccount ?? ""),
+          creditAccount: String(record.creditAccountId ?? record.creditAccount ?? ""),
         };
       }));
     } catch (error) {
@@ -151,11 +167,10 @@ export default function ContraVoucherListPage() {
   };
 
   // Filtered List Logic
-  const filteredVouchers = vouchers.filter((v) =>
-    Object.values(v).some((val) =>
-      String(val).toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
+  const filteredVouchers = vouchers.filter((v) => {
+    const matchesSearch = Object.values(v).some((val) => String(val).toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesSearch && (!filters.fromDate || v.date >= filters.fromDate) && (!filters.toDate || v.date <= filters.toDate) && (!filters.debitAccount || v.debitAccount === filters.debitAccount) && (!filters.creditAccount || v.creditAccount === filters.creditAccount) && (!filters.project || v.project === filters.project) && (!filters.site || v.site === filters.site) && (!filters.task || v.task === filters.task);
+  });
 
   return (
     <div className="w-full max-w-full overflow-x-hidden min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 p-2.5 text-xs flex flex-col justify-between">
@@ -193,12 +208,7 @@ export default function ContraVoucherListPage() {
               <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                 Select Date
               </label>
-              <input
-                type="text"
-                value={filters.dateRange}
-                onChange={(e) => setFilters({ ...filters, dateRange: e.target.value })}
-                className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500 text-xs"
-              />
+              <VoucherDateRange fromDate={filters.fromDate} toDate={filters.toDate} onFromDateChange={(value) => setFilters({ ...filters, fromDate: value })} onToDateChange={(value) => setFilters({ ...filters, toDate: value })} />
             </div>
 
             {/* Debit Accounts */}
@@ -212,8 +222,7 @@ export default function ContraVoucherListPage() {
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500 text-xs"
               >
                 <option value="">Select Chart Of Account</option>
-                <option value="Cash in Hand">Cash in Hand</option>
-                <option value="Bank Account">Bank Account</option>
+                {voucherOptions.accounts.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
 
@@ -228,8 +237,7 @@ export default function ContraVoucherListPage() {
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500 text-xs"
               >
                 <option value="">Select Chart Of Account</option>
-                <option value="Cash in Hand">Cash in Hand</option>
-                <option value="Bank Account">Bank Account</option>
+                {voucherOptions.accounts.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
 
@@ -244,8 +252,7 @@ export default function ContraVoucherListPage() {
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500 text-xs"
               >
                 <option value="">Select Project</option>
-                <option value="Tower A">Tower A</option>
-                <option value="Plaza B">Plaza B</option>
+                {voucherOptions.projects.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
           </div>
@@ -262,8 +269,7 @@ export default function ContraVoucherListPage() {
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500 text-xs"
               >
                 <option value="">Select Site</option>
-                <option value="Dhaka Site">Dhaka Site</option>
-                <option value="Chittagong Site">Chittagong Site</option>
+                {voucherOptions.sites.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
 
@@ -278,8 +284,7 @@ export default function ContraVoucherListPage() {
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500 text-xs"
               >
                 <option value="">Select Task</option>
-                <option value="Foundation">Foundation</option>
-                <option value="Finishing">Finishing</option>
+                {voucherOptions.tasks.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
           </div>

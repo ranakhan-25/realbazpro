@@ -1,6 +1,8 @@
 /* eslint-disable prettier/prettier */
 "use client";
 
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
+
 import React, { useState, useEffect } from "react";
 import { Plus, Edit3, Trash2, Loader2, X } from "lucide-react";
 import { API_BASE } from "../_shared";
@@ -118,7 +120,7 @@ export default function SalaryStructurePage() {
   const [employees, setEmployees] = useState<DropdownOption[]>([]);
 
   useEffect(() => {
-    fetch(`${API_BASE}/realbizpro/api/v1/employee-list?page=1&limit=100&status=active&withDeleted=false`, { cache: "no-store" })
+    hrmFetch(`${API_BASE}/realbizpro/api/v1/employee-list?page=1&limit=100&status=active&withDeleted=false`, { cache: "no-store" })
       .then(res => res.json())
       .then((json: { data?: { data?: { uuid: string; name: string; employeeCode?: string }[] } }) => {
         const data = (json?.data?.data || []).map((e) => ({ uuid: e.uuid, name: e.name || e.employeeCode || "Unnamed" }));
@@ -157,7 +159,7 @@ function SalarySection({ config, employees }: { config: SectionConfig; employees
     setLoading(true);
     try {
       const url = `${API_BASE}/realbizpro/api/v1/${config.apiPath}?page=1&limit=100&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
-      const res = await fetch(url, { cache: "no-store" });
+      const res = await hrmFetch(url, { cache: "no-store" });
       const json = await res.json().catch(() => ({})) as { data?: { data?: SalaryRecord[] } };
       setItems(json?.data?.data || []);
     } catch (error: unknown) { 
@@ -180,7 +182,7 @@ function SalarySection({ config, employees }: { config: SectionConfig; employees
   const handleDelete = async (item: SalaryRecord) => {
     if (!confirm("Delete this record?")) return;
     try {
-      await fetch(`${API_BASE}/realbizpro/api/v1/${config.apiPath}/${item.uuid}`, { method: "DELETE" });
+      await hrmFetch(`${API_BASE}/realbizpro/api/v1/${config.apiPath}/${item.uuid}`, { method: "DELETE" });
       setItems((prev) => prev.filter((x) => x.uuid !== item.uuid));
     } catch (error: unknown) { 
       alert("Delete failed"); 
@@ -196,7 +198,7 @@ function SalarySection({ config, employees }: { config: SectionConfig; employees
     const method = editingItem?.uuid ? "PATCH" : "POST";
     
     try {
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const res = await hrmFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const json = await res.json().catch(() => ({})) as { message?: string };
       if (!res.ok) throw new Error(json?.message || "Failed to save");
       setIsModalOpen(false); 

@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { Plus, X, Loader2, Edit3, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -46,7 +49,7 @@ export default function PropertyRoadPage() {
   const fetchRoads = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_PATH}/land-infrastructure/roads`);
+      const res = await projectFetch(`${API_PATH}/land-infrastructure/roads`);
       const json = await res.json();
       if (json.success) {
         setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
@@ -61,7 +64,7 @@ export default function PropertyRoadPage() {
   // ====================== FETCH DROPDOWNS ======================
   const fetchDropdowns = async () => {
     try {
-      const resProj = await fetch(`${API_PATH}/project`);
+      const resProj = await projectFetch(`${API_PATH}/project`);
       const jsonProj = await resProj.json();
       if (jsonProj.success) setProjects(jsonProj.data.data || jsonProj.data || []);
     } catch (err) {
@@ -94,7 +97,7 @@ export default function PropertyRoadPage() {
         : `${API_PATH}/land-infrastructure/roads`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await projectFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -120,7 +123,7 @@ export default function PropertyRoadPage() {
   const handleDelete = async (item: ProjectRoad) => {
     if (!window.confirm(`Delete Road "${item.name}"?`)) return;
     try {
-      const res = await fetch(`${API_PATH}/land-infrastructure/roads/${item.uuid}`, {
+      const res = await projectFetch(`${API_PATH}/land-infrastructure/roads/${item.uuid}`, {
         method: "DELETE",
       });
       if (res.ok) {

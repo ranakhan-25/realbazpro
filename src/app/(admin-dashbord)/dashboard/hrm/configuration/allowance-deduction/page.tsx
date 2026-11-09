@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
+
 import React, { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, X, Loader2, Check, Search } from "lucide-react";
 
@@ -28,7 +30,7 @@ async function handleRes(res: Response, action: string) {
 
 async function fetchSetups(): Promise<AllowanceDeductionSetup[]> {
   const url = `${API_BASE}/realbizpro/api/v1/allowance-deduction-setup?page=1&limit=100&skip=0&withDeleted=false`;
-  const res = await fetch(url, {
+  const res = await hrmFetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -47,7 +49,7 @@ async function fetchSetups(): Promise<AllowanceDeductionSetup[]> {
 }
 
 async function createSetup(payload: Record<string, any>) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/allowance-deduction-setup`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/allowance-deduction-setup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -56,7 +58,7 @@ async function createSetup(payload: Record<string, any>) {
 }
 
 async function updateSetup(uuid: string, payload: Record<string, any>) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/allowance-deduction-setup/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/allowance-deduction-setup/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -65,7 +67,7 @@ async function updateSetup(uuid: string, payload: Record<string, any>) {
 }
 
 async function softDeleteSetup(uuid: string) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/allowance-deduction-setup/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/allowance-deduction-setup/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

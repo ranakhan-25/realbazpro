@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+
 import React, { useState, useEffect, useRef } from "react";
 import { Plus, X, Loader2, Eye, Printer, Edit3, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
@@ -258,7 +260,7 @@ export default function QuotePage() {
   const fetchQuotes = async (page = 1) => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_PATH}/project-billing/quotes?page=${page}&limit=${limit}`);
+      const res = await accountsFetch(`${API_PATH}/project-billing/quotes?page=${page}&limit=${limit}`);
       const json = await res.json();
       if (json.success) {
         setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
@@ -277,39 +279,39 @@ export default function QuotePage() {
   // ====================== FETCH DROPDOWNS ======================
   const fetchDropdowns = async () => {
     try {
-      const resCus = await fetch(`${API_PATH}/customer-account?status=active`);
+      const resCus = await accountsFetch(`${API_PATH}/customer-account?status=active`);
       const jsonCus = await resCus.json();
       if (jsonCus.success) setCustomers(jsonCus.data.data || jsonCus.data || []);
 
-      const resProj = await fetch(`${API_PATH}/project`);
+      const resProj = await accountsFetch(`${API_PATH}/project`);
       const jsonProj = await resProj.json();
       if (jsonProj.success) setProjects(jsonProj.data.data || jsonProj.data || []);
 
-      const resSite = await fetch(`${API_PATH}/project-sites`);
+      const resSite = await accountsFetch(`${API_PATH}/project-sites`);
       const jsonSite = await resSite.json();
       if (jsonSite.success) setSites(jsonSite.data.data || jsonSite.data || []);
 
-      const resType = await fetch(`${API_PATH}/project-type`);
+      const resType = await accountsFetch(`${API_PATH}/project-type`);
       const jsonType = await resType.json();
       if (jsonType.success) setProjectTypes(jsonType.data.data || jsonType.data || []);
 
-      const resCat = await fetch(`${API_PATH}/category`);
+      const resCat = await accountsFetch(`${API_PATH}/category`);
       const jsonCat = await resCat.json();
       if (jsonCat.success) setCategories(jsonCat.data.data || jsonCat.data || []);
 
-      const resSubCat = await fetch(`${API_PATH}/billing-sub-category`);
+      const resSubCat = await accountsFetch(`${API_PATH}/billing-sub-category`);
       const jsonSubCat = await resSubCat.json();
       if (jsonSubCat.success) setSubCategories(jsonSubCat.data.data || jsonSubCat.data || []);
 
-      const resItem = await fetch(`${API_PATH}/item`);
+      const resItem = await accountsFetch(`${API_PATH}/item`);
       const jsonItem = await resItem.json();
       if (jsonItem.success) setItemsList(jsonItem.data.data || jsonItem.data || []);
 
-      const resBrand = await fetch(`${API_PATH}/procurement/brand`); 
+      const resBrand = await accountsFetch(`${API_PATH}/procurement/brand`);
       const jsonBrand = await resBrand.json();
       if (jsonBrand.success) setBrands(jsonBrand.data.data || jsonBrand.data || []);
 
-      const resUnit = await fetch(`${API_PATH}/unit`);
+      const resUnit = await accountsFetch(`${API_PATH}/unit`);
       const jsonUnit = await resUnit.json();
       if (jsonUnit.success) setUnitsList(jsonUnit.data.data || jsonUnit.data || []);
 
@@ -425,7 +427,7 @@ export default function QuotePage() {
         : `${API_PATH}/project-billing/quotes`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await accountsFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -468,7 +470,7 @@ export default function QuotePage() {
     };
 
     try {
-      const res = await fetch(`${API_PATH}/item`, {
+      const res = await accountsFetch(`${API_PATH}/item`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -496,7 +498,7 @@ export default function QuotePage() {
     setIsBrandSubmitting(true);
 
     try {
-      const res = await fetch(`${API_PATH}/procurement/brand`, {
+      const res = await accountsFetch(`${API_PATH}/procurement/brand`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newBrandName }),
@@ -524,7 +526,7 @@ export default function QuotePage() {
     setIsUnitSubmitting(true);
 
     try {
-      const res = await fetch(`${API_PATH}/unit`, {
+      const res = await accountsFetch(`${API_PATH}/unit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newUnitName, status: "active" }),
@@ -564,7 +566,7 @@ export default function QuotePage() {
     };
 
     try {
-      const res = await fetch(`${API_PATH}/customer-account`, {
+      const res = await accountsFetch(`${API_PATH}/customer-account`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -599,7 +601,7 @@ export default function QuotePage() {
   const handleDelete = async (item: Quote) => {
     if (!window.confirm(`Delete "${item.code}"?`)) return;
     try {
-      const res = await fetch(`${API_PATH}/project-billing/quotes/${item.uuid}`, { method: "DELETE" });
+      const res = await accountsFetch(`${API_PATH}/project-billing/quotes/${item.uuid}`, { method: "DELETE" });
       if (res.ok) {
         toast.success("Deleted successfully!");
         fetchQuotes(currentPage); 

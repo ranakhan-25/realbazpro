@@ -1,5 +1,7 @@
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import toast, { Toaster } from "react-hot-toast";
@@ -25,7 +27,12 @@ export default function ChequeRangePage() {
 
   // Table Filter & Search States
   const [cashBankFilter, setCashBankFilter] = useState("");
+  const [bankAccounts, setBankAccounts] = useState<Array<{ id: string; name: string; value: string }>>([
+    { id: "fallback-cash", name: "Cash Account", value: "Cash" },
+    { id: "fallback-bank", name: "Bank Account", value: "Bank" },
+  ]);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Modal State
@@ -49,7 +56,7 @@ export default function ChequeRangePage() {
   };
 
   const requestJson = async (url: string, method = "GET", payload?: unknown) => {
-    const response = await fetch(url, {
+    const response = await accountsFetch(url, {
       method,
       headers: payload ? { "Content-Type": "application/json", Accept: "application/json" } : { Accept: "application/json" },
       body: payload ? JSON.stringify(payload) : undefined,
@@ -86,6 +93,15 @@ export default function ChequeRangePage() {
 
   useEffect(() => {
     void fetchItems();
+    void accountsFetch("/api/backend/chart-of-accounts?limit=500", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((json) => {
+        const data = json?.data?.data ?? json?.data ?? json;
+        const rows = Array.isArray(data) ? data : [];
+        const options = rows.map((row: Record<string, unknown>) => ({ id: String(row.uuid ?? row.id ?? ""), name: String(row.name ?? row.accountName ?? ""), value: String(row.name ?? row.accountName ?? "") })).filter((row: { id: string; name: string; value: string }) => row.id && row.name && /cash|bank/i.test(row.name));
+        if (options.length) setBankAccounts(options);
+      })
+      .catch(() => undefined);
   }, []);
 
   // Add Item Submit Handler (Simulate API Call)
@@ -175,11 +191,14 @@ export default function ChequeRangePage() {
 
   // Search Filtered Data
   const filteredItems = items.filter(
-    (item) =>
+    (item) => (!cashBankFilter || item.cashBank === cashBankFilter) && (
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.addedBy.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.cashBank.toLowerCase().includes(searchQuery.toLowerCase())
+      item.cashBank.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / entriesPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const visibleItems = filteredItems.slice((safePage - 1) * entriesPerPage, safePage * entriesPerPage);
 
   return (
     <div className="w-full max-w-full overflow-x-hidden min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 p-3 text-xs flex flex-col justify-between">
@@ -228,8 +247,7 @@ export default function ChequeRangePage() {
             className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
           >
             <option value="">Select value</option>
-            <option value="Cash">Cash Account</option>
-            <option value="Bank">Bank Account</option>
+            {bankAccounts.map((account) => <option key={account.id} value={account.value}>{account.name}</option>)}
           </select>
         </div>
 
@@ -325,7 +343,7 @@ export default function ChequeRangePage() {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
               {filteredItems.length > 0 ? (
-                filteredItems.map((item) => (
+                visibleItems.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <td className="px-2 py-2 text-slate-800 dark:text-slate-100">{item.id}</td>
                     <td className="px-2 py-2 text-indigo-600 dark:text-indigo-400 font-medium truncate">
@@ -378,23 +396,25 @@ export default function ChequeRangePage() {
         {/* Table Footer / Pagination */}
         <div className="bg-white dark:bg-slate-900 rounded-b border border-t-0 border-slate-200 dark:border-slate-800 p-2.5 flex items-center justify-between text-slate-500 dark:text-slate-400 mb-4">
           <div>
-            Showing 1 to {filteredItems.length} of {filteredItems.length} entries
+            Showing {filteredItems.length ? (safePage - 1) * entriesPerPage + 1 : 0} to {Math.min(safePage * entriesPerPage, filteredItems.length)} of {filteredItems.length} entries
           </div>
 
           <div className="flex items-center gap-1">
             <button
               type="button"
-              disabled
+              disabled={safePage <= 1}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
               className="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
             >
               Previous
             </button>
             <button type="button" className="px-3 py-1 rounded bg-[#635BFF] text-white font-medium">
-              1
+              {safePage}/{totalPages}
             </button>
             <button
               type="button"
-              disabled
+              disabled={safePage >= totalPages}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
               className="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
             >
               Next
@@ -434,8 +454,7 @@ export default function ChequeRangePage() {
                     className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
                   >
                     <option value="">Select value</option>
-                    <option value="Cash">Cash Account</option>
-                    <option value="Bank">Bank Account</option>
+                    {bankAccounts.map((account) => <option key={account.id} value={account.value}>{account.name}</option>)}
                   </select>
                 </div>
 

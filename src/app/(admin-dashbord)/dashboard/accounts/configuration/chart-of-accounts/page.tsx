@@ -1,5 +1,7 @@
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Plus,
@@ -71,7 +73,7 @@ export default function ChartOfAccountsPage() {
   const fetchAccounts = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/chart-of-accounts`, {
+      const response = await accountsFetch(`${API_BASE}/chart-of-accounts`, {
         method: "GET",
         headers: { accept: "application/json" },
       });
@@ -133,7 +135,7 @@ export default function ChartOfAccountsPage() {
         };
       }
 
-      const response = await fetch(url, {
+      const response = await accountsFetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
@@ -170,7 +172,7 @@ export default function ChartOfAccountsPage() {
     const toastId = toast.loading("Deleting account...");
 
     try {
-      const response = await fetch(`${API_BASE}/chart-of-accounts/${uuid}`, {
+      const response = await accountsFetch(`${API_BASE}/chart-of-accounts/${uuid}`, {
         method: "DELETE",
         headers: { accept: "application/json" },
       });

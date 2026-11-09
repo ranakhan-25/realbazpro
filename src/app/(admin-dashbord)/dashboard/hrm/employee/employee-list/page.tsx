@@ -1,6 +1,8 @@
 /* eslint-disable prettier/prettier */
 "use client";
 
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
+
 import React, { useState, useEffect, useMemo } from "react";
 import { Search, Plus, Download, Eye, AlignLeft, Heart, Edit3, Trash2, Loader2, X, Save } from "lucide-react";
 import { API_BASE, formatDate, SearchableSelect, loadDropdown, EmployeeFormModal } from "../_shared";
@@ -64,7 +66,7 @@ function AttendanceModal({ employee, onClose }: { employee: Employee; onClose: (
   };
 
   useEffect(() => {
-    fetch(`${API_BASE}/realbizpro/api/v1/month-year?page=1&limit=100&sortOrder=DESC&withDeleted=false`, { cache: "no-store" })
+    hrmFetch(`${API_BASE}/realbizpro/api/v1/month-year?page=1&limit=100&sortOrder=DESC&withDeleted=false`, { cache: "no-store" })
       .then(res => res.json())
       .then((json: { data?: { data?: MonthYearItem[] } }) => {
         const list = json?.data?.data || [];
@@ -79,7 +81,7 @@ function AttendanceModal({ employee, onClose }: { employee: Employee; onClose: (
     (async () => {
       let existing: AttendanceApiRecord[] = [];
       if (employee.uuid && monthYearId) {
-        const res = await fetch(`${API_BASE}/realbizpro/api/v1/attendance?employeeId=${employee.uuid}&monthYearId=${monthYearId}&page=1&limit=500&withDeleted=false`);
+        const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/attendance?employeeId=${employee.uuid}&monthYearId=${monthYearId}&page=1&limit=500&withDeleted=false`);
         const json = await res.json().catch(() => ({})) as { data?: { data?: AttendanceApiRecord[] } };
         existing = json?.data?.data || [];
       }
@@ -108,7 +110,7 @@ function AttendanceModal({ employee, onClose }: { employee: Employee; onClose: (
       let currentMonthYearId = monthYearId;
 
       if (!currentMonthYearId) {
-        const checkRes = await fetch(
+        const checkRes = await hrmFetch(
           `${API_BASE}/realbizpro/api/v1/month-year?page=1&limit=100&withDeleted=false`,
           { cache: "no-store" }
         );
@@ -124,7 +126,7 @@ function AttendanceModal({ employee, onClose }: { employee: Employee; onClose: (
           currentMonthYearId = found.uuid;
           setMonthYearId(found.uuid);
         } else {
-          const createRes = await fetch(`${API_BASE}/realbizpro/api/v1/month-year`, {
+          const createRes = await hrmFetch(`${API_BASE}/realbizpro/api/v1/month-year`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ month, year: Number(year) }),
@@ -162,7 +164,7 @@ function AttendanceModal({ employee, onClose }: { employee: Employee; onClose: (
           : `${API_BASE}/realbizpro/api/v1/attendance`;
         const method = row.uuid ? "PATCH" : "POST";
         
-        const res = await fetch(url, {
+        const res = await hrmFetch(url, {
           method,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -265,7 +267,7 @@ export default function EmployeeListPage() {
     setLoading(true);
     try {
       const [empRes, sec, dep, des, sh, et] = await Promise.all([
-        fetch(`${API_BASE}/realbizpro/api/v1/employee-list?page=1&limit=100&status=active&sortBy=createdAt&sortOrder=DESC&withDeleted=false`, { cache: "no-store" }),
+        hrmFetch(`${API_BASE}/realbizpro/api/v1/employee-list?page=1&limit=100&status=active&sortBy=createdAt&sortOrder=DESC&withDeleted=false`, { cache: "no-store" }),
         loadDropdown("section"), loadDropdown("department"), loadDropdown("designation"), loadDropdown("shift"), loadDropdown("employee-type"),
       ]);
       const empJ = await empRes.json().catch(() => ({}));
@@ -292,7 +294,7 @@ export default function EmployeeListPage() {
   const handleDelete = async (emp: Employee) => {
     if (!confirm(`Delete ${emp.name}?`)) return;
     try {
-      await fetch(`${API_BASE}/realbizpro/api/v1/employee-list/${emp.uuid}`, { method: "DELETE" });
+      await hrmFetch(`${API_BASE}/realbizpro/api/v1/employee-list/${emp.uuid}`, { method: "DELETE" });
       setEmployees((prev) => prev.filter((x) => x.uuid !== emp.uuid));
     } catch (error: unknown) { alert("Delete failed"); }
   };

@@ -1,6 +1,9 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
 import React, { useState, useEffect } from "react";
 import {
   Search,
@@ -92,7 +95,7 @@ async function fetchShareAssignments(projectId?: string): Promise<{
   console.log("GET share-assignments →", url);
 
   try {
-    const res = await fetch(url, {
+    const res = await projectFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -159,7 +162,7 @@ async function fetchShareAssignments(projectId?: string): Promise<{
 async function fetchProjects(): Promise<OptionItem[]> {
   try {
     const url = `${PROJECT_API}?page=1&limit=100`;
-    const res = await fetch(url, {
+    const res = await projectFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -182,7 +185,7 @@ async function fetchProjects(): Promise<OptionItem[]> {
 async function fetchProjectTypes(): Promise<OptionItem[]> {
   try {
     const url = `${PROJECT_TYPE_API}?page=1&limit=100`;
-    const res = await fetch(url, {
+    const res = await projectFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -206,7 +209,7 @@ async function fetchProjectTypes(): Promise<OptionItem[]> {
 async function fetchProjectSites(): Promise<OptionItem[]> {
   try {
     const url = `${SITE_API}?page=1&limit=100`;
-    const res = await fetch(url, {
+    const res = await projectFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -232,7 +235,7 @@ async function fetchFlatLands(): Promise<OptionItem[]> {
     const url = `${FLAT_LAND_API}?page=1&limit=100`;
     console.log("GET flat-lands →", url);
 
-    const res = await fetch(url, {
+    const res = await projectFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -275,7 +278,7 @@ async function fetchFlatLands(): Promise<OptionItem[]> {
 
 async function createShareAssignment(payload: Record<string, any>) {
   console.log("POST payload →", payload);
-  const res = await fetch(SHARE_ASSIGNMENT_API, {
+  const res = await projectFetch(SHARE_ASSIGNMENT_API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -290,7 +293,7 @@ async function updateShareAssignment(
   payload: Record<string, any>,
 ) {
   console.log("PATCH", uuid, "payload →", payload);
-  const res = await fetch(`${SHARE_ASSIGNMENT_API}/${uuid}`, {
+  const res = await projectFetch(`${SHARE_ASSIGNMENT_API}/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -301,7 +304,7 @@ async function updateShareAssignment(
 }
 
 async function softDeleteShareAssignment(uuid: string) {
-  const res = await fetch(`${SHARE_ASSIGNMENT_API}/${uuid}`, {
+  const res = await projectFetch(`${SHARE_ASSIGNMENT_API}/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });
@@ -341,7 +344,8 @@ const toApiPayload = (data: {
   noOfShares: Number(data.noOfShares) || 0,
   flatLand: data.flatLand,
   note: data.note || "",
-  email: data.email || "",
+  // The API treats email as optional; an empty string fails @IsEmail().
+  email: data.email?.trim() || undefined,
   mobile: data.mobile || "",
   nid: data.nid || "",
   address: data.address || "",

@@ -143,7 +143,7 @@ export const projectPageConfigs: Record<string, ProjectPageConfig> = {
   },
   shareReport: {
     title: "Share Report",
-    endpoint: "/project-share-assignments",
+    endpoint: "/project-share-assignments/reports",
     readOnly: true,
     columns: [
       { key: "shareCode", label: "Share Code" },

@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Home,
@@ -40,7 +43,7 @@ const PROJECT_API = `${API_BASE_URL}${API_PREFIX}/project`;
 async function fetchProjects(): Promise<ProjectOption[]> {
   try {
     const query = new URLSearchParams({ page: "1", limit: "100" });
-    const res = await fetch(`${PROJECT_API}?${query}`, {
+    const res = await projectFetch(`${PROJECT_API}?${query}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -65,7 +68,7 @@ async function fetchProjects(): Promise<ProjectOption[]> {
 
 async function fetchBoqTitles(): Promise<BoqTitleItem[]> {
   const query = new URLSearchParams({ page: "1", limit: "100" });
-  const res = await fetch(`${BOQ_API}?${query}`, {
+  const res = await projectFetch(`${BOQ_API}?${query}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -92,7 +95,7 @@ async function fetchBoqTitles(): Promise<BoqTitleItem[]> {
 
 async function createBoqTitle(payload: Record<string, any>) {
   console.log("POST payload →", payload);
-  const res = await fetch(BOQ_API, {
+  const res = await projectFetch(BOQ_API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -107,7 +110,7 @@ async function createBoqTitle(payload: Record<string, any>) {
 
 async function updateBoqTitle(uuid: string, payload: Record<string, any>) {
   console.log("PUT", uuid, "payload →", payload);
-  const res = await fetch(`${BOQ_API}/${uuid}`, {
+  const res = await projectFetch(`${BOQ_API}/${uuid}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -121,7 +124,7 @@ async function updateBoqTitle(uuid: string, payload: Record<string, any>) {
 }
 
 async function deleteBoqTitle(uuid: string) {
-  const res = await fetch(`${BOQ_API}/${uuid}`, {
+  const res = await projectFetch(`${BOQ_API}/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

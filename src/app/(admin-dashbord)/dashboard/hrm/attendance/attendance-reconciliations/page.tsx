@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
+
 import React, { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, X, Loader2, Check, Search } from "lucide-react";
 import toast from "react-hot-toast";
@@ -42,7 +44,7 @@ async function handleRes(res: Response, action: string) {
 // ১. Reconciliation লিস্ট ফেচ
 async function fetchReconciliations(): Promise<any[]> {
   const url = `${API_BASE}/realbizpro/api/v1/attendance-reconciliation?page=1&limit=100&withDeleted=false`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch reconciliations");
   return json?.data?.data || json?.data || [];
 }
@@ -50,7 +52,7 @@ async function fetchReconciliations(): Promise<any[]> {
 // ২. Employee লিস্ট ফেচ
 async function fetchEmployees(): Promise<Employee[]> {
   const url = `${API_BASE}/realbizpro/api/v1/employee-list?page=1&limit=100&withDeleted=false`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch employees");
 
   return (json?.data?.data || json?.data || []).map((e: any) => ({
@@ -61,7 +63,7 @@ async function fetchEmployees(): Promise<Employee[]> {
 
 // ৩. Reconciliation তৈরি
 async function createReconciliation(payload: any) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/attendance-reconciliation`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/attendance-reconciliation`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -71,7 +73,7 @@ async function createReconciliation(payload: any) {
 
 // ৪. Reconciliation আপডেট
 async function updateReconciliation(uuid: string, payload: any) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/attendance-reconciliation/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/attendance-reconciliation/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -81,7 +83,7 @@ async function updateReconciliation(uuid: string, payload: any) {
 
 // ৫. Reconciliation ডিলিট
 async function softDeleteReconciliation(uuid: string) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/attendance-reconciliation/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/attendance-reconciliation/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

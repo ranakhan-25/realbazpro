@@ -1,5 +1,7 @@
 'use client';
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
@@ -48,7 +50,7 @@ export default function AssetItemList() {
   const fetchItems = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/backend/item-entry', { headers: { accept: 'application/json' } });
+      const response = await accountsFetch('/api/backend/item-entry', { headers: { accept: 'application/json' } });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || 'Item entries could not be loaded.');
       const rows = normalizeArray(result.data);
@@ -138,7 +140,7 @@ export default function AssetItemList() {
       if (uuid === '' && modalMode === 'edit') {
         throw new Error('This item has no valid UUID.');
       }
-      const response = await fetch(`/api/backend/item-entry${uuid ? `/${encodeURIComponent(uuid)}` : ''}`, {
+      const response = await accountsFetch(`/api/backend/item-entry${uuid ? `/${encodeURIComponent(uuid)}` : ''}`, {
         method: uuid ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json', accept: 'application/json' },
         body: JSON.stringify(payload),
@@ -164,7 +166,7 @@ export default function AssetItemList() {
           toast.dismiss(notification.id);
           const loadingToast = toast.loading('Deleting item...');
           try {
-            const response = await fetch(`/api/backend/item-entry/${encodeURIComponent(item.uuid)}`, { method: 'DELETE' });
+            const response = await accountsFetch(`/api/backend/item-entry/${encodeURIComponent(item.uuid)}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Item entry could not be deleted.');
             toast.success('Item entry deleted successfully.', { id: loadingToast });
             await fetchItems();
@@ -184,7 +186,7 @@ export default function AssetItemList() {
     }
     const loadingToast = toast.loading('Loading item details...');
     try {
-      const response = await fetch(`/api/backend/item-entry/${encodeURIComponent(item.uuid)}`, {
+      const response = await accountsFetch(`/api/backend/item-entry/${encodeURIComponent(item.uuid)}`, {
         headers: { accept: 'application/json' },
       });
       const result = await response.json();

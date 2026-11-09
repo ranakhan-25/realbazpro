@@ -1,6 +1,8 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Search,
@@ -64,7 +66,7 @@ async function handleRes(res: Response, action: string) {
 async function fetchBonuses(): Promise<BonusFull[]> {
   try {
     const url = `${API_BASE}/realbizpro/api/v1/bonus?page=1&limit=100&status=active&sortOrder=DESC&withDeleted=false`;
-    const res = await fetch(url, {
+    const res = await hrmFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -88,7 +90,7 @@ async function fetchBonuses(): Promise<BonusFull[]> {
 async function fetchEmployees(): Promise<EmployeeFull[]> {
   try {
     const url = `${API_BASE}/realbizpro/api/v1/employee-list?page=1&limit=100&status=active&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
-    const res = await fetch(url, {
+    const res = await hrmFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -114,7 +116,7 @@ async function fetchBonusGenerates(): Promise<{
   meta: any;
 }> {
   const url = `${API_BASE}/realbizpro/api/v1/bonus-generate?page=1&limit=100&skip=0&status=active&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
-  const res = await fetch(url, {
+  const res = await hrmFetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -145,7 +147,7 @@ async function fetchBonusGenerates(): Promise<{
 
 async function createBonusGenerate(payload: Record<string, any>) {
   console.log("POST bonus-generate payload →", payload);
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/bonus-generate`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/bonus-generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -156,7 +158,7 @@ async function createBonusGenerate(payload: Record<string, any>) {
 }
 
 async function softDeleteBonusGenerate(uuid: string) {
-  const res = await fetch(
+  const res = await hrmFetch(
     `${API_BASE}/realbizpro/api/v1/bonus-generate/${uuid}`,
     {
       method: "DELETE",

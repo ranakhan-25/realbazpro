@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+
 import React, { useState, useEffect } from "react";
 import {
   Plus,
@@ -69,7 +71,7 @@ async function fetchLabourWorkBanks(): Promise<{
 
   console.log("GET →", url);
 
-  const res = await fetch(url, {
+  const res = await accountsFetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -104,7 +106,7 @@ async function fetchLabourWorkBanks(): Promise<{
 
 async function createLabourWorkBank(payload: Record<string, any>) {
   console.log("POST payload →", payload);
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/labour-work-bank`, {
+  const res = await accountsFetch(`${API_BASE}/realbizpro/api/v1/labour-work-bank`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -119,7 +121,7 @@ async function updateLabourWorkBank(
   payload: Record<string, any>,
 ) {
   console.log("PATCH", uuid, "payload →", payload);
-  const res = await fetch(
+  const res = await accountsFetch(
     `${API_BASE}/realbizpro/api/v1/labour-work-bank/${uuid}`,
     {
       method: "PATCH",
@@ -134,7 +136,7 @@ async function updateLabourWorkBank(
 
 async function softDeleteLabourWorkBank(uuid: string) {
   console.log("DELETE →", uuid);
-  const res = await fetch(
+  const res = await accountsFetch(
     `${API_BASE}/realbizpro/api/v1/labour-work-bank/${uuid}`,
     {
       method: "DELETE",

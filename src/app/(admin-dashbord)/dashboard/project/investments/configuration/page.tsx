@@ -1,6 +1,9 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
+import { normalizeProjectText, projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
 import React, { useState, useEffect } from "react";
 import {
   Search,
@@ -53,7 +56,7 @@ async function fetchShareConfigs(): Promise<{
   meta: any;
 }> {
   const url = `${API_BASE}/realbizpro/api/v1/share-configuration?page=1&limit=100&skip=0&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
-  const res = await fetch(url, {
+  const res = await projectFetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -66,8 +69,8 @@ async function fetchShareConfigs(): Promise<{
       uuid: item.uuid,
       projectId: item.projectId || item.project?.uuid || "",
       investorId: item.investorId || item.investor?.uuid || "",
-      projectName: item.project?.name || item.projectName || "",
-      investorName: item.investor?.name || item.investorName || "",
+      projectName: normalizeProjectText(item.project?.name || item.projectName || ""),
+      investorName: normalizeProjectText(item.investor?.name || item.investorName || ""),
       investmentAmount: String(item.investmentAmount ?? "0"),
       profitPercent: String(item.profitPercent ?? "0"),
       profitAmount: String(item.fixedProfitAmount ?? item.profitAmount ?? "0"),
@@ -82,7 +85,7 @@ async function fetchShareConfigs(): Promise<{
 async function fetchProjects(): Promise<OptionItem[]> {
   try {
     const url = `${API_BASE}/realbizpro/api/v1/project?page=1&limit=100`;
-    const res = await fetch(url, {
+    const res = await projectFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -111,7 +114,7 @@ async function fetchProjects(): Promise<OptionItem[]> {
 async function fetchInvestors(): Promise<OptionItem[]> {
   try {
     const url = `${API_BASE}/realbizpro/api/v1/investor?page=1&limit=100&status=active&sortOrder=DESC`;
-    const res = await fetch(url, {
+    const res = await projectFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -135,7 +138,7 @@ async function fetchInvestors(): Promise<OptionItem[]> {
 }
 
 async function createShareConfig(payload: Record<string, any>) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/share-configuration`, {
+  const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/share-configuration`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -144,7 +147,7 @@ async function createShareConfig(payload: Record<string, any>) {
 }
 
 async function updateShareConfig(uuid: string, payload: Record<string, any>) {
-  const res = await fetch(
+  const res = await projectFetch(
     `${API_BASE}/realbizpro/api/v1/share-configuration/${uuid}`,
     {
       method: "PATCH",
@@ -156,7 +159,7 @@ async function updateShareConfig(uuid: string, payload: Record<string, any>) {
 }
 
 async function softDeleteShareConfig(uuid: string) {
-  const res = await fetch(
+  const res = await projectFetch(
     `${API_BASE}/realbizpro/api/v1/share-configuration/${uuid}`,
     {
       method: "DELETE",

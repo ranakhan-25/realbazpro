@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
@@ -137,7 +140,7 @@ export default function BoqPage() {
   const fetchBoqList = async () => {
     try {
       setLoading(true);
-      const res = await fetch(
+      const res = await projectFetch(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/boq?sortBy=createdAt&sortOrder=DESC&withDeleted=false`
       );
       const json = await res.json();
@@ -154,7 +157,7 @@ export default function BoqPage() {
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project`);
+      const res = await projectFetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project`);
       const json = await res.json();
       if (json.success) setProjects(json.data.data || []);
     } catch (err) {
@@ -164,7 +167,7 @@ export default function BoqPage() {
 
   const fetchProjectTypes = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project-type`);
+      const res = await projectFetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project-type`);
       const json = await res.json();
       if (json.success) setProjectTypes(json.data.data || []);
     } catch (err) {
@@ -174,7 +177,7 @@ export default function BoqPage() {
 
   const fetchProjectSites = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project-sites`);
+      const res = await projectFetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project-sites`);
       const json = await res.json();
       if (json.success) setProjectSites(json.data.data || []);
     } catch (err) {
@@ -185,7 +188,7 @@ export default function BoqPage() {
   // ✅ Task লিস্ট ফেচ
   const fetchTasks = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/task?page=1&limit=100`);
+      const res = await projectFetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/task?page=1&limit=100`);
       const json = await res.json();
       if (json.success) {
         setTasks(json.data.data || []);
@@ -273,7 +276,7 @@ export default function BoqPage() {
     try {
       setDeletingId(uuid);
       setBoqList((prev) => prev.filter((item) => item.uuid !== uuid));
-      const res = await fetch(
+      const res = await projectFetch(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/boq/${uuid}`,
         { method: "DELETE", headers: { "Content-Type": "application/json" } }
       );
@@ -375,7 +378,7 @@ export default function BoqPage() {
 
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await projectFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

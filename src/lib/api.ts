@@ -619,20 +619,20 @@ export async function fetchPropertyStatusCounts(): Promise<
 
 export async function fetchActivityTimeline(): Promise<ActivityPoint[]> {
   try {
-    const res = await api.get("/crm/reports/source-performance");
-    const sources = res.data?.data || [];
+    const res = await api.get("/crm/reports/sales-pipeline-funnel");
+    const funnel = res.data?.data ?? {};
+    const stages = funnel.stages ?? funnel.stage_distribution ?? [];
 
-    return sources.map((s: any) => ({
-      label: s.source_name || `Source #${s.source_id}`,
-      leads: Number(s.lead_count || 0),
-      followUps: Math.round(Number(s.lead_count || 0) * 1.5),
+    if (!Array.isArray(stages)) return [];
+
+    return stages.map((stage: any) => ({
+      label: stage.name || stage.stageName || "Stage",
+      leads: Number(stage.count ?? stage.leadCount ?? 0),
+      followUps: 0,
     }));
   } catch (err) {
-    return [
-      { label: "Direct", leads: 0, followUps: 0 },
-      { label: "Social", leads: 0, followUps: 0 },
-      { label: "Referral", leads: 0, followUps: 0 },
-    ];
+    console.error("Error loading CRM activity report:", err);
+    return [];
   }
 }
 
