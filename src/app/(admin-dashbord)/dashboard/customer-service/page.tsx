@@ -857,12 +857,12 @@ export default function CustomerServiceDashboardPage() {
 
             <div className="space-y-1.5">
               <Link
-                href="/dashboard/customer-service/payments/schedules-demand-letters"
+                href="/dashboard/customer-service/payments/collections-ledger-receipts"
                 className="flex items-center justify-between p-2 rounded-lg hover:bg-[#F8F8FA] border border-transparent hover:border-[#EAEAEA] text-xs font-medium text-[#111111] transition group"
               >
                 <div className="flex items-center gap-2">
                   <Receipt className="h-3.5 w-3.5 text-[#6D4AFF]" />
-                  <span>Demand Letters Generator</span>
+                  <span>Collections & Ledger</span>
                 </div>
                 <ArrowRight className="h-3 w-3 text-[#929292] group-hover:text-[#6D4AFF] transition" />
               </Link>
