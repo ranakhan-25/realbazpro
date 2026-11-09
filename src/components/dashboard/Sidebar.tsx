@@ -20,6 +20,12 @@ import {
   BarChart3,
   Settings,
   Headset,
+  Wrench,
+  Building2,
+  Database,
+  Zap,
+  Car,
+  Layers,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MENUS, MODULES, type MenuNode, type ModuleKey } from "@/lib/menus";
@@ -31,6 +37,17 @@ import { useSidebar } from "@/context/SidebarContext";
 
 const CUSTOMER_SERVICE_ICONS: Record<string, React.ElementType> = {
   dashboard: LayoutDashboard,
+  "after-sales": Headset,
+  "building-services": Wrench,
+  "building-management": Building2,
+  "pre-sales": CalendarCheck2,
+  "core-records": Database,
+  "utility-service": Zap,
+  "security-service": ShieldCheck,
+  "parking-service": Car,
+  "other-services": Layers,
+  "service-charge": Receipt,
+  "building-committee": Users,
   customers: Users,
   "customers-properties": Users,
   payments: Receipt,
@@ -213,8 +230,38 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
     for (let i = 1; i < parts.length; i++) {
       next.add(parts.slice(0, i).join("/"));
     }
+
+    const cleanActive = activePath
+      .replace(/^\//, "")
+      .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+
+    const findAncestors = (nodes: MenuNode[], stack: string[]): boolean => {
+      for (const node of nodes) {
+        const cleanNode = node.path
+          .replace(/^\//, "")
+          .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+        if (
+          cleanNode === cleanActive ||
+          node.path === activePath ||
+          (cleanNode && cleanActive.startsWith(cleanNode + "/"))
+        ) {
+          stack.forEach((p) => next.add(p));
+          if (!node.children?.length) {
+            return true;
+          }
+        }
+        if (node.children?.length) {
+          if (findAncestors(node.children, [...stack, node.path])) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+    findAncestors(permittedTree, []);
+
     setExpanded((prev) => new Set([...prev, ...next]));
-  }, [activePath, module]);
+  }, [activePath, module, permittedTree]);
 
   const toggle = (path: string) => {
     setExpanded((prev) => {
@@ -241,8 +288,20 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           cleanNodePath === cleanActivePath ||
           n.path === activePath ||
           (!cleanActivePath && (n.slug === "dashboard" || cleanNodePath === "dashboard"));
+        const hasActiveDescendant = (node: MenuNode): boolean => {
+          if (!node.children?.length) return false;
+          return node.children.some((c) => {
+            const cleanC = c.path
+              .replace(/^\//, "")
+              .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+            if (cleanC === cleanActivePath || c.path === activePath) return true;
+            if (cleanC && cleanActivePath.startsWith(cleanC + "/")) return true;
+            return hasActiveDescendant(c);
+          });
+        };
+        const isChildActive = hasActiveDescendant(n);
         const isAncestor = Boolean(
-          cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")
+          (cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")) || isChildActive
         );
         const isOpen = !!q || expanded.has(n.path) || expanded.has(cleanNodePath);
         const Icon = module === "lams" ? LAMS_ICONS[n.slug] : module === "customer-service" ? CUSTOMER_SERVICE_ICONS[n.slug] : null;
