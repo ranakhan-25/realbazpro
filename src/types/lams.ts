@@ -341,3 +341,83 @@ export interface MouzaDistributionStat {
   leadsCount: number;
   color: string;
 }
+
+export interface LandValuation {
+  id: string;
+  uuid?: string;
+  lead_id: string;
+  valuer_id?: string;
+  market_rate: number;
+  govt_rate: number;
+  total_value: number;
+  method: string;
+  report_url?: string;
+  valued_at?: string;
+  status: string;
+  notes?: string;
+  org_id?: string;
+  createdAt?: string;
+}
+
+export interface LegalVerification {
+  id: string;
+  uuid?: string;
+  lead_id: string;
+  lawyer_name?: string;
+  title_clear: boolean;
+  mutation_ok: boolean;
+  tax_clear: boolean;
+  status: string;
+  verified_at?: string;
+  opinion?: string;
+  report_url?: string;
+  findings_json?: any;
+  org_id?: string;
+  createdAt?: string;
+}
+
+export interface DueDiligenceRecord {
+  id: string;
+  uuid?: string;
+  lead_id: string;
+  score: number;
+  status: string;
+  surveyor_name?: string;
+  report_url?: string;
+  checklist_json?: any;
+  org_id?: string;
+  createdAt?: string;
+}
+
+export interface AcquisitionApproval {
+  id: string;
+  uuid?: string;
+  lead_id: string;
+  level: string;
+  approver_name?: string;
+  decision: string;
+  comment?: string;
+  decided_at?: string;
+  stage: string;
+  org_id?: string;
+  createdAt?: string;
+}
+
+export interface SettlementRecord {
+  id: string;
+  uuid?: string;
+  lead_id: string;
+  owner_id?: string;
+  agreed_amount: number;
+  advance_amount: number;
+  paid_amount: number;
+  due_amount: number;
+  payment_mode: string;
+  scheduled_at?: string;
+  status: string;
+  payment_schedule?: any;
+  notes?: string;
+  org_id?: string;
+  createdAt?: string;
+}
+

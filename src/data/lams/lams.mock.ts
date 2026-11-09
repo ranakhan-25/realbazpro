@@ -1018,3 +1018,100 @@ export const mockFollowUps: FollowUpItem[] = [
 
 export const mockNegotiationRecords = mockNegotiations;
 export const mockFollowUpItems = mockFollowUps;
+
+export const mockLandValuations = [
+  {
+    id: "VAL-01",
+    uuid: "a1111111-1111-1111-1111-111111111111",
+    lead_id: "AL-101",
+    valuer_id: "VAL-EXP-01",
+    market_rate: 2200000,
+    govt_rate: 1500000,
+    total_value: 26400000,
+    method: "comparative",
+    report_url: "/reports/valuation_al101.pdf",
+    valued_at: "2026-09-10",
+    status: "completed",
+    notes: "Market comparison based on 3 adjacent mouza deeds.",
+  },
+  {
+    id: "VAL-02",
+    uuid: "a2222222-2222-2222-2222-222222222222",
+    lead_id: "AL-102",
+    valuer_id: "VAL-EXP-02",
+    market_rate: 1850000,
+    govt_rate: 1200000,
+    total_value: 33300000,
+    method: "residual",
+    report_url: "/reports/valuation_al102.pdf",
+    valued_at: "2026-09-15",
+    status: "completed",
+    notes: "Commercial zoning with frontage advantage.",
+  },
+];
+
+export const mockLegalVerifications = [
+  {
+    id: "LV-01",
+    uuid: "b1111111-1111-1111-1111-111111111111",
+    lead_id: "AL-101",
+    lawyer_name: "Barrister Mahmud & Associates",
+    title_clear: true,
+    mutation_ok: true,
+    tax_clear: true,
+    status: "verified",
+    verified_at: "2026-09-12",
+    opinion: "30-year search at Sub-Registry clear, uninterrupted CS to RS chain.",
+    report_url: "/reports/legal_al101.pdf",
+    findings_json: { chain_of_title: "Clear", encumbrance: "None", mutation: "Completed" },
+  },
+];
+
+export const mockDueDiligences = [
+  {
+    id: "DD-01",
+    uuid: "c1111111-1111-1111-1111-111111111111",
+    lead_id: "AL-101",
+    score: 88,
+    status: "approved",
+    surveyor_name: "Engr. Tanvir Ahmed (CEGIS)",
+    report_url: "/reports/dd_al101.pdf",
+    checklist_json: { access_road: "30ft Wide", flood_free: true, gas_electricity: "Available" },
+  },
+];
+
+export const mockAcquisitionApprovals = [
+  {
+    id: "AP-01",
+    uuid: "d1111111-1111-1111-1111-111111111111",
+    lead_id: "AL-101",
+    level: "level_1",
+    approver_name: "Land Acquisition Committee",
+    decision: "approved",
+    comment: "Acquisition price matches budget guidelines.",
+    decided_at: "2026-09-20T10:30:00Z",
+    stage: "lead",
+  },
+];
+
+export const mockSettlements = [
+  {
+    id: "SET-01",
+    uuid: "e1111111-1111-1111-1111-111111111111",
+    lead_id: "AL-101",
+    agreed_amount: 25000000,
+    advance_amount: 5000000,
+    paid_amount: 15000000,
+    due_amount: 10000000,
+    payment_mode: "bank_transfer",
+    scheduled_at: "2026-10-30",
+    status: "partial",
+    payment_schedule: [
+      { installment: 1, amount: 5000000, status: "paid", date: "2026-09-25" },
+      { installment: 2, amount: 10000000, status: "paid", date: "2026-10-15" },
+      { installment: 3, amount: 10000000, status: "due", date: "2026-10-30" },
+    ],
+    notes: "Deed execution pending final installment clearance.",
+  },
+];
+

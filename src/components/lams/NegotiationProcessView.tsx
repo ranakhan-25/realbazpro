@@ -422,17 +422,13 @@ export function NegotiationProcessView({
                   {isColVisible("status") && <th className="py-3 px-3.5 text-center">Status</th>}
                   <th className="py-3 px-3.5 text-right">Actions</th>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {displayedNegotiations.map((item: any) => {
-                  const itemId = item.uuid || item.id;
-                  const isSelected = selectedIds.includes(itemId);
+              ) : (
+                displayedNegotiations.map((item, idx) => {
+                  const itemId = item.uuid || item.id || `neg-${idx}`;
                   const isExpanded = expandedId === itemId;
-                  const offered = item.offeredTotalPrice || item.offer_amount || 0;
-                  const counter = item.counterOfferByOwner || item.counter_amount || 0;
-                  const gap = counter - offered;
-                  const statusKey = item.negotiationStatus || item.status || "In Progress";
-                  const roundNo = item.round_no || 1;
+                  const statusInfo = STATUS_CONFIG[item.negotiationStatus as NegotiationStatus] || { bg: "bg-slate-100 text-slate-800", text: "text-slate-700", icon: AlertTriangle };
+                  const StatusIcon = statusInfo.icon;
+                  const priceGap = item.counterOfferByOwner - item.offeredTotalPrice;
 
                   return (
                     <React.Fragment key={itemId}>
@@ -453,8 +449,8 @@ export function NegotiationProcessView({
                         <td className="py-3 px-2 text-center">
                           <button
                             onClick={() => toggleExpand(itemId)}
-                            className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-amber-100 hover:text-amber-700 transition-all"
-                            title={isExpanded ? "Collapse notes" : "Expand notes"}
+                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 transition-all font-bold"
+                            title={isExpanded ? "Collapse" : "Expand"}
                           >
                             {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                           </button>
@@ -549,12 +545,9 @@ export function NegotiationProcessView({
                         <td className="py-3 px-3.5 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
-                              onClick={() => {
-                                setEditingNegotiation(item);
-                                setIsAddModalOpen(true);
-                              }}
-                              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-all"
-                              title="Edit Negotiation Round"
+                              onClick={() => onDeleteNegotiation(itemId)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
+                              title="Delete Negotiation"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>

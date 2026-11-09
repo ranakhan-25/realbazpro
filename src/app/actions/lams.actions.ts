@@ -9,7 +9,7 @@ import {
   mockFollowUpItems,
   mockLandValuations,
   mockLegalVerifications,
-  mockDueDiligence,
+  mockDueDiligences,
   mockAcquisitionApprovals,
   mockSettlements,
 } from "@/data/lams/lams.mock";
@@ -829,3 +829,378 @@ export async function deleteFollowUp(uuid: string) {
     console.warn("deleteFollowUp error:", err);
   }
 }
+
+// ----------------------------------------------------------------------
+// Land Valuations
+// ----------------------------------------------------------------------
+export async function getValuations(leadId?: string) {
+  try {
+    const url = leadId
+      ? `${API_BASE_URL}/lams/valuations?lead_id=${encodeURIComponent(leadId)}`
+      : `${API_BASE_URL}/lams/valuations`;
+    const res = await fetch(url, {
+      cache: "no-store",
+      next: { tags: ["lams-valuations"] },
+    });
+    if (!res.ok) return mockLandValuations;
+    const json = await res.json();
+    const rawData = json.data !== undefined ? json.data : json;
+    return Array.isArray(rawData) && rawData.length > 0 ? rawData : mockLandValuations;
+  } catch (err) {
+    console.warn("getValuations error, using mock:", err);
+    return mockLandValuations;
+  }
+}
+
+export async function createValuation(data: any) {
+  const payload = {
+    lead_id: data.lead_id || data.acquisitionLeadId,
+    valuer_id: data.valuer_id || data.valuerName,
+    market_rate: parseFloat(data.market_rate) || 0,
+    govt_rate: parseFloat(data.govt_rate) || 0,
+    total_value: parseFloat(data.total_value) || 0,
+    method: data.method || "comparative",
+    report_url: data.report_url,
+    valued_at: safeDate(data.valued_at),
+    status: data.status || "completed",
+    notes: data.notes || "",
+    org_id: data.org_id || data.projectId,
+  };
+  try {
+    const res = await fetch(`${API_BASE_URL}/lams/valuations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    revalidatePath("/dashboard/lams");
+    const json = await res.json().catch(() => null);
+    return json?.data || json || payload;
+  } catch (err) {
+    console.warn("createValuation error:", err);
+    return payload;
+  }
+}
+
+export async function updateValuation(uuid: string, data: any) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/lams/valuations/${uuid}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    revalidatePath("/dashboard/lams");
+    const json = await res.json().catch(() => null);
+    return json?.data || json || data;
+  } catch (err) {
+    console.warn("updateValuation error:", err);
+    return data;
+  }
+}
+
+export async function deleteValuation(uuid: string) {
+  try {
+    await fetch(`${API_BASE_URL}/lams/valuations/${uuid}`, { method: "DELETE" });
+    revalidatePath("/dashboard/lams");
+  } catch (err) {
+    console.warn("deleteValuation error:", err);
+  }
+}
+
+// ----------------------------------------------------------------------
+// Legal Verifications
+// ----------------------------------------------------------------------
+export async function getLegalVerifications(leadId?: string) {
+  try {
+    const url = leadId
+      ? `${API_BASE_URL}/lams/legal-verifications?lead_id=${encodeURIComponent(leadId)}`
+      : `${API_BASE_URL}/lams/legal-verifications`;
+    const res = await fetch(url, {
+      cache: "no-store",
+      next: { tags: ["lams-legal-verifications"] },
+    });
+    if (!res.ok) return mockLegalVerifications;
+    const json = await res.json();
+    const rawData = json.data !== undefined ? json.data : json;
+    return Array.isArray(rawData) && rawData.length > 0 ? rawData : mockLegalVerifications;
+  } catch (err) {
+    console.warn("getLegalVerifications error, using mock:", err);
+    return mockLegalVerifications;
+  }
+}
+
+export async function createLegalVerification(data: any) {
+  const payload = {
+    lead_id: data.lead_id || data.acquisitionLeadId,
+    lawyer_name: data.lawyer_name,
+    title_clear: Boolean(data.title_clear),
+    mutation_ok: Boolean(data.mutation_ok),
+    tax_clear: Boolean(data.tax_clear),
+    status: data.status || "verified",
+    verified_at: safeDate(data.verified_at),
+    opinion: data.opinion,
+    report_url: data.report_url,
+    findings_json: data.findings_json,
+    org_id: data.org_id || data.projectId,
+  };
+  try {
+    const res = await fetch(`${API_BASE_URL}/lams/legal-verifications`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    revalidatePath("/dashboard/lams");
+    const json = await res.json().catch(() => null);
+    return json?.data || json || payload;
+  } catch (err) {
+    console.warn("createLegalVerification error:", err);
+    return payload;
+  }
+}
+
+export async function updateLegalVerification(uuid: string, data: any) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/lams/legal-verifications/${uuid}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    revalidatePath("/dashboard/lams");
+    const json = await res.json().catch(() => null);
+    return json?.data || json || data;
+  } catch (err) {
+    console.warn("updateLegalVerification error:", err);
+    return data;
+  }
+}
+
+export async function deleteLegalVerification(uuid: string) {
+  try {
+    await fetch(`${API_BASE_URL}/lams/legal-verifications/${uuid}`, { method: "DELETE" });
+    revalidatePath("/dashboard/lams");
+  } catch (err) {
+    console.warn("deleteLegalVerification error:", err);
+  }
+}
+
+// ----------------------------------------------------------------------
+// Due Diligences
+// ----------------------------------------------------------------------
+export async function getDueDiligences(leadId?: string) {
+  try {
+    const url = leadId
+      ? `${API_BASE_URL}/lams/due-diligences?lead_id=${encodeURIComponent(leadId)}`
+      : `${API_BASE_URL}/lams/due-diligences`;
+    const res = await fetch(url, {
+      cache: "no-store",
+      next: { tags: ["lams-due-diligences"] },
+    });
+    if (!res.ok) return mockDueDiligences;
+    const json = await res.json();
+    const rawData = json.data !== undefined ? json.data : json;
+    return Array.isArray(rawData) && rawData.length > 0 ? rawData : mockDueDiligences;
+  } catch (err) {
+    console.warn("getDueDiligences error, using mock:", err);
+    return mockDueDiligences;
+  }
+}
+
+export async function createDueDiligence(data: any) {
+  const payload = {
+    lead_id: data.lead_id || data.acquisitionLeadId,
+    score: parseFloat(data.score) || 0,
+    status: data.status || "approved",
+    surveyor_name: data.surveyor_name,
+    report_url: data.report_url,
+    checklist_json: data.checklist_json,
+    org_id: data.org_id || data.projectId,
+  };
+  try {
+    const res = await fetch(`${API_BASE_URL}/lams/due-diligences`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    revalidatePath("/dashboard/lams");
+    const json = await res.json().catch(() => null);
+    return json?.data || json || payload;
+  } catch (err) {
+    console.warn("createDueDiligence error:", err);
+    return payload;
+  }
+}
+
+export async function updateDueDiligence(uuid: string, data: any) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/lams/due-diligences/${uuid}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    revalidatePath("/dashboard/lams");
+    const json = await res.json().catch(() => null);
+    return json?.data || json || data;
+  } catch (err) {
+    console.warn("updateDueDiligence error:", err);
+    return data;
+  }
+}
+
+export async function deleteDueDiligence(uuid: string) {
+  try {
+    await fetch(`${API_BASE_URL}/lams/due-diligences/${uuid}`, { method: "DELETE" });
+    revalidatePath("/dashboard/lams");
+  } catch (err) {
+    console.warn("deleteDueDiligence error:", err);
+  }
+}
+
+// ----------------------------------------------------------------------
+// Acquisition Approvals
+// ----------------------------------------------------------------------
+export async function getApprovals(leadId?: string) {
+  try {
+    const url = leadId
+      ? `${API_BASE_URL}/lams/approvals?lead_id=${encodeURIComponent(leadId)}`
+      : `${API_BASE_URL}/lams/approvals`;
+    const res = await fetch(url, {
+      cache: "no-store",
+      next: { tags: ["lams-approvals"] },
+    });
+    if (!res.ok) return mockAcquisitionApprovals;
+    const json = await res.json();
+    const rawData = json.data !== undefined ? json.data : json;
+    return Array.isArray(rawData) && rawData.length > 0 ? rawData : mockAcquisitionApprovals;
+  } catch (err) {
+    console.warn("getApprovals error, using mock:", err);
+    return mockAcquisitionApprovals;
+  }
+}
+
+export async function createApproval(data: any) {
+  const payload = {
+    lead_id: data.lead_id || data.acquisitionLeadId,
+    level: data.level || "level_1",
+    approver_name: data.approver_name,
+    decision: data.decision || "approved",
+    comment: data.comment,
+    decided_at: data.decided_at || new Date().toISOString(),
+    stage: data.stage || "lead",
+    org_id: data.org_id || data.projectId,
+  };
+  try {
+    const res = await fetch(`${API_BASE_URL}/lams/approvals`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    revalidatePath("/dashboard/lams");
+    const json = await res.json().catch(() => null);
+    return json?.data || json || payload;
+  } catch (err) {
+    console.warn("createApproval error:", err);
+    return payload;
+  }
+}
+
+export async function updateApproval(uuid: string, data: any) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/lams/approvals/${uuid}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    revalidatePath("/dashboard/lams");
+    const json = await res.json().catch(() => null);
+    return json?.data || json || data;
+  } catch (err) {
+    console.warn("updateApproval error:", err);
+    return data;
+  }
+}
+
+export async function deleteApproval(uuid: string) {
+  try {
+    await fetch(`${API_BASE_URL}/lams/approvals/${uuid}`, { method: "DELETE" });
+    revalidatePath("/dashboard/lams");
+  } catch (err) {
+    console.warn("deleteApproval error:", err);
+  }
+}
+
+// ----------------------------------------------------------------------
+// Settlements
+// ----------------------------------------------------------------------
+export async function getSettlements(leadId?: string) {
+  try {
+    const url = leadId
+      ? `${API_BASE_URL}/lams/settlements?lead_id=${encodeURIComponent(leadId)}`
+      : `${API_BASE_URL}/lams/settlements`;
+    const res = await fetch(url, {
+      cache: "no-store",
+      next: { tags: ["lams-settlements"] },
+    });
+    if (!res.ok) return mockSettlements;
+    const json = await res.json();
+    const rawData = json.data !== undefined ? json.data : json;
+    return Array.isArray(rawData) && rawData.length > 0 ? rawData : mockSettlements;
+  } catch (err) {
+    console.warn("getSettlements error, using mock:", err);
+    return mockSettlements;
+  }
+}
+
+export async function createSettlement(data: any) {
+  const payload = {
+    lead_id: data.lead_id || data.acquisitionLeadId,
+    owner_id: data.owner_id,
+    agreed_amount: parseFloat(data.agreed_amount) || 0,
+    advance_amount: parseFloat(data.advance_amount) || 0,
+    paid_amount: parseFloat(data.paid_amount) || 0,
+    due_amount: parseFloat(data.due_amount) || 0,
+    payment_mode: data.payment_mode || "bank_transfer",
+    scheduled_at: safeDate(data.scheduled_at),
+    status: data.status || "pending",
+    payment_schedule: data.payment_schedule,
+    notes: data.notes,
+    org_id: data.org_id || data.projectId,
+  };
+  try {
+    const res = await fetch(`${API_BASE_URL}/lams/settlements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    revalidatePath("/dashboard/lams");
+    const json = await res.json().catch(() => null);
+    return json?.data || json || payload;
+  } catch (err) {
+    console.warn("createSettlement error:", err);
+    return payload;
+  }
+}
+
+export async function updateSettlement(uuid: string, data: any) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/lams/settlements/${uuid}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    revalidatePath("/dashboard/lams");
+    const json = await res.json().catch(() => null);
+    return json?.data || json || data;
+  } catch (err) {
+    console.warn("updateSettlement error:", err);
+    return data;
+  }
+}
+
+export async function deleteSettlement(uuid: string) {
+  try {
+    await fetch(`${API_BASE_URL}/lams/settlements/${uuid}`, { method: "DELETE" });
+    revalidatePath("/dashboard/lams");
+  } catch (err) {
+    console.warn("deleteSettlement error:", err);
+  }
+}
+

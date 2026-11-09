@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { Fragment, useState, useMemo } from "react";
 import {
   Search,
   CalendarCheck2,
@@ -319,16 +319,16 @@ export function FollowUpView({
                   {isColVisible("status") && <th className="py-3 px-3.5 text-center">Status</th>}
                   <th className="py-3 px-3.5 text-right">Actions</th>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {displayedFollowUps.map((item: any) => {
-                  const itemId = item.uuid || item.id;
-                  const isSelected = selectedIds.includes(itemId);
+              ) : (
+                displayedFollowUps.map((item, idx) => {
+                  const itemId = item.uuid || item.id || `flw-${idx}`;
+                  const rowKey = `flw-row-${item.uuid || item.id || "item"}-${idx}`;
                   const isExpanded = expandedId === itemId;
-                  const isCompleted = item.status === "Completed";
+                  const statusInfo = STATUS_BADGES[item.status as FollowUpStatus] || { bg: "bg-slate-100 text-slate-800", text: "text-slate-700", icon: Clock };
+                  const StatusIcon = statusInfo.icon;
 
                   return (
-                    <React.Fragment key={itemId}>
+                    <Fragment key={rowKey}>
                       <tr
                         className={`transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${
                           isSelected ? "bg-cyan-50/40 dark:bg-cyan-950/20" : ""
@@ -346,8 +346,8 @@ export function FollowUpView({
                         <td className="py-3 px-2 text-center">
                           <button
                             onClick={() => toggleExpand(itemId)}
-                            className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-cyan-100 hover:text-cyan-700 transition-all"
-                            title={isExpanded ? "Collapse notes" : "Expand notes"}
+                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 transition-all font-bold"
+                            title={isExpanded ? "Collapse" : "Expand"}
                           >
                             {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                           </button>
@@ -400,9 +400,13 @@ export function FollowUpView({
                         {isColVisible("status") && (
                           <td className="py-3 px-3.5 text-center">
                             <button
-                              onClick={() => onToggleComplete?.(itemId)}
-                              title="Click to toggle Complete/Pending"
-                              className="inline-block"
+                              onClick={() => onToggleComplete(itemId)}
+                              className={`p-1.5 rounded-lg transition-all ${
+                                item.status === "Completed"
+                                  ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40"
+                                  : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
+                              }`}
+                              title={item.status === "Completed" ? "Mark Pending" : "Mark Completed"}
                             >
                               <span
                                 className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all ${
@@ -437,13 +441,9 @@ export function FollowUpView({
                             </button>
 
                             <button
-                              onClick={() => {
-                                if (confirm("Delete this follow-up appointment?")) {
-                                  onDeleteFollowUp?.(itemId);
-                                }
-                              }}
-                              className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 transition-all"
-                              title="Delete Appointment"
+                              onClick={() => onDeleteFollowUp(itemId)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
+                              title="Delete Item"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -465,7 +465,7 @@ export function FollowUpView({
                           </td>
                         </tr>
                       )}
-                    </React.Fragment>
+                    </Fragment>
                   );
                 })}
               </tbody>

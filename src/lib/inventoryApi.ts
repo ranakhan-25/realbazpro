@@ -194,6 +194,20 @@ export const fallbackPurchases = [
   },
 ];
 
+export const fallbackWarehouses = [
+  { id: 1, uuid: "wh-01", code: "WH-01", name: "Central Warehouse", location: "Tejgaon Industrial Area, Dhaka", type: "central", is_active: true },
+  { id: 2, uuid: "wh-02", code: "WH-02", name: "Site Warehouse - Sheba Eyecon", location: "Uttara Sector 11, Dhaka", type: "site", is_active: true },
+  { id: 3, uuid: "wh-03", code: "WH-03", name: "Site Warehouse - Lake Garden", location: "Bashundhara R/A, Dhaka", type: "site", is_active: true },
+];
+
+export const fallbackStockCounts = [
+  { id: 1, uuid: "sc-01", warehouse_id: 1, counted_at: "2026-09-30", status: "completed", note: "End of month physical count", lines_json: [{ item_id: "item-01", system_qty: 17.5, counted_qty: 17.5, difference: 0 }] },
+];
+
+export const fallbackStockIssues = [
+  { id: 1, uuid: "iss-01", issue_code: "ISS-2026-001", warehouse_id: 1, item_id: "item-01", quantity: 5.0, issued_to: "Engr. Rahman", ref_type: "project", ref_id: "PRJ-1001", date: "2026-09-15", notes: "Issued for Foundation Beam Casting" },
+];
+
 export const fallbackStockReport = [
   {
     item_id: "item-01",
@@ -570,6 +584,12 @@ function getFallbackListForResource(resource: string): any[] | null {
       return fallbackMaterialRequisitions;
     case "sales":
       return fallbackSales;
+    case "inventory/warehouses":
+      return fallbackWarehouses;
+    case "inventory/stock-counts":
+      return fallbackStockCounts;
+    case "inventory/stock-issues":
+      return fallbackStockIssues;
     default:
       return null;
   }
@@ -597,6 +617,9 @@ function hydrateFallbackFromLocalStorage() {
     { res: "inventory/stock-transfers", list: fallbackStockTransfers },
     { res: "material-requisition", list: fallbackMaterialRequisitions },
     { res: "sales", list: fallbackSales },
+    { res: "inventory/warehouses", list: fallbackWarehouses },
+    { res: "inventory/stock-counts", list: fallbackStockCounts },
+    { res: "inventory/stock-issues", list: fallbackStockIssues },
   ];
 
   for (const { res, list } of resources) {
@@ -1246,3 +1269,76 @@ export const reportsApi = {
   getItemHistory: () =>
     apiFetch<any[]>("/inventory/reports/item-history", {}, fallbackItemHistory),
 };
+
+// ---------------------------------------------------------------------------
+// 13. Warehouses
+// ---------------------------------------------------------------------------
+export const warehousesApi = {
+  getAll: (isActive?: boolean) => {
+    const query = isActive !== undefined ? `?is_active=${isActive}` : "";
+    return apiFetch<any[]>(`/inventory/warehouses${query}`, {}, fallbackWarehouses);
+  },
+  getOne: (id: string | number) => apiFetch<any>(`/inventory/warehouses/${id}`),
+  create: (data: { code: string; name: string; location?: string; type?: string; is_active?: boolean; org_id?: string }) =>
+    apiFetch<any>("/inventory/warehouses", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: string | number, data: any) =>
+    apiFetch<any>(`/inventory/warehouses/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string | number) =>
+    apiFetch<any>(`/inventory/warehouses/${id}`, { method: "DELETE" }),
+};
+
+// ---------------------------------------------------------------------------
+// 14. Stock Counts
+// ---------------------------------------------------------------------------
+export const stockCountsApi = {
+  getAll: (warehouseId?: number) => {
+    const query = warehouseId ? `?warehouse_id=${warehouseId}` : "";
+    return apiFetch<any[]>(`/inventory/stock-counts${query}`, {}, fallbackStockCounts);
+  },
+  getOne: (id: string | number) => apiFetch<any>(`/inventory/stock-counts/${id}`),
+  create: (data: any) =>
+    apiFetch<any>("/inventory/stock-counts", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: string | number, data: any) =>
+    apiFetch<any>(`/inventory/stock-counts/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string | number) =>
+    apiFetch<any>(`/inventory/stock-counts/${id}`, { method: "DELETE" }),
+};
+
+// ---------------------------------------------------------------------------
+// 15. Stock Issues
+// ---------------------------------------------------------------------------
+export const stockIssuesApi = {
+  getAll: (filter?: { warehouse_id?: number; item_id?: string }) => {
+    const params = new URLSearchParams();
+    if (filter?.warehouse_id) params.append("warehouse_id", filter.warehouse_id.toString());
+    if (filter?.item_id) params.append("item_id", filter.item_id);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return apiFetch<any[]>(`/inventory/stock-issues${query}`, {}, fallbackStockIssues);
+  },
+  getOne: (id: string | number) => apiFetch<any>(`/inventory/stock-issues/${id}`),
+  create: (data: any) =>
+    apiFetch<any>("/inventory/stock-issues", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: string | number, data: any) =>
+    apiFetch<any>(`/inventory/stock-issues/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string | number) =>
+    apiFetch<any>(`/inventory/stock-issues/${id}`, { method: "DELETE" }),
+};
+

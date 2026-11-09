@@ -375,4 +375,40 @@ test("Inventory Store: Requisitions, Material Usage, and Stock Transfers CRUD in
   assert.strictEqual(fallbackStockTransfers.length, initialTransferLen + 1);
 });
 
+test("LAMS & Inventory: new module coverage for Valuations, Legal, Due Diligence, Approvals, Settlements, Warehouses, Counts, and Issues", async () => {
+  const {
+    mockLandValuations,
+    mockLegalVerifications,
+    mockDueDiligences,
+    mockAcquisitionApprovals,
+    mockSettlements,
+  } = await import("../data/lams/lams.mock.ts");
+
+  const {
+    fallbackWarehouses,
+    fallbackStockCounts,
+    fallbackStockIssues,
+    warehousesApi,
+    stockCountsApi,
+    stockIssuesApi,
+  } = await import("../lib/inventoryApi.ts");
+
+  // Validate LAMS datasets
+  assert.ok(Array.isArray(mockLandValuations) && mockLandValuations.length > 0);
+  assert.ok(Array.isArray(mockLegalVerifications) && mockLegalVerifications.length > 0);
+  assert.ok(Array.isArray(mockDueDiligences) && mockDueDiligences.length > 0);
+  assert.ok(Array.isArray(mockAcquisitionApprovals) && mockAcquisitionApprovals.length > 0);
+  assert.ok(Array.isArray(mockSettlements) && mockSettlements.length > 0);
+
+  // Validate Inventory datasets & APIs
+  assert.ok(Array.isArray(fallbackWarehouses) && fallbackWarehouses.length > 0);
+  assert.ok(Array.isArray(fallbackStockCounts) && fallbackStockCounts.length > 0);
+  assert.ok(Array.isArray(fallbackStockIssues) && fallbackStockIssues.length > 0);
+
+  assert.ok(typeof warehousesApi.getAll === "function");
+  assert.ok(typeof stockCountsApi.getAll === "function");
+  assert.ok(typeof stockIssuesApi.getAll === "function");
+});
+
+
 
