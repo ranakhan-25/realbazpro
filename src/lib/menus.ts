@@ -393,10 +393,16 @@ reports
 
 const lams = `
 dashboard
-land-owners
 acquisition-leads
+land-owners
+valuations
+legal-verification
+due-diligence
 negotiation-process
+approvals
+settlements
 legal-documents
+reports
 follow-up
 `;
 

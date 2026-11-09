@@ -34,6 +34,7 @@ import {
   Link as LinkIcon,
 } from "lucide-react";
 import RfqInvoicePrintModal from "./RfqInvoicePrintModal";
+import { procurementRfqApi } from "@/lib/procurement";
 
 // ==========================================
 // Types & Interfaces
@@ -54,6 +55,7 @@ export interface RfqItemRow {
 
 export interface RfqRecord {
   id: number;
+  uuid?: string;
   projectType: string;
   project: string;
   supplierName: string;
@@ -715,6 +717,7 @@ export default function RequestForQuotationView() {
   // RFQ State
   const [rfqList, setRfqList] = useState<RfqRecord[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Filter State (Screenshot 2)
   const [filterDate, setFilterDate] = useState(
@@ -834,28 +837,86 @@ export default function RequestForQuotationView() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Load from localStorage or initialize with sample data
-  useEffect(() => {
+  // Load from API or fallback
+  const fetchRfqs = async () => {
+    setIsLoading(true);
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setRfqList(parsed);
-          return;
-        }
+      const res = await procurementRfqApi.getRfqs({
+        page: currentPage,
+        limit: entriesPerPage,
+        search: search || undefined,
+      });
+      if (res && Array.isArray(res.data) && res.data.length > 0) {
+        const mapped: RfqRecord[] = res.data.map((item, idx) => ({
+          id: item.id || idx + 1,
+          uuid: item.uuid,
+          projectType: item.projectType?.name || "Real Estate",
+          project: item.project?.name || "Hena Heights",
+          supplierName: item.supplier?.supplierName || "Supplier",
+          code: item.code,
+          reference: item.reference || `REC00${item.id || idx + 1}`,
+          date: item.date ? item.date.split("T")[0] : "",
+          subTotal: Number(item.subtotal) || 0,
+          grandTotal: Number(item.grand_total) || 0,
+          addedBy: item.addedBy?.name || item.createdBy || "Admin",
+          attachmentCount: item.attachment ? 1 : 0,
+          attachmentName: item.attachment,
+          titleOfWork: item.titleOfWork?.name || "Material Procurement",
+          requisition: item.requisition_id || "",
+          task: item.task?.taskName || "",
+          site: item.site?.name || "",
+          category: item.category?.name || "",
+          phone: item.supplier?.mobile || "",
+          address: item.supplier?.address || "",
+          items: (item.items || []).map((it, itemIdx) => ({
+            id: it.uuid || String(itemIdx + 1),
+            itemCode: it.item?.item_code || "",
+            itemName: it.item?.name || "",
+            details: it.details || "",
+            unit: it.item?.unit?.name || it.item?.unit?.code || "Unit",
+            quantity: Number(it.quantity) || 0,
+            rate: Number(it.rate) || 0,
+            requiredQty: Number(it.required_qty) || 0,
+            purchaseQty: Number(it.purchase_qty) || 0,
+            stockQty: Number(it.stock_qty) || 0,
+            amount: Number(it.amount) || (Number(it.quantity) || 0) * (Number(it.rate) || 0),
+          })),
+        }));
+        setRfqList(mapped);
+      } else {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setRfqList(parsed);
+              return;
+            }
+          }
+        } catch {}
+        setRfqList(INITIAL_RFQ_RECORDS);
       }
     } catch (e) {
-      console.warn(
-        "Could not read from localStorage, using initial mock data",
-        e,
-      );
+      console.warn("Could not read from API, falling back to local data", e);
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setRfqList(parsed);
+            return;
+          }
+        }
+      } catch {}
+      setRfqList(INITIAL_RFQ_RECORDS);
+    } finally {
+      setIsLoading(false);
     }
-    setRfqList(INITIAL_RFQ_RECORDS);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_RFQ_RECORDS));
-    } catch {}
-  }, []);
+  };
+
+  useEffect(() => {
+    fetchRfqs();
+  }, [currentPage, entriesPerPage, search]);
 
   // Save to localStorage when changed
   const saveRfqList = (newList: RfqRecord[]) => {
@@ -1150,13 +1211,22 @@ export default function RequestForQuotationView() {
   };
 
   // Delete RFQ
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    const remaining = rfqList.filter((r) => r.id !== deleteTarget.id);
-    saveRfqList(remaining);
-    setSelectedIds((prev) => prev.filter((id) => id !== deleteTarget.id));
-    showToast(`RFQ ${deleteTarget.code} deleted`, "info");
-    setDeleteTarget(null);
+    try {
+      if (deleteTarget.uuid) {
+        await procurementRfqApi.deleteRfq(deleteTarget.uuid);
+      }
+      const remaining = rfqList.filter((r) => r.id !== deleteTarget.id);
+      saveRfqList(remaining);
+      setSelectedIds((prev) => prev.filter((id) => id !== deleteTarget.id));
+      showToast(`RFQ ${deleteTarget.code} deleted successfully`, "success");
+    } catch (e: any) {
+      console.error("Delete RFQ failed", e);
+      showToast(e?.response?.data?.message || "Failed to delete RFQ", "error");
+    } finally {
+      setDeleteTarget(null);
+    }
   };
 
   // Bulk Selection
