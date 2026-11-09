@@ -31,6 +31,7 @@ interface NegotiationProcessViewProps {
   onAddNegotiation: (record: NegotiationRecord) => void;
   onDeleteNegotiation: (uuid: string) => void;
   acquisitionLeads: AcquisitionLead[];
+  initialOpenCreate?: boolean;
 }
 
 const DEFAULT_COLUMNS: ColumnDefinition[] = [
@@ -50,6 +51,7 @@ export function NegotiationProcessView({
   onEditNegotiation,
   onDeleteNegotiation,
   acquisitionLeads = [],
+  initialOpenCreate = false,
 }: NegotiationProcessViewProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [leadFilter, setLeadFilter] = useState("ALL");
@@ -62,8 +64,14 @@ export function NegotiationProcessView({
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Modals
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(Boolean(initialOpenCreate));
   const [editingNegotiation, setEditingNegotiation] = useState<any>(null);
+
+  React.useEffect(() => {
+    if (initialOpenCreate) {
+      setIsAddModalOpen(true);
+    }
+  }, [initialOpenCreate]);
 
   const safeNegotiations = Array.isArray(negotiations) ? negotiations : [];
 

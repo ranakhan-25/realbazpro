@@ -18,6 +18,7 @@ export type ModuleKey =
   | "hrm"
   | "crm"
   | "cr"
+  | "collection"
   | "lams"
   | "procurement"
   | "customer-service"
@@ -31,6 +32,7 @@ export const MODULES: { key: ModuleKey; label: string }[] = [
   { key: "hrm", label: "HRM" },
   { key: "crm", label: "CRM" },
   { key: "cr", label: "Credit Realisation (CR)" },
+  { key: "collection", label: "Credit Collection" },
   { key: "lams", label: "LAMS" },
   { key: "procurement", label: "Procurement" },
   { key: "customer-service", label: "Post-Sales & Customer Service" },
@@ -389,6 +391,21 @@ reports
   installment-report
 `;
 
+const collection = `
+dashboard
+schedule
+due
+entries
+waivers
+outstanding
+aging
+overdue
+recovery
+followups
+visits
+perf
+`;
+
 const lams = `
 dashboard
 acquisition-leads
@@ -704,6 +721,7 @@ export const MENUS: Record<ModuleKey, MenuNode[]> = {
   hrm: parseTree(hrm),
   crm: parseTree(crm),
   cr: parseTree(cr),
+  collection: parseTree(collection),
   lams: parseTree(lams),
   procurement: parseTree(procurement),
   "customer-service": parseTree(customerService),

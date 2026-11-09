@@ -22,6 +22,7 @@ import { AddLandValuationModal } from "./modals/AddLandValuationModal";
 interface LandValuationsViewProps {
   valuations: LandValuation[];
   acquisitionLeads: AcquisitionLead[];
+  initialOpenCreate?: boolean;
   onAddValuation?: (val: any) => void;
   onEditValuation?: (uuid: string, val: any) => void;
   onDeleteValuation?: (uuid: string) => void;
@@ -41,6 +42,7 @@ const DEFAULT_COLUMNS: ColumnDefinition[] = [
 export function LandValuationsView({
   valuations = [],
   acquisitionLeads = [],
+  initialOpenCreate = false,
   onAddValuation,
   onEditValuation,
   onDeleteValuation,
@@ -54,8 +56,14 @@ export function LandValuationsView({
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [columns, setColumns] = useState<ColumnDefinition[]>(DEFAULT_COLUMNS);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(Boolean(initialOpenCreate));
   const [editingValuation, setEditingValuation] = useState<LandValuation | null>(null);
+
+  React.useEffect(() => {
+    if (initialOpenCreate) {
+      setIsModalOpen(true);
+    }
+  }, [initialOpenCreate]);
 
   const safeValuations = Array.isArray(valuations) ? valuations : [];
 

@@ -61,45 +61,11 @@ import {
   LegalDocument,
   FollowUpItem,
 } from "@/types/lams";
-
-const PATH_TO_TAB: Record<string, LamsTab> = {
-  "": "leads",
-  dashboard: "leads",
-  leads: "leads",
-  "acquisition-leads": "leads",
-  owners: "owners",
-  "land-owners": "owners",
-  valuations: "valuations",
-  "land-valuations": "valuations",
-  legal: "legal",
-  "legal-verification": "legal",
-  "due-diligence": "duediligence",
-  duediligence: "duediligence",
-  negotiation: "negotiation",
-  "negotiation-process": "negotiation",
-  approvals: "approvals",
-  "acquisition-approvals": "approvals",
-  settlements: "settlements",
-  documents: "documents",
-  "legal-documents": "documents",
-  reports: "reports",
-  "follow-up": "followup",
-  followup: "followup",
-};
-
-const TAB_TO_PATH: Record<LamsTab, string> = {
-  leads: "acquisition-leads",
-  owners: "land-owners",
-  valuations: "valuations",
-  legal: "legal-verification",
-  duediligence: "due-diligence",
-  negotiation: "negotiation-process",
-  approvals: "approvals",
-  settlements: "settlements",
-  documents: "legal-documents",
-  reports: "reports",
-  followup: "follow-up",
-};
+import {
+  resolveLamsTab,
+  parseLamsRoute,
+  TAB_TO_PATH,
+} from "@/lib/lamsRoutes";
 
 interface LamsDashboardProps {
   path?: string;
@@ -133,17 +99,28 @@ export default function LamsDashboard({
   const [isPending, startTransition] = useTransition();
 
   // Resolve initial tab from route path
-  const normalizedPath = path.toLowerCase().replace(/^\/+|\/+$/g, "");
-  const initialTab = PATH_TO_TAB[normalizedPath] ?? "leads";
+  const initialTab = resolveLamsTab(path);
   const [activeTab, setActiveTab] = useState<LamsTab>(initialTab);
   const [showInsights, setShowInsights] = useState(true);
 
   // Sync state if path prop changes from route navigation
   useEffect(() => {
-    if (normalizedPath && PATH_TO_TAB[normalizedPath]) {
-      setActiveTab(PATH_TO_TAB[normalizedPath]);
-    }
-  }, [normalizedPath]);
+    setActiveTab(resolveLamsTab(path));
+  }, [path]);
+
+  // Sub-route deep linking params
+  const parsedRoute = parseLamsRoute(path);
+  const isLeadsTab = activeTab === "leads";
+  const isLeadsCreateOpen = isLeadsTab && parsedRoute.isOpenCreate;
+  const selectedLeadId = isLeadsTab ? parsedRoute.selectedLeadId : undefined;
+  const initialDetailTab = isLeadsTab ? parsedRoute.initialDetailTab : undefined;
+
+  const isOwnersCreateOpen = activeTab === "owners" && parsedRoute.isOpenCreate;
+  const isValuationsCreateOpen = activeTab === "valuations" && parsedRoute.isOpenCreate;
+  const isLegalCreateOpen = activeTab === "legal" && parsedRoute.isOpenCreate;
+  const isDdCreateOpen = activeTab === "duediligence" && parsedRoute.isOpenCreate;
+  const isNegotiationsCreateOpen = activeTab === "negotiation" && parsedRoute.isOpenCreate;
+  const isSettlementsCreateOpen = activeTab === "settlements" && parsedRoute.isOpenCreate;
 
   // When tab is clicked in header, sync URL if inside /dashboard/lams or /land
   const handleTabChange = (newTab: LamsTab) => {
@@ -397,6 +374,9 @@ export default function LamsDashboard({
             approvals={initialApprovals}
             settlements={initialSettlements}
             documents={initialDocuments}
+            initialOpenCreate={isLeadsCreateOpen}
+            selectedLeadId={selectedLeadId}
+            initialDetailTab={initialDetailTab}
             onAddLead={handleAddLead}
             onEditLead={handleEditLead}
             onDeleteLead={handleDeleteLead}
@@ -412,6 +392,7 @@ export default function LamsDashboard({
           <LandOwnersView
             owners={initialOwners}
             acquisitionLeads={initialLeads}
+            initialOpenCreate={isOwnersCreateOpen}
             onAddOwner={handleAddOwner}
             onEditOwner={handleEditOwner}
             onDeleteOwner={handleDeleteOwner}
@@ -423,6 +404,7 @@ export default function LamsDashboard({
           <LandValuationsView
             valuations={initialValuations}
             acquisitionLeads={initialLeads}
+            initialOpenCreate={isValuationsCreateOpen}
             onAddValuation={handleAddValuation}
             onEditValuation={handleEditValuation}
             onDeleteValuation={handleDeleteValuation}
@@ -434,6 +416,7 @@ export default function LamsDashboard({
           <LegalVerificationView
             verifications={initialLegalRecords || []}
             acquisitionLeads={initialLeads}
+            initialOpenCreate={isLegalCreateOpen}
             onAddVerification={handleAddLegal}
             onEditVerification={handleEditLegal}
             onDeleteVerification={handleDeleteLegal}
@@ -445,6 +428,7 @@ export default function LamsDashboard({
           <DueDiligenceView
             records={initialDueDiligence}
             acquisitionLeads={initialLeads}
+            initialOpenCreate={isDdCreateOpen}
             onAddRecord={handleAddDD}
             onEditRecord={handleEditDD}
             onDeleteRecord={handleDeleteDD}
@@ -456,6 +440,7 @@ export default function LamsDashboard({
           <NegotiationProcessView
             negotiations={initialNegotiations}
             acquisitionLeads={initialLeads}
+            initialOpenCreate={isNegotiationsCreateOpen}
             onAddNegotiation={handleAddNegotiation}
             onEditNegotiation={handleEditNegotiation}
             onDeleteNegotiation={handleDeleteNegotiation}
@@ -478,6 +463,7 @@ export default function LamsDashboard({
             settlements={initialSettlements}
             acquisitionLeads={initialLeads}
             landOwners={initialOwners}
+            initialOpenCreate={isSettlementsCreateOpen}
             onAddSettlement={handleAddSettlement}
             onEditSettlement={handleEditSettlement}
             onDeleteSettlement={handleDeleteSettlement}

@@ -48,6 +48,7 @@ interface LeadDetailModalProps {
   approvals?: AcquisitionApproval[];
   settlements?: SettlementRecord[];
   documents?: LegalDocument[];
+  initialTab?: string;
   onQualify?: (leadId: string) => void;
   onReject?: (leadId: string, remarks: string) => void;
   onAdvance?: (leadId: string, nextStage: string, remarks: string) => void;
@@ -94,12 +95,19 @@ export function LeadDetailModal({
   approvals = [],
   settlements = [],
   documents = [],
+  initialTab = "Overview",
   onQualify,
   onReject,
   onAdvance,
   onPaySettlement,
 }: LeadDetailModalProps) {
-  const [activeTab, setActiveTab] = useState("Overview");
+  const [activeTab, setActiveTab] = useState(initialTab || "Overview");
+
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [payingSettlement, setPayingSettlement] = useState<SettlementRecord | null>(null);

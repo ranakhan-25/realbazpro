@@ -18,6 +18,13 @@ import {
   Workflow,
   CreditCard,
   BarChart3,
+  CalendarDays,
+  AlertCircle,
+  Receipt,
+  Percent,
+  AlertTriangle,
+  TrendingUp,
+  ShieldAlert,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MENUS, MODULES, type MenuNode, type ModuleKey } from "@/lib/menus";
@@ -39,6 +46,21 @@ const LAMS_ICONS: Record<string, React.ElementType> = {
   "legal-documents": FileCheck2,
   reports: BarChart3,
   "follow-up": CalendarCheck2,
+};
+
+const COLLECTION_ICONS: Record<string, React.ElementType> = {
+  dashboard: LayoutDashboard,
+  schedule: CalendarDays,
+  due: AlertCircle,
+  entries: Receipt,
+  waivers: Percent,
+  outstanding: BarChart3,
+  aging: BarChart3,
+  overdue: AlertTriangle,
+  recovery: ShieldAlert,
+  followups: CalendarCheck2,
+  visits: Compass,
+  perf: TrendingUp,
 };
 
 const FALLBACK_PRIMARY = "#2ed573";
@@ -217,7 +239,12 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")
         );
         const isOpen = !!q || expanded.has(n.path) || expanded.has(cleanNodePath);
-        const Icon = module === "lams" ? LAMS_ICONS[n.slug] : null;
+        const Icon =
+          module === "lams"
+            ? LAMS_ICONS[n.slug]
+            : module === "collection"
+            ? COLLECTION_ICONS[n.slug]
+            : null;
 
         if (n.children?.length) {
           return (
@@ -329,7 +356,12 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         const isAncestor = Boolean(
           cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")
         );
-        const Icon = module === "lams" ? LAMS_ICONS[n.slug] : null;
+        const Icon =
+          module === "lams"
+            ? LAMS_ICONS[n.slug]
+            : module === "collection"
+            ? COLLECTION_ICONS[n.slug]
+            : null;
 
         if (n.children?.length) {
           return (

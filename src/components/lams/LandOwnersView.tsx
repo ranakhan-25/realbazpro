@@ -28,6 +28,7 @@ import { LamsEmptyState } from "./common/LamsEmptyState";
 interface LandOwnersViewProps {
   owners: LandOwner[];
   acquisitionLeads?: AcquisitionLead[];
+  initialOpenCreate?: boolean;
   onAddOwner?: (owner: any) => void;
   onEditOwner?: (uuid: string, data: any) => void;
   onDeleteOwner?: (uuid: string) => void;
@@ -45,6 +46,7 @@ const DEFAULT_COLUMNS: ColumnDefinition[] = [
 export function LandOwnersView({
   owners = [],
   acquisitionLeads = [],
+  initialOpenCreate = false,
   onAddOwner,
   onEditOwner,
   onDeleteOwner,
@@ -56,7 +58,13 @@ export function LandOwnersView({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Modals
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(Boolean(initialOpenCreate));
+
+  React.useEffect(() => {
+    if (initialOpenCreate) {
+      setIsFormModalOpen(true);
+    }
+  }, [initialOpenCreate]);
   const [editingOwner, setEditingOwner] = useState<any>(null);
   const [selectedOwner, setSelectedOwner] = useState<any>(null);
   const [nidError, setNidError] = useState("");

@@ -48,6 +48,9 @@ interface AcquisitionLeadsViewProps {
   approvals?: AcquisitionApproval[];
   settlements?: SettlementRecord[];
   documents?: LegalDocument[];
+  initialOpenCreate?: boolean;
+  selectedLeadId?: string;
+  initialDetailTab?: string;
   onAddLead?: (lead: any) => void;
   onEditLead?: (uuid: string, data: any) => void;
   onDeleteLead?: (uuid: string) => void;
@@ -91,6 +94,7 @@ const DEFAULT_COLUMNS: ColumnDefinition[] = [
   { key: "source", label: "Source", visible: true },
   { key: "status", label: "Status", visible: true },
   { key: "assignee", label: "Assignee", visible: true },
+  { key: "created_at", label: "Created Date", visible: true },
 ];
 
 export function AcquisitionLeadsView({
@@ -103,6 +107,9 @@ export function AcquisitionLeadsView({
   approvals = [],
   settlements = [],
   documents = [],
+  initialOpenCreate = false,
+  selectedLeadId,
+  initialDetailTab,
   onAddLead,
   onEditLead,
   onDeleteLead,
@@ -123,7 +130,7 @@ export function AcquisitionLeadsView({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Form Wizard Modal State
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(Boolean(initialOpenCreate));
   const [editingLead, setEditingLead] = useState<any>(null);
   const [formStep, setFormStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -138,6 +145,10 @@ export function AcquisitionLeadsView({
     owner_name: "",
     owner_phone: "",
     owner_nid: "",
+    owner_email: "",
+    owner_address: "",
+    owner_bank_name: "",
+    owner_bank_account: "",
     asking_price: "",
     notes: "",
     owner_id: "",
@@ -145,14 +156,34 @@ export function AcquisitionLeadsView({
     priority: "Medium",
   });
 
+  React.useEffect(() => {
+    if (initialOpenCreate) {
+      setIsFormModalOpen(true);
+    }
+  }, [initialOpenCreate]);
+
+  const safeLeads = Array.isArray(leads) ? leads : [];
+
   // Comprehensive Detail Modal State
   const [detailModalLead, setDetailModalLead] = useState<AcquisitionLead | null>(null);
+
+  React.useEffect(() => {
+    if (selectedLeadId && safeLeads.length > 0) {
+      const found = safeLeads.find(
+        (l: any) =>
+          (l.uuid || l.id) === selectedLeadId ||
+          l.leadCode === selectedLeadId ||
+          l.code === selectedLeadId
+      );
+      if (found) {
+        setDetailModalLead(found);
+      }
+    }
+  }, [selectedLeadId, safeLeads]);
 
   // Advance / Reject Remarks Modal State
   const [remarksModalLead, setRemarksModalLead] = useState<AcquisitionLead | null>(null);
   const [remarksModalAction, setRemarksModalAction] = useState<"advance" | "reject">("advance");
-
-  const safeLeads = Array.isArray(leads) ? leads : [];
 
   const resetFilters = () => {
     setSearchTerm("");
@@ -274,6 +305,10 @@ export function AcquisitionLeadsView({
         owner_name: lead.owner_name || lead.ownerName || lead.owner || "",
         owner_phone: lead.owner_phone || lead.ownerPhone || "",
         owner_nid: lead.owner_nid || "",
+        owner_email: lead.owner_email || lead.email || "",
+        owner_address: lead.owner_address || lead.address || "",
+        owner_bank_name: lead.owner_bank_name || lead.bank_name || "",
+        owner_bank_account: lead.owner_bank_account || lead.bank_account || "",
         asking_price: String(lead.asking_price || lead.expectedPrice || ""),
         notes: lead.notes || "",
         owner_id: lead.owner_id || "",
@@ -294,6 +329,10 @@ export function AcquisitionLeadsView({
         owner_name: "",
         owner_phone: "",
         owner_nid: "",
+        owner_email: "",
+        owner_address: "",
+        owner_bank_name: "",
+        owner_bank_account: "",
         asking_price: "",
         notes: "",
         owner_id: "",
@@ -623,6 +662,13 @@ export function AcquisitionLeadsView({
                         </td>
                       )}
 
+                      {/* Created Date */}
+                      {isColVisible("created_at") && (
+                        <td className="py-3 px-3.5 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+                          {lead.created_at || (lead as any).createdAt || "2026-02-15"}
+                        </td>
+                      )}
+
                       {/* Actions */}
                       <td className="py-3 px-3.5 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
@@ -641,6 +687,24 @@ export function AcquisitionLeadsView({
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
+
+                          {statusKey === "Suspended" ? (
+                            <button
+                              onClick={() => onEditLead?.(leadId, { status: "Active" })}
+                              className="p-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-emerald-600 transition-all"
+                              title="Activate Lead"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => onEditLead?.(leadId, { status: "Suspended" })}
+                              className="p-1.5 rounded-lg border border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950 text-amber-600 transition-all"
+                              title="Suspend Lead"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
 
                           {statusKey !== "Qualified" && statusKey !== "Purchased" && (
                             <button
@@ -809,7 +873,28 @@ export function AcquisitionLeadsView({
                       step="0.01"
                       placeholder="e.g. 15.5"
                       value={formData.area_katha}
-                      onChange={(e) => setFormData({ ...formData, area_katha: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const katha = parseFloat(val) || 0;
+                        setFormData({
+                          ...formData,
+                          area_katha: val,
+                          area_sqft: katha ? (katha * 720).toFixed(0) : formData.area_sqft,
+                        });
+                      }}
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                      Area (SqFt)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 11160"
+                      value={formData.area_sqft}
+                      onChange={(e) => setFormData({ ...formData, area_sqft: e.target.value })}
                       className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
                     />
                   </div>
@@ -924,6 +1009,58 @@ export function AcquisitionLeadsView({
                         className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
                       />
                     </div>
+
+                    <div>
+                      <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="owner@example.com"
+                        value={formData.owner_email}
+                        onChange={(e) => setFormData({ ...formData, owner_email: e.target.value })}
+                        className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                      />
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                        Owner Address
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder="House, Road, Area, District"
+                        value={formData.owner_address}
+                        onChange={(e) => setFormData({ ...formData, owner_address: e.target.value })}
+                        className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                        Bank Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. City Bank Ltd."
+                        value={formData.owner_bank_name}
+                        onChange={(e) => setFormData({ ...formData, owner_bank_name: e.target.value })}
+                        className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+                        Bank Account Number
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 1102938481001"
+                        value={formData.owner_bank_account}
+                        onChange={(e) => setFormData({ ...formData, owner_bank_account: e.target.value })}
+                        className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
@@ -958,6 +1095,7 @@ export function AcquisitionLeadsView({
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                       className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
                     >
+                      <option value="Critical">Critical Priority</option>
                       <option value="High">High Priority</option>
                       <option value="Medium">Medium Priority</option>
                       <option value="Low">Low Priority</option>
@@ -1025,6 +1163,7 @@ export function AcquisitionLeadsView({
         isOpen={Boolean(detailModalLead)}
         onClose={() => setDetailModalLead(null)}
         lead={detailModalLead}
+        initialTab={initialDetailTab}
         valuations={valuations}
         legalVerifications={legalVerifications}
         dueDiligenceRecords={dueDiligenceRecords}

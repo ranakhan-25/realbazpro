@@ -23,7 +23,18 @@ import {
   mockNegotiations,
   mockLegalDocuments,
   mockFollowUps,
+  mockLandValuations,
+  mockLegalVerifications,
+  mockDueDiligence,
+  mockAcquisitionApprovals,
+  mockSettlements,
 } from "../data/lams/lams.mock.ts";
+
+import {
+  resolveLamsTab,
+  parseLamsRoute,
+  lamsPath,
+} from "../lib/lamsRoutes.ts";
 
 test("LAMS: mock datasets are non-empty and well-structured", () => {
   assert.ok(Array.isArray(mockAcquisitionLeads), "Acquisition leads must be an array");
@@ -119,6 +130,102 @@ test("LAMS: Payload builder generates Swagger-compliant schemas", () => {
     projectId: "PRJ-1001",
   };
   assert.strictEqual(followUpPayload.priority, "High");
+});
+
+test("LAMS: Sub-route deep-linking and path resolution contracts", () => {
+  // Test basic tab resolutions
+  assert.strictEqual(resolveLamsTab(""), "leads");
+  assert.strictEqual(resolveLamsTab("leads"), "leads");
+  assert.strictEqual(resolveLamsTab("acquisition-leads"), "leads");
+  assert.strictEqual(resolveLamsTab("owners"), "owners");
+  assert.strictEqual(resolveLamsTab("valuations"), "valuations");
+  assert.strictEqual(resolveLamsTab("legal"), "legal");
+  assert.strictEqual(resolveLamsTab("due-diligence"), "duediligence");
+  assert.strictEqual(resolveLamsTab("negotiations"), "negotiation");
+  assert.strictEqual(resolveLamsTab("settlements"), "settlements");
+  assert.strictEqual(resolveLamsTab("documents"), "documents");
+  assert.strictEqual(resolveLamsTab("reports"), "reports");
+
+  // Test parseLamsRoute for wizard form triggers
+  const createLeadRoute = parseLamsRoute("leads/create");
+  assert.strictEqual(createLeadRoute.tab, "leads");
+  assert.strictEqual(createLeadRoute.isOpenCreate, true);
+  assert.strictEqual(createLeadRoute.selectedLeadId, undefined);
+
+  const createOwnerRoute = parseLamsRoute("owners/create");
+  assert.strictEqual(createOwnerRoute.tab, "owners");
+  assert.strictEqual(createOwnerRoute.isOpenCreate, true);
+
+  const createValuationRoute = parseLamsRoute("valuations/create");
+  assert.strictEqual(createValuationRoute.tab, "valuations");
+  assert.strictEqual(createValuationRoute.isOpenCreate, true);
+
+  // Test parseLamsRoute for deep tab links on specific lead
+  const workflowRoute = parseLamsRoute("leads/LEAD-001/workflow");
+  assert.strictEqual(workflowRoute.tab, "leads");
+  assert.strictEqual(workflowRoute.selectedLeadId, "LEAD-001");
+  assert.strictEqual(workflowRoute.initialDetailTab, "Workflow");
+
+  const infoRoute = parseLamsRoute("leads/LEAD-002/info");
+  assert.strictEqual(infoRoute.tab, "leads");
+  assert.strictEqual(infoRoute.selectedLeadId, "LEAD-002");
+  assert.strictEqual(infoRoute.initialDetailTab, "Info");
+
+  const docsRoute = parseLamsRoute("leads/LEAD-003/docs");
+  assert.strictEqual(docsRoute.tab, "leads");
+  assert.strictEqual(docsRoute.selectedLeadId, "LEAD-003");
+  assert.strictEqual(docsRoute.initialDetailTab, "Documents");
+
+  assert.strictEqual(lamsPath("leads/create"), "/land/leads/create");
+  assert.strictEqual(lamsPath(""), "/land");
+});
+
+test("LAMS: Valuations, Legal Verifications, Due Diligence, Approvals, and Settlements data integrity", () => {
+  // Valuations
+  assert.ok(Array.isArray(mockLandValuations), "Land valuations must be an array");
+  assert.ok(mockLandValuations.length > 0, "Land valuations must not be empty");
+  for (const v of mockLandValuations) {
+    assert.ok(v.id, "Valuation must have id");
+    assert.ok(v.lead_code || (v as any).leadCode, "Valuation must have lead_code");
+    assert.ok(v.total_value > 0, "Valuation total_value must be positive");
+  }
+
+  // Legal Verifications
+  assert.ok(Array.isArray(mockLegalVerifications), "Legal verifications must be an array");
+  assert.ok(mockLegalVerifications.length > 0, "Legal verifications must not be empty");
+  for (const lv of mockLegalVerifications) {
+    assert.ok(lv.id, "Legal verification must have id");
+    assert.ok(typeof lv.title_clear === "boolean", "title_clear must be boolean");
+    assert.ok(typeof lv.mutation_ok === "boolean", "mutation_ok must be boolean");
+    assert.ok(typeof lv.tax_clear === "boolean", "tax_clear must be boolean");
+  }
+
+  // Due Diligence
+  assert.ok(Array.isArray(mockDueDiligence), "Due diligence records must be an array");
+  assert.ok(mockDueDiligence.length > 0, "Due diligence records must not be empty");
+  for (const dd of mockDueDiligence) {
+    assert.ok(dd.id, "Due diligence must have id");
+    assert.ok(dd.score >= 0 && dd.score <= 100, "Due diligence score must be 0-100");
+  }
+
+  // Approvals
+  assert.ok(Array.isArray(mockAcquisitionApprovals), "Approvals must be an array");
+  assert.ok(mockAcquisitionApprovals.length > 0, "Approvals must not be empty");
+  for (const a of mockAcquisitionApprovals) {
+    assert.ok(a.id, "Approval must have id");
+    assert.ok(a.level, "Approval must have level");
+    assert.ok(a.approver, "Approval must have approver");
+  }
+
+  // Settlements
+  assert.ok(Array.isArray(mockSettlements), "Settlements must be an array");
+  assert.ok(mockSettlements.length > 0, "Settlements must not be empty");
+  for (const s of mockSettlements) {
+    assert.ok(s.id, "Settlement must have id");
+    assert.ok(s.agreed_amount > 0, "Agreed amount must be positive");
+    assert.ok(s.paid >= 0, "Paid must be non-negative");
+    assert.strictEqual(s.due, s.agreed_amount - s.paid, "Due must equal agreed_amount - paid");
+  }
 });
 
 test("Inventory: Fallback categories and subcategories are complete", () => {

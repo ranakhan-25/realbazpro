@@ -34,6 +34,7 @@ interface SettlementsViewProps {
   settlements: SettlementRecord[];
   acquisitionLeads: AcquisitionLead[];
   landOwners: LandOwner[];
+  initialOpenCreate?: boolean;
   onAddSettlement?: (settlement: any) => void;
   onEditSettlement?: (uuid: string, settlement: any) => void;
   onDeleteSettlement?: (uuid: string) => void;
@@ -62,6 +63,7 @@ export function SettlementsView({
   settlements = [],
   acquisitionLeads = [],
   landOwners = [],
+  initialOpenCreate = false,
   onAddSettlement,
   onEditSettlement,
   onDeleteSettlement,
@@ -78,10 +80,16 @@ export function SettlementsView({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Modals state
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(Boolean(initialOpenCreate));
   const [editingSettlement, setEditingSettlement] = useState<SettlementRecord | null>(null);
   const [payModalSettlement, setPayModalSettlement] = useState<SettlementRecord | null>(null);
   const [viewScheduleSettlement, setViewScheduleSettlement] = useState<SettlementRecord | null>(null);
+
+  React.useEffect(() => {
+    if (initialOpenCreate) {
+      setIsAddModalOpen(true);
+    }
+  }, [initialOpenCreate]);
 
   const safeSettlements = Array.isArray(settlements) ? settlements : [];
 
