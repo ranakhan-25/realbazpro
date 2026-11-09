@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { motion } from "framer-motion";
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import {
   createPermission,
@@ -26,6 +28,12 @@ import {
   updatePermission,
   type Permission,
 } from "@/services/permissionService";
+import {
+  getCustomPermissions,
+  createCustomPermission,
+  deleteCustomPermission,
+} from "@/services/customPermissionService";
+import { getFeatures, type Feature } from "@/services/featureService";
 
 import { adminAuthStorage } from "@/lib/admin-auth/adminAuthStorage";
 import { useTheme } from "@/lib/theme";
@@ -235,6 +243,7 @@ type PermissionFormValues = {
 export default function PermissionsPage() {
   const { primaryColor } = useTheme();
 
+  const [sourceTab, setSourceTab] = useState<"custom" | "system">("custom");
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -280,7 +289,7 @@ export default function PermissionsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [action, context]);
+  }, [action, context, sourceTab]);
 
   const loadPermissions = useCallback(async () => {
     const requestId = ++loadRequestIdRef.current;
@@ -289,51 +298,88 @@ export default function PermissionsPage() {
       setLoading(true);
       setError("");
 
-      const response = await getPermissions({
-        page,
-        limit,
-        search: search || undefined,
-        action: action === "all" ? undefined : action,
-        context: context === "all" ? undefined : context,
-        sortField: "createdAt",
-        sortOrder: "DESC",
-      });
+      if (sourceTab === "custom") {
+        const response = await getCustomPermissions({
+          page,
+          limit,
+          search: search || undefined,
+          action: action === "all" ? undefined : action,
+        });
 
-      if (requestId !== loadRequestIdRef.current) return;
+        if (requestId !== loadRequestIdRef.current) return;
 
-      const permissionList = Array.isArray(response?.data) ? response.data : [];
+        const rawList = Array.isArray(response?.data) ? response.data : [];
+        const permissionList: Permission[] = rawList.map((item) => ({
+          id: String(item.id),
+          uuid: item.uuid,
+          name: item.name,
+          key: item.key,
+          action: item.action,
+          resource: item.resource || "custom",
+          context: item.context || "any",
+          featureId: item.featureId,
+          description: item.description || null,
+          createdAt: item.createdAt || new Date().toISOString(),
+          updatedAt: item.updatedAt || new Date().toISOString(),
+          feature: item.feature
+            ? {
+                id: Number(item.feature.id),
+                name: item.feature.name,
+                moduleId: 1,
+                module: { id: 1, name: "Feature Resource" },
+              }
+            : undefined,
+        }));
 
-      if (permissionList.length === 0) {
-        setPermissions(DEMO_PERMISSIONS);
-        setTotal(DEMO_PERMISSIONS.length);
-        setTotalPages(1);
-        setError(
-          "Using demo data because the API is returning no permissions.",
-        );
-        return;
+        setPermissions(permissionList);
+        setTotal(Number(response?.meta?.total ?? permissionList.length));
+        setTotalPages(Math.max(Number(response?.meta?.totalPages ?? 1), 1));
+      } else {
+        const response = await getPermissions({
+          page,
+          limit,
+          search: search || undefined,
+          action: action === "all" ? undefined : action,
+          context: context === "all" ? undefined : context,
+          sortField: "createdAt",
+          sortOrder: "DESC",
+        });
+
+        if (requestId !== loadRequestIdRef.current) return;
+
+        const permissionList = Array.isArray(response?.data)
+          ? response.data
+          : [];
+
+        if (permissionList.length === 0) {
+          setPermissions(DEMO_PERMISSIONS);
+          setTotal(DEMO_PERMISSIONS.length);
+          setTotalPages(1);
+          return;
+        }
+
+        setPermissions(permissionList);
+        setTotal(Number(response?.meta?.total ?? permissionList.length));
+        setTotalPages(Math.max(Number(response?.meta?.totalPages ?? 1), 1));
       }
-
-      setPermissions(permissionList);
-      setTotal(Number(response?.meta?.total ?? permissionList.length));
-      setTotalPages(Math.max(Number(response?.meta?.totalPages ?? 1), 1));
     } catch (err) {
       if (requestId !== loadRequestIdRef.current) return;
 
       setError(
         err instanceof Error
-          ? `${err.message} Using demo data instead.`
-          : "Using demo data because the backend is unavailable.",
+          ? err.message
+          : "Failed to load permissions from the server.",
       );
 
-      setPermissions(DEMO_PERMISSIONS);
-      setTotal(DEMO_PERMISSIONS.length);
+      setPermissions([]);
+      setTotal(0);
       setTotalPages(1);
     } finally {
       if (requestId === loadRequestIdRef.current) {
         setLoading(false);
       }
     }
-  }, [page, limit, search, action, context]);
+  }, [sourceTab, page, limit, search, action, context]);
 
   useEffect(() => {
     loadPermissions();
@@ -393,7 +439,11 @@ export default function PermissionsPage() {
     setDeleteError("");
 
     try {
-      await deletePermission(id);
+      if (sourceTab === "custom") {
+        await deleteCustomPermission(id);
+      } else {
+        await deletePermission(id);
+      }
       setPermissionToDelete(null);
 
       if (permissions.length === 1 && page > 1) {
@@ -413,6 +463,7 @@ export default function PermissionsPage() {
   const handleFormSuccess = async () => {
     setShowForm(false);
     setEditingPermission(null);
+    setSourceTab("custom");
     await loadPermissions();
   };
 
@@ -432,8 +483,40 @@ export default function PermissionsPage() {
             Permission Management
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Define granular permissions for platform resources.
+            Configure dynamic permissions for platform resources or review built
+            in system permissions.
           </p>
+
+          <div className="mt-4 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSourceTab("custom");
+                setPage(1);
+              }}
+              className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
+                sourceTab === "custom"
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              Configured Custom Permissions
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSourceTab("system");
+                setPage(1);
+              }}
+              className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
+                sourceTab === "system"
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              System Built In Permissions
+            </button>
+          </div>
         </div>
 
         <button
@@ -994,17 +1077,6 @@ export default function PermissionsPage() {
 
 /* ================= DUMMY FEATURE DATA ================= */
 
-const DUMMY_PERMISSION_FEATURES: FeatureOption[] = [
-  { id: 1, name: "Employee Management", key: "employee-management" },
-  { id: 2, name: "Attendance", key: "attendance" },
-  { id: 3, name: "Leave Management", key: "leave-management" },
-  { id: 4, name: "Payroll", key: "payroll" },
-  { id: 5, name: "Recruitment", key: "recruitment" },
-  { id: 6, name: "Procurement", key: "procurement" },
-  { id: 7, name: "Inventory", key: "inventory" },
-  { id: 8, name: "Real Estate", key: "real-estate" },
-];
-
 function PermissionForm({
   permission,
   onCancel,
@@ -1016,51 +1088,90 @@ function PermissionForm({
 }) {
   const { primaryColor } = useTheme();
 
-  const [values, setValues] = useState<PermissionFormValues>({
-    name: permission?.name ?? "",
-    key: permission?.key ?? "",
-    description: permission?.description ?? "",
-    resource: permission?.resource ?? "",
-    action: permission?.action ?? ACTIONS[0],
-    context: permission?.context ?? CONTEXTS[0],
-    featureId:
-      permission?.featureId !== undefined && permission?.featureId !== null
-        ? String(permission.featureId)
-        : "",
-  });
+  const [featuresList, setFeaturesList] = useState<Feature[]>([]);
+  const [loadingFeatures, setLoadingFeatures] = useState(false);
+
+  const [featureId, setFeatureId] = useState(
+    permission?.featureId ? String(permission.featureId) : "",
+  );
+  const [action, setAction] = useState(permission?.action || "read");
+  const [name, setName] = useState(permission?.name || "");
+  const [key, setKey] = useState(permission?.key || "");
+  const [resource, setResource] = useState(permission?.resource || "");
+  const [description, setDescription] = useState(permission?.description || "");
 
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const update = (field: keyof PermissionFormValues, value: string) => {
-    setValues((current) => ({ ...current, [field]: value }));
+  useEffect(() => {
+    let active = true;
+    setLoadingFeatures(true);
+    getFeatures({ limit: 100 })
+      .then((res) => {
+        if (!active) return;
+        const list = Array.isArray(res)
+          ? res
+          : Array.isArray((res as any)?.data)
+            ? (res as any).data
+            : [];
+        setFeaturesList(list);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoadingFeatures(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSelectFeature = (idStr: string) => {
+    setFeatureId(idStr);
+    const selected = featuresList.find((f) => String(f.id) === idStr);
+    const rawName = selected?.name || `feature_${idStr}`;
+
+    // Split hierarchy into segments and format into clean dot notation (e.g. "Shipments & Freight | Inbound Cargo Customs" -> "cargo.customs")
+    const cleanWords = rawName
+      .toLowerCase()
+      .split(/\s*\|\s*|\s*>\s*|\s*::\s*/)
+      .map((s) =>
+        s
+          .trim()
+          .replace(/[^a-z0-9]+/g, ".")
+          .replace(/^\.+|\.+$/g, ""),
+      )
+      .filter(Boolean);
+
+    // Prefer specific sub-feature terms in dot notation
+    const lastPart = cleanWords[cleanWords.length - 1] || "feature";
+    const subSegments = lastPart
+      .split(".")
+      .filter((w) => !["inbound", "outbound", "and", "&"].includes(w));
+    const baseSlug =
+      subSegments.length >= 2
+        ? `${subSegments[0]}.${subSegments[1]}`
+        : lastPart;
+
+    setResource(baseSlug.replace(/\./g, "_"));
+    setKey(`${baseSlug}.${action}`);
+  };
+
+  const handleSelectAction = (act: string) => {
+    setAction(act);
+    const currentBase = key
+      ? key.substring(0, key.lastIndexOf("."))
+      : resource
+        ? resource.replace(/_/g, ".")
+        : "permission";
+    setKey(`${currentBase}.${act}`);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const name = values.name.trim();
-    const key = values.key.trim();
-    const description = values.description.trim();
-    const resource = values.resource.trim();
-    const featureId = Number(values.featureId);
-
-    if (!name || !key) {
-      setFormError("Name and key are required.");
-      return;
-    }
-
-    if (!permission && !resource) {
-      setFormError("Resource is required.");
-      return;
-    }
-
-    if (
-      !values.featureId ||
-      !Number.isInteger(featureId) ||
-      featureId <= 0
-    ) {
-      setFormError("Please select a valid feature.");
+    const cleanName = name.trim();
+    if (!cleanName) {
+      setFormError("Permission name is required.");
       return;
     }
 
@@ -1068,33 +1179,21 @@ function PermissionForm({
     setFormError("");
 
     try {
-      const payload = {
-        name,
-        key,
-        description: description || undefined,
-        resource: resource || undefined,
-        action: values.action,
-        context: values.context,
-        featureId,
-      };
-
-      if (permission) {
-        await updatePermission(permission.id, payload);
-      } else {
-        await createPermission({
-          ...payload,
-          resource,
-        });
-      }
+      await createCustomPermission({
+        name: cleanName,
+        action,
+        key: key.trim() || undefined,
+        featureId: featureId ? Number(featureId) : undefined,
+        resource: resource.trim() || undefined,
+        description: description.trim() || undefined,
+      });
 
       onSuccess();
     } catch (err) {
       setFormError(
         err instanceof Error
           ? err.message
-          : permission
-            ? "Failed to update permission."
-            : "Failed to create permission.",
+          : "Failed to save permission to the database.",
       );
     } finally {
       setSaving(false);
@@ -1102,7 +1201,7 @@ function PermissionForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {formError && (
         <div
           role="alert"
@@ -1112,8 +1211,53 @@ function PermissionForm({
         </div>
       )}
 
+      {/* FEATURE SELECTOR */}
+      <div>
+        <SearchablePermissionSelect
+          id="perm-feature"
+          label="Pick Feature"
+          placeholder={
+            loadingFeatures
+              ? "Loading available features..."
+              : "Search and pick a feature..."
+          }
+          value={featureId}
+          options={featuresList.map((feature) => ({
+            value: String(feature.id),
+            label: feature.name,
+            description: feature.module?.name
+              ? `Module: ${feature.module.name}`
+              : undefined,
+          }))}
+          primaryColor={primaryColor}
+          disabled={saving || loadingFeatures}
+          required
+          onChange={handleSelectFeature}
+        />
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {/* NAME */}
+        {/* ACCESS ACTION */}
+        <div>
+          <SearchablePermissionSelect
+            id="perm-action"
+            label="Access Action"
+            placeholder="Select action..."
+            value={action}
+            options={[
+              { value: "read", label: "Read (View / Inspect)" },
+              { value: "write", label: "Write (Edit / Modify)" },
+              { value: "create", label: "Create (Add new)" },
+              { value: "delete", label: "Delete (Remove)" },
+              { value: "list", label: "List (Catalog)" },
+            ]}
+            primaryColor={primaryColor}
+            disabled={saving}
+            onChange={handleSelectAction}
+          />
+        </div>
+
+        {/* CUSTOM PERMISSION NAME */}
         <div>
           <label
             htmlFor="perm-name"
@@ -1124,17 +1268,16 @@ function PermissionForm({
 
           <input
             id="perm-name"
-            value={values.name}
-            onChange={(e) => update("name", e.target.value)}
-            placeholder="e.g. Create Employee"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. View Cargo Customs"
             maxLength={150}
             required
             disabled={saving}
             className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
             onFocus={(e) => {
               e.currentTarget.style.borderColor = primaryColor;
-              e.currentTarget.style.boxShadow =
-                `0 0 0 4px ${primaryColor}1A`;
+              e.currentTarget.style.boxShadow = `0 0 0 4px ${primaryColor}1A`;
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderColor = "";
@@ -1142,113 +1285,44 @@ function PermissionForm({
             }}
           />
         </div>
+      </div>
 
-        {/* KEY */}
-        <div>
+      {/* DYNAMIC PERMISSION KEY (DISABLED INPUT BAR) */}
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
           <label
             htmlFor="perm-key"
-            className="mb-1.5 block text-sm font-medium text-slate-700"
+            className="block text-sm font-medium text-slate-700"
           >
-            Permission Key *
+            Permission Key
           </label>
+          <span className="text-[11px] font-semibold text-slate-400">
+            Auto-Generated
+          </span>
+        </div>
 
+        <div className="relative">
           <input
             id="perm-key"
-            value={values.key}
-            onChange={(e) => update("key", e.target.value)}
-            placeholder="e.g. employees.create"
-            maxLength={150}
-            required
-            disabled={saving}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 font-mono text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:bg-white"
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = primaryColor;
-              e.currentTarget.style.boxShadow =
-                `0 0 0 4px ${primaryColor}1A`;
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = "";
-              e.currentTarget.style.boxShadow = "";
-            }}
+            value={key || ""}
+            disabled
+            placeholder="e.g. cargo.customs.read"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-100/90 px-3.5 pr-20 font-mono text-xs font-bold text-blue-900 outline-none select-all cursor-not-allowed opacity-90 shadow-2xs"
           />
-        </div>
-
-        {/* ACTION SEARCH */}
-        <SearchablePermissionSelect
-          id="perm-action"
-          label="Action"
-          placeholder="Search action..."
-          value={values.action}
-          options={ACTIONS.map((action) => ({
-            value: action,
-            label: capitalize(action),
-          }))}
-          primaryColor={primaryColor}
-          disabled={saving}
-          onChange={(value) => update("action", value)}
-        />
-
-        {/* CONTEXT SEARCH */}
-        <SearchablePermissionSelect
-          id="perm-context"
-          label="Context"
-          placeholder="Search context..."
-          value={values.context}
-          options={CONTEXTS.map((context) => ({
-            value: context,
-            label: capitalize(context),
-          }))}
-          primaryColor={primaryColor}
-          disabled={saving}
-          onChange={(value) => update("context", value)}
-        />
-
-        {/* RESOURCE */}
-        <div>
-          <label
-            htmlFor="perm-resource"
-            className="mb-1.5 block text-sm font-medium text-slate-700"
+          <button
+            type="button"
+            onClick={() => {
+              if (key) {
+                navigator.clipboard.writeText(key);
+                toast.success(`Copied "${key}" to clipboard!`);
+              }
+            }}
+            disabled={!key}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-white px-3 py-1.5 text-[11px] font-bold text-blue-700 shadow-2xs border border-blue-200 hover:bg-blue-50 disabled:opacity-40 transition"
           >
-            Resource {!permission && "*"}
-          </label>
-
-          <input
-            id="perm-resource"
-            value={values.resource}
-            onChange={(e) => update("resource", e.target.value)}
-            placeholder="e.g. employees"
-            required={!permission}
-            maxLength={150}
-            disabled={saving}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:bg-white"
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = primaryColor;
-              e.currentTarget.style.boxShadow =
-                `0 0 0 4px ${primaryColor}1A`;
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = "";
-              e.currentTarget.style.boxShadow = "";
-            }}
-          />
+            Copy
+          </button>
         </div>
-
-        {/* FEATURE SEARCH */}
-        <SearchablePermissionSelect
-          id="perm-feature"
-          label="Feature"
-          placeholder="Search features..."
-          value={values.featureId}
-          options={DUMMY_PERMISSION_FEATURES.map((feature) => ({
-            value: String(feature.id),
-            label: feature.name,
-            description: feature.key,
-          }))}
-          primaryColor={primaryColor}
-          disabled={saving}
-          required
-          onChange={(value) => update("featureId", value)}
-        />
       </div>
 
       {/* DESCRIPTION */}
@@ -1257,22 +1331,21 @@ function PermissionForm({
           htmlFor="perm-description"
           className="mb-1.5 block text-sm font-medium text-slate-700"
         >
-          Description
+          Description (Optional)
         </label>
 
         <textarea
           id="perm-description"
-          value={values.description}
-          onChange={(e) => update("description", e.target.value)}
-          placeholder="Briefly describe this permission..."
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Briefly describe what this custom permission authorizes..."
           rows={2}
           maxLength={500}
           disabled={saving}
           className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:bg-white"
           onFocus={(e) => {
             e.currentTarget.style.borderColor = primaryColor;
-            e.currentTarget.style.boxShadow =
-              `0 0 0 4px ${primaryColor}1A`;
+            e.currentTarget.style.boxShadow = `0 0 0 4px ${primaryColor}1A`;
           }}
           onBlur={(e) => {
             e.currentTarget.style.borderColor = "";
@@ -1281,29 +1354,23 @@ function PermissionForm({
         />
       </div>
 
-      {/* FOOTER */}
-      <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+      <div className="flex justify-end gap-2 pt-2">
         <button
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+          className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Cancel
         </button>
-
         <button
           type="submit"
           disabled={saving}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex h-11 items-center gap-2 rounded-xl px-6 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           style={{ backgroundColor: primaryColor }}
         >
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-          {saving
-            ? "Saving..."
-            : permission
-              ? "Save Changes"
-              : "Create Permission"}
+          Save Permission
         </button>
       </div>
     </form>
@@ -1454,8 +1521,7 @@ function SearchablePermissionSelect({
                 className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none transition focus:bg-white"
                 onFocus={(event) => {
                   event.currentTarget.style.borderColor = primaryColor;
-                  event.currentTarget.style.boxShadow =
-                    `0 0 0 3px ${primaryColor}1A`;
+                  event.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}1A`;
                 }}
                 onBlur={(event) => {
                   event.currentTarget.style.borderColor = "";

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,7 +9,8 @@ import { LiveFeed } from "@/components/crm/live-feed";
 import { CalendarPanel, RANGES } from "@/components/crm/calender-panel";
 import { ActivityChart } from "@/components/crm/activity-chart";
 import { PropertyStatusChart } from "@/components/crm/property-status-chart";
-import { fetchStatCards, fetchTodoSummary, type StatCardData, type TodoSummaryItem } from "@/lib/api";
+import { type StatCardData, type TodoSummaryItem } from "@/lib/api";
+import { crmFetch, API_ORIGIN } from "./crm-fetch";
 
 export default function CrmModulePage() {
   const [stats, setStats] = useState<StatCardData[]>([]);
@@ -16,8 +18,73 @@ export default function CrmModulePage() {
   const [range, setRange] = useState<(typeof RANGES)[number]>("Today");
 
   useEffect(() => {
-    fetchStatCards().then(setStats);
-    fetchTodoSummary().then(setTodo);
+    // 1. Fetch live stat cards from pipeline funnel & leads
+    async function loadStats() {
+      try {
+        const [funnelRes, leadsRes] = await Promise.all([
+          crmFetch(`${API_ORIGIN}/realbizpro/api/v1/crm/reports/sales-pipeline-funnel`),
+          crmFetch(`${API_ORIGIN}/realbizpro/api/v1/crm/leads?page=1&limit=1`),
+        ]);
+
+        const funnelJson = await funnelRes.json().catch(() => ({}));
+        const leadsJson = await leadsRes.json().catch(() => ({}));
+
+        const totalLeads = leadsJson?.data?.meta?.total ?? leadsJson?.data?.total ?? 0;
+        const funnelData = funnelJson?.data || {};
+        const stages = funnelData.stages || funnelData.stage_distribution || [];
+
+        const cards: StatCardData[] = [
+          { id: "total-leads", label: "Total Leads", value: totalLeads, tone: "accent" },
+        ];
+
+        if (Array.isArray(stages) && stages.length > 0) {
+          stages.slice(0, 3).forEach((st: any) => {
+            const name = st.name || st.stageName || "Stage";
+            const count = Number(st.count || st.leadCount || 0);
+            cards.push({
+              id: String(st.id || name).toLowerCase().replace(/\s+/g, "-"),
+              label: name,
+              value: count,
+              tone: "neutral",
+            });
+          });
+        } else {
+          cards.push(
+            { id: "new-leads", label: "Active Leads", value: totalLeads, tone: "info" },
+            { id: "in-pipeline", label: "In Pipeline", value: totalLeads, tone: "warning" },
+            { id: "deals-won", label: "Deals Won", value: 0, tone: "success" }
+          );
+        }
+
+        setStats(cards);
+      } catch (err) {
+        console.error("Error loading CRM overview stats:", err);
+      }
+    }
+
+    // 2. Fetch live tasks summary
+    async function loadTodos() {
+      try {
+        const res = await crmFetch(`${API_ORIGIN}/realbizpro/api/v1/crm/tasks?page=1&limit=100`);
+        const json = await res.json().catch(() => ({}));
+        const tasks = Array.isArray(json?.data) ? json.data : json?.data?.data || [];
+
+        const pending = tasks.filter((t: any) => t.status === "pending" || t.status === "in_progress");
+        const urgent = pending.filter((t: any) => t.priority === "urgent" || t.priority === "high");
+        const completed = tasks.filter((t: any) => t.status === "completed");
+
+        setTodo([
+          { id: "all-tasks", label: "Active Follow-ups", value: pending.length },
+          { id: "urgent-tasks", label: "Urgent Priority", value: urgent.length, emphasis: "danger" },
+          { id: "completed-tasks", label: "Completed", value: completed.length },
+        ]);
+      } catch (err) {
+        console.error("Error loading task summary:", err);
+      }
+    }
+
+    loadStats();
+    loadTodos();
   }, []);
 
   return (

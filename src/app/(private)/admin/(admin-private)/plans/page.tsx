@@ -114,18 +114,67 @@ export default function PlanListPage() {
   // ২. CRUD
   const handleCreate = async (payload: any) => {
     try {
+      const monthlyPrice =
+        payload.monthly_price !== undefined && payload.monthly_price !== ""
+          ? Number(payload.monthly_price)
+          : payload.monthlyPrice !== undefined
+            ? Number(payload.monthlyPrice)
+            : 0;
+
+      const yearlyPrice =
+        payload.yearly_price !== undefined && payload.yearly_price !== ""
+          ? Number(payload.yearly_price)
+          : payload.yearlyPrice !== undefined
+            ? Number(payload.yearlyPrice)
+            : 0;
+
+      const maxUsers =
+        payload.user_limit !== undefined && payload.user_limit !== ""
+          ? Number(payload.user_limit)
+          : payload.maxUsers !== undefined
+            ? Number(payload.maxUsers)
+            : 5;
+
+      const maxProjects =
+        payload.project_limit !== undefined && payload.project_limit !== ""
+          ? Number(payload.project_limit)
+          : payload.maxProjects !== undefined
+            ? Number(payload.maxProjects)
+            : 5;
+
+      const storageGb =
+        payload.storage_gb !== undefined && payload.storage_gb !== ""
+          ? Number(payload.storage_gb)
+          : payload.maxStorageMb !== undefined
+            ? Number(payload.maxStorageMb) / 1024
+            : 10;
+
+      const durationDays =
+        payload.duration_days !== undefined && payload.duration_days !== ""
+          ? Number(payload.duration_days)
+          : payload.durationDays !== undefined
+            ? Number(payload.durationDays)
+            : 30;
+
+      const trialDays =
+        payload.trial_days !== undefined && payload.trial_days !== ""
+          ? Number(payload.trial_days)
+          : payload.trialDays !== undefined
+            ? Number(payload.trialDays)
+            : 14;
+
       const created = await createPlan({
         name: payload.name,
         code: payload.code,
         description: payload.description,
         currency: payload.currency || "$",
-        monthlyPrice: Number(payload.monthly_price || payload.monthlyPrice) || 0,
-        yearlyPrice: Number(payload.yearly_price || payload.yearlyPrice) || 0,
-        maxUsers: Number(payload.user_limit || payload.maxUsers) || 5,
-        maxProjects: Number(payload.project_limit || payload.maxProjects) || 5,
-        maxStorageMb: (Number(payload.storage_gb) || 10) * 1024,
-        durationDays: Number(payload.duration_days || payload.durationDays) || 30,
-        trialDays: Number(payload.trial_days || payload.trialDays) || 14,
+        monthlyPrice: isNaN(monthlyPrice) ? 0 : monthlyPrice,
+        yearlyPrice: isNaN(yearlyPrice) ? 0 : yearlyPrice,
+        maxUsers: isNaN(maxUsers) ? 5 : maxUsers,
+        maxProjects: isNaN(maxProjects) ? 5 : maxProjects,
+        maxStorageMb: isNaN(storageGb) ? 10240 : Math.round(storageGb * 1024),
+        durationDays: isNaN(durationDays) ? 30 : durationDays,
+        trialDays: isNaN(trialDays) ? 14 : trialDays,
         status: payload.status || "active",
       });
       setPlans((prev) => [created, ...prev]);
@@ -140,16 +189,67 @@ export default function PlanListPage() {
 
   const handleUpdate = async (uuid: string, payload: any) => {
     try {
+      const monthlyPrice =
+        payload.monthly_price !== undefined && payload.monthly_price !== ""
+          ? Number(payload.monthly_price)
+          : payload.monthlyPrice !== undefined
+            ? Number(payload.monthlyPrice)
+            : 0;
+
+      const yearlyPrice =
+        payload.yearly_price !== undefined && payload.yearly_price !== ""
+          ? Number(payload.yearly_price)
+          : payload.yearlyPrice !== undefined
+            ? Number(payload.yearlyPrice)
+            : 0;
+
+      const maxUsers =
+        payload.user_limit !== undefined && payload.user_limit !== ""
+          ? Number(payload.user_limit)
+          : payload.maxUsers !== undefined
+            ? Number(payload.maxUsers)
+            : 5;
+
+      const maxProjects =
+        payload.project_limit !== undefined && payload.project_limit !== ""
+          ? Number(payload.project_limit)
+          : payload.maxProjects !== undefined
+            ? Number(payload.maxProjects)
+            : 5;
+
+      const storageGb =
+        payload.storage_gb !== undefined && payload.storage_gb !== ""
+          ? Number(payload.storage_gb)
+          : payload.maxStorageMb !== undefined
+            ? Number(payload.maxStorageMb) / 1024
+            : 10;
+
+      const durationDays =
+        payload.duration_days !== undefined && payload.duration_days !== ""
+          ? Number(payload.duration_days)
+          : payload.durationDays !== undefined
+            ? Number(payload.durationDays)
+            : 30;
+
+      const trialDays =
+        payload.trial_days !== undefined && payload.trial_days !== ""
+          ? Number(payload.trial_days)
+          : payload.trialDays !== undefined
+            ? Number(payload.trialDays)
+            : 0;
+
       const updated = await updatePlan(uuid, {
         name: payload.name,
         code: payload.code,
         description: payload.description,
         currency: payload.currency || "$",
-        monthlyPrice: Number(payload.monthly_price || payload.monthlyPrice),
-        yearlyPrice: Number(payload.yearly_price || payload.yearlyPrice),
-        maxUsers: Number(payload.user_limit || payload.maxUsers),
-        maxProjects: Number(payload.project_limit || payload.maxProjects),
-        maxStorageMb: (Number(payload.storage_gb) || 10) * 1024,
+        monthlyPrice: isNaN(monthlyPrice) ? 0 : monthlyPrice,
+        yearlyPrice: isNaN(yearlyPrice) ? 0 : yearlyPrice,
+        maxUsers: isNaN(maxUsers) ? 5 : maxUsers,
+        maxProjects: isNaN(maxProjects) ? 5 : maxProjects,
+        maxStorageMb: isNaN(storageGb) ? 10240 : Math.round(storageGb * 1024),
+        durationDays: isNaN(durationDays) ? 30 : durationDays,
+        trialDays: isNaN(trialDays) ? 0 : trialDays,
         status: payload.status,
       });
       setPlans((prev) => prev.map((p) => (p.uuid === uuid ? updated : p)));

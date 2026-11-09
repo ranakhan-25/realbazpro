@@ -12,11 +12,11 @@ import {
   Handshake,
   FileCheck2,
   CalendarCheck2,
-  Receipt,
-  KeyRound,
-  LifeBuoy,
+  Calculator,
   ShieldCheck,
-  MessageSquare,
+  ClipboardCheck,
+  Workflow,
+  CreditCard,
   BarChart3,
   Settings,
   Headset,
@@ -26,6 +26,10 @@ import {
   Zap,
   Car,
   Layers,
+  KeyRound,
+  LifeBuoy,
+  Receipt,
+  MessageSquare,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MENUS, MODULES, type MenuNode, type ModuleKey } from "@/lib/menus";
@@ -33,7 +37,6 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
 import { useUserAccess } from "@/context/UserAccessContext";
 import { useSidebar } from "@/context/SidebarContext";
-
 
 const CUSTOMER_SERVICE_ICONS: Record<string, React.ElementType> = {
   dashboard: LayoutDashboard,
@@ -67,13 +70,18 @@ const CUSTOMER_SERVICE_ICONS: Record<string, React.ElementType> = {
   settings: Settings,
   "settings-administration": Settings,
 };
-
 const LAMS_ICONS: Record<string, React.ElementType> = {
   dashboard: LayoutDashboard,
-  "land-owners": Users,
   "acquisition-leads": Compass,
+  "land-owners": Users,
+  valuations: Calculator,
+  "legal-verification": ShieldCheck,
+  "due-diligence": ClipboardCheck,
   "negotiation-process": Handshake,
+  approvals: Workflow,
+  settlements: CreditCard,
   "legal-documents": FileCheck2,
+  reports: BarChart3,
   "follow-up": CalendarCheck2,
 };
 
@@ -172,16 +180,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
       const rawTree = MENUS[module] || [];
       base = pruneTreeByAccess(rawTree, module, hasAccessToRoute);
     }
-    // let base = pruneTreeByAccess(
-    //   MENUS[module],
-    //   module,
-    //   hasAccessToRoute,
-    // );
-    if (module === "customer-service") {
-      const canonicalTree = MENUS["customer-service"] || [];
-      base = pruneTreeByAccess(canonicalTree, "customer-service", hasAccessToRoute);
-    }
-
+    // let base = pruneTreeByAccess(MENUS[module], module, hasAccessToRoute);
     if (module === "procurement") {
       base = base.filter(
         (n) => n.slug !== "approvals" && n.slug !== "vendors"
@@ -304,11 +303,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           (cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")) || isChildActive
         );
         const isOpen = !!q || expanded.has(n.path) || expanded.has(cleanNodePath);
-        const Icon = module === "lams" ? LAMS_ICONS[n.slug] : module === "customer-service" ? CUSTOMER_SERVICE_ICONS[n.slug] : null;
-
-        const displayLabel = n.label.includes("|")
-          ? n.label.split("|").pop()?.trim() || n.label
-          : n.label;
+        const Icon = module === "lams" ? LAMS_ICONS[n.slug] : null;
 
         if (n.children?.length) {
           return (
@@ -331,17 +326,14 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
                     : undefined
                 }
               >
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5">
                   {isAncestor ? (
                     <span
                       className="h-3.5 w-1 rounded"
                       style={{ backgroundColor: brandColor }}
                     />
                   ) : null}
-                  {Icon && depth === 0 ? (
-                    <Icon className="h-4 w-4 shrink-0 text-foreground/70" />
-                  ) : null}
-                  <span>{displayLabel}</span>
+                  {n.label}
                 </span>
                 <ChevronRight
                   className={cn(
@@ -359,14 +351,11 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           );
         }
 
-        const href =
-          module === "customer-service" && (n.path === "dashboard" || n.slug === "dashboard")
-            ? "/dashboard/customer-service"
-            : n.path.startsWith("/")
+        const href = n.path.startsWith("/")
+          ? n.path
+          : n.path.startsWith("http")
             ? n.path
-            : n.path.startsWith("http")
-              ? n.path
-              : `/dashboard/${module}/${n.path}`;
+            : `/dashboard/${module}/${n.path}`;
 
         return (
           <li key={n.path}>
@@ -401,7 +390,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
                 ) : isActive ? (
                   <span className="h-3.5 w-1 rounded bg-white/80" />
                 ) : null}
-                <span className="truncate">{displayLabel}</span>
+                <span className="truncate">{n.label}</span>
               </div>
             </Link>
           </li>
@@ -426,11 +415,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         const isAncestor = Boolean(
           cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")
         );
-        const Icon = module === "lams" ? LAMS_ICONS[n.slug] : module === "customer-service" ? CUSTOMER_SERVICE_ICONS[n.slug] : null;
-
-        const displayLabel = n.label.includes("|")
-          ? n.label.split("|").pop()?.trim() || n.label
-          : n.label;
+        const Icon = module === "lams" ? LAMS_ICONS[n.slug] : null;
 
         if (n.children?.length) {
           return (
@@ -452,19 +437,19 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
                     ? { backgroundColor: brandColor }
                     : undefined
                 }
-                title={displayLabel}
+                title={n.label}
               >
                 {Icon ? (
                   <Icon className="h-4.5 w-4.5" />
                 ) : (
                   <span className="text-xs font-bold tracking-tight">
-                    {displayLabel.slice(0, 2).toUpperCase()}
+                    {n.label.slice(0, 2).toUpperCase()}
                   </span>
                 )}
               </button>
 
               <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 z-50 rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
-                {displayLabel}
+                {n.label}
                 <span className="ml-1 text-[10px] text-slate-300">({n.children.length})</span>
               </div>
             </li>
@@ -493,19 +478,19 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
                   ? { backgroundColor: brandColor }
                   : undefined
               }
-              title={displayLabel}
+              title={n.label}
             >
               {Icon ? (
                 <Icon className="h-4.5 w-4.5" />
               ) : (
                 <span className="text-xs font-bold tracking-tight">
-                  {displayLabel.slice(0, 2).toUpperCase()}
+                  {n.label.slice(0, 2).toUpperCase()}
                 </span>
               )}
             </Link>
 
             <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 z-50 rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
-              {displayLabel}
+              {n.label}
             </div>
           </li>
         );

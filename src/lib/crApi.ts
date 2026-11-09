@@ -2,7 +2,8 @@ import axios from "axios";
 import { showAlert } from "./swal";
 import { formatApiErrorMessage } from "./api";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002/realbizpro/api/v1";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002/realbizpro/api/v1";
 
 const crClient = axios.create({
   baseURL: `${API_BASE}/credit-realization`,
@@ -11,9 +12,12 @@ const crClient = axios.create({
   },
 });
 
+import { adminAuthStorage } from "./admin-auth/adminAuthStorage";
+
 crClient.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token =
+      adminAuthStorage.getAccessToken() ||
       localStorage.getItem("admin_access_token") ||
       localStorage.getItem("access_token") ||
       localStorage.getItem("token");
@@ -50,7 +54,10 @@ export const crApi = {
       return res.data?.data || res.data || [];
     } catch (err: any) {
       console.error("Error fetching CR setups:", err);
-      showAlert.error("Failed to load policies", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Failed to load policies",
+        err.response?.data?.message || err.message,
+      );
       return [];
     }
   },
@@ -58,10 +65,16 @@ export const crApi = {
   async createSetup(dto: any) {
     try {
       const res = await crClient.post("/setups", dto);
-      showAlert.success("Installment Setup Created", "Policy has been configured successfully.");
+      showAlert.success(
+        "Installment Setup Created",
+        "Policy has been configured successfully.",
+      );
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Setup Creation Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Setup Creation Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
@@ -72,7 +85,10 @@ export const crApi = {
       showAlert.success("Setup Updated", "Policy plan updated successfully.");
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Update Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Update Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
@@ -83,7 +99,10 @@ export const crApi = {
       showAlert.success("Setup Deleted", "Policy plan deleted successfully.");
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Delete Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Delete Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
@@ -95,7 +114,10 @@ export const crApi = {
       return res.data?.data || res.data || [];
     } catch (err: any) {
       console.error("Error fetching CR agreements:", err);
-      showAlert.error("Failed to load agreements", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Failed to load agreements",
+        err.response?.data?.message || err.message,
+      );
       return [];
     }
   },
@@ -105,7 +127,10 @@ export const crApi = {
       const res = await crClient.get(`/agreements/${uuid}`);
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Failed to load agreement details", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Failed to load agreement details",
+        err.response?.data?.message || err.message,
+      );
       return null;
     }
   },
@@ -113,10 +138,16 @@ export const crApi = {
   async createAgreement(dto: any) {
     try {
       const res = await crClient.post("/agreements", dto);
-      showAlert.success("Sale Agreement Created", "Agreement and amortization schedule generated.");
+      showAlert.success(
+        "Sale Agreement Created",
+        "Agreement and amortization schedule generated.",
+      );
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Agreement Creation Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Agreement Creation Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
@@ -124,10 +155,16 @@ export const crApi = {
   async updateAgreement(uuid: string, dto: any) {
     try {
       const res = await crClient.put(`/agreements/${uuid}`, dto);
-      showAlert.success("Agreement Updated", "Sale agreement updated successfully.");
+      showAlert.success(
+        "Agreement Updated",
+        "Sale agreement updated successfully.",
+      );
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Update Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Update Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
@@ -135,21 +172,36 @@ export const crApi = {
   async deleteAgreement(uuid: string) {
     try {
       const res = await crClient.delete(`/agreements/${uuid}`);
-      showAlert.success("Agreement Deleted", "Sale agreement deleted successfully.");
+      showAlert.success(
+        "Agreement Deleted",
+        "Sale agreement deleted successfully.",
+      );
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Delete Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Delete Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
 
   async addPlotDistribution(uuid: string, dto: any) {
     try {
-      const res = await crClient.post(`/agreements/${uuid}/plot-distribution`, dto);
-      showAlert.success("Plot Allocated", "Plot allotment attached to agreement.");
+      const res = await crClient.post(
+        `/agreements/${uuid}/plot-distribution`,
+        dto,
+      );
+      showAlert.success(
+        "Plot Allocated",
+        "Plot allotment attached to agreement.",
+      );
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Plot Allocation Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Plot Allocation Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
@@ -161,29 +213,53 @@ export const crApi = {
       return res.data?.data || res.data || [];
     } catch (err: any) {
       console.error("Error fetching overdue installments:", err);
-      showAlert.error("Failed to load overdue list", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Failed to load overdue list",
+        err.response?.data?.message || err.message,
+      );
       return [];
     }
   },
 
   async recordPayment(installmentUuid: string, dto: any) {
     try {
-      const res = await crClient.post(`/installments/${installmentUuid}/payments`, dto);
-      showAlert.success("Payment Recorded", `Voucher ${dto.payment_voucher_no || ""} logged successfully.`);
+      const res = await crClient.post(
+        `/installments/${installmentUuid}/payments`,
+        dto,
+      );
+      showAlert.success(
+        "Payment Recorded",
+        `Voucher ${dto.payment_voucher_no || ""} logged successfully.`,
+      );
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Payment Recording Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Payment Recording Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
 
-  async waivePenalty(installmentUuid: string, dto: { amount_to_waive: number; reason: string }) {
+  async waivePenalty(
+    installmentUuid: string,
+    dto: { amount_to_waive: number; reason: string },
+  ) {
     try {
-      const res = await crClient.post(`/installments/${installmentUuid}/waive-penalty`, dto);
-      showAlert.success("Penalty Waived", `Amount waived: ${dto.amount_to_waive} BDT.`);
+      const res = await crClient.post(
+        `/installments/${installmentUuid}/waive-penalty`,
+        dto,
+      );
+      showAlert.success(
+        "Penalty Waived",
+        `Amount waived: ${dto.amount_to_waive} BDT.`,
+      );
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Waiver Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Waiver Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
@@ -195,7 +271,10 @@ export const crApi = {
       return res.data?.data || res.data || [];
     } catch (err: any) {
       console.error("Error fetching recovery logs:", err);
-      showAlert.error("Failed to load recovery logs", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Failed to load recovery logs",
+        err.response?.data?.message || err.message,
+      );
       return [];
     }
   },
@@ -203,10 +282,16 @@ export const crApi = {
   async createRecoveryLog(dto: any) {
     try {
       const res = await crClient.post("/recovery", dto);
-      showAlert.success("Recovery Action Logged", "Follow-up record saved successfully.");
+      showAlert.success(
+        "Recovery Action Logged",
+        "Follow-up record saved successfully.",
+      );
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Recovery Logging Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Recovery Logging Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
@@ -214,10 +299,16 @@ export const crApi = {
   async updateRecoveryLog(uuid: string, dto: any) {
     try {
       const res = await crClient.put(`/recovery/${uuid}`, dto);
-      showAlert.success("Recovery Log Updated", "Action record updated successfully.");
+      showAlert.success(
+        "Recovery Log Updated",
+        "Action record updated successfully.",
+      );
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Update Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Update Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
@@ -229,7 +320,10 @@ export const crApi = {
       return res.data?.data || res.data;
     } catch (err: any) {
       console.error("Error fetching aging report:", err);
-      showAlert.error("Failed to load aging matrix", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Failed to load aging matrix",
+        err.response?.data?.message || err.message,
+      );
       return null;
     }
   },
@@ -240,7 +334,10 @@ export const crApi = {
       return res.data?.data || res.data;
     } catch (err: any) {
       console.error("Error fetching overdue summary:", err);
-      showAlert.error("Failed to load summary", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Failed to load summary",
+        err.response?.data?.message || err.message,
+      );
       return null;
     }
   },
@@ -255,7 +352,10 @@ export const crApi = {
       return res.data?.data || res.data;
     } catch (err: any) {
       console.error("Error fetching collection summary:", err);
-      showAlert.error("Failed to load collection summary", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Failed to load collection summary",
+        err.response?.data?.message || err.message,
+      );
       return null;
     }
   },

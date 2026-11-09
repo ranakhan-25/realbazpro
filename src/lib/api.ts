@@ -1,7 +1,8 @@
 import axios from "axios";
 import { showAlert } from "./swal";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002/realbizpro/api/v1";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002/realbizpro/api/v1";
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -11,9 +12,12 @@ const api = axios.create({
   },
 });
 
+import { adminAuthStorage } from "./admin-auth/adminAuthStorage";
+
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token =
+      adminAuthStorage.getAccessToken() ||
       localStorage.getItem("admin_access_token") ||
       localStorage.getItem("access_token") ||
       localStorage.getItem("token");
@@ -76,7 +80,7 @@ export function formatApiErrorMessage(error: any): string {
       for (const item of errs) {
         const fieldName = prefix
           ? `${prefix}.${item.field || item.property || item.path || ""}`
-          : (item.field || item.property || item.path || "");
+          : item.field || item.property || item.path || "";
 
         // 1. class-validator format (array of strings)
         if (Array.isArray(item.errors) && item.errors.length > 0) {
@@ -86,7 +90,9 @@ export function formatApiErrorMessage(error: any): string {
         // 2. Sequelize / PostgreSQL format ({ field, message, value })
         else if (typeof item.message === "string" && item.message.trim()) {
           const valStr =
-            item.value !== undefined && item.value !== null && String(item.value).trim()
+            item.value !== undefined &&
+            item.value !== null &&
+            String(item.value).trim()
               ? ` ("${item.value}")`
               : "";
           const msg = item.message.trim();
@@ -145,14 +151,12 @@ api.interceptors.response.use(
       }
 
       const refreshToken =
+        adminAuthStorage.getRefreshToken() ||
         localStorage.getItem("admin_refresh_token") ||
         localStorage.getItem("refreshToken");
 
       if (!refreshToken) {
-        localStorage.removeItem("admin_access_token");
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("token");
-        localStorage.removeItem("admin_user_profile");
+        adminAuthStorage.clear();
         if (window.location.pathname.startsWith("/admin")) {
           window.location.href = "/login";
         }
@@ -183,8 +187,7 @@ api.interceptors.response.use(
         });
 
         const resData = refreshResponse.data;
-        const newAccessToken =
-          resData.accessToken || resData.data?.accessToken;
+        const newAccessToken = resData.accessToken || resData.data?.accessToken;
         const newRefreshToken =
           resData.refreshToken || resData.data?.refreshToken;
 
@@ -192,11 +195,7 @@ api.interceptors.response.use(
           throw new Error("No access token returned from refresh");
         }
 
-        localStorage.setItem("admin_access_token", newAccessToken);
-        localStorage.setItem("access_token", newAccessToken);
-        if (newRefreshToken) {
-          localStorage.setItem("admin_refresh_token", newRefreshToken);
-        }
+        adminAuthStorage.setTokens(newAccessToken, newRefreshToken);
 
         if (originalRequest.headers?.set) {
           originalRequest.headers.set(
@@ -211,11 +210,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        localStorage.removeItem("admin_access_token");
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("token");
-        localStorage.removeItem("admin_refresh_token");
-        localStorage.removeItem("admin_user_profile");
+        adminAuthStorage.clear();
         if (window.location.pathname.startsWith("/admin")) {
           window.location.href = "/login";
         }
@@ -385,7 +380,12 @@ export async function fetchStatCards(): Promise<StatCardData[]> {
     const totalLeads = funnel?.total_leads || 0;
 
     const cards: StatCardData[] = [
-      { id: "total-leads", label: "Total Leads", value: totalLeads, tone: "accent" },
+      {
+        id: "total-leads",
+        label: "Total Leads",
+        value: totalLeads,
+        tone: "accent",
+      },
     ];
 
     stages.forEach((st: any) => {
@@ -394,9 +394,20 @@ export async function fetchStatCards(): Promise<StatCardData[]> {
       const count = Number(st.count || 0);
 
       let tone: StatCardData["tone"] = "neutral";
-      if (slug.includes("won") || slug.includes("sold") || slug.includes("closed")) tone = "success";
-      else if (slug.includes("consultation") || slug.includes("visit") || slug.includes("prospect")) tone = "accent";
-      else if (slug.includes("negotiation") || slug.includes("priority")) tone = "warning";
+      if (
+        slug.includes("won") ||
+        slug.includes("sold") ||
+        slug.includes("closed")
+      )
+        tone = "success";
+      else if (
+        slug.includes("consultation") ||
+        slug.includes("visit") ||
+        slug.includes("prospect")
+      )
+        tone = "accent";
+      else if (slug.includes("negotiation") || slug.includes("priority"))
+        tone = "warning";
       else if (slug.includes("lost") || slug.includes("junk")) tone = "danger";
 
       cards.push({
@@ -410,7 +421,10 @@ export async function fetchStatCards(): Promise<StatCardData[]> {
 
     return cards;
   } catch (err) {
-    console.warn("fetchStatCards: Fallback to default metrics on initial load", err);
+    console.warn(
+      "fetchStatCards: Fallback to default metrics on initial load",
+      err,
+    );
     return [
       { id: "total-leads", label: "Total Leads", value: 0, tone: "accent" },
       { id: "new-leads", label: "New Leads", value: 0, tone: "info" },
@@ -424,19 +438,41 @@ export async function fetchTodoSummary(): Promise<TodoSummaryItem[]> {
   try {
     const res = await api.get("/crm/tasks");
     const tasks = res.data?.data || [];
-    
-    const pendingTasks = tasks.filter((t: any) => t.status === "pending" || t.status === "in_progress");
-    const urgentTasks = pendingTasks.filter((t: any) => t.priority === "urgent");
+
+    const pendingTasks = tasks.filter(
+      (t: any) => t.status === "pending" || t.status === "in_progress",
+    );
+    const urgentTasks = pendingTasks.filter(
+      (t: any) => t.priority === "urgent",
+    );
 
     return [
-      { id: "all-tasks", label: "Active Follow-ups", value: pendingTasks.length },
-      { id: "urgent-tasks", label: "Urgent Priority", value: urgentTasks.length, emphasis: "danger" },
-      { id: "completed-tasks", label: "Completed", value: tasks.filter((t: any) => t.status === "completed").length },
+      {
+        id: "all-tasks",
+        label: "Active Follow-ups",
+        value: pendingTasks.length,
+      },
+      {
+        id: "urgent-tasks",
+        label: "Urgent Priority",
+        value: urgentTasks.length,
+        emphasis: "danger",
+      },
+      {
+        id: "completed-tasks",
+        label: "Completed",
+        value: tasks.filter((t: any) => t.status === "completed").length,
+      },
     ];
   } catch (err) {
     return [
       { id: "all-tasks", label: "Active Follow-ups", value: 0 },
-      { id: "urgent-tasks", label: "Urgent Priority", value: 0, emphasis: "danger" },
+      {
+        id: "urgent-tasks",
+        label: "Urgent Priority",
+        value: 0,
+        emphasis: "danger",
+      },
     ];
   }
 }
@@ -451,7 +487,12 @@ export async function fetchRecentLeads(): Promise<FeedLead[]> {
       name: l.client_name,
       caller: l.assigned_to || "Unassigned",
       phone: l.phone,
-      timestamp: l.createdAt ? new Date(l.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Recently",
+      timestamp: l.createdAt
+        ? new Date(l.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "Recently",
     }));
   } catch (err) {
     return [];
@@ -506,7 +547,9 @@ export async function fetchTaskVisits(): Promise<FeedVisit[]> {
   return fetchRecentVisits();
 }
 
-export async function fetchCalendarEvents(monthKey?: string): Promise<CalendarEvent[]> {
+export async function fetchCalendarEvents(
+  monthKey?: string,
+): Promise<CalendarEvent[]> {
   try {
     const res = await api.get("/crm/tasks");
     const tasks = res.data?.data || [];
@@ -534,7 +577,9 @@ export async function fetchCalendarEvents(monthKey?: string): Promise<CalendarEv
 export async function fetchDayActivity(dateISO: string): Promise<DayActivity> {
   try {
     const res = await api.get("/crm/tasks");
-    const tasks = (res.data?.data || []).filter((t: any) => String(t.due_date).startsWith(dateISO));
+    const tasks = (res.data?.data || []).filter((t: any) =>
+      String(t.due_date).startsWith(dateISO),
+    );
     const visits = tasks.filter((t: any) => t.task_type === "visit").length;
     const calls = tasks.filter((t: any) => t.task_type === "call").length;
 
@@ -556,11 +601,15 @@ export async function fetchDayActivity(dateISO: string): Promise<DayActivity> {
   }
 }
 
-export async function fetchActivityTrend(range: string = "weekly"): Promise<ActivityPoint[]> {
+export async function fetchActivityTrend(
+  range: string = "weekly",
+): Promise<ActivityPoint[]> {
   return fetchActivityTimeline();
 }
 
-export async function fetchPropertyStatusCounts(): Promise<PropertyStatusCount[]> {
+export async function fetchPropertyStatusCounts(): Promise<
+  PropertyStatusCount[]
+> {
   return [
     { status: "Available", count: 42 },
     { status: "Booked", count: 18 },
@@ -610,7 +659,10 @@ export const crmApi = {
       return res.data?.data || res.data || [];
     } catch (err: any) {
       console.error(`Error fetching CRM master [${subPath}]:`, err);
-      showAlert.error("Failed to load records", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Failed to load records",
+        err.response?.data?.message || err.message,
+      );
       return [];
     }
   },
@@ -618,10 +670,16 @@ export const crmApi = {
   async createMaster(subPath: string, payload: any) {
     try {
       const res = await api.post(`/crm/master/${subPath}`, payload);
-      showAlert.success("Record Created", "Master data entry added successfully.");
+      showAlert.success(
+        "Record Created",
+        "Master data entry added successfully.",
+      );
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Creation Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Creation Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
@@ -632,7 +690,10 @@ export const crmApi = {
       const res = await api.get("/crm/leads", { params });
       return res.data?.data || res.data || [];
     } catch (err: any) {
-      showAlert.error("Failed to load leads", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Failed to load leads",
+        err.response?.data?.message || err.message,
+      );
       return [];
     }
   },
@@ -642,7 +703,10 @@ export const crmApi = {
       const res = await api.get(`/crm/leads/${uuid}`);
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Failed to load lead details", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Failed to load lead details",
+        err.response?.data?.message || err.message,
+      );
       return null;
     }
   },
@@ -650,10 +714,16 @@ export const crmApi = {
   async createLead(payload: any) {
     try {
       const res = await api.post("/crm/leads", payload);
-      showAlert.success("Lead Created", `Lead ${payload.client_name || ""} registered successfully.`);
+      showAlert.success(
+        "Lead Created",
+        `Lead ${payload.client_name || ""} registered successfully.`,
+      );
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Lead Creation Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Lead Creation Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
@@ -661,21 +731,33 @@ export const crmApi = {
   async logLeadActivity(leadUuid: string, payload: any) {
     try {
       const res = await api.post(`/crm/leads/${leadUuid}/activities`, payload);
-      showAlert.success("Activity Logged", "Lead activity added to 360 timeline.");
+      showAlert.success(
+        "Activity Logged",
+        "Lead activity added to 360 timeline.",
+      );
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Activity Logging Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Activity Logging Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
 
   async updateLeadStage(leadUuid: string, stageId: number, notes?: string) {
     try {
-      const res = await api.post(`/crm/leads/${leadUuid}/stage`, { lead_stage_id: stageId, notes });
+      const res = await api.post(`/crm/leads/${leadUuid}/stage`, {
+        lead_stage_id: stageId,
+        notes,
+      });
       showAlert.success("Stage Updated", "Pipeline transition applied.");
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Stage Update Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Stage Update Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
@@ -686,7 +768,10 @@ export const crmApi = {
       const res = await api.get("/crm/negotiations");
       return res.data?.data || res.data || [];
     } catch (err: any) {
-      showAlert.error("Failed to load negotiations", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Failed to load negotiations",
+        err.response?.data?.message || err.message,
+      );
       return [];
     }
   },
@@ -697,10 +782,16 @@ export const crmApi = {
         approval_status: "approved",
         approved_by: approvedBy,
       });
-      showAlert.success("Negotiation Approved", "Deal terms approved successfully.");
+      showAlert.success(
+        "Negotiation Approved",
+        "Deal terms approved successfully.",
+      );
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Approval Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Approval Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },
@@ -711,7 +802,10 @@ export const crmApi = {
       const res = await api.get("/crm/tasks", { params });
       return res.data?.data || res.data || [];
     } catch (err: any) {
-      showAlert.error("Failed to load tasks", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Failed to load tasks",
+        err.response?.data?.message || err.message,
+      );
       return [];
     }
   },
@@ -722,7 +816,10 @@ export const crmApi = {
       showAlert.success("Task Created", "Internal assignment saved.");
       return res.data?.data || res.data;
     } catch (err: any) {
-      showAlert.error("Task Creation Failed", err.response?.data?.message || err.message);
+      showAlert.error(
+        "Task Creation Failed",
+        err.response?.data?.message || err.message,
+      );
       throw err;
     }
   },

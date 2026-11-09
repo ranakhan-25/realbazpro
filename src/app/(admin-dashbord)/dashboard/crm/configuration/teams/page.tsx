@@ -15,6 +15,7 @@ import {
   Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { crmFetch } from "../../crm-fetch";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
@@ -76,7 +77,7 @@ export default function TeamsPage() {
   const fetchTeams = async (page = 1, search = "") => {
     try {
       setLoading(true);
-      const res = await fetch(
+      const res = await crmFetch(
         `${API_PATH}/crm/configuration/teams?page=${page}&limit=${entriesPerPage}&search=${search}`,
       );
       const json = await res.json();
@@ -95,7 +96,7 @@ export default function TeamsPage() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch(
+      const res = await crmFetch(
         `${API_PATH}/crm/configuration/teams/dropdown/users`,
       );
       const json = await res.json();
@@ -169,7 +170,7 @@ export default function TeamsPage() {
         : `${API_PATH}/crm/configuration/teams`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await crmFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -201,7 +202,7 @@ export default function TeamsPage() {
   const handleConfirmDelete = async () => {
     if (!selectedTeamToDelete) return;
     try {
-      const res = await fetch(
+      const res = await crmFetch(
         `${API_PATH}/crm/configuration/teams/${selectedTeamToDelete.uuid}`,
         {
           method: "DELETE",

@@ -120,7 +120,6 @@ export interface UserFeatureAccessResponse {
   featureOverrides: FeatureOverrideItem[];
 }
 
-
 /* =========================================================
    CREATE USER PAYLOAD
 ========================================================= */
@@ -141,9 +140,7 @@ export interface UpdateUserPayload extends BaseUserPayload {
    COMPATIBILITY TYPE
 ========================================================= */
 
-export type UserPayload =
-  | CreateUserPayload
-  | UpdateUserPayload;
+export type UserPayload = CreateUserPayload | UpdateUserPayload;
 
 /* =========================================================
    AXIOS & FETCH ERROR HANDLING
@@ -179,9 +176,7 @@ function handleAxiosError(err: any): never {
   if (Array.isArray(result?.message)) {
     message = result.message
       .map((item: any) =>
-        typeof item === "string"
-          ? item
-          : item?.message || JSON.stringify(item),
+        typeof item === "string" ? item : item?.message || JSON.stringify(item),
       )
       .join(", ");
   }
@@ -192,17 +187,17 @@ function handleAxiosError(err: any): never {
       : err?.message || "API request failed";
   }
 
-  console.error(`[UserService] API Error (${res?.status || "network"}):`, message);
+  console.error(
+    `[UserService] API Error (${res?.status || "network"}):`,
+    message,
+  );
   throw new Error(message);
 }
 
+import { getStoredAccessToken } from "@/lib/admin-auth/adminAuthStorage";
+
 function getHeaders() {
-  const token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("admin_access_token") ||
-        localStorage.getItem("access_token") ||
-        localStorage.getItem("token")
-      : null;
+  const token = getStoredAccessToken();
 
   return {
     Accept: "application/json",
@@ -211,9 +206,7 @@ function getHeaders() {
   };
 }
 
-async function parseResponse<T = unknown>(
-  response: Response,
-): Promise<T> {
+async function parseResponse<T = unknown>(response: Response): Promise<T> {
   const text = await response.text();
 
   let result: any = null;
@@ -240,10 +233,7 @@ async function parseResponse<T = unknown>(
         .map((item: any) =>
           typeof item === "string"
             ? item
-            : item?.message ||
-              item?.msg ||
-              item?.error ||
-              JSON.stringify(item),
+            : item?.message || item?.msg || item?.error || JSON.stringify(item),
         )
         .filter(Boolean);
 
@@ -263,8 +253,7 @@ async function parseResponse<T = unknown>(
     }
 
     if (!message) {
-      message =
-        `Request failed with status code ${response.status}`;
+      message = `Request failed with status code ${response.status}`;
     }
 
     console.error(
@@ -336,118 +325,65 @@ function unwrapUser(result: any): User {
    GET USERS
 ========================================================= */
 
-export async function getUsers(
-  params: GetUsersParams = {},
-) {
+export async function getUsers(params: GetUsersParams = {}) {
   const searchParams = new URLSearchParams();
 
-  searchParams.set(
-    "page",
-    String(params.page ?? 1),
-  );
+  searchParams.set("page", String(params.page ?? 1));
 
-  searchParams.set(
-    "limit",
-    String(params.limit ?? 50),
-  );
+  searchParams.set("limit", String(params.limit ?? 50));
 
   if (params.search?.trim()) {
-    searchParams.set(
-      "search",
-      params.search.trim(),
-    );
+    searchParams.set("search", params.search.trim());
   }
 
-  if (
-    params.isActive !== undefined &&
-    params.isActive !== ""
-  ) {
-    searchParams.set(
-      "isActive",
-      String(params.isActive),
-    );
+  if (params.isActive !== undefined && params.isActive !== "") {
+    searchParams.set("isActive", String(params.isActive));
   }
 
   if (params.userType) {
     if (Array.isArray(params.userType)) {
       params.userType.forEach((type) => {
-        searchParams.append(
-          "userType",
-          type,
-        );
+        searchParams.append("userType", type);
       });
     } else {
-      searchParams.append(
-        "userType",
-        params.userType,
-      );
+      searchParams.append("userType", params.userType);
     }
   }
 
-  searchParams.set(
-    "sortField",
-    params.sortField ?? "created_at",
-  );
+  searchParams.set("sortField", params.sortField ?? "created_at");
 
-  searchParams.set(
-    "sortOrder",
-    params.sortOrder ?? "DESC",
-  );
+  searchParams.set("sortOrder", params.sortOrder ?? "DESC");
 
   if (params.distributionId !== undefined) {
-    searchParams.set(
-      "distributionId",
-      String(params.distributionId),
-    );
+    searchParams.set("distributionId", String(params.distributionId));
   }
 
   if (params.warehouseId !== undefined) {
-    searchParams.set(
-      "warehouseId",
-      String(params.warehouseId),
-    );
+    searchParams.set("warehouseId", String(params.warehouseId));
   }
 
   if (params.factoryId !== undefined) {
-    searchParams.set(
-      "factoryId",
-      String(params.factoryId),
-    );
+    searchParams.set("factoryId", String(params.factoryId));
   }
 
   if (params.departmentId !== undefined) {
-    searchParams.set(
-      "departmentId",
-      String(params.departmentId),
-    );
+    searchParams.set("departmentId", String(params.departmentId));
   }
 
   if (params.designationId !== undefined) {
-    searchParams.set(
-      "designationId",
-      String(params.designationId),
-    );
+    searchParams.set("designationId", String(params.designationId));
   }
 
   if (params.sectionId !== undefined) {
-    searchParams.set(
-      "sectionId",
-      String(params.sectionId),
-    );
+    searchParams.set("sectionId", String(params.sectionId));
   }
 
   if (params.unitId !== undefined) {
-    searchParams.set(
-      "unitId",
-      String(params.unitId),
-    );
+    searchParams.set("unitId", String(params.unitId));
   }
 
   if (params.companyId !== undefined) {
-    searchParams.set(
-      "companyId",
-      String(params.companyId),
-    );
+    searchParams.set("companyId", String(params.companyId));
   }
 
   try {
@@ -458,13 +394,12 @@ export async function getUsers(
     const users = Array.isArray(result?.data?.data)
       ? result.data.data
       : Array.isArray(result?.data)
-      ? result.data
-      : Array.isArray(result)
-      ? result
-      : [];
+        ? result.data
+        : Array.isArray(result)
+          ? result
+          : [];
 
-    const meta =
-      result?.data?.meta ??
+    const meta = result?.data?.meta ??
       result?.meta ?? {
         page: params.page ?? 1,
         limit: params.limit ?? 50,
@@ -492,9 +427,7 @@ export async function getUser(
   uuid: string | number,
   includePermissions = false,
 ): Promise<User> {
-  const query = includePermissions
-    ? "?includePermissions=true"
-    : "";
+  const query = includePermissions ? "?includePermissions=true" : "";
 
   try {
     const response = await api.get(`/users/${uuid}${query}`);
@@ -508,9 +441,7 @@ export async function getUser(
    CREATE USER
 ========================================================= */
 
-export async function createUser(
-  payload: CreateUserPayload,
-): Promise<User> {
+export async function createUser(payload: CreateUserPayload): Promise<User> {
   try {
     const response = await api.post("/users", payload);
     return unwrapUser(response.data);
@@ -539,9 +470,7 @@ export async function updateUser(
    DELETE USER
 ========================================================= */
 
-export async function deleteUser(
-  uuid: string | number,
-): Promise<boolean> {
+export async function deleteUser(uuid: string | number): Promise<boolean> {
   try {
     await api.delete(`/users/${uuid}`);
     return true;
@@ -554,9 +483,7 @@ export async function deleteUser(
    CONVERT EMPLOYEE TO USER
 ========================================================= */
 
-export async function convertEmployeeToUser(
-  employeeId: number,
-): Promise<User> {
+export async function convertEmployeeToUser(employeeId: number): Promise<User> {
   try {
     const response = await api.post(`/users/convert/employee/${employeeId}`);
     return unwrapUser(response.data);
@@ -595,7 +522,16 @@ function extractArray(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
   if (!isRecord(value)) return [];
 
-  const keys = ["data", "items", "results", "content", "records", "rows", "list", "options"];
+  const keys = [
+    "data",
+    "items",
+    "results",
+    "content",
+    "records",
+    "rows",
+    "list",
+    "options",
+  ];
   for (const key of keys) {
     const nested = value[key];
     if (Array.isArray(nested)) return nested;
@@ -625,8 +561,10 @@ function normalizeOptions(value: unknown): DropdownOption[] {
         id,
         name: String(name),
         slug: typeof item.slug === "string" ? item.slug : undefined,
-        description: typeof item.description === "string" ? item.description : null,
-        roleLevel: typeof item.roleLevel === "number" ? item.roleLevel : undefined,
+        description:
+          typeof item.description === "string" ? item.description : null,
+        roleLevel:
+          typeof item.roleLevel === "number" ? item.roleLevel : undefined,
         orgId: typeof item.orgId === "number" ? item.orgId : null,
       };
     })
@@ -689,82 +627,53 @@ export async function getUserFormDropdowns(): Promise<UserFormDropdowns> {
    USER DROPDOWN
 ========================================================= */
 
-export async function getUserDropdown(
-  params?: {
-    distributionId?: number;
-    warehouseId?: number;
-    factoryId?: number;
-    departmentId?: number;
-    designationId?: number;
-    sectionId?: number;
-    unitId?: number;
-    userType?: string;
-    search?: string;
-  },
-) {
+export async function getUserDropdown(params?: {
+  distributionId?: number;
+  warehouseId?: number;
+  factoryId?: number;
+  departmentId?: number;
+  designationId?: number;
+  sectionId?: number;
+  unitId?: number;
+  userType?: string;
+  search?: string;
+}) {
   const query = new URLSearchParams();
 
   if (params?.distributionId !== undefined) {
-    query.set(
-      "distributionId",
-      String(params.distributionId),
-    );
+    query.set("distributionId", String(params.distributionId));
   }
 
   if (params?.warehouseId !== undefined) {
-    query.set(
-      "warehouseId",
-      String(params.warehouseId),
-    );
+    query.set("warehouseId", String(params.warehouseId));
   }
 
   if (params?.factoryId !== undefined) {
-    query.set(
-      "factoryId",
-      String(params.factoryId),
-    );
+    query.set("factoryId", String(params.factoryId));
   }
 
   if (params?.departmentId !== undefined) {
-    query.set(
-      "departmentId",
-      String(params.departmentId),
-    );
+    query.set("departmentId", String(params.departmentId));
   }
 
   if (params?.designationId !== undefined) {
-    query.set(
-      "designationId",
-      String(params.designationId),
-    );
+    query.set("designationId", String(params.designationId));
   }
 
   if (params?.sectionId !== undefined) {
-    query.set(
-      "sectionId",
-      String(params.sectionId),
-    );
+    query.set("sectionId", String(params.sectionId));
   }
 
   if (params?.unitId !== undefined) {
-    query.set(
-      "unitId",
-      String(params.unitId),
-    );
+    query.set("unitId", String(params.unitId));
   }
 
   if (params?.userType) {
-    query.set(
-      "userType",
-      params.userType,
-    );
+    query.set("userType", params.userType);
   }
 
   if (params?.search?.trim()) {
-    query.set(
-      "search",
-      params.search.trim(),
-    );
+    query.set("search", params.search.trim());
   }
 
   const queryString = query.toString();
@@ -774,7 +683,11 @@ export async function getUserDropdown(
       `/users/dropdown/list${queryString ? `?${queryString}` : ""}`,
     );
     const result = response.data;
-    return Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : [];
+    return Array.isArray(result?.data)
+      ? result.data
+      : Array.isArray(result)
+        ? result
+        : [];
   } catch (err: any) {
     handleAxiosError(err);
   }
@@ -784,10 +697,7 @@ export async function getUserDropdown(
    ROLE
 ========================================================= */
 
-export async function assignRole(
-  userId: number,
-  roleId: number,
-) {
+export async function assignRole(userId: number, roleId: number) {
   try {
     const response = await api.post(`/users/${userId}/roles/${roleId}`);
     return response.data;
@@ -796,10 +706,7 @@ export async function assignRole(
   }
 }
 
-export async function removeRole(
-  userId: number,
-  roleId: number,
-) {
+export async function removeRole(userId: number, roleId: number) {
   try {
     const response = await api.delete(`/users/${userId}/roles/${roleId}`);
     return response.data;
@@ -812,13 +719,11 @@ export async function removeRole(
    PERMISSIONS
 ========================================================= */
 
-export async function addUserPermissions(
-  payload: {
-    userId: number;
-    moduleId: number;
-    permissionIds: number[];
-  },
-) {
+export async function addUserPermissions(payload: {
+  userId: number;
+  moduleId: number;
+  permissionIds: number[];
+}) {
   try {
     const response = await api.post("/users/permissions", payload);
     return response.data;
@@ -827,12 +732,10 @@ export async function addUserPermissions(
   }
 }
 
-export async function deleteUserPermissions(
-  payload: {
-    userId: number;
-    permissionIds: number[];
-  },
-) {
+export async function deleteUserPermissions(payload: {
+  userId: number;
+  permissionIds: number[];
+}) {
   try {
     const response = await api.delete("/users/permissions", { data: payload });
     return response.data;
@@ -845,26 +748,18 @@ export async function deleteUserPermissions(
    PUBLIC MOBILE AUTH EMPLOYEE CODES
 ========================================================= */
 
-export async function getMobileAuthEmployeeCodes(
-  params?: {
-    search?: string;
-    limit?: number;
-  },
-) {
+export async function getMobileAuthEmployeeCodes(params?: {
+  search?: string;
+  limit?: number;
+}) {
   const query = new URLSearchParams();
 
   if (params?.search?.trim()) {
-    query.set(
-      "search",
-      params.search.trim(),
-    );
+    query.set("search", params.search.trim());
   }
 
   if (params?.limit !== undefined) {
-    query.set(
-      "limit",
-      String(params.limit),
-    );
+    query.set("limit", String(params.limit));
   }
 
   const queryString = query.toString();
@@ -900,7 +795,11 @@ export async function updateUserFeatureAccess(
     moduleIds?: number[];
     featureOverrides?: FeatureOverrideItem[];
   },
-): Promise<{ success: boolean; message: string; data: UserFeatureAccessResponse }> {
+): Promise<{
+  success: boolean;
+  message: string;
+  data: UserFeatureAccessResponse;
+}> {
   try {
     const res = await api.put(`/users/${userIdOrUuid}/feature-access`, payload);
     return res.data;

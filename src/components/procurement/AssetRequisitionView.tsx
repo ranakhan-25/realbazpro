@@ -28,6 +28,7 @@ import {
   Package,
   Layers,
 } from "lucide-react";
+import { procurementAssetRequisitionApi } from "@/lib/procurement";
 
 // ==========================================
 // Types & Interfaces
@@ -48,6 +49,7 @@ export interface AssetItemRow {
 
 export interface AssetRequisition {
   id: number;
+  uuid?: string;
   projectType: string;
   project: string;
   titleOfWork: string;
@@ -339,6 +341,7 @@ export default function AssetRequisitionView() {
   // Requisitions State
   const [requisitions, setRequisitions] = useState<AssetRequisition[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Filter State (Screenshot 1)
   const [filterDate, setFilterDate] = useState("1 October, 2026 - 31 October, 2026");
@@ -408,25 +411,82 @@ export default function AssetRequisitionView() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Load from localStorage or initialize with sample data
-  useEffect(() => {
+  // Load from API or fallback
+  const fetchRequisitions = async () => {
+    setIsLoading(true);
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setRequisitions(parsed);
-          return;
-        }
+      const res = await procurementAssetRequisitionApi.getRequisitions({
+        page: currentPage,
+        limit: entriesPerPage,
+        search: search || undefined,
+      });
+      if (res && Array.isArray(res.data) && res.data.length > 0) {
+        const mapped: AssetRequisition[] = res.data.map((item, idx) => ({
+          id: item.id || idx + 1,
+          uuid: item.uuid,
+          projectType: item.projectType?.name || "Internal",
+          project: item.project?.name || "Somikoron Tower Headquarter",
+          titleOfWork: item.titleOfWork?.name || "Asset Procurement",
+          code: item.code,
+          ref: item.ref || "",
+          date: item.date ? item.date.split("T")[0] : "",
+          demandDate: item.demand_date ? item.demand_date.split("T")[0] : "",
+          addedBy: item.addedBy?.name || item.createdBy || "Admin",
+          approvalSteps: [
+            { label: "Dept Head", type: item.status === "approved" ? "approved" : "pending" },
+            { label: "Finance", type: item.status === "completed" ? "approved" : "pending" },
+          ],
+          attachmentCount: item.attachment ? 1 : 0,
+          attachmentName: item.attachment,
+          site: item.site?.name || "",
+          category: item.category?.name || "",
+          task: item.task?.taskName || "",
+          note: item.note || "",
+          items: (item.items || []).map((it, itemIdx) => ({
+            id: it.uuid || String(itemIdx + 1),
+            itemCode: it.item?.item_code || "",
+            itemName: it.item?.name || "",
+            details: it.details || "",
+            unit: it.item?.unit?.name || it.item?.unit?.code || "Pcs",
+            demandQty: Number(it.demand_qty) || 0,
+          })),
+          totalQty: (item.items || []).reduce((acc, curr) => acc + (Number(curr.demand_qty) || 0), 0),
+        }));
+        setRequisitions(mapped);
+      } else {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setRequisitions(parsed);
+              return;
+            }
+          }
+        } catch {}
+        setRequisitions(INITIAL_ASSET_REQUISITIONS);
       }
     } catch (e) {
-      console.warn("Could not read from localStorage, using initial mock data", e);
+      console.warn("Could not read from API, falling back to local data", e);
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setRequisitions(parsed);
+            return;
+          }
+        }
+      } catch {}
+      setRequisitions(INITIAL_ASSET_REQUISITIONS);
+    } finally {
+      setIsLoading(false);
     }
-    setRequisitions(INITIAL_ASSET_REQUISITIONS);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_ASSET_REQUISITIONS));
-    } catch {}
-  }, []);
+  };
+
+  useEffect(() => {
+    fetchRequisitions();
+  }, [currentPage, entriesPerPage, search]);
 
   // Save to localStorage when changed
   const saveRequisitions = (newList: AssetRequisition[]) => {
@@ -638,13 +698,22 @@ export default function AssetRequisitionView() {
   };
 
   // Delete Requisition
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    const remaining = requisitions.filter((r) => r.id !== deleteTarget.id);
-    saveRequisitions(remaining);
-    setSelectedIds((prev) => prev.filter((id) => id !== deleteTarget.id));
-    showToast(`Requisition ${deleteTarget.code} deleted`, "info");
-    setDeleteTarget(null);
+    try {
+      if (deleteTarget.uuid) {
+        await procurementAssetRequisitionApi.deleteRequisition(deleteTarget.uuid);
+      }
+      const remaining = requisitions.filter((r) => r.id !== deleteTarget.id);
+      saveRequisitions(remaining);
+      setSelectedIds((prev) => prev.filter((id) => id !== deleteTarget.id));
+      showToast(`Requisition ${deleteTarget.code} deleted`, "info");
+    } catch (e: any) {
+      console.error("Failed to delete requisition", e);
+      showToast(e?.response?.data?.message || "Failed to delete requisition", "error");
+    } finally {
+      setDeleteTarget(null);
+    }
   };
 
   // Bulk Selection

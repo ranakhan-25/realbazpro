@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from "react";
 import { Sparkles, Search, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, AlertTriangle, Loader2, RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
+import { crmFetch } from "../../crm-fetch";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
 const API_PATH = `${API_BASE}/realbizpro/api/v1`;
@@ -48,7 +49,7 @@ export default function PriceRangePage() {
       setLoading(true);
       const url = `${API_PATH}/crm/configuration/price-ranges?page=${page}&limit=${entriesPerPage}&search=${search}&withDeleted=${showDeleted}`;
       
-      const res = await fetch(url);
+      const res = await crmFetch(url);
       const json = await res.json();
       
       if (json.success) {
@@ -126,7 +127,7 @@ export default function PriceRangePage() {
         : `${API_PATH}/crm/configuration/price-ranges`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await crmFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -169,7 +170,7 @@ export default function PriceRangePage() {
     setSelectedPriceRangeToDelete(null);
 
     try {
-      const res = await fetch(`${API_PATH}/crm/configuration/price-ranges/${deletedUuid}`, {
+      const res = await crmFetch(`${API_PATH}/crm/configuration/price-ranges/${deletedUuid}`, {
         method: "DELETE",
       });
       
@@ -196,7 +197,7 @@ export default function PriceRangePage() {
     if (!item.uuid) return;
     if (!window.confirm(`Restore price range?`)) return;
     try {
-      const res = await fetch(`${API_PATH}/crm/configuration/price-ranges/${item.uuid}/restore`, {
+      const res = await crmFetch(`${API_PATH}/crm/configuration/price-ranges/${item.uuid}/restore`, {
         method: "PATCH",
       });
       if (res.ok) {
