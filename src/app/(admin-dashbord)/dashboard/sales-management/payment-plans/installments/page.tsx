@@ -30,6 +30,7 @@ import {
   Info,
   Plus,
   ChevronDown,
+  Tag,
 } from "lucide-react";
 
 // ============ STATIC DATA ============

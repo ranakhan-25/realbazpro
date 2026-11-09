@@ -335,15 +335,18 @@ export function LegalDocumentsView({
                   {isColVisible("status") && <th className="py-3 px-3.5 text-center">Status</th>}
                   <th className="py-3 px-3.5 text-right">Actions</th>
                 </tr>
-              ) : (
-                displayedDocs.map((doc, idx) => {
-                  const docId = doc.uuid || doc.id || `doc-${idx}`;
-                  const isExpanded = expandedId === docId;
-                  const statusInfo = STATUS_BADGES[doc.verificationStatus as VerificationStatus] || { bg: "bg-slate-100 text-slate-800", text: "text-slate-700", icon: AlertCircle };
-                  const StatusIcon = statusInfo.icon;
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {displayedDocs.map((item: any) => {
+                  const itemId = item.uuid || item.id;
+                  const isSelected = selectedIds.includes(itemId);
+                  const isExpanded = expandedId === itemId;
+                  const statusKey = item.verificationStatus || item.status || "Pending";
+                  const fileName = item.documentFileName || item.title || item.file_name || "document.pdf";
+                  const version = item.version || "v1.0";
 
                   return (
-                    <React.Fragment key={docId}>
+                    <React.Fragment key={itemId}>
                       <tr
                         className={`transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${
                           isSelected ? "bg-cyan-50/40 dark:bg-cyan-950/20" : ""
@@ -360,9 +363,9 @@ export function LegalDocumentsView({
 
                         <td className="py-3 px-2 text-center">
                           <button
-                            onClick={() => toggleExpand(docId)}
-                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 transition-all font-bold"
-                            title={isExpanded ? "Collapse" : "Expand"}
+                            onClick={() => toggleExpand(itemId)}
+                            className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-cyan-100 hover:text-cyan-700 transition-all"
+                            title={isExpanded ? "Collapse remarks" : "Expand remarks"}
                           >
                             {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                           </button>
@@ -437,8 +440,12 @@ export function LegalDocumentsView({
                             </button>
 
                             <button
-                              onClick={() => onDeleteDocument(docId)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
+                              onClick={() => {
+                                if (confirm(`Delete document "${fileName}"?`)) {
+                                  onDeleteDocument?.(itemId);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 transition-all"
                               title="Delete Document"
                             >
                               <Trash2 className="w-3.5 h-3.5" />

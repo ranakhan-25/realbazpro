@@ -520,14 +520,22 @@ export function AcquisitionLeadsView({
                   {isColVisible("assignee") && <th className="py-3 px-3.5">Assignee</th>}
                   <th className="py-3 px-3.5 text-right">Actions</th>
                 </tr>
-              ) : (
-                displayedLeads.map((lead, idx) => {
-                  const leadId = lead.uuid || lead.id || `lead-${idx}`;
-                  const stageStyle = STAGE_BADGES[lead.leadStage as LeadStage] || { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-700 dark:text-slate-300", ring: "ring-slate-200 dark:ring-slate-700" };
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {displayedLeads.map((lead: any) => {
+                  const leadId = lead.uuid || lead.id;
+                  const isSelected = selectedIds.includes(leadId);
+                  const statusKey = lead.status || lead.leadStage || "Draft";
+                  const code = lead.code || lead.leadCode || lead.lead_code || lead.title || "LEAD";
+                  const area = lead.area_katha || lead.landArea || 0;
+                  const asking = lead.asking_price || lead.expectedPrice || 0;
+
                   return (
                     <tr
                       key={leadId}
-                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
+                      className={`transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${
+                        isSelected ? "bg-cyan-50/40 dark:bg-cyan-950/20" : ""
+                      }`}
                     >
                       <td className="py-3 px-3.5 text-center">
                         <input
@@ -642,12 +650,29 @@ export function AcquisitionLeadsView({
                             >
                               <CheckCircle className="w-3.5 h-3.5" />
                             </button>
-                              <button
-                                onClick={() => onDeleteLead(leadId)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
-                                title="Delete Lead"
-                              >
-                            <Trash2 className="w-4 h-4" />
+                          )}
+
+                          <button
+                            onClick={() => {
+                              setRemarksModalLead(lead);
+                              setRemarksModalAction("advance");
+                            }}
+                            className="p-1.5 rounded-lg border border-cyan-200 dark:border-cyan-800 hover:bg-cyan-50 dark:hover:bg-cyan-950 text-cyan-600 transition-all"
+                            title="Advance Workflow Stage"
+                          >
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to delete lead "${code}"?`)) {
+                                onDeleteLead?.(leadId);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 transition-all"
+                            title="Delete Lead"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>

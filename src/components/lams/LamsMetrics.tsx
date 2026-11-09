@@ -167,13 +167,13 @@ export function LamsMetrics({ showInsights, leads = [], owners = [], negotiation
     <div className="space-y-4">
       {/* 4-Card KPI Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpiMetrics.map((kpi, idx) => {
+        {kpiMetrics.map((kpi) => {
           const config = COLOR_MAP[kpi.color as keyof typeof COLOR_MAP] || COLOR_MAP.cyan;
           const Icon = config.icon;
 
           return (
             <div
-              key={kpi.id || (kpi as any).uuid || idx}
+              key={kpi.uuid}
               className={`bg-white dark:bg-slate-900 rounded-2xl p-5 border ${config.border} shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between`}
             >
               {/* Background ambient glow */}
