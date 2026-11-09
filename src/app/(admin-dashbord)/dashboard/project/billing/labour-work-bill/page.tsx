@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Plus, ArrowLeft, X, Eye, Printer, Mail, Edit, Trash2, Search, Loader2, Save } from "lucide-react";
 
@@ -54,7 +57,7 @@ export default function LabourWorkerBillPage() {
   // ==================== API CALLS ====================
   const fetchOptions = async (endpoint: string) => {
     try {
-      const res = await fetch(`${API_BASE}${API_PREFIX}${endpoint}?page=1&limit=100`);
+      const res = await projectFetch(`${API_BASE}${API_PREFIX}${endpoint}?page=1&limit=100`);
       if (!res.ok) return [];
       const json = await res.json();
       const rows = Array.isArray(json?.data?.data) ? json.data.data : Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
@@ -97,7 +100,7 @@ export default function LabourWorkerBillPage() {
       setLoading(true);
       setError(null);
       // ⚠️ API endpoint ta apnar backend onujayi change korun
-      const res = await fetch(`${API_BASE}${API_PREFIX}/project-billing/labour-work-bills?page=1&limit=100`);
+      const res = await projectFetch(`${API_BASE}${API_PREFIX}/project-billing/labour-work-bills?page=1&limit=100`);
       if (!res.ok) throw new Error("Failed to load labour work bills");
       const json = await res.json();
       const rows = json?.data?.data || json?.data || [];
@@ -135,7 +138,7 @@ export default function LabourWorkerBillPage() {
         description: formData.refWoNo || "",
         details,
       };
-      const res = await fetch(`${API_BASE}${API_PREFIX}/project-billing/labour-work-bills${editingBillUuid ? `/${editingBillUuid}` : ""}`, {
+      const res = await projectFetch(`${API_BASE}${API_PREFIX}/project-billing/labour-work-bills${editingBillUuid ? `/${editingBillUuid}` : ""}`, {
         method: editingBillUuid ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -170,7 +173,7 @@ export default function LabourWorkerBillPage() {
   const handleDelete = async (bill: any) => {
     if (!confirm("Are you sure?")) return;
     setActiveDropdown(null);
-    try { const res = await fetch(`${API_BASE}${API_PREFIX}/project-billing/labour-work-bills/${bill.uuid}`, { method: "DELETE" }); if (!res.ok) throw new Error("Failed to delete bill"); await loadBills(); } catch (err: any) { setError(err.message || "Failed to delete bill"); }
+    try { const res = await projectFetch(`${API_BASE}${API_PREFIX}/project-billing/labour-work-bills/${bill.uuid}`, { method: "DELETE" }); if (!res.ok) throw new Error("Failed to delete bill"); await loadBills(); } catch (err: any) { setError(err.message || "Failed to delete bill"); }
   };
 
   // ==================== RENDER ====================

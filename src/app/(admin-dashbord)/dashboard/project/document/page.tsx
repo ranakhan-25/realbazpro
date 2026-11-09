@@ -1,5 +1,8 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Calendar, Plus, Eye, Trash2, X, FileText } from "lucide-react";
 
@@ -39,7 +42,7 @@ function rowsFrom<T>(value: unknown): T[] {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await projectFetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
       Accept: "application/json",

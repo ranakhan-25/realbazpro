@@ -1,5 +1,8 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { FileText, Plus, Download, X, Pencil, Trash2, RotateCcw } from "lucide-react";
 
@@ -50,7 +53,7 @@ export default function TaskPage() {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/task`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/task`);
       if (!res.ok) throw new Error("Failed to fetch tasks");
 
       const data = await res.json();
@@ -169,13 +172,13 @@ export default function TaskPage() {
       let res: Response;
 
       if (editingUuid) {
-        res = await fetch(`${API_BASE}/realbizpro/api/v1/task/${editingUuid}`, {
+        res = await projectFetch(`${API_BASE}/realbizpro/api/v1/task/${editingUuid}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
       } else {
-        res = await fetch(`${API_BASE}/realbizpro/api/v1/task`, {
+        res = await projectFetch(`${API_BASE}/realbizpro/api/v1/task`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -205,7 +208,7 @@ export default function TaskPage() {
     if (!confirm("Are you sure you want to soft-delete this task?")) return;
 
     try {
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/task/${uuid}`, {
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/task/${uuid}`, {
         method: "DELETE",
       });
 
@@ -222,7 +225,7 @@ export default function TaskPage() {
   // =====================================================
   const handleRestore = async (uuid: string) => {
     try {
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/task/${uuid}/restore`, {
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/task/${uuid}/restore`, {
         method: "PATCH",
       });
 

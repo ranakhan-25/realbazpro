@@ -1,5 +1,8 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Calendar,
@@ -59,7 +62,7 @@ function getApiPage<T>(response: unknown): ApiPage<T> {
 }
 
 async function requestJson(url: string): Promise<unknown> {
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await projectFetch(url, { cache: "no-store" });
   const payload: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {

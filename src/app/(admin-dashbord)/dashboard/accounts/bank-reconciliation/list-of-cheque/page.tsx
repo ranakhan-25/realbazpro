@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
 import Link from "next/link";
 import { ChevronDown, Copy, FileText, ArrowUpDown } from "lucide-react";
 
@@ -12,102 +13,17 @@ export interface ChequeItem {
   favouringName: string;
   amount: string;
   chequeRange: string;
+  cashBank: string;
 }
 
 export default function ListOfChequePage() {
   // Main Data State (API Ready)
-  const [items, setItems] = useState<ChequeItem[]>([
-    {
-      id: 1,
-      instrumentNumber: "911",
-      chequeStatus: "Available",
-      instrumentDate: "-",
-      favouringName: "-",
-      amount: "-",
-      chequeRange: "911 - 920",
-    },
-    {
-      id: 2,
-      instrumentNumber: "912",
-      chequeStatus: "Available",
-      instrumentDate: "-",
-      favouringName: "-",
-      amount: "-",
-      chequeRange: "911 - 920",
-    },
-    {
-      id: 3,
-      instrumentNumber: "913",
-      chequeStatus: "Available",
-      instrumentDate: "-",
-      favouringName: "-",
-      amount: "-",
-      chequeRange: "911 - 920",
-    },
-    {
-      id: 4,
-      instrumentNumber: "914",
-      chequeStatus: "Available",
-      instrumentDate: "-",
-      favouringName: "-",
-      amount: "-",
-      chequeRange: "911 - 920",
-    },
-    {
-      id: 5,
-      instrumentNumber: "915",
-      chequeStatus: "Available",
-      instrumentDate: "-",
-      favouringName: "-",
-      amount: "-",
-      chequeRange: "911 - 920",
-    },
-    {
-      id: 6,
-      instrumentNumber: "916",
-      chequeStatus: "Available",
-      instrumentDate: "-",
-      favouringName: "-",
-      amount: "-",
-      chequeRange: "911 - 920",
-    },
-    {
-      id: 7,
-      instrumentNumber: "917",
-      chequeStatus: "Available",
-      instrumentDate: "-",
-      favouringName: "-",
-      amount: "-",
-      chequeRange: "911 - 920",
-    },
-    {
-      id: 8,
-      instrumentNumber: "918",
-      chequeStatus: "Available",
-      instrumentDate: "-",
-      favouringName: "-",
-      amount: "-",
-      chequeRange: "911 - 920",
-    },
-    {
-      id: 9,
-      instrumentNumber: "919",
-      chequeStatus: "Available",
-      instrumentDate: "-",
-      favouringName: "-",
-      amount: "-",
-      chequeRange: "911 - 920",
-    },
-    {
-      id: 10,
-      instrumentNumber: "920",
-      chequeStatus: "Available",
-      instrumentDate: "-",
-      favouringName: "-",
-      amount: "-",
-      chequeRange: "911 - 920",
-    },
+  const [items, setItems] = useState<ChequeItem[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<Array<{ id: string; name: string; value: string }>>([
+    { id: "fallback-cash", name: "Cash Account", value: "Cash" },
+    { id: "fallback-bank", name: "Bank Account", value: "Bank" },
   ]);
+  const [loading, setLoading] = useState(true);
 
   // Filter & Search States
   const [cashBankFilter, setCashBankFilter] = useState("");
@@ -115,13 +31,64 @@ export default function ListOfChequePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
+  useEffect(() => {
+    let active = true;
+    const loadAccounts = async () => {
+      try {
+        const response = await accountsFetch("/api/backend/chart-of-accounts?limit=500", { cache: "no-store" });
+        const json = await response.json();
+        const data = json?.data?.data ?? json?.data ?? json;
+        const rows = Array.isArray(data) ? data : [];
+        const options = rows.map((row: Record<string, unknown>) => ({ id: String(row.uuid ?? row.id ?? ""), name: String(row.name ?? row.accountName ?? ""), value: String(row.name ?? row.accountName ?? "") })).filter((row: { id: string; name: string; value: string }) => row.id && row.name && /cash|bank/i.test(row.name));
+        if (active && options.length) setBankAccounts(options);
+      } catch { /* Keep the previous Cash/Bank choices when the API is unavailable. */ }
+    };
+    void loadAccounts();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadCheques = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ page: "1", limit: "500" });
+        if (cashBankFilter) params.set("cashBank", cashBankFilter);
+        if (searchQuery.trim()) params.set("search", searchQuery.trim());
+        const response = await accountsFetch(`/api/backend/cheques?${params.toString()}`, { cache: "no-store" });
+        const json = await response.json();
+        if (!response.ok || json?.success === false) throw new Error(json?.message || `Cheque request failed (${response.status})`);
+        const data = json?.data?.data ?? json?.data ?? json;
+        const records = Array.isArray(data) ? data : [];
+        if (active) setItems(records.map((record: Record<string, unknown>, index: number) => {
+          const range = (record.chequeRange ?? {}) as Record<string, unknown>;
+          const from = Number(range.fromNumber ?? 0);
+          const to = Number(range.toNumber ?? 0);
+          return {
+            id: index + 1,
+            instrumentNumber: String(record.instrumentNumber ?? ""),
+            chequeStatus: String(record.chequeStatus ?? ""),
+            instrumentDate: record.instrumentDate ? String(record.instrumentDate).slice(0, 10) : "-",
+            favouringName: String(record.favouringName ?? "-"),
+            amount: record.amount === null || record.amount === undefined ? "-" : String(record.amount),
+            chequeRange: String(range.name ?? (from || to ? `${from} - ${to}` : "-")),
+            cashBank: String(range.cashBank ?? ""),
+          };
+        }));
+      } catch (error) {
+        console.error("Failed to load cheques", error);
+        if (active) setItems([]);
+      } finally { if (active) setLoading(false); }
+    };
+    void loadCheques();
+    return () => { active = false; };
+  }, [cashBankFilter, searchQuery]);
+
   // Filter logic
-  const filteredItems = items.filter(
-    (item) =>
-      item.instrumentNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.chequeStatus.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.chequeRange.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const filteredItems = items.filter((item) => !cashBankFilter || item.cashBank === cashBankFilter);
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / entriesPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const visibleItems = filteredItems.slice((safePage - 1) * entriesPerPage, safePage * entriesPerPage);
 
   return (
     <div className="w-full max-w-full overflow-x-hidden min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 p-3 text-xs flex flex-col justify-between">
@@ -151,12 +118,11 @@ export default function ListOfChequePage() {
           </label>
           <select
             value={cashBankFilter}
-            onChange={(e) => setCashBankFilter(e.target.value)}
+            onChange={(e) => { setCashBankFilter(e.target.value); setCurrentPage(1); }}
             className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
           >
             <option value="">Select value</option>
-            <option value="Cash">Cash Account</option>
-            <option value="Bank">Bank Account</option>
+            {bankAccounts.map((account) => <option key={account.id} value={account.value}>{account.name}</option>)}
           </select>
         </div>
 
@@ -181,7 +147,7 @@ export default function ListOfChequePage() {
               <span>Show</span>
               <select
                 value={entriesPerPage}
-                onChange={(e) => setEntriesPerPage(Number(e.target.value))}
+                onChange={(e) => { setEntriesPerPage(Number(e.target.value)); setCurrentPage(1); }}
                 className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-0.5 outline-none"
               >
                 <option value={10}>10</option>
@@ -197,7 +163,7 @@ export default function ListOfChequePage() {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-0.5 outline-none focus:border-indigo-500"
             />
           </div>
@@ -252,7 +218,7 @@ export default function ListOfChequePage() {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
               {filteredItems.length > 0 ? (
-                filteredItems.map((item) => (
+                visibleItems.map((item) => (
                   <tr
                     key={item.id}
                     className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
@@ -298,58 +264,12 @@ export default function ListOfChequePage() {
 
         {/* Table Footer / Pagination */}
         <div className="bg-white dark:bg-slate-900 rounded-b border border-t-0 border-slate-200 dark:border-slate-800 p-2.5 flex items-center justify-between text-slate-500 dark:text-slate-400 mb-4">
-          <div>Showing 1 to {filteredItems.length} of 148 entries</div>
+          <div>{loading ? "Loading cheques..." : `Showing ${filteredItems.length ? (safePage - 1) * entriesPerPage + 1 : 0} to ${Math.min(safePage * entriesPerPage, filteredItems.length)} of ${filteredItems.length} entries`}</div>
 
           <div className="flex items-center gap-1">
-            <button
-              type="button"
-              className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              className="px-2.5 py-1 rounded bg-[#635BFF] text-white font-medium"
-            >
-              1
-            </button>
-            <button
-              type="button"
-              className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-            >
-              2
-            </button>
-            <button
-              type="button"
-              className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-            >
-              3
-            </button>
-            <button
-              type="button"
-              className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-            >
-              4
-            </button>
-            <button
-              type="button"
-              className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-            >
-              5
-            </button>
-            <span className="px-1 text-slate-400">...</span>
-            <button
-              type="button"
-              className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-            >
-              15
-            </button>
-            <button
-              type="button"
-              className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-            >
-              Next
-            </button>
+            <button type="button" disabled={safePage <= 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-50">Previous</button>
+            <span className="px-2 py-1 rounded bg-[#635BFF] text-white font-medium">{safePage} / {totalPages}</span>
+            <button type="button" disabled={safePage >= totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-50">Next</button>
           </div>
         </div>
       </div>

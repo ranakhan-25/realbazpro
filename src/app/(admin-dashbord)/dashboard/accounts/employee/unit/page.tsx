@@ -1,6 +1,8 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
 import React, { useState, useEffect } from "react";
 import {
   Search,
@@ -38,7 +40,7 @@ async function handleRes(res: Response, action: string) {
 async function fetchUnits(): Promise<{ data: Unit[]; meta: any }> {
   const url = `${API_BASE}/realbizpro/api/v1/unit?page=1&limit=100&skip=0&status=active&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
   console.log("GET units →", url);
-  const res = await fetch(url, {
+  const res = await accountsFetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -60,7 +62,7 @@ async function fetchUnits(): Promise<{ data: Unit[]; meta: any }> {
 
 async function createUnit(payload: Record<string, any>) {
   console.log("POST payload →", payload);
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/unit`, {
+  const res = await accountsFetch(`${API_BASE}/realbizpro/api/v1/unit`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -72,7 +74,7 @@ async function createUnit(payload: Record<string, any>) {
 
 async function updateUnit(uuid: string, payload: Record<string, any>) {
   console.log("PATCH", uuid, "payload →", payload);
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/unit/${uuid}`, {
+  const res = await accountsFetch(`${API_BASE}/realbizpro/api/v1/unit/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -84,7 +86,7 @@ async function updateUnit(uuid: string, payload: Record<string, any>) {
 
 async function softDeleteUnit(uuid: string) {
   console.log("DELETE →", uuid);
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/unit/${uuid}`, {
+  const res = await accountsFetch(`${API_BASE}/realbizpro/api/v1/unit/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });
@@ -95,7 +97,7 @@ async function softDeleteUnit(uuid: string) {
 
 async function restoreUnit(uuid: string) {
   console.log("PATCH restore →", uuid);
-  const res = await fetch(
+  const res = await accountsFetch(
     `${API_BASE}/realbizpro/api/v1/unit/${uuid}/restore`,
     {
       method: "PATCH",

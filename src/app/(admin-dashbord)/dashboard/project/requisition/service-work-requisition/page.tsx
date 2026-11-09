@@ -3,6 +3,9 @@
 
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useEffect, useState } from "react";
 
 import {
@@ -144,7 +147,7 @@ async function fetchRelatedOptions(
 ): Promise<RelatedOption[]> {
   try {
     const query = new URLSearchParams({ page: "1", limit: "100" });
-    const res = await fetch(`${endpoint}?${query}`, {
+    const res = await projectFetch(`${endpoint}?${query}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -209,7 +212,7 @@ async function fetchRequisitions(params?: {
 
   const url = `${REQUISITION_API}?page=${page}&limit=${limit}&skip=0&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
 
-  const res = await fetch(url, {
+  const res = await projectFetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -271,7 +274,7 @@ async function fetchRequisitions(params?: {
 }
 
 async function fetchRequisitionById(uuid: string) {
-  const res = await fetch(`${REQUISITION_API}/${uuid}`, {
+  const res = await projectFetch(`${REQUISITION_API}/${uuid}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -286,7 +289,7 @@ async function fetchRequisitionById(uuid: string) {
 }
 
 async function createRequisition(payload: Record<string, any>) {
-  const res = await fetch(REQUISITION_API, {
+  const res = await projectFetch(REQUISITION_API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -299,7 +302,7 @@ async function createRequisition(payload: Record<string, any>) {
 }
 
 async function fetchRequisitionItemByUuid(uuid: string) {
-  const res = await fetch(`${ITEM_API}/${encodeURIComponent(uuid)}`, {
+  const res = await projectFetch(`${ITEM_API}/${encodeURIComponent(uuid)}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -325,7 +328,7 @@ async function fetchRequisitionItems(serviceWorkRequisitionId?: string) {
   if (serviceWorkRequisitionId) {
     query.set("serviceWorkRequisitionId", serviceWorkRequisitionId);
   }
-  const res = await fetch(`${ITEM_API}?${query.toString()}`,
+  const res = await projectFetch(`${ITEM_API}?${query.toString()}`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -344,7 +347,7 @@ async function fetchRequisitionItems(serviceWorkRequisitionId?: string) {
 }
 
 async function createRequisitionItem(payload: Record<string, any>) {
-  const res = await fetch(ITEM_API, {
+  const res = await projectFetch(ITEM_API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -360,7 +363,7 @@ async function updateRequisitionItem(
   uuid: string,
   payload: Record<string, any>,
 ) {
-  const res = await fetch(`${ITEM_API}/${encodeURIComponent(uuid)}`, {
+  const res = await projectFetch(`${ITEM_API}/${encodeURIComponent(uuid)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -375,7 +378,7 @@ async function updateRequisitionItem(
 }
 
 async function deleteRequisitionItem(uuid: string) {
-  const res = await fetch(`${ITEM_API}/${encodeURIComponent(uuid)}`, {
+  const res = await projectFetch(`${ITEM_API}/${encodeURIComponent(uuid)}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });
@@ -389,7 +392,7 @@ async function deleteRequisitionItem(uuid: string) {
 }
 
 async function updateRequisition(uuid: string, payload: Record<string, any>) {
-  const res = await fetch(`${REQUISITION_API}/${uuid}`, {
+  const res = await projectFetch(`${REQUISITION_API}/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -402,7 +405,7 @@ async function updateRequisition(uuid: string, payload: Record<string, any>) {
 }
 
 async function softDeleteRequisition(uuid: string) {
-  const res = await fetch(`${REQUISITION_API}/${uuid}`, {
+  const res = await projectFetch(`${REQUISITION_API}/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

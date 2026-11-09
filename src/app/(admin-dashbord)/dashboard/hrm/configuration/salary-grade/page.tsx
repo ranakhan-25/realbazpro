@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
+
 import React, { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, X, Loader2, Check, Search } from "lucide-react";
 
@@ -38,7 +40,7 @@ async function handleRes(res: Response, action: string) {
 // ১. মাস্টার ডাটা ফেচ (AllowanceDeductionSetup)
 async function fetchMasterSetups(): Promise<MasterSetup[]> {
   const url = `${API_BASE}/realbizpro/api/v1/allowance-deduction-setup?page=1&limit=100&withDeleted=false`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch setups");
   
   return (json?.data?.data || [])
@@ -53,7 +55,7 @@ async function fetchMasterSetups(): Promise<MasterSetup[]> {
 // ২. Salary Grade Item লিস্ট ফেচ
 async function fetchGradeItems(): Promise<SalaryGradeItem[]> {
   const url = `${API_BASE}/realbizpro/api/v1/salary-grade-item?page=1&limit=100&withDeleted=false`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch salary grade items");
 
   return (json?.data?.data || [])
@@ -72,7 +74,7 @@ async function fetchGradeItems(): Promise<SalaryGradeItem[]> {
 
 // ৩. Salary Grade Item তৈরি
 async function createGradeItem(payload: any) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/salary-grade-item`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/salary-grade-item`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -82,7 +84,7 @@ async function createGradeItem(payload: any) {
 
 // ৪. Salary Grade Item আপডেট
 async function updateGradeItem(uuid: string, payload: any) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/salary-grade-item/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/salary-grade-item/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -92,7 +94,7 @@ async function updateGradeItem(uuid: string, payload: any) {
 
 // ৫. Salary Grade Item ডিলিট
 async function softDeleteGradeItem(uuid: string) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/salary-grade-item/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/salary-grade-item/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

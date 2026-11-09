@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Plus, X, Loader2, Download } from "lucide-react";
@@ -89,7 +92,7 @@ export default function QuotationPage() {
   const fetchQuotations = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/quotation?sortOrder=DESC&withDeleted=false`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/quotation?sortOrder=DESC&withDeleted=false`);
       const json = await res.json();
       if (json.success) {
         setQuotations((json.data.data || []).filter((item: any) => !item.deletedAt));
@@ -105,34 +108,34 @@ export default function QuotationPage() {
   const fetchDropdowns = async () => {
     try {
       // ১. কাস্টমার (সাপ্লায়ার API)
-      const resCust = await fetch(`${API_BASE}/realbizpro/api/v1/inventory/suppliers?page=1&limit=100`);
+      const resCust = await projectFetch(`${API_BASE}/realbizpro/api/v1/inventory/suppliers?page=1&limit=100`);
       const jsonCust = await resCust.json();
       if (jsonCust.success) {
         setCustomers(jsonCust.data.data || []);
       }
 
       // ২. প্রজেক্ট টাইপ
-      const resType = await fetch(`${API_BASE}/realbizpro/api/v1/project-type`);
+      const resType = await projectFetch(`${API_BASE}/realbizpro/api/v1/project-type`);
       const jsonType = await resType.json();
       if (jsonType.success) setProjectTypes(jsonType.data.data || []);
 
       // ৩. প্রজেক্ট
-      const resProj = await fetch(`${API_BASE}/realbizpro/api/v1/project`);
+      const resProj = await projectFetch(`${API_BASE}/realbizpro/api/v1/project`);
       const jsonProj = await resProj.json();
       if (jsonProj.success) setProjects(jsonProj.data.data || []);
 
       // ৪. সাইট
-      const resSite = await fetch(`${API_BASE}/realbizpro/api/v1/project-sites`);
+      const resSite = await projectFetch(`${API_BASE}/realbizpro/api/v1/project-sites`);
       const jsonSite = await resSite.json();
       if (jsonSite.success) setSites(jsonSite.data.data || []);
 
       // ৫. ক্যাটাগরি
-      const resCat = await fetch(`${API_BASE}/realbizpro/api/v1/category`);
+      const resCat = await projectFetch(`${API_BASE}/realbizpro/api/v1/category`);
       const jsonCat = await resCat.json();
       if (jsonCat.success) setCategories(jsonCat.data.data || []);
 
       // ✅ ৬. সব সাব-ক্যাটাগরি (limit=100 ফিক্স)
-      const resSubCat = await fetch(`${API_BASE}/realbizpro/api/v1/billing-sub-category?page=1&limit=100`);
+      const resSubCat = await projectFetch(`${API_BASE}/realbizpro/api/v1/billing-sub-category?page=1&limit=100`);
       const jsonSubCat = await resSubCat.json();
       if (jsonSubCat.success) {
         setAllSubCategories(jsonSubCat.data.data || []);
@@ -229,7 +232,7 @@ export default function QuotationPage() {
     };
 
     try {
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/quotation`, {
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/quotation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
