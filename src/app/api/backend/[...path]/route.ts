@@ -14,6 +14,16 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
   headers.delete("host");
   headers.delete("content-length");
 
+  if (!headers.has("authorization")) {
+    const token =
+      request.cookies.get("admin_access_token")?.value ||
+      request.cookies.get("access_token")?.value ||
+      request.cookies.get("token")?.value;
+    if (token) {
+      headers.set("authorization", `Bearer ${token}`);
+    }
+  }
+
   let response: Response;
   try {
     response = await fetch(targetUrl, {

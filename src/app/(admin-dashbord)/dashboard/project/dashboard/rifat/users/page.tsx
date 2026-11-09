@@ -1,5 +1,8 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useCallback, useEffect, useState } from "react";
 import { Plus, Trash2, Pencil, X } from "lucide-react";
 
@@ -39,7 +42,7 @@ function rowsFrom<T>(value: unknown): T[] {
 }
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
+  const response = await projectFetch(url, {
     ...init,
     headers: {
       Accept: "application/json",

@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import {
   Search,
@@ -59,7 +62,7 @@ type InvestorFormData = {
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 async function fetchInvestors(): Promise<{ data: Investor[]; meta: any }> {
-  const res = await fetch(
+  const res = await projectFetch(
     `${API_BASE}/realbizpro/api/v1/investor?page=1&limit=100&skip=0&sortBy=createdAt&sortOrder=DESC&withDeleted=false&status=active`,
     {
       method: "GET",
@@ -110,7 +113,7 @@ function buildFormData(payload: Record<string, any>, imageFile?: File | null) {
 }
 
 async function createInvestor(payload: Record<string, any>, imageFile?: File | null) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/investor`, {
+  const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/investor`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -129,7 +132,7 @@ async function createInvestor(payload: Record<string, any>, imageFile?: File | n
 }
 
 async function updateInvestor(uuid: string, payload: Record<string, any>, imageFile?: File | null) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/investor/${uuid}`, {
+  const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/investor/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -148,7 +151,7 @@ async function updateInvestor(uuid: string, payload: Record<string, any>, imageF
 }
 
 async function softDeleteInvestor(uuid: string) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/investor/${uuid}`, {
+  const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/investor/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

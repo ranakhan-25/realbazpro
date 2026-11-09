@@ -2245,6 +2245,8 @@
 
 "use client";
 
+import { normalizeProjectText, projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 
@@ -2328,7 +2330,7 @@ interface DashboardData {
 // =====================================================
 
 const API_BASE = "/realbizpro/api/v1";
-const PROJECTS_API = `${API_BASE}/projects`; // ← change if your endpoint is different
+const PROJECTS_API = `${API_BASE}/project`; // ← change if your endpoint is different
 
 // =====================================================
 // CHART COLORS
@@ -2418,7 +2420,7 @@ const DashboardPage = () => {
         setLoading(true);
         setError(null);
 
-        const res = await fetch(PROJECTS_API, {
+        const res = await projectFetch(PROJECTS_API, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -2465,12 +2467,9 @@ const DashboardPage = () => {
   // -------------------------------------------------
   const data: DashboardData = useMemo(() => {
     const recentProjects: Project[] = rawProjects.map((p: any, index: number) => {
-      const name =
-        p.name ||
-        p.projectName ||
-        p.title ||
-        p.project_name ||
-        `Project ${index + 1}`;
+      const name = normalizeProjectText(
+        p.name || p.projectName || p.title || p.project_name || `Project ${index + 1}`,
+      );
 
       const uuid = p.uuid || p.id || p._id || String(index + 1);
       const slug = p.slug || slugify(name);

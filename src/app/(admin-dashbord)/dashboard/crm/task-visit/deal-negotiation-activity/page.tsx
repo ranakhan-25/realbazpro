@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { CrmPageTemplate } from "@/components/crm/CrmPageTemplate";
@@ -8,36 +9,29 @@ export default function DealNegotiationActivityPage() {
       breadcrumb="CRM / Tasks & Visits / Deal Negotiations"
       title="Deal Price Negotiations"
       description="Review client price offers, special payment schedules, and executive board discount approvals."
-      addLabel="Initiate Negotiation"
-      apiEndpoint="/crm/negotiations"
+      apiEndpoint="/crm/task-visit/deal-negotiation-activity"
       transformData={(negotiations: any[]) =>
         negotiations.map((n) => ({
           id: n.uuid || n.id,
-          property: n.property_id || "Prime Plot",
-          client: n.lead?.client_name || n.lead?.full_name || (n.lead_id ? `Lead #${n.lead_id}` : "Direct Client"),
-          offer: `${Number(n.offer_price || 0).toLocaleString()} BDT`,
-          agreed: `${Number(n.agreed_price || 0).toLocaleString()} BDT`,
-          discount: `${Number(n.discount_amount || 0).toLocaleString()} BDT`,
-          status: (n.approval_status || "Pending").toUpperCase(),
-          approvedBy: n.approved_by || "Pending Director Review",
+          property: n.flatLandName || n.property_id || "Prime Plot",
+          project: n.projectName || "—",
+          client: n.leadName || n.lead?.clientName || (n.leadId ? `Lead #${n.leadId}` : "Direct Client"),
+          offer: n.clientOfferedPrice ? `৳${Number(n.clientOfferedPrice).toLocaleString()}` : "—",
+          agreed: n.finalPrice ? `৳${Number(n.finalPrice).toLocaleString()}` : "—",
+          discount: n.discountAmount ? `৳${Number(n.discountAmount).toLocaleString()}` : "৳0",
+          status: (n.approval || n.status || "Pending").toUpperCase(),
+          approvedBy: n.approvedBy || "Pending Review",
         }))
       }
       columns={[
-        { key: "property", label: "Property Identifier" },
-        { key: "client", label: "Client / Lead" },
+        { key: "property", label: "Property / Flat" },
+        { key: "project", label: "Project" },
+        { key: "client", label: "Client Name" },
         { key: "offer", label: "Client Offer" },
         { key: "agreed", label: "Agreed Price" },
-        { key: "discount", label: "Discount Granted" },
+        { key: "discount", label: "Discount" },
         { key: "status", label: "Approval Status" },
         { key: "approvedBy", label: "Approved By" },
-      ]}
-      createFields={[
-        { key: "property_id", label: "Property Identifier", type: "text", required: true, placeholder: "e.g. PLOT-SEC17-4A" },
-        { key: "lead_id", label: "Lead ID (Optional)", type: "number", placeholder: "Leave blank for auto-assign" },
-        { key: "offer_price", label: "Client Offer Price (BDT)", type: "number", required: true, placeholder: "9000000" },
-        { key: "agreed_price", label: "Agreed Sale Price (BDT)", type: "number", required: true, placeholder: "8600000" },
-        { key: "discount_amount", label: "Special Discount (BDT)", type: "number", defaultValue: 0 },
-        { key: "special_terms", label: "Negotiation Terms", type: "textarea", placeholder: "Custom installment terms..." },
       ]}
     />
   );

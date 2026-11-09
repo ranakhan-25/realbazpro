@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { crmFetch, API_ORIGIN } from "../../crm-fetch";
 
 // --- Types for Dropdowns API ---
 interface Project {
@@ -57,7 +58,7 @@ interface ReportResponse {
 }
 
 export default function InterestedFlatLandReportPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const baseUrl = API_ORIGIN;
 
   // --- States ---
   const [dropdownData, setDropdownData] = useState<
@@ -81,10 +82,10 @@ export default function InterestedFlatLandReportPage() {
       setErrorMsg(null);
       try {
         const [dropdownRes, reportRes] = await Promise.all([
-          fetch(
+          crmFetch(
             `${baseUrl}/realbizpro/api/v1/crm/reports/interested-flat-land/dropdowns`,
           ),
-          fetch(
+          crmFetch(
             `${baseUrl}/realbizpro/api/v1/crm/reports/interested-flat-land?page=1&limit=100`,
           ), // Fetch high limit for client-side filtering
         ]);

@@ -57,10 +57,7 @@ export default function BookingPage() {
         },
         { key: "grandTotal", label: "Total Cost (BDT)", type: "number", placeholder: "e.g. 5000000" },
       ]}
-      rows={[
-        { id: "1", code: "BK-2201", clientName: "Nusrat Jahan", unit: "Unit 4B, Skyline Residency", bookingDate: "2026-08-15", status: "Confirmed" },
-        { id: "2", code: "BK-2198", clientName: "Golam Gaus", unit: "Unit 2A, Palm Court", bookingDate: "2026-08-10", status: "Pending" },
-      ]}
+      rows={[]}
     />
   );
 }

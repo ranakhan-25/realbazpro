@@ -1,5 +1,8 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import { useEffect, useMemo, useState } from "react";
 
 const API_BASE = (
@@ -53,7 +56,7 @@ export default function ProjectReportTable({
       setLoading(true);
       setError("");
       try {
-        const response = await fetch(
+        const response = await projectFetch(
           `${API_BASE}/realbizpro/api/v1/project/reports/${endpoint}`,
           { cache: "no-store" },
         );

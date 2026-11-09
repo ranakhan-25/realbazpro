@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Plus,
@@ -107,7 +110,7 @@ export default function InvoiceBillListPage() {
   // ==================== FETCHERS ====================
   const fetchRelatedOptions = async (endpoint: string, label: string) => {
     try {
-      const res = await fetch(
+      const res = await projectFetch(
         `${API_BASE}${API_PREFIX}${endpoint}?page=1&limit=100`,
       );
       if (!res.ok) {
@@ -175,7 +178,7 @@ export default function InvoiceBillListPage() {
       const url = `${API_BASE}${API_PREFIX}/project-billing/bill-invoices?page=1&limit=100`;
       console.log("📤 Fetching invoices →", url);
 
-      const res = await fetch(url);
+      const res = await projectFetch(url);
       console.log("📥 Invoice API Status:", res.status);
 
       if (!res.ok) {
@@ -242,7 +245,7 @@ export default function InvoiceBillListPage() {
 
   const handleSaveCustomer = async () => {
     try {
-      const res = await fetch(`${API_BASE}${API_PREFIX}/customer-account`, {
+      const res = await projectFetch(`${API_BASE}${API_PREFIX}/customer-account`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -303,7 +306,7 @@ export default function InvoiceBillListPage() {
 
       console.log("📤 Creating Invoice Payload:", payload);
 
-      const res = await fetch(
+      const res = await projectFetch(
         `${API_BASE}${API_PREFIX}/project-billing/bill-invoices${editingInvoiceUuid ? `/${editingInvoiceUuid}` : ""}`,
         {
         method: editingInvoiceUuid ? "PATCH" : "POST",
@@ -333,7 +336,7 @@ export default function InvoiceBillListPage() {
   const handleEditInvoice = async (invoice: any) => {
     try {
       setLoading(true);
-      const response = await fetch(
+      const response = await projectFetch(
         `${API_BASE}${API_PREFIX}/project-billing/bill-invoices/${invoice.uuid}`,
       );
       const json = await response.json();
@@ -378,7 +381,7 @@ export default function InvoiceBillListPage() {
     if (!window.confirm(`Delete invoice ${invoice.code}?`)) return;
     try {
       setLoading(true);
-      const response = await fetch(
+      const response = await projectFetch(
         `${API_BASE}${API_PREFIX}/project-billing/bill-invoices/${invoice.uuid}`,
         { method: "DELETE" },
       );

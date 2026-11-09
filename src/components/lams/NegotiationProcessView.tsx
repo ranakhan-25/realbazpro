@@ -12,9 +12,18 @@ import {
   XCircle,
   Plus,
   Minus,
+  Pencil,
+  PlusCircle,
+  FileSpreadsheet,
+  DollarSign,
+  TrendingUp,
 } from "lucide-react";
 import { NegotiationRecord, AcquisitionLead, NegotiationStatus } from "@/types/lams";
 import { AddNegotiationModal } from "./modals/AddNegotiationModal";
+import { LamsTableToolbar, ColumnDefinition } from "./common/LamsTableToolbar";
+import { LamsBulkActionBar } from "./common/LamsBulkActionBar";
+import { LamsEmptyState } from "./common/LamsEmptyState";
+import { LamsStatusBadge } from "./common/LamsStatusBadge";
 
 interface NegotiationProcessViewProps {
   negotiations: NegotiationRecord[];
@@ -24,94 +33,268 @@ interface NegotiationProcessViewProps {
   acquisitionLeads: AcquisitionLead[];
 }
 
-const STATUS_CONFIG: Record<
-  NegotiationStatus,
-  { bg: string; text: string; icon: React.ElementType }
-> = {
-  "In Progress": {
-    bg: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
-    text: "text-blue-700",
-    icon: Clock,
-  },
-  Agreed: {
-    bg: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-    text: "text-emerald-700",
-    icon: CheckCircle2,
-  },
-  "Revision Needed": {
-    bg: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-    text: "text-amber-700",
-    icon: AlertTriangle,
-  },
-  Declined: {
-    bg: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
-    text: "text-rose-700",
-    icon: XCircle,
-  },
-};
+const DEFAULT_COLUMNS: ColumnDefinition[] = [
+  { key: "lead", label: "Lead / Parcel", visible: true },
+  { key: "round_no", label: "Round #", visible: true },
+  { key: "offer_amount", label: "Company Offer (৳)", visible: true },
+  { key: "counter_amount", label: "Owner Counter (৳)", visible: true },
+  { key: "gap", label: "Price Gap (৳)", visible: true },
+  { key: "negotiator", label: "Negotiator", visible: true },
+  { key: "date", label: "Meeting Date", visible: true },
+  { key: "status", label: "Status", visible: true },
+];
 
 export function NegotiationProcessView({
-  negotiations,
+  negotiations = [],
   onAddNegotiation,
-    onEditNegotiation,
+  onEditNegotiation,
   onDeleteNegotiation,
-  acquisitionLeads,
+  acquisitionLeads = [],
 }: NegotiationProcessViewProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [leadFilter, setLeadFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [columns, setColumns] = useState<ColumnDefinition[]>(DEFAULT_COLUMNS);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingNegotiation, setEditingNegotiation] = useState<any>(null);
 
+  const safeNegotiations = Array.isArray(negotiations) ? negotiations : [];
+
+  // KPIs
+  const kpis = useMemo(() => {
+    let totalOffered = 0;
+    let totalCounter = 0;
+    let agreedCount = 0;
+
+    safeNegotiations.forEach((n) => {
+      totalOffered += n.offeredTotalPrice || (n as any).offer_amount || 0;
+      totalCounter += n.counterOfferByOwner || (n as any).counter_amount || 0;
+      if (n.negotiationStatus === "Agreed" || (n as any).status === "Agreed") agreedCount += 1;
+    });
+
+    return {
+      totalNegotiations: safeNegotiations.length,
+      agreedCount,
+      totalOffered,
+      totalCounter,
+    };
+  }, [safeNegotiations]);
+
+  // Filtering
   const filteredNegotiations = useMemo(() => {
-    const safeNegotiations = Array.isArray(negotiations) ? negotiations : [];
-    return safeNegotiations.filter((item) => {
+    return safeNegotiations.filter((item: any) => {
+      const title = item.leadTitle || item.lead || "";
+      const mouza = item.mouza || "";
+      const negotiator = item.attendedBy || item.negotiator || "";
+      const status = item.negotiationStatus || item.status || "";
+      const leadId = item.acquisitionLeadId || item.lead_id || "";
+      const date = item.meetingDate || item.date || "";
+
       const term = searchTerm.toLowerCase();
       const matchesSearch =
         !term ||
-        (item.leadTitle || "").toLowerCase().includes(term) ||
-        (item.mouza || "").toLowerCase().includes(term) ||
-        (item.dagNo || "").toLowerCase().includes(term) ||
-        (item.attendedBy || "").toLowerCase().includes(term);
+        title.toLowerCase().includes(term) ||
+        mouza.toLowerCase().includes(term) ||
+        negotiator.toLowerCase().includes(term);
 
-      const matchesStatus = statusFilter === "ALL" || item.negotiationStatus === statusFilter;
+      const matchesLead = leadFilter === "ALL" || leadId === leadFilter || title === leadFilter;
+      const matchesStatus = statusFilter === "ALL" || status === statusFilter;
 
-      return matchesSearch && matchesStatus;
+      let matchesDate = true;
+      if (fromDate && date < fromDate) matchesDate = false;
+      if (toDate && date > toDate) matchesDate = false;
+
+      return matchesSearch && matchesLead && matchesStatus && matchesDate;
     });
-  }, [negotiations, searchTerm, statusFilter]);
+  }, [safeNegotiations, searchTerm, leadFilter, statusFilter, fromDate, toDate]);
 
   const displayedNegotiations = filteredNegotiations.slice(0, entriesPerPage);
+
+  const handleToggleColumn = (key: string) => {
+    setColumns(
+      columns.map((c) => (c.key === key ? { ...c, visible: !c.visible } : c))
+    );
+  };
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(displayedNegotiations.map((n: any) => n.uuid || n.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleExportCSV = () => {
+    const headers = [
+      "Lead Title",
+      "Round #",
+      "Offered Total (BDT)",
+      "Counter Offer (BDT)",
+      "Price Gap",
+      "Attended By / Negotiator",
+      "Meeting Date",
+      "Status",
+      "Remarks",
+    ];
+    const rows = filteredNegotiations.map((n: any) => [
+      `"${n.leadTitle || n.lead || ""}"`,
+      n.round_no || 1,
+      n.offeredTotalPrice || n.offer_amount || 0,
+      n.counterOfferByOwner || n.counter_amount || 0,
+      (n.counterOfferByOwner || n.counter_amount || 0) - (n.offeredTotalPrice || n.offer_amount || 0),
+      `"${n.attendedBy || n.negotiator || ""}"`,
+      `"${n.meetingDate || n.date || ""}"`,
+      `"${n.negotiationStatus || n.status || ""}"`,
+      `"${n.remarks || ""}"`,
+    ]);
+
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `negotiations_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const toggleExpand = (uuid: string) => {
     setExpandedId((prev) => (prev === uuid ? null : uuid));
   };
 
+  const isColVisible = (key: string) => columns.find((c) => c.key === key)?.visible ?? true;
+
   return (
-    <div className="space-y-4">
-      {/* Top Action & Search Bar */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
-            <span>Show</span>
+    <div className="space-y-6">
+      {/* 1. Metric Cards Header */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Rounds</p>
+            <p className="text-xl font-bold text-slate-900 dark:text-white mt-1">
+              {kpis.totalNegotiations} Rounds
+            </p>
+            <p className="text-[11px] text-slate-500 mt-0.5">Active parcel discussions</p>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-100 dark:border-amber-800 flex items-center justify-center text-amber-600 dark:text-amber-400">
+            <Handshake className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Deals Agreed</p>
+            <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">
+              {kpis.agreedCount} Agreed
+            </p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {kpis.totalNegotiations > 0 ? Math.round((kpis.agreedCount / kpis.totalNegotiations) * 100) : 0}% success rate
+            </p>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-100 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">Company Total Offered</p>
+            <p className="text-xl font-bold text-cyan-700 dark:text-cyan-300 mt-1">
+              ৳ {(kpis.totalOffered / 10000000).toFixed(2)} Cr
+            </p>
+            <p className="text-[11px] text-slate-500 mt-0.5">Target acquisition cap</p>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-100 dark:border-cyan-800 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
+            <DollarSign className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Owner Total Counter</p>
+            <p className="text-xl font-bold text-indigo-700 dark:text-indigo-300 mt-1">
+              ৳ {(kpis.totalCounter / 10000000).toFixed(2)} Cr
+            </p>
+            <p className="text-[11px] text-slate-500 mt-0.5">Seller expectations</p>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+            <TrendingUp className="w-6 h-6" />
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Header and Main Action Button */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Handshake className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            Land Price Negotiation & Counter-Offer Process
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Log rounds of negotiation, company offers vs seller counter offers, and meeting minutes.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => {
+              setEditingNegotiation(null);
+              setIsAddModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white text-xs font-bold shadow-md shadow-amber-500/20 transition-all hover:scale-[1.01]"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Add Negotiation Round</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3. Filter Bar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Lead filter */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+              Acquisition Lead
+            </label>
             <select
-              value={entriesPerPage}
-              onChange={(e) => setEntriesPerPage(Number(e.target.value))}
-              className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white font-bold"
+              value={leadFilter}
+              onChange={(e) => setLeadFilter(e.target.value)}
+              className="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500/20"
             >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
+              <option value="ALL">All Acquisition Leads</option>
+              {acquisitionLeads.map((l) => (
+                <option key={l.id || l.uuid} value={l.id || l.uuid}>
+                  {l.lead_code || l.title}
+                </option>
+              ))}
             </select>
-            <span>entries</span>
           </div>
 
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-500 font-semibold">Status:</span>
+          {/* Status filter */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+              Negotiation Status
+            </label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-medium"
+              className="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500/20"
             >
               <option value="ALL">All Statuses</option>
               <option value="In Progress">In Progress</option>
@@ -120,54 +303,124 @@ export function NegotiationProcessView({
               <option value="Declined">Declined</option>
             </select>
           </div>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 sm:w-72">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          {/* From Date */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+              Meeting From
+            </label>
             <input
-              type="text"
-              placeholder="Search negotiations, plots, officers..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-cyan-500/30"
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500/20"
             />
           </div>
 
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-md shadow-amber-600/20 whitespace-nowrap transition-all"
-          >
-            <Handshake className="w-4 h-4" />
-            <span>+ Negotiation Process Add</span>
-          </button>
+          {/* To Date */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+              Meeting To
+            </label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500/20"
+            />
+          </div>
         </div>
+
+        {/* Toolbar */}
+        <LamsTableToolbar
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search lead title, mouza, officer, notes..."
+          columns={columns}
+          onToggleColumn={handleToggleColumn}
+          onExportCSV={handleExportCSV}
+          entriesPerPage={entriesPerPage}
+          onEntriesPerPageChange={setEntriesPerPage}
+          onResetFilters={() => {
+            setSearchTerm("");
+            setLeadFilter("ALL");
+            setStatusFilter("ALL");
+            setFromDate("");
+            setToDate("");
+          }}
+          hasActiveFilters={
+            Boolean(searchTerm) ||
+            leadFilter !== "ALL" ||
+            statusFilter !== "ALL" ||
+            Boolean(fromDate) ||
+            Boolean(toDate)
+          }
+        />
       </div>
 
-      {/* Modernized Table (Transformed from screenshot negotiation-p.jpg) */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-3 w-12 text-center">SL</th>
-                <th className="py-3 px-3.5">Acquisition Lead / Parcel</th>
-                <th className="py-3 px-3.5">Mouza & Dag</th>
-                <th className="py-3 px-3.5">Offered Total (৳)</th>
-                <th className="py-3 px-3.5">Offered / Dec</th>
-                <th className="py-3 px-3.5">Counter Offer (৳)</th>
-                <th className="py-3 px-3.5">Counter / Dec</th>
-                <th className="py-3 px-3 text-center">Status</th>
-                <th className="py-3 px-3.5">Meeting Schedule</th>
-                <th className="py-3 px-3 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {displayedNegotiations.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="py-12 text-center text-slate-400 dark:text-slate-500">
-                    No negotiation records found. Click "+ Negotiation Process Add" to create one.
-                  </td>
+      {/* 4. Bulk Action Bar */}
+      <LamsBulkActionBar
+        selectedCount={selectedIds.length}
+        onClearSelection={() => setSelectedIds([])}
+        onBulkDelete={() => {
+          if (confirm(`Are you sure you want to delete ${selectedIds.length} negotiation records?`)) {
+            selectedIds.forEach((id) => onDeleteNegotiation?.(id));
+            setSelectedIds([]);
+          }
+        }}
+        onBulkStatusChange={(newStatus) => {
+          selectedIds.forEach((id) =>
+            onEditNegotiation?.(id, { negotiationStatus: newStatus as any })
+          );
+          setSelectedIds([]);
+        }}
+        statusOptions={[
+          { label: "In Progress", value: "In Progress" },
+          { label: "Agreed", value: "Agreed" },
+          { label: "Revision Needed", value: "Revision Needed" },
+          { label: "Declined", value: "Declined" },
+        ]}
+      />
+
+      {/* 5. Negotiations Data Table */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+        {displayedNegotiations.length === 0 ? (
+          <LamsEmptyState
+            title="No negotiation records found"
+            subtitle="Start a negotiation process or adjust filters to view historical offer rounds."
+            buttonText="Add Negotiation Round"
+            onAction={() => {
+              setEditingNegotiation(null);
+              setIsAddModalOpen(true);
+            }}
+            icon={Handshake}
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200/80 dark:border-slate-800 text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
+                  <th className="py-3 px-3 w-8 text-center">
+                    <input
+                      type="checkbox"
+                      onChange={handleSelectAll}
+                      checked={
+                        displayedNegotiations.length > 0 &&
+                        selectedIds.length === displayedNegotiations.length
+                      }
+                      className="rounded border-slate-300 dark:border-slate-600 text-amber-600 focus:ring-amber-500"
+                    />
+                  </th>
+                  <th className="py-3 px-2 w-8 text-center">#</th>
+                  {isColVisible("lead") && <th className="py-3 px-3.5">Lead / Parcel</th>}
+                  {isColVisible("round_no") && <th className="py-3 px-3.5 text-center">Round</th>}
+                  {isColVisible("offer_amount") && <th className="py-3 px-3.5 text-right">Company Offer</th>}
+                  {isColVisible("counter_amount") && <th className="py-3 px-3.5 text-right">Owner Counter</th>}
+                  {isColVisible("gap") && <th className="py-3 px-3.5 text-right">Price Gap</th>}
+                  {isColVisible("negotiator") && <th className="py-3 px-3.5">Negotiator</th>}
+                  {isColVisible("date") && <th className="py-3 px-3.5">Meeting Date</th>}
+                  {isColVisible("status") && <th className="py-3 px-3.5 text-center">Status</th>}
+                  <th className="py-3 px-3.5 text-right">Actions</th>
                 </tr>
               ) : (
                 displayedNegotiations.map((item, idx) => {
@@ -180,153 +433,175 @@ export function NegotiationProcessView({
                   return (
                     <React.Fragment key={itemId}>
                       <tr
-                        className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
-                          isExpanded ? "bg-amber-50/40 dark:bg-amber-950/20" : ""
+                        className={`transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${
+                          isSelected ? "bg-amber-50/40 dark:bg-amber-950/20" : ""
                         }`}
                       >
                         <td className="py-3 px-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleSelectOne(itemId)}
+                            className="rounded border-slate-300 dark:border-slate-600 text-amber-600 focus:ring-amber-500"
+                          />
+                        </td>
+
+                        <td className="py-3 px-2 text-center">
                           <button
                             onClick={() => toggleExpand(itemId)}
                             className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 transition-all font-bold"
                             title={isExpanded ? "Collapse" : "Expand"}
                           >
-                            {isExpanded ? <Minus className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                            {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                           </button>
                         </td>
 
-                        <td className="py-3 px-3.5">
-                          <p className="font-bold text-slate-900 dark:text-white">{item.leadTitle}</p>
-                          <p className="text-[10px] text-slate-400">ID: {item.acquisitionLeadId}</p>
-                        </td>
+                        {/* Lead */}
+                        {isColVisible("lead") && (
+                          <td className="py-3 px-3.5">
+                            <span className="font-bold text-slate-800 dark:text-slate-100 block">
+                              {item.leadTitle || item.lead || "Acquisition Lead"}
+                            </span>
+                            {item.mouza && (
+                              <span className="text-[10px] text-slate-400 block">
+                                Mouza: {item.mouza} {item.dagNo ? `• Dag ${item.dagNo}` : ""}
+                              </span>
+                            )}
+                          </td>
+                        )}
 
-                        <td className="py-3 px-3.5 font-medium text-slate-700 dark:text-slate-300">
-                          {item.mouza} (Dag {item.dagNo})
-                        </td>
+                        {/* Round # */}
+                        {isColVisible("round_no") && (
+                          <td className="py-3 px-3.5 text-center">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs">
+                              {roundNo}
+                            </span>
+                          </td>
+                        )}
 
-                        <td className="py-3 px-3.5 font-bold text-slate-900 dark:text-white">
-                          ৳{(item.offeredTotalPrice / 10000000).toFixed(2)} Cr
-                        </td>
+                        {/* Offer Amount */}
+                        {isColVisible("offer_amount") && (
+                          <td className="py-3 px-3.5 text-right font-bold text-slate-900 dark:text-white">
+                            ৳ {Number(offered).toLocaleString()}
+                          </td>
+                        )}
 
-                        <td className="py-3 px-3.5 text-cyan-600 dark:text-cyan-400 font-semibold font-mono">
-                          ৳{(item.offeredPricePerDecimal).toLocaleString()}
-                        </td>
+                        {/* Counter Amount */}
+                        {isColVisible("counter_amount") && (
+                          <td className="py-3 px-3.5 text-right font-semibold text-slate-700 dark:text-slate-300">
+                            ৳ {Number(counter).toLocaleString()}
+                          </td>
+                        )}
 
-                        <td className="py-3 px-3.5 font-bold text-amber-600 dark:text-amber-400">
-                          ৳{(item.counterOfferByOwner / 10000000).toFixed(2)} Cr
-                        </td>
+                        {/* Price Gap */}
+                        {isColVisible("gap") && (
+                          <td className="py-3 px-3.5 text-right">
+                            <span
+                              className={`font-bold ${
+                                gap > 0
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : "text-emerald-600 dark:text-emerald-400"
+                              }`}
+                            >
+                              ৳ {Math.abs(gap).toLocaleString()}
+                            </span>
+                          </td>
+                        )}
 
-                        <td className="py-3 px-3.5 text-amber-600 dark:text-amber-400 font-semibold font-mono">
-                          ৳{(item.counterPricePerDecimal).toLocaleString()}
-                        </td>
+                        {/* Negotiator */}
+                        {isColVisible("negotiator") && (
+                          <td className="py-3 px-3.5 text-slate-600 dark:text-slate-300 font-medium">
+                            {item.attendedBy || item.negotiator || "Negotiation Team"}
+                          </td>
+                        )}
 
-                        <td className="py-3 px-3 text-center">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${statusInfo.bg}`}
-                          >
-                            <StatusIcon className="w-3 h-3" />
-                            {item.negotiationStatus}
-                          </span>
-                        </td>
+                        {/* Date */}
+                        {isColVisible("date") && (
+                          <td className="py-3 px-3.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                            {item.meetingDate || item.date || "Scheduled"}
+                          </td>
+                        )}
 
-                        <td className="py-3 px-3.5 text-slate-600 dark:text-slate-300">
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span>{item.meetingDate}</span>
-                          </div>
-                        </td>
+                        {/* Status */}
+                        {isColVisible("status") && (
+                          <td className="py-3 px-3.5 text-center">
+                            <span
+                              className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                statusKey === "Agreed"
+                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                                  : statusKey === "Declined"
+                                  ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                                  : statusKey === "Revision Needed"
+                                  ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                                  : "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+                              }`}
+                            >
+                              {statusKey}
+                            </span>
+                          </td>
+                        )}
 
-                        <td className="py-3 px-3 text-center">
+                        {/* Actions */}
+                        <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
                             <button
                               onClick={() => onDeleteNegotiation(itemId)}
                               className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
                               title="Delete Negotiation"
                             >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                if (confirm(`Delete negotiation record for "${item.leadTitle || item.lead}"?`)) {
+                                  onDeleteNegotiation?.(itemId);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 transition-all"
+                              title="Delete Record"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
 
-                      {/* Expandable row: Remarks and Gap Analysis */}
+                      {/* Expandable row: Remarks and Minutes */}
                       {isExpanded && (
-                        <tr className="bg-amber-50/20 dark:bg-amber-950/10">
-                          <td colSpan={10} className="p-4 border-y border-amber-200/60 dark:border-amber-900/40">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-amber-200/60 dark:border-amber-800/40 shadow-xs">
-                              <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                  Price Variance & Gap
-                                </p>
-                                <p className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
-                                  {priceGap > 0 ? `+৳${(priceGap / 100000).toFixed(1)} Lakh Counter Gap` : "Agreed at Offered Price"}
-                                </p>
-                                <p className="text-[11px] text-slate-500 mt-0.5">
-                                  Owner asking {(((item.counterOfferByOwner - item.offeredTotalPrice) / item.offeredTotalPrice) * 100).toFixed(1)}% above initial valuation
-                                </p>
-                              </div>
-
-                              <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                  Attendees & Negotiation Officers
-                                </p>
-                                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
-                                  {item.attendedBy}
-                                </p>
-                              </div>
-
-                              <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                  Meeting Minutes & Remarks
-                                </p>
-                                <p className="text-xs text-slate-700 dark:text-slate-300 italic mt-0.5">
-                                  "{item.remarks || "No additional caveats or remarks noted."}"
-                                </p>
-                              </div>
+                        <tr className="bg-amber-50/30 dark:bg-amber-950/10">
+                          <td colSpan={11} className="p-4 text-xs space-y-2 border-b border-amber-100 dark:border-amber-900/40">
+                            <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                              Meeting Notes & Key Bargaining Factors:
                             </div>
+                            <p className="text-slate-600 dark:text-slate-300 pl-5">
+                              {item.remarks || item.meeting_notes || "No detailed notes recorded for this round."}
+                            </p>
                           </td>
                         </tr>
                       )}
                     </React.Fragment>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Footer */}
-        <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-xs text-slate-500">
-          <div>
-            Showing 1 to {Math.min(displayedNegotiations.length, filteredNegotiations.length)} of {filteredNegotiations.length} entries
+                })}
+              </tbody>
+            </table>
           </div>
-
-          <div className="flex items-center gap-1 mt-2 sm:mt-0">
-            <button
-              disabled
-              className="px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 opacity-50 cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <span className="px-3 py-1 rounded-lg bg-amber-600 text-white font-bold shadow-xs">
-              1
-            </span>
-            <button
-              disabled
-              className="px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 opacity-50 cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Add Modal */}
+      {/* 6. Add / Edit Modal */}
       <AddNegotiationModal
-        isOpen={isAddModalOpen || !!editingNegotiation}
-        onClose={() => { setIsAddModalOpen(false); setEditingNegotiation(null); }}
-        onAddNegotiation={(data) => {
+        isOpen={isAddModalOpen}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingNegotiation(null);
+        }}
+        onAddNegotiation={(rec) => {
           if (editingNegotiation && onEditNegotiation) {
-            onEditNegotiation(editingNegotiation.uuid, data);
+            onEditNegotiation(editingNegotiation.uuid || editingNegotiation.id, rec);
           } else {
-            onAddNegotiation(data);
+            onAddNegotiation(rec);
           }
           setIsAddModalOpen(false);
           setEditingNegotiation(null);

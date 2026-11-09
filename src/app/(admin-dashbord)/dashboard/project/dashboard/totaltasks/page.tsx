@@ -1,5 +1,8 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import { useEffect, useMemo, useState } from "react";
 
 interface Task {
@@ -65,7 +68,7 @@ export default function TotalTasksPage() {
         let page = 1;
         let totalPages = 1;
         do {
-          const response = await fetch(
+          const response = await projectFetch(
             `${TASK_API}?page=${page}&limit=100`,
             { cache: "no-store" },
           );

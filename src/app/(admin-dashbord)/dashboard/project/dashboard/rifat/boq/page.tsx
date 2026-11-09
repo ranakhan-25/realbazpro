@@ -1,5 +1,8 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { Search, Plus, Edit3, Trash2, RotateCcw, X } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
@@ -54,7 +57,7 @@ export default function BOQPage() {
   const fetchBOQ = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/boq`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/boq`);
       if (!res.ok) throw new Error("Failed to fetch BOQ data");
 
       const data = await res.json();
@@ -159,7 +162,7 @@ export default function BOQPage() {
     if (!confirm("Are you sure you want to soft-delete this BOQ item?")) return;
 
     try {
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/boq/${uuid}`, {
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/boq/${uuid}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Delete failed");
@@ -177,7 +180,7 @@ export default function BOQPage() {
   // =====================================================
   const handleRestore = async (uuid: string) => {
     try {
-      const res = await fetch(
+      const res = await projectFetch(
         `${API_BASE}/realbizpro/api/v1/boq/${uuid}/restore`,
         { method: "POST" }
       );
@@ -219,13 +222,13 @@ export default function BOQPage() {
       let res: Response;
 
       if (isEditMode && currentUuid) {
-        res = await fetch(`${API_BASE}/realbizpro/api/v1/boq/${currentUuid}`, {
+        res = await projectFetch(`${API_BASE}/realbizpro/api/v1/boq/${currentUuid}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
       } else {
-        res = await fetch(`${API_BASE}/realbizpro/api/v1/boq`, {
+        res = await projectFetch(`${API_BASE}/realbizpro/api/v1/boq`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),

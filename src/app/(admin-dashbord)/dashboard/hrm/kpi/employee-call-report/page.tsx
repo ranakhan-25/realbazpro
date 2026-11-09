@@ -285,8 +285,8 @@ export default function EmployeeKPICallReportPage() {
                     "TARGET TASK",
                     "ACHIEVE TASK",
                     "PERCENTAGE",
-                  ].map((h) => (
-                    <th key={h} className="px-2.5 py-2.5 font-semibold whitespace-nowrap">
+                  ].map((h, index) => (
+                    <th key={`${h}-${index}`} className="px-2.5 py-2.5 font-semibold whitespace-nowrap">
                       {h}
                     </th>
                   ))}

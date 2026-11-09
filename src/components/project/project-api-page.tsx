@@ -1,5 +1,7 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type ApiRow = Record<string, unknown> & { uuid: string };
@@ -57,7 +59,7 @@ function rowsFrom<T>(value: unknown): T[] {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token =
     typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
-  const response = await fetch(`${API_ROOT}${path}`, {
+  const response = await projectFetch(`${API_ROOT}${path}`, {
     ...init,
     headers: {
       Accept: "application/json",

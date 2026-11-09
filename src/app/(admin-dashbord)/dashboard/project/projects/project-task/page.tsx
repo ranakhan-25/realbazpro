@@ -1,5 +1,8 @@
 'use client';
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
@@ -102,7 +105,7 @@ export default function ProjectTasksPage() {
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const response = await fetch(
+      const response = await projectFetch(
         `${API_BASE_URL}/project-tasks?projectUuid=${DEFAULT_PROJECT_UUID}&page=${page}&limit=${limit}`
       );
       const result = await response.json();
@@ -179,7 +182,7 @@ export default function ProjectTasksPage() {
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}/project-tasks`, {
+      const response = await projectFetch(`${API_BASE_URL}/project-tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -214,7 +217,7 @@ export default function ProjectTasksPage() {
   // 3. UPDATE STATUS (PATCH)
   const handleStatusChange = async (uuid: string, newStatus: any) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/project-tasks/${uuid}`, {
+      const response = await projectFetch(`${API_BASE_URL}/project-tasks/${uuid}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })

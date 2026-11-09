@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { crmFetch, API_ORIGIN } from "../../crm-fetch";
 
 // --- Types for Dropdowns API ---
 interface TeamDropdownItem {
@@ -114,7 +115,7 @@ const ReportTable = ({
 
 // --- Main Page Component ---
 export default function TeamSummaryReportPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const baseUrl = API_ORIGIN;
 
   // --- States ---
   const [dropdownData, setDropdownData] = useState<
@@ -135,7 +136,7 @@ export default function TeamSummaryReportPage() {
   useEffect(() => {
     const fetchDropdowns = async () => {
       try {
-        const res = await fetch(
+        const res = await crmFetch(
           `${baseUrl}/realbizpro/api/v1/crm/reports/team-summary/dropdowns`,
         );
         const json: DropdownsResponse = await res.json();
@@ -158,7 +159,7 @@ export default function TeamSummaryReportPage() {
         if (dateTo) params.append("dateTo", dateTo);
         if (teamId) params.append("teamId", teamId);
 
-        const res = await fetch(
+        const res = await crmFetch(
           `${baseUrl}/realbizpro/api/v1/crm/reports/team-summary?${params.toString()}`,
         );
         const json: ReportResponse = await res.json();

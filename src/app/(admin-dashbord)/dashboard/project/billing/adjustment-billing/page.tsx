@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { Plus, X, Loader2, Edit3, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -126,7 +129,7 @@ export default function InvoiceBillPage() {
   const fetchInvoices = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_PATH}/project-billing/period-billings`);
+      const res = await projectFetch(`${API_PATH}/project-billing/period-billings`);
       const json = await res.json();
       if (json.success) {
         setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
@@ -141,27 +144,27 @@ export default function InvoiceBillPage() {
   // ====================== FETCH DROPDOWNS ======================
   const fetchDropdowns = async () => {
     try {
-      const resCus = await fetch(`${API_PATH}/customer-account`);
+      const resCus = await projectFetch(`${API_PATH}/customer-account`);
       const jsonCus = await resCus.json();
       if (jsonCus.success) setCustomers(jsonCus.data.data || jsonCus.data || []);
 
-      const resProj = await fetch(`${API_PATH}/project`);
+      const resProj = await projectFetch(`${API_PATH}/project`);
       const jsonProj = await resProj.json();
       if (jsonProj.success) setProjects(jsonProj.data.data || jsonProj.data || []);
 
-      const resSite = await fetch(`${API_PATH}/project-sites`);
+      const resSite = await projectFetch(`${API_PATH}/project-sites`);
       const jsonSite = await resSite.json();
       if (jsonSite.success) setSites(jsonSite.data.data || jsonSite.data || []);
 
-      const resType = await fetch(`${API_PATH}/project-type`);
+      const resType = await projectFetch(`${API_PATH}/project-type`);
       const jsonType = await resType.json();
       if (jsonType.success) setProjectTypes(jsonType.data.data || jsonType.data || []);
 
-      const resCat = await fetch(`${API_PATH}/category`);
+      const resCat = await projectFetch(`${API_PATH}/category`);
       const jsonCat = await resCat.json();
       if (jsonCat.success) setCategories(jsonCat.data.data || jsonCat.data || []);
 
-      const resBrand = await fetch(`${API_PATH}/procurement/brand`);
+      const resBrand = await projectFetch(`${API_PATH}/procurement/brand`);
       const jsonBrand = await resBrand.json();
       if (jsonBrand.success) setBrands(jsonBrand.data.data || jsonBrand.data || []);
       
@@ -270,7 +273,7 @@ export default function InvoiceBillPage() {
         : `${API_PATH}/project-billing/period-billings`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await projectFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -296,7 +299,7 @@ export default function InvoiceBillPage() {
   const handleDelete = async (item: InvoiceBill) => {
     if (!window.confirm(`Delete "${item.code}"?`)) return;
     try {
-      const res = await fetch(`${API_PATH}/project-billing/period-billings/${item.uuid}`, { method: "DELETE" });
+      const res = await projectFetch(`${API_PATH}/project-billing/period-billings/${item.uuid}`, { method: "DELETE" });
       if (res.ok) {
         toast.success("Deleted successfully!");
         setDataList((prev) => prev.filter((row) => row.uuid !== item.uuid));
@@ -312,7 +315,7 @@ export default function InvoiceBillPage() {
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_PATH}/customer-account`, {
+      const res = await projectFetch(`${API_PATH}/customer-account`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...newCustomer, status: "active" }),
@@ -348,7 +351,7 @@ export default function InvoiceBillPage() {
     };
 
     try {
-      const res = await fetch(`${API_PATH}/item`, {
+      const res = await projectFetch(`${API_PATH}/item`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

@@ -1,10 +1,10 @@
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { ChevronDown, X, ArrowUpDown, Loader2 } from "lucide-react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002/realbizpro/api/v1";
 
 export interface ReconciliationItem {
   uuid: string;
@@ -37,10 +37,16 @@ interface ApiReconciliation {
 }
 
 export default function BankReconciliationPage() {
-  const [selectDate, setSelectDate] = useState("1 September, 2026 - 30 September, 2026");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [bankOptions, setBankOptions] = useState<Array<{ id: string; name: string; value: string }>>([
+    { id: "fallback-cash", name: "Cash Account", value: "Cash" },
+    { id: "fallback-bank", name: "Bank Account", value: "Bank" },
+  ]);
   const [chartOfAccount, setChartOfAccount] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
 
   const [items, setItems] = useState<ReconciliationItem[]>([]);
@@ -72,7 +78,13 @@ export default function BankReconciliationPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/bank-reconciliations`, {
+      const params = new URLSearchParams({ page: "1", limit: "500" });
+      if (fromDate) params.set("fromDate", fromDate);
+      if (toDate) params.set("toDate", toDate);
+      if (chartOfAccount) params.set("bank", chartOfAccount);
+      if (statusFilter) params.set("status", statusFilter);
+      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      const res = await accountsFetch(`/api/backend/bank-reconciliations?${params.toString()}`, {
         method: "GET",
         headers: { Accept: "application/json" },
         cache: "no-store",
@@ -92,11 +104,25 @@ export default function BankReconciliationPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fromDate, toDate, chartOfAccount, statusFilter, searchQuery]);
 
   useEffect(() => {
     fetchReconciliations();
   }, [fetchReconciliations]);
+
+  useEffect(() => {
+    let active = true;
+    void accountsFetch("/api/backend/chart-of-accounts?limit=500", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((json) => {
+        const data = json?.data?.data ?? json?.data ?? json;
+        const rows = Array.isArray(data) ? data : [];
+        const options = rows.map((row: Record<string, unknown>) => ({ id: String(row.uuid ?? row.id ?? ""), name: String(row.name ?? row.accountName ?? ""), value: String(row.name ?? row.accountName ?? "") })).filter((row: { id: string; name: string; value: string }) => row.id && row.name && /cash|bank/i.test(row.name));
+        if (active && options.length) setBankOptions(options);
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   const handleOpenModal = (item: ReconciliationItem, defaultStatus: string) => {
     setSelectedItem(item);
@@ -114,12 +140,12 @@ export default function BankReconciliationPage() {
     setError(null);
     try {
       const payload = {
-        bank_name: modalBankName,
+        bank: modalBankName,
         status: modalStatus,
         date: modalDate,
       };
 
-      const res = await fetch(`${API_BASE}/bank-reconciliations/${selectedItem.uuid}`, {
+      const res = await accountsFetch(`/api/backend/bank-reconciliations/${selectedItem.uuid}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -133,7 +159,7 @@ export default function BankReconciliationPage() {
       setItems((prev) =>
         prev.map((i) =>
           i.id === selectedItem.id
-            ? { ...i, bank: modalBankName, status: modalStatus }
+            ? { ...i, bank: modalBankName, status: modalStatus, date: modalDate }
             : i
         )
       );
@@ -155,9 +181,11 @@ export default function BankReconciliationPage() {
     );
   }, [items, searchQuery]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / entriesPerPage));
+  const safePage = Math.min(currentPage, totalPages);
   const paginatedItems = useMemo(
-    () => filteredItems.slice(0, entriesPerPage),
-    [filteredItems, entriesPerPage]
+    () => filteredItems.slice((safePage - 1) * entriesPerPage, safePage * entriesPerPage),
+    [filteredItems, entriesPerPage, safePage]
   );
 
   return (
@@ -181,12 +209,7 @@ export default function BankReconciliationPage() {
               <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                 Select Date
               </label>
-              <input
-                type="text"
-                value={selectDate}
-                onChange={(e) => setSelectDate(e.target.value)}
-                className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
-              />
+              <div className="grid grid-cols-2 gap-1.5"><input aria-label="From date" type="date" value={fromDate} max={toDate || undefined} onChange={(e) => setFromDate(e.target.value)} className="min-w-0 w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-1.5 text-slate-700 dark:text-slate-200" /><input aria-label="To date" type="date" value={toDate} min={fromDate || undefined} onChange={(e) => setToDate(e.target.value)} className="min-w-0 w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-1.5 text-slate-700 dark:text-slate-200" /></div>
             </div>
 
             <div>
@@ -199,8 +222,7 @@ export default function BankReconciliationPage() {
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
               >
                 <option value="">Select value</option>
-                <option value="Cash">Cash</option>
-                <option value="Bank">Bank Account</option>
+                {bankOptions.map((option) => <option key={option.id} value={option.value}>{option.name}</option>)}
               </select>
             </div>
 
@@ -209,13 +231,15 @@ export default function BankReconciliationPage() {
                 Type
               </label>
               <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
               >
-                <option value="">Select One Option</option>
-                <option value="Deposit">Deposit</option>
-                <option value="Withdrawal">Withdrawal</option>
+                <option value="">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Honour">Honour</option>
+                <option value="DisHonour">Dishonour</option>
+                <option value="Hold">Hold</option>
               </select>
             </div>
 
@@ -244,7 +268,7 @@ export default function BankReconciliationPage() {
             <span>Show</span>
             <select
               value={entriesPerPage}
-              onChange={(e) => setEntriesPerPage(Number(e.target.value))}
+                onChange={(e) => { setEntriesPerPage(Number(e.target.value)); setCurrentPage(1); }}
               className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-0.5 outline-none"
             >
               <option value={10}>10</option>
@@ -259,7 +283,7 @@ export default function BankReconciliationPage() {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-0.5 outline-none focus:border-indigo-500"
             />
           </div>
@@ -381,25 +405,25 @@ export default function BankReconciliationPage() {
 
         <div className="bg-white dark:bg-slate-900 rounded-b border border-t-0 border-slate-200 dark:border-slate-800 p-2.5 flex items-center justify-between text-slate-500 dark:text-slate-400 mb-4">
           <div>
-            Showing {paginatedItems.length === 0 ? 0 : 1} to {paginatedItems.length} of{" "}
+            Showing {paginatedItems.length === 0 ? 0 : (safePage - 1) * entriesPerPage + 1} to {Math.min(safePage * entriesPerPage, filteredItems.length)} of{" "}
             {filteredItems.length} entries
           </div>
 
           <div className="flex items-center gap-1">
             <button
               type="button"
-              disabled
-              className="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+              disabled={safePage <= 1}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              className="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-50"
             >
               Previous
             </button>
-            <button type="button" className="px-3 py-1 rounded bg-[#635BFF] text-white font-medium">
-              1
-            </button>
+            <span className="px-3 py-1 rounded bg-[#635BFF] text-white font-medium">{safePage} / {totalPages}</span>
             <button
               type="button"
-              disabled
-              className="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+              disabled={safePage >= totalPages}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              className="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-50"
             >
               Next
             </button>
@@ -426,24 +450,23 @@ export default function BankReconciliationPage() {
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                   Bank Name
                 </label>
-                <input
-                  type="text"
-                  value={modalBankName}
-                  onChange={(e) => setModalBankName(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
-                />
+                <select value={modalBankName} onChange={(e) => setModalBankName(e.target.value)} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500">
+                  <option value="">Select bank account</option>
+                  {bankOptions.map((option) => <option key={option.id} value={option.value}>{option.name}</option>)}
+                  {modalBankName && !bankOptions.some((option) => option.value === modalBankName) && <option value={modalBankName}>{modalBankName}</option>}
+                </select>
               </div>
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                   Status
                 </label>
-                <input
-                  type="text"
-                  value={modalStatus}
-                  onChange={(e) => setModalStatus(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500"
-                />
+                <select value={modalStatus} onChange={(e) => setModalStatus(e.target.value)} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500">
+                  <option value="Pending">Pending</option>
+                  <option value="Honour">Honour</option>
+                  <option value="DisHonour">DisHonour</option>
+                  <option value="Hold">Hold</option>
+                </select>
               </div>
 
               <div>

@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { Fragment, useState, useMemo, useRef, useEffect } from "react";
 import { ChevronDown, FileSpreadsheet, FileText } from "lucide-react";
 
 const years = [
@@ -260,7 +260,7 @@ export default function LeaveReportMatrixPage() {
                 {/* S C C sub-headers */}
                 <tr className="bg-black text-white">
                   {monthKeys.map((m) => (
-                    <>
+                    <Fragment key={m}>
                       <th
                         key={`${m}-s`}
                         className="px-1 py-1 font-medium text-center border-r border-white/10 w-7"
@@ -279,7 +279,7 @@ export default function LeaveReportMatrixPage() {
                       >
                         C
                       </th>
-                    </>
+                    </Fragment>
                   ))}
                 </tr>
               </thead>

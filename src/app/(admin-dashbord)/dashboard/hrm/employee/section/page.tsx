@@ -1,6 +1,8 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
 import React, { useState, useEffect } from "react";
 import {
   Search,
@@ -38,7 +40,7 @@ async function handleRes(res: Response, action: string) {
 async function fetchSections(): Promise<{ data: Section[]; meta: any }> {
   const url = `${API_BASE}/realbizpro/api/v1/section?page=1&limit=100&skip=0&status=active&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
   console.log("GET sections →", url);
-  const res = await fetch(url, {
+  const res = await hrmFetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -60,7 +62,7 @@ async function fetchSections(): Promise<{ data: Section[]; meta: any }> {
 
 async function createSection(payload: Record<string, any>) {
   console.log("POST payload →", payload);
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/section`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/section`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -72,7 +74,7 @@ async function createSection(payload: Record<string, any>) {
 
 async function updateSection(uuid: string, payload: Record<string, any>) {
   console.log("PATCH", uuid, "payload →", payload);
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/section/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/section/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -84,7 +86,7 @@ async function updateSection(uuid: string, payload: Record<string, any>) {
 
 async function softDeleteSection(uuid: string) {
   console.log("DELETE →", uuid);
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/section/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/section/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });
@@ -95,7 +97,7 @@ async function softDeleteSection(uuid: string) {
 
 async function restoreSection(uuid: string) {
   console.log("PATCH restore →", uuid);
-  const res = await fetch(
+  const res = await hrmFetch(
     `${API_BASE}/realbizpro/api/v1/section/${uuid}/restore`,
     {
       method: "PATCH",

@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Plus, X, Loader2 } from "lucide-react";
@@ -37,7 +40,7 @@ export default function TaskPage() {
     try {
       setLoading(true);
       // আপনার API এন্ডপয়েন্ট
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/task?page=1&limit=100`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/task?page=1&limit=100`);
       const json = await res.json();
       
       if (json.success) {
@@ -149,7 +152,7 @@ function TaskAddModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: 
 
     try {
       // ✅ রিয়েল API POST কল
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/task`, {
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/task`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

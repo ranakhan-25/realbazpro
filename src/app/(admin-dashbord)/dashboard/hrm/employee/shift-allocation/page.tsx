@@ -1,6 +1,8 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
 import React, { useState, useEffect, useMemo } from "react";
 import { Loader2, Save, ChevronDown, Check } from "lucide-react";
 
@@ -106,7 +108,7 @@ const getDayName = (dateStr: string) => {
 async function fetchEmployees(): Promise<OptionItem[]> {
   try {
     const url = `${API_BASE}/realbizpro/api/v1/employee-list?page=1&limit=100&status=active&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
-    const res = await fetch(url, {
+    const res = await hrmFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -128,7 +130,7 @@ async function fetchEmployees(): Promise<OptionItem[]> {
 async function fetchMonthYears(): Promise<MonthYearItem[]> {
   try {
     const url = `${API_BASE}/realbizpro/api/v1/month-year?page=1&limit=100&sortOrder=DESC&withDeleted=false`;
-    const res = await fetch(url, {
+    const res = await hrmFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -150,7 +152,7 @@ async function fetchMonthYears(): Promise<MonthYearItem[]> {
 async function fetchShifts(): Promise<ShiftItem[]> {
   try {
     const url = `${API_BASE}/realbizpro/api/v1/shift?page=1&limit=100&status=active&sortOrder=DESC&withDeleted=false`;
-    const res = await fetch(url, {
+    const res = await hrmFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -182,7 +184,7 @@ async function fetchAttendances(
     if (!employeeId || !monthYearId) return [];
     const url = `${API_BASE}/realbizpro/api/v1/attendance?employeeId=${employeeId}&monthYearId=${monthYearId}&page=1&limit=500&withDeleted=false`;
     console.log("GET attendances →", url);
-    const res = await fetch(url, {
+    const res = await hrmFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -197,7 +199,7 @@ async function fetchAttendances(
 }
 
 async function createAttendance(payload: Record<string, any>) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/attendance`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/attendance`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -206,7 +208,7 @@ async function createAttendance(payload: Record<string, any>) {
 }
 
 async function updateAttendance(uuid: string, payload: Record<string, any>) {
-  const res = await fetch(
+  const res = await hrmFetch(
     `${API_BASE}/realbizpro/api/v1/attendance/${uuid}`,
     {
       method: "PATCH",

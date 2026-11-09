@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { crmFetch, API_ORIGIN } from "../../crm-fetch";
 
 // --- Types ---
 interface DropdownItem {
@@ -55,7 +56,7 @@ interface ReportResponse {
 }
 
 export default function SalesPipelineFunnelPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const baseUrl = API_ORIGIN;
 
   // --- States ---
   const [dropdownData, setDropdownData] = useState<
@@ -78,7 +79,7 @@ export default function SalesPipelineFunnelPage() {
   useEffect(() => {
     const fetchDropdowns = async () => {
       try {
-        const res = await fetch(
+        const res = await crmFetch(
           `${baseUrl}/realbizpro/api/v1/crm/reports/sales-pipeline-funnel/dropdowns`,
         );
         const json: DropdownsResponse = await res.json();
@@ -104,7 +105,7 @@ export default function SalesPipelineFunnelPage() {
         if (teamId) params.append("teamId", teamId);
         if (projectId) params.append("projectId", projectId);
 
-        const res = await fetch(
+        const res = await crmFetch(
           `${baseUrl}/realbizpro/api/v1/crm/reports/sales-pipeline-funnel?${params.toString()}`,
         );
         const json: ReportResponse = await res.json();

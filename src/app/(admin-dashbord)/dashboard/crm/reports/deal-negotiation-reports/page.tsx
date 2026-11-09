@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { crmFetch, API_ORIGIN } from "../../crm-fetch";
 
 // --- Types for Dropdowns API ---
 interface DropdownOption {
@@ -106,7 +107,7 @@ const StatusBadge = ({ status, label }: { status: string; label: string }) => {
 };
 
 export default function DealNegotiationPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const baseUrl = API_ORIGIN;
 
   // --- State ---
   const [dropdowns, setDropdowns] = useState<DropdownsResponse["data"] | null>(
@@ -132,7 +133,7 @@ export default function DealNegotiationPage() {
   useEffect(() => {
     const fetchDropdowns = async () => {
       try {
-        const res = await fetch(
+        const res = await crmFetch(
           `${baseUrl}/realbizpro/api/v1/crm/reports/deal-negotiation/dropdowns`,
         );
         const json: DropdownsResponse = await res.json();
@@ -163,7 +164,7 @@ export default function DealNegotiationPage() {
       if (filters.status) queryParams.append("status", filters.status);
       if (filters.createdBy) queryParams.append("createdBy", filters.createdBy);
 
-      const res = await fetch(
+      const res = await crmFetch(
         `${baseUrl}/realbizpro/api/v1/crm/reports/deal-negotiation?${queryParams.toString()}`,
       );
       const json: ReportResponse = await res.json();

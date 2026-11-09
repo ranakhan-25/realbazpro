@@ -1,5 +1,8 @@
 'use client';
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -30,7 +33,7 @@ interface BuildingItem {
 
 async function request<T = any>(path: string, init?: RequestInit): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await projectFetch(`${API_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
