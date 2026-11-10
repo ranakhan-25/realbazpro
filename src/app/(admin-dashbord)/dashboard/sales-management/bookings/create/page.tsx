@@ -113,11 +113,16 @@ export default function CreateBookingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const customerName = buyer.name.trim();
+    if (!customerName) {
+      setErrorMsg("Customer name is required.");
+      return;
+    }
     setIsSubmitting(true);
     setErrorMsg(null);
 
     const payload = {
-      buyerName: buyer.name,
+      buyerName: customerName,
       buyerEmail: buyer.email,
       buyerPhone: buyer.phone,
       buyerNid: buyer.nid || null,
@@ -156,8 +161,12 @@ export default function CreateBookingPage() {
         throw new Error(errorData.message || "Failed to create booking");
       }
 
-      // Success Redirect
-      router.push('/dashboard/sales-management/bookings');
+      const result = await response.json().catch(() => null);
+      const created = result?.data ?? result;
+      const bookingUuid = created?.uuid ?? created?.bookingUuid ?? created?.id;
+      router.push(bookingUuid
+        ? `/dashboard/sales-management/bookings/details?uuid=${encodeURIComponent(String(bookingUuid))}`
+        : '/dashboard/sales-management/bookings');
       
     } catch (error: any) {
       setErrorMsg(error.message);
