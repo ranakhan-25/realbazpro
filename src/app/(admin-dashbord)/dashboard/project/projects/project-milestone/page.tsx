@@ -1,5 +1,8 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, {
   Suspense, useCallback, useEffect, useMemo, useState, type FormEvent,
 } from "react";
@@ -59,7 +62,7 @@ const EMPTY_FORM: MilestoneForm = {
 /* -------------------------------------------------------------------------- */
 async function apiRequest<T>(url: string, options: RequestInit = {}): Promise<T> {
   try {
-    const response = await fetch(url, {
+    const response = await projectFetch(url, {
       ...options,
       headers: {
         Accept: "application/json",
@@ -169,7 +172,7 @@ function MilestonesInner() {
   // ✅ অটো projectUuid
   const getFirstProjectUuid = async (): Promise<string | null> => {
     try {
-      const res = await fetch(`${API_BASE_URL}/project?limit=1`, {
+      const res = await projectFetch(`${API_BASE_URL}/project?limit=1`, {
         headers: { Accept: "application/json" }
       });
       if (!res.ok) return null;

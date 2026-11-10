@@ -1,5 +1,8 @@
 'use client';
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
@@ -112,7 +115,7 @@ export default function ProjectCostPage() {
 
       console.log("Fetching URL:", url); // Debugging
 
-      const response = await fetch(url);
+      const response = await projectFetch(url);
       const result = await response.json();
       
       console.log("Fetched Costs Response:", result); // Debugging - Check this in Browser Console!
@@ -164,7 +167,7 @@ export default function ProjectCostPage() {
   // 2. FETCH SUMMARY (Top Cards)
   const fetchSummary = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/project-costs/summary?projectUuid=${DEFAULT_PROJECT_UUID}`);
+      const response = await projectFetch(`${API_BASE_URL}/project-costs/summary?projectUuid=${DEFAULT_PROJECT_UUID}`);
       const result = await response.json();
       console.log("Fetched Summary:", result); // Debugging
       
@@ -217,7 +220,7 @@ export default function ProjectCostPage() {
     console.log("POST Payload:", payload); // Debugging
 
     try {
-      const response = await fetch(`${API_BASE_URL}/project-costs`, {
+      const response = await projectFetch(`${API_BASE_URL}/project-costs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

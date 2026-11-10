@@ -15,6 +15,13 @@ export const API_ORIGIN =
 
 export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
+  // Check cookies first
+  const cookieMatch = document.cookie.match(
+    /(?:^|;\s*)(?:admin_access_token|access_token|token|accessToken)=([^;]+)/
+  );
+  if (cookieMatch && cookieMatch[1]) {
+    return decodeURIComponent(cookieMatch[1]);
+  }
   return (
     localStorage.getItem("admin_access_token") ||
     localStorage.getItem("access_token") ||

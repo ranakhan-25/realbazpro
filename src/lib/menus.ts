@@ -63,7 +63,21 @@ const ACRONYMS: Record<string, string> = {
 const CUSTOM_SLUG_LABELS: Record<string, string> = {
   "sub-category": "Sub-Category",
 
-  // Customer Service Main Sections
+  // Customer Service Main Sections & Groups
+  "customers-properties": "Customers & Properties",
+  "payments-collections": "Payments & Collections",
+  "documents-land-records": "Documents & Land Records",
+  "handover-possession": "Handover & Possession",
+  "tickets-service-requests": "Tickets & Service Requests",
+  "warranty-property-care": "Warranty & Property Care",
+  "communication-appointments": "Communication & Appointments",
+  "reports-analytics": "Reports & Analytics",
+  "settings-administration": "Settings & Administration",
+  "after-sales": "After-Sales",
+  "building-services": "Building Services",
+  "building-management": "Building Management",
+  "pre-sales": "Pre-Sales / Customer Service",
+  "core-records": "Core Records",
   customers: "Customers & Properties",
   payments: "Payments & Collections",
   documents: "Documents & Land Records",
@@ -75,10 +89,10 @@ const CUSTOM_SLUG_LABELS: Record<string, string> = {
   settings: "Settings & Administration",
 
   // Customer Service Sub-Pages
+  "payment-schedules": "Payment Schedules & Demand Letters",
   "customer-360": "Customer 360°",
   "properties-bookings": "Bookings & Property Portfolio",
-  "change-requests": "Transfer, Resale & Change Requests",
-  "schedules-demand-letters": "Payment Schedules & Demand Letters",
+  "change-requests": "Transfer, Resale, Change Request",
   "collections-ledger-receipts": "Collections, Receipts & Customer Ledger",
   "dues-ageing-recovery": "Dues, Ageing & Recovery",
   "refunds-adjustments": "Refunds & Adjustments",
@@ -86,18 +100,24 @@ const CUSTOM_SLUG_LABELS: Record<string, string> = {
   "registration-tracking": "Registration Tracking",
   "mutation-khatian-tracking": "Mutation & Khatian Tracking",
   schedule: "Handover Schedule",
-  "inspection-snags": "Inspections & Snagging",
-  "possession-records": "Possession & Handover Records",
+  "inspection-snags": "Inspection",
+  "possession-records": "Possession & Handover Requests",
   "warranty-dlp": "Warranty & DLP Claims",
   "maintenance-requests": "Maintenance Requests",
   "work-orders-association": "Work Orders & Owners Association",
   "inbox-reminders": "Communication Hub & Reminders",
   "site-visits-appointments": "Site Visits & Appointments",
-  "feedback-surveys": "Feedback, Surveys & NPS",
+  "feedback-surveys": "Feedback Surveys & NPS",
   "collections-ageing": "Collections & Ageing Reports",
   "service-ticket-sla": "Ticket & SLA Performance",
   "handover-property-care": "Handover & Property Care Reports",
   "service-workflow-rules": "Service & Workflow Rules",
+  "utility-service": "Utility Service",
+  "security-service": "Security Service",
+  "parking-service": "Parking Service",
+  "other-services": "Other Services",
+  "service-charge": "Service Charge & Costing",
+  "building-committee": "Building Committee",
   "approval-permissions": "Approval & Permission Matrix",
   "templates-integrations-audit": "Templates, Integrations & Audit Log",
 };
@@ -662,6 +682,192 @@ crm
     user-wise-report
 `;
 
+const customerServiceNodes: MenuNode[] = [
+  { label: "Dashboard", slug: "dashboard", path: "dashboard" },
+  {
+    label: "Customers & Properties",
+    slug: "customers-properties",
+    path: "customers-properties",
+    children: [
+      {
+        label: "Customer 360°",
+        slug: "customer-360",
+        path: "customers/customer-360",
+      },
+      {
+        label: "Bookings & Property Portfolio",
+        slug: "properties-bookings",
+        path: "customers/properties-bookings",
+      },
+      {
+        label: "Transfer, Resale & Change Requests",
+        slug: "change-requests",
+        path: "customers/change-requests",
+      },
+    ],
+  },
+  {
+    label: "Payments & Collections",
+    slug: "payments-collections",
+    path: "payments-collections",
+    children: [
+      {
+        label: "Payment Schedules & Demand Letters",
+        slug: "payment-schedules",
+        path: "payments/collections-ledger-receipts",
+      },
+      {
+        label: "Collections, Receipts & Customer Ledger",
+        slug: "collections-ledger-receipts",
+        path: "payments/collections-ledger-receipts",
+      },
+      {
+        label: "Dues, Ageing & Recovery",
+        slug: "dues-ageing-recovery",
+        path: "payments/dues-ageing-recovery",
+      },
+      {
+        label: "Refunds & Adjustments",
+        slug: "refunds-adjustments",
+        path: "payments/refunds-adjustments",
+      },
+    ],
+  },
+  {
+    label: "Documents & Land Records",
+    slug: "documents-land-records",
+    path: "documents-land-records",
+    children: [
+      {
+        label: "Document Centre",
+        slug: "center",
+        path: "documents/center",
+      },
+      {
+        label: "Registration Tracking",
+        slug: "registration-tracking",
+        path: "documents/registration-tracking",
+      },
+      {
+        label: "Mutation & Khatian Tracking",
+        slug: "mutation-khatian-tracking",
+        path: "documents/mutation-khatian-tracking",
+      },
+    ],
+  },
+  {
+    label: "Handover & Possession",
+    slug: "handover-possession",
+    path: "handover-possession",
+    children: [
+      {
+        label: "Handover Schedule",
+        slug: "schedule",
+        path: "handover/schedule",
+      },
+      {
+        label: "Inspections & Snagging",
+        slug: "inspection-snags",
+        path: "handover/inspection-snags",
+      },
+      {
+        label: "Possession & Handover Records",
+        slug: "possession-records",
+        path: "handover/possession-records",
+      },
+    ],
+  },
+  {
+    label: "Tickets & Service Requests",
+    slug: "tickets-service-requests",
+    path: "tickets-service-requests",
+    children: [
+      {
+        label: "All Tickets",
+        slug: "tickets",
+        path: "tickets",
+      },
+    ],
+  },
+  {
+    label: "Warranty & Property Care",
+    slug: "warranty-property-care",
+    path: "warranty-property-care",
+    children: [
+      {
+        label: "Warranty & DLP Claims",
+        slug: "warranty-dlp",
+        path: "property-care/warranty-dlp",
+      },
+      {
+        label: "Maintenance Requests",
+        slug: "maintenance-requests",
+        path: "property-care/maintenance-requests",
+      },
+      {
+        label: "Work Orders & Owners Association",
+        slug: "work-orders-association",
+        path: "property-care/work-orders-association",
+      },
+    ],
+  },
+  {
+    label: "Communication & Appointments",
+    slug: "communication-appointments",
+    path: "communication-appointments",
+    children: [
+      {
+        label: "Communication Hub & Reminders",
+        slug: "inbox-reminders",
+        path: "communication/inbox-reminders",
+      },
+      {
+        label: "Site Visits & Appointments",
+        slug: "site-visits-appointments",
+        path: "communication/site-visits-appointments",
+      },
+      {
+        label: "Feedback, Surveys & NPS",
+        slug: "feedback-surveys",
+        path: "communication/feedback-surveys",
+      },
+    ],
+  },
+  {
+    label: "Reports & Analytics",
+    slug: "reports-analytics",
+    path: "reports-analytics",
+    children: [
+      {
+        label: "Collections & Ageing Reports",
+        slug: "collections-ageing",
+        path: "reports/collections-ageing",
+      },
+      {
+        label: "Ticket & SLA Performance",
+        slug: "service-ticket-sla",
+        path: "reports/service-ticket-sla",
+      },
+      {
+        label: "Handover & Possession Reports",
+        slug: "handover-property-care",
+        path: "reports/handover-property-care",
+      },
+    ],
+  },
+  {
+    label: "Settings & Administration",
+    slug: "settings-administration",
+    path: "settings-administration",
+    children: [
+      {
+        label: "Service Categories, SLA & Routing Matrix",
+        slug: "service-workflow-rules",
+        path: "settings/service-workflow-rules",
+      },
+    ],
+  },
+];
 
 const sales = `
 dashboard
@@ -704,42 +910,6 @@ commissions
   pay-modal
 `;
 
-const customerService = `
-dashboard
-customers
-  customer-360
-  properties-bookings
-  change-requests
-payments
-  schedules-demand-letters
-  collections-ledger-receipts
-  dues-ageing-recovery
-  refunds-adjustments
-documents
-  center
-  registration-tracking
-  mutation-khatian-tracking
-handover
-  schedule
-  inspection-snags
-  possession-records
-tickets
-property-care
-  warranty-dlp
-  maintenance-requests
-  work-orders-association
-communication
-  inbox-reminders
-  site-visits-appointments
-  feedback-surveys
-reports
-  collections-ageing
-  service-ticket-sla
-  handover-property-care
-settings
-  service-workflow-rules
-`;
-
 export const MENUS: Record<ModuleKey, MenuNode[]> = {
   project: parseTree(project),
   inventory: parseTree(inventory),
@@ -750,7 +920,7 @@ export const MENUS: Record<ModuleKey, MenuNode[]> = {
   lams: parseTree(lams),
   "sales-management": parseTree(sales),
   procurement: parseTree(procurement),
-  "customer-service": parseTree(customerService),
+  "customer-service": customerServiceNodes,
   all: parseTree(all),
 };
 

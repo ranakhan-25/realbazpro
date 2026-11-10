@@ -171,12 +171,13 @@ export function LegalDocumentsView({
                 </tr>
               ) : (
                 displayedDocs.map((doc, idx) => {
-                  const isExpanded = expandedId === doc.uuid;
+                  const docId = doc.uuid || doc.id || `doc-${idx}`;
+                  const isExpanded = expandedId === docId;
                   const statusInfo = STATUS_BADGES[doc.verificationStatus as VerificationStatus] || { bg: "bg-slate-100 text-slate-800", text: "text-slate-700", icon: AlertCircle };
                   const StatusIcon = statusInfo.icon;
 
                   return (
-                    <React.Fragment key={doc.uuid}>
+                    <React.Fragment key={docId}>
                       <tr
                         className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
                           isExpanded ? "bg-indigo-50/40 dark:bg-indigo-950/20" : ""
@@ -184,7 +185,7 @@ export function LegalDocumentsView({
                       >
                         <td className="py-3 px-3 text-center">
                           <button
-                            onClick={() => toggleExpand(doc.uuid || doc.id)}
+                            onClick={() => toggleExpand(docId)}
                             className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 transition-all font-bold"
                             title={isExpanded ? "Collapse" : "Expand"}
                           >
@@ -241,7 +242,7 @@ export function LegalDocumentsView({
                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                             </button>
                             <button
-                              onClick={() => onDeleteDocument(doc.uuid || doc.id)}
+                              onClick={() => onDeleteDocument(docId)}
                               className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
                               title="Delete Document"
                             >

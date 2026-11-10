@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect, useMemo } from "react";
 import { Loader2, Save, Plus, Edit3, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -63,29 +66,29 @@ export default function SaleOfferPage() {
       const headers = { Authorization: `Bearer ${token}` };
 
       // ১. লিস্ট ডাটা (সব ডাটা একবারে নিয়ে আসছি, ক্লায়েন্ট সাইডে ফিল্টার করব)
-      const resOffers = await fetch(`${API_PATH}/flat-land-offers?page=1&limit=100`, { headers });
+      const resOffers = await projectFetch(`${API_PATH}/flat-land-offers?page=1&limit=100`, { headers });
       const jsonOffers = await resOffers.json();
       if (jsonOffers.success) {
         setDataList((jsonOffers.data.data || []).filter((item: any) => !item.deletedAt));
       }
 
       // ২. প্রজেক্ট
-      const resProj = await fetch(`${API_PATH}/project`, { headers });
+      const resProj = await projectFetch(`${API_PATH}/project`, { headers });
       const jsonProj = await resProj.json();
       if (jsonProj.success) setProjects(jsonProj.data?.data || jsonProj.data || []);
 
       // ৩. প্রজেক্ট টাইপ
-      const resType = await fetch(`${API_PATH}/project-type`, { headers });
+      const resType = await projectFetch(`${API_PATH}/project-type`, { headers });
       const jsonType = await resType.json();
       if (jsonType.success) setProjectTypes(jsonType.data?.data || jsonType.data || []);
 
       // ৪. সাইট
-      const resSite = await fetch(`${API_PATH}/project-sites`, { headers });
+      const resSite = await projectFetch(`${API_PATH}/project-sites`, { headers });
       const jsonSite = await resSite.json();
       if (jsonSite.success) setSites(jsonSite.data?.data || jsonSite.data || []);
 
       // ৫. ফ্ল্যাট লিস্ট
-      const resFlat = await fetch(`${API_PATH}/flat-land/flats?page=1&limit=100`, { headers });
+      const resFlat = await projectFetch(`${API_PATH}/flat-land/flats?page=1&limit=100`, { headers });
       const jsonFlat = await resFlat.json();
       if (jsonFlat.success) {
         const flatData = jsonFlat.data?.data || jsonFlat.data || [];
@@ -93,7 +96,7 @@ export default function SaleOfferPage() {
       }
 
       // ৬. সেলস পারসন
-      const resUsers = await fetch(`${API_PATH}/crm/configuration/teams/dropdown/users`, { headers });
+      const resUsers = await projectFetch(`${API_PATH}/crm/configuration/teams/dropdown/users`, { headers });
       const jsonUsers = await resUsers.json();
       if (jsonUsers.success) {
         const userData = jsonUsers.data?.users || jsonUsers.data?.data || jsonUsers.data || [];
@@ -101,7 +104,7 @@ export default function SaleOfferPage() {
       }
 
       // ৭. কাস্টমার
-      const resCust = await fetch(`${API_PATH}/customer-account?page=1&limit=100`, { headers });
+      const resCust = await projectFetch(`${API_PATH}/customer-account?page=1&limit=100`, { headers });
       const jsonCust = await resCust.json();
       if (jsonCust.success) {
         const custData = jsonCust.data?.data || jsonCust.data || [];
@@ -109,7 +112,7 @@ export default function SaleOfferPage() {
       }
 
       // ৮. টিম
-      const resTeams = await fetch(`${API_PATH}/crm/configuration/teams/dropdown`, { headers });
+      const resTeams = await projectFetch(`${API_PATH}/crm/configuration/teams/dropdown`, { headers });
       const jsonTeams = await resTeams.json();
       if (jsonTeams.success) setTeams(jsonTeams.data || []);
 
@@ -161,7 +164,7 @@ export default function SaleOfferPage() {
         : `${API_PATH}/flat-land-offers`;
       const method = isEdit ? "PUT" : "POST";
 
-      const res = await fetch(url, {
+      const res = await projectFetch(url, {
         method,
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
@@ -204,7 +207,7 @@ export default function SaleOfferPage() {
 
     try {
       const token = localStorage.getItem("accessToken");
-      const res = await fetch(`${API_PATH}/flat-land-offers/${uuid}`, {
+      const res = await projectFetch(`${API_PATH}/flat-land-offers/${uuid}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

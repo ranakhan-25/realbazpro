@@ -1,5 +1,8 @@
 "use client";
 
+import { normalizeProjectText, projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -54,9 +57,18 @@ export default function ProjectApiDashboard({
       setLoading(true);
       setError("");
       try {
-        const response = await fetch(
+        const token =
+          typeof window !== "undefined"
+            ? localStorage.getItem("admin_access_token") ||
+              localStorage.getItem("access_token") ||
+              localStorage.getItem("token")
+            : null;
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const response = await projectFetch(
           `${API_BASE}/realbizpro/api/v1/project?page=1&limit=100`,
-          { cache: "no-store" },
+          { cache: "no-store", headers },
         );
         const payload: unknown = await response.json().catch(() => null);
         if (!response.ok) {
@@ -68,10 +80,22 @@ export default function ProjectApiDashboard({
         }
 
         const match = extractProjects(payload).find(
-          (item) => item.name.trim().toLowerCase() === projectName.toLowerCase(),
+          (item) =>
+            normalizeProjectText(item.name).trim().toLowerCase() ===
+            projectName.toLowerCase(),
         );
         if (!match) throw new Error(`Project "${projectName}" was not found.`);
-        if (active) setProject(match);
+        if (active) {
+          setProject({
+            ...match,
+            name: normalizeProjectText(match.name),
+            projectType: normalizeProjectText(match.projectType),
+            location: normalizeProjectText(match.location),
+            description: normalizeProjectText(match.description),
+            contactPersonName: normalizeProjectText(match.contactPersonName),
+            projectManager: normalizeProjectText(match.projectManager),
+          });
+        }
       } catch (cause) {
         if (active) {
           setError(

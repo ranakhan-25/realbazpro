@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
+
 import React, { useState, useEffect } from "react";
 import { Loader2, RefreshCw, Play, Upload } from "lucide-react";
 import toast from "react-hot-toast";
@@ -38,7 +40,7 @@ async function handleRes(res: Response, action: string) {
 // ১. Attendance Log ফেচ
 async function fetchAttendanceLogs(): Promise<any[]> {
   const url = `${API_BASE}/realbizpro/api/v1/attendance?page=1&limit=100&withDeleted=false`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch attendance logs");
   return json?.data?.data || json?.data || [];
 }
@@ -46,7 +48,7 @@ async function fetchAttendanceLogs(): Promise<any[]> {
 // ২. Employee List ফেচ
 async function fetchEmployees(): Promise<Employee[]> {
   const url = `${API_BASE}/realbizpro/api/v1/employee-list?page=1&limit=100&withDeleted=false`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch employees");
 
   return (json?.data?.data || json?.data || []).map((e: any) => ({

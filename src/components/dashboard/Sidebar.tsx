@@ -18,6 +18,18 @@ import {
   Workflow,
   CreditCard,
   BarChart3,
+  Settings,
+  Headset,
+  Wrench,
+  Building2,
+  Database,
+  Zap,
+  Car,
+  Layers,
+  KeyRound,
+  LifeBuoy,
+  Receipt,
+  MessageSquare,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MENUS, MODULES, type MenuNode, type ModuleKey } from "@/lib/menus";
@@ -26,6 +38,38 @@ import { useTheme } from "@/lib/theme";
 import { useUserAccess } from "@/context/UserAccessContext";
 import { useSidebar } from "@/context/SidebarContext";
 
+const CUSTOMER_SERVICE_ICONS: Record<string, React.ElementType> = {
+  dashboard: LayoutDashboard,
+  "after-sales": Headset,
+  "building-services": Wrench,
+  "building-management": Building2,
+  "pre-sales": CalendarCheck2,
+  "core-records": Database,
+  "utility-service": Zap,
+  "security-service": ShieldCheck,
+  "parking-service": Car,
+  "other-services": Layers,
+  "service-charge": Receipt,
+  "building-committee": Users,
+  customers: Users,
+  "customers-properties": Users,
+  payments: Receipt,
+  "payments-collections": Receipt,
+  documents: FileCheck2,
+  "documents-land-records": FileCheck2,
+  handover: KeyRound,
+  "handover-possession": KeyRound,
+  tickets: LifeBuoy,
+  "tickets-service-requests": LifeBuoy,
+  "property-care": ShieldCheck,
+  "warranty-property-care": ShieldCheck,
+  communication: MessageSquare,
+  "communication-appointments": MessageSquare,
+  reports: BarChart3,
+  "reports-analytics": BarChart3,
+  settings: Settings,
+  "settings-administration": Settings,
+};
 const LAMS_ICONS: Record<string, React.ElementType> = {
   dashboard: LayoutDashboard,
   "acquisition-leads": Compass,
@@ -113,6 +157,125 @@ function getMenuHref(node: MenuNode, module: ModuleKey) {
   }
 
   return `/dashboard/${module}/${routePath}`;
+function normalizeMenuNodes(
+  rawNodes: MenuNode[],
+  moduleKey: string,
+): MenuNode[] {
+  if (!rawNodes || !rawNodes.length) return [];
+
+  // Exclude unwanted items per user specification:
+  // "Settings theke Approval & Permission Matrix and Templates, Integrations & Audit Log cut kore deo"
+  const isExcluded = (label?: string, slug?: string, path?: string) => {
+    const text = `${label || ""} ${slug || ""} ${path || ""}`.toLowerCase();
+    return (
+      text.includes("approval & permission matrix") ||
+      text.includes("approval-permission") ||
+      text.includes("templates, integrations & audit log") ||
+      text.includes("templates-integrations-audit")
+    );
+  };
+
+  const filteredNodes = rawNodes.filter(
+    (n) => !isExcluded(n.label, n.slug, n.path),
+  );
+
+  // Check if any node contains the pipe separator " | "
+  const hasPipeSeparator = filteredNodes.some(
+    (n) => typeof n.label === "string" && n.label.includes("|"),
+  );
+
+  if (!hasPipeSeparator) {
+    return filteredNodes.map((n) => ({
+      ...n,
+      children: n.children ? normalizeMenuNodes(n.children, moduleKey) : undefined,
+    }));
+  }
+
+  // Group pipe-separated flat nodes (e.g. "Customers & Properties | Bookings & Property Portfolio")
+  const result: MenuNode[] = [];
+  const groupMap = new Map<string, MenuNode>();
+
+  const canonicalGroups: Record<string, { label: string; slug: string }> = {
+    dashboard: { label: "Dashboard", slug: "dashboard" },
+    "customers & properties": { label: "Customers & Properties", slug: "customers-properties" },
+    customers: { label: "Customers & Properties", slug: "customers-properties" },
+    "payments & collections": { label: "Payments & Collections", slug: "payments-collections" },
+    payments: { label: "Payments & Collections", slug: "payments-collections" },
+    "documents & land records": { label: "Documents & Land Records", slug: "documents-land-records" },
+    documents: { label: "Documents & Land Records", slug: "documents-land-records" },
+    "handover & possession": { label: "Handover & Possession", slug: "handover-possession" },
+    handover: { label: "Handover & Possession", slug: "handover-possession" },
+    "tickets & service requests": { label: "Tickets & Service Requests", slug: "tickets-service-requests" },
+    tickets: { label: "Tickets & Service Requests", slug: "tickets-service-requests" },
+    "warranty & property care": { label: "Warranty & Property Care", slug: "warranty-property-care" },
+    "property care": { label: "Warranty & Property Care", slug: "warranty-property-care" },
+    "communication & appointments": { label: "Communication & Appointments", slug: "communication-appointments" },
+    communication: { label: "Communication & Appointments", slug: "communication-appointments" },
+    "reports & analytics": { label: "Reports & Analytics", slug: "reports-analytics" },
+    reports: { label: "Reports & Analytics", slug: "reports-analytics" },
+    "settings & administration": { label: "Settings & Administration", slug: "settings-administration" },
+    settings: { label: "Settings & Administration", slug: "settings-administration" },
+  };
+
+  for (const n of filteredNodes) {
+    const rawLabel = String(n.label || "").trim();
+    if (rawLabel.toLowerCase() === "dashboard" || n.slug === "dashboard") {
+      result.push({
+        ...n,
+        label: "Dashboard",
+        slug: "dashboard",
+        path: "dashboard",
+      });
+      continue;
+    }
+
+    if (rawLabel.includes("|")) {
+      const parts = rawLabel.split("|").map((p) => p.trim());
+      const rawGroupName = parts[0];
+      const childLabel = parts.slice(1).join(" | ").trim();
+
+      const lookupKey = rawGroupName.toLowerCase();
+      const groupInfo = canonicalGroups[lookupKey] || {
+        label: rawGroupName,
+        slug: rawGroupName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      };
+
+      let parentNode = groupMap.get(groupInfo.slug);
+      if (!parentNode) {
+        parentNode = {
+          label: groupInfo.label,
+          slug: groupInfo.slug,
+          path: groupInfo.slug,
+          children: [],
+        };
+        groupMap.set(groupInfo.slug, parentNode);
+        result.push(parentNode);
+      }
+
+      const childSlug = n.slug || childLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      parentNode.children!.push({
+        ...n,
+        label: childLabel,
+        slug: childSlug,
+      });
+    } else {
+      result.push({
+        ...n,
+        children: n.children ? normalizeMenuNodes(n.children, moduleKey) : undefined,
+      });
+    }
+  }
+
+  // Ensure Dashboard is at the top for customer-service
+  if (moduleKey === "customer-service" && !result.some((n) => n.slug === "dashboard")) {
+    result.unshift({
+      label: "Dashboard",
+      slug: "dashboard",
+      path: "dashboard",
+    });
+  }
+
+  return result;
 }
 
 export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
@@ -188,6 +351,9 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         base.unshift(defaultConfigNode);
       }
     }
+    if (module === "customer-service" || base.some((n) => n.label?.includes("|"))) {
+      base = normalizeMenuNodes(base, module);
+    }
     return base;
   }, [currentAccessibleMod, module, hasAccessToRoute]);
 
@@ -201,8 +367,38 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
     for (let i = 1; i < parts.length; i++) {
       next.add(parts.slice(0, i).join("/"));
     }
+
+    const cleanActive = activePath
+      .replace(/^\//, "")
+      .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+
+    const findAncestors = (nodes: MenuNode[], stack: string[]): boolean => {
+      for (const node of nodes) {
+        const cleanNode = node.path
+          .replace(/^\//, "")
+          .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+        if (
+          cleanNode === cleanActive ||
+          node.path === activePath ||
+          (cleanNode && cleanActive.startsWith(cleanNode + "/"))
+        ) {
+          stack.forEach((p) => next.add(p));
+          if (!node.children?.length) {
+            return true;
+          }
+        }
+        if (node.children?.length) {
+          if (findAncestors(node.children, [...stack, node.path])) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+    findAncestors(permittedTree, []);
+
     setExpanded((prev) => new Set([...prev, ...next]));
-  }, [activePath, module]);
+  }, [activePath, module, permittedTree]);
 
   const toggle = (path: string) => {
     setExpanded((prev) => {
@@ -229,11 +425,28 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           cleanNodePath === cleanActivePath ||
           n.path === activePath ||
           (!cleanActivePath && (n.slug === "dashboard" || cleanNodePath === "dashboard"));
+        const hasActiveDescendant = (node: MenuNode): boolean => {
+          if (!node.children?.length) return false;
+          return node.children.some((c) => {
+            const cleanC = c.path
+              .replace(/^\//, "")
+              .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+            if (cleanC === cleanActivePath || c.path === activePath) return true;
+            if (cleanC && cleanActivePath.startsWith(cleanC + "/")) return true;
+            return hasActiveDescendant(c);
+          });
+        };
+        const isChildActive = hasActiveDescendant(n);
         const isAncestor = Boolean(
-          cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")
+          (cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")) || isChildActive
         );
         const isOpen = !!q || expanded.has(n.path) || expanded.has(cleanNodePath);
-        const Icon = module === "lams" ? LAMS_ICONS[n.slug] : null;
+        const Icon =
+          module === "lams"
+            ? LAMS_ICONS[n.slug]
+            : module === "customer-service"
+              ? CUSTOMER_SERVICE_ICONS[n.slug]
+              : null;
 
         if (n.children?.length) {
           return (
@@ -242,32 +455,40 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
                 type="button"
                 onClick={() => toggle(n.path)}
                 className={cn(
-                  "flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm transition",
+                  "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-sm transition",
                   depth === 0 ? "font-semibold" : "font-medium",
                   !isAncestor && "text-foreground/80 hover:bg-foreground/5",
                 )}
                 style={
                   isAncestor
                     ? {
-                        backgroundColor: `${brandColor}1A`,
-                        color: brandColor,
-                        boxShadow: `inset 0 0 0 1px ${brandColor}40`,
-                      }
+                      backgroundColor: `${brandColor}1A`,
+                      color: brandColor,
+                      boxShadow: `inset 0 0 0 1px ${brandColor}40`,
+                    }
                     : undefined
                 }
               >
-                <span className="flex items-center gap-1.5">
-                  {isAncestor ? (
+                <div className="flex items-center gap-2 truncate">
+                  {Icon ? (
+                    <Icon
+                      className={cn(
+                        "h-4 w-4 shrink-0 transition-colors",
+                        isAncestor ? "text-primary" : "text-muted-foreground",
+                      )}
+                      style={isAncestor ? { color: brandColor } : undefined}
+                    />
+                  ) : isAncestor ? (
                     <span
-                      className="h-3.5 w-1 rounded"
+                      className="h-3.5 w-1 rounded shrink-0"
                       style={{ backgroundColor: brandColor }}
                     />
                   ) : null}
-                  {n.label}
-                </span>
+                  <span className="truncate">{n.label}</span>
+                </div>
                 <ChevronRight
                   className={cn(
-                    "h-3.5 w-3.5 text-muted-foreground transition-transform",
+                    "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform",
                     isOpen && "rotate-90",
                   )}
                 />
@@ -282,6 +503,13 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         }
 
         const href = getMenuHref(n, module);
+        const href = n.path.startsWith("http")
+          ? n.path
+          : n.path.startsWith("/")
+            ? n.path
+            : n.slug === "dashboard" || cleanNodePath === "dashboard" || !cleanNodePath
+              ? `/dashboard/${module}`
+              : `/dashboard/${module}/${cleanNodePath}`;
 
         return (
           <li key={n.path}>
@@ -297,9 +525,9 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
               style={
                 isActive
                   ? {
-                      backgroundColor: brandColor,
-                      boxShadow: `0 1px 2px ${brandColor}33`,
-                    }
+                    backgroundColor: brandColor,
+                    boxShadow: `0 1px 2px ${brandColor}33`,
+                  }
                   : undefined
               }
             >
@@ -341,7 +569,12 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         const isAncestor = Boolean(
           cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")
         );
-        const Icon = module === "lams" ? LAMS_ICONS[n.slug] : null;
+        const Icon =
+          module === "lams"
+            ? LAMS_ICONS[n.slug]
+            : module === "customer-service"
+              ? CUSTOMER_SERVICE_ICONS[n.slug]
+              : null;
 
         if (n.children?.length) {
           return (
@@ -383,6 +616,13 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         }
 
         const href = getMenuHref(n, module);
+        const href = n.path.startsWith("http")
+          ? n.path
+          : n.path.startsWith("/")
+            ? n.path
+            : n.slug === "dashboard" || cleanNodePath === "dashboard" || !cleanNodePath
+              ? `/dashboard/${module}`
+              : `/dashboard/${module}/${cleanNodePath}`;
 
         return (
           <li key={n.path} className="relative group">
@@ -528,4 +768,5 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
       </aside>
     </>
   );
+}
 }

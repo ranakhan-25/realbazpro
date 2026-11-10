@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { Plus, X, Loader2, Edit3, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -46,7 +49,7 @@ export default function PropertyBlockPage() {
   const fetchBlocks = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_PATH}/land-infrastructure/blocks`);
+      const res = await projectFetch(`${API_PATH}/land-infrastructure/blocks`);
       const json = await res.json();
       if (json.success) {
         setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
@@ -61,7 +64,7 @@ export default function PropertyBlockPage() {
   // ====================== FETCH DROPDOWNS ======================
   const fetchDropdowns = async () => {
     try {
-      const resProj = await fetch(`${API_PATH}/project`);
+      const resProj = await projectFetch(`${API_PATH}/project`);
       const jsonProj = await resProj.json();
       if (jsonProj.success) setProjects(jsonProj.data.data || jsonProj.data || []);
     } catch (err) {
@@ -94,7 +97,7 @@ export default function PropertyBlockPage() {
         : `${API_PATH}/land-infrastructure/blocks`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await projectFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -120,7 +123,7 @@ export default function PropertyBlockPage() {
   const handleDelete = async (item: ProjectBlock) => {
     if (!window.confirm(`Delete Block "${item.name}"?`)) return;
     try {
-      const res = await fetch(`${API_PATH}/land-infrastructure/blocks/${item.uuid}`, {
+      const res = await projectFetch(`${API_PATH}/land-infrastructure/blocks/${item.uuid}`, {
         method: "DELETE",
       });
       if (res.ok) {

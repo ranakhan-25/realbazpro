@@ -3,6 +3,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Plus,
@@ -86,7 +89,7 @@ export default function WorkOrderPage() {
   // ==================== API FETCHERS ====================
   const fetchOptions = async (endpoint: string) => {
     try {
-      const res = await fetch(
+      const res = await projectFetch(
         `${API_BASE}${API_PREFIX}${endpoint}?page=1&limit=100`,
       );
       if (!res.ok) {
@@ -169,7 +172,7 @@ export default function WorkOrderPage() {
       setLoading(true);
       setError(null);
       // ⚠️ Endpoint apnar backend onujayi change korte hobe
-      const res = await fetch(
+      const res = await projectFetch(
         `${API_BASE}${API_PREFIX}/project-billing/work-orders?page=1&limit=100`,
       );
       if (!res.ok) throw new Error("Failed to load work orders");
@@ -272,7 +275,7 @@ export default function WorkOrderPage() {
       console.log("📤 Sending Work Order Payload:", payload);
 
       const isEditing = Boolean(editingOrderUuid);
-      const res = await fetch(
+      const res = await projectFetch(
         `${API_BASE}${API_PREFIX}/project-billing/work-orders${
           isEditing ? `/${editingOrderUuid}` : ""
         }`,
@@ -351,7 +354,7 @@ export default function WorkOrderPage() {
         case "Delete":
           if (confirm(`Are you sure you want to delete ${order.code}?`)) {
             setLoading(true);
-            const res = await fetch(
+            const res = await projectFetch(
               `${API_BASE}${API_PREFIX}/project-billing/work-orders/${order.uuid}`,
               { method: "DELETE" },
             );

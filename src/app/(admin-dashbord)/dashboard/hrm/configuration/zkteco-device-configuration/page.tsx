@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
+
 import React, { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, X, Loader2, Check, Search } from "lucide-react";
 
@@ -33,7 +35,7 @@ async function handleRes(res: Response, action: string) {
 // ১. Device লিস্ট ফেচ
 async function fetchDevices(): Promise<ZkTecoDevice[]> {
   const url = `${API_BASE}/realbizpro/api/v1/zkteco-device?page=1&limit=100&withDeleted=false`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch devices");
 
   return (json?.data?.data || [])
@@ -53,7 +55,7 @@ async function fetchDevices(): Promise<ZkTecoDevice[]> {
 
 // ২. Device তৈরি
 async function createDevice(payload: any) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/zkteco-device`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/zkteco-device`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -63,7 +65,7 @@ async function createDevice(payload: any) {
 
 // ৩. Device আপডেট
 async function updateDevice(uuid: string, payload: any) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/zkteco-device/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/zkteco-device/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -73,7 +75,7 @@ async function updateDevice(uuid: string, payload: any) {
 
 // ৪. Device ডিলিট
 async function softDeleteDevice(uuid: string) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/zkteco-device/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/zkteco-device/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });
