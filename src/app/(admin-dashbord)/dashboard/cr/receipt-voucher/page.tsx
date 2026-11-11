@@ -52,13 +52,15 @@ export default function ReceiptVoucherPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [agrs, overdue] = await Promise.all([
-        crApi.getAgreements(),
-        crApi.getOverdueInstallments(),
+      const [agrsResult, overdueResult] = await Promise.allSettled([
+        crApi.getAgreements?.() ?? Promise.resolve([]),
+        crApi.getOverdueInstallments?.() ?? Promise.resolve([]),
       ]);
+      const agrs = agrsResult.status === "fulfilled" && Array.isArray(agrsResult.value) ? agrsResult.value : [];
+      const overdue = overdueResult.status === "fulfilled" && Array.isArray(overdueResult.value) ? overdueResult.value : [];
 
-      setAgreements(agrs || []);
-      setOverduePlans(overdue || []);
+      setAgreements(agrs);
+      setOverduePlans(overdue);
 
       // Flatten payment vouchers from all agreements
       const rows: any[] = [];

@@ -694,10 +694,10 @@ export default function InventoryModule() {
       try {
         const [categoryRows, brandRows, unitRows, itemRows] = await Promise.all(
           [
-            categoriesApi.getAll(),
-            brandsApi.getAll(),
-            unitsApi.getAll(),
-            itemsApi.getAll(),
+            categoriesApi.getAll?.() ?? Promise.resolve([]),
+            brandsApi.getAll?.() ?? Promise.resolve([]),
+            unitsApi.getAll?.() ?? Promise.resolve([]),
+            itemsApi.getAll?.() ?? Promise.resolve([]),
           ],
         );
         if (!active) return;

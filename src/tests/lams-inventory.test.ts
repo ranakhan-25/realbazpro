@@ -176,8 +176,8 @@ test("LAMS: Sub-route deep-linking and path resolution contracts", () => {
   assert.strictEqual(docsRoute.selectedLeadId, "LEAD-003");
   assert.strictEqual(docsRoute.initialDetailTab, "Documents");
 
-  assert.strictEqual(lamsPath("leads/create"), "/land/leads/create");
-  assert.strictEqual(lamsPath(""), "/land");
+  assert.strictEqual(lamsPath("leads/create"), "/dashboard/lams/leads/create");
+  assert.strictEqual(lamsPath(""), "/dashboard/lams");
 });
 
 test("LAMS: Valuations, Legal Verifications, Due Diligence, Approvals, and Settlements data integrity", () => {

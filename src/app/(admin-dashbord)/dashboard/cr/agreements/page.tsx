@@ -61,13 +61,22 @@ export default function SaleAgreementsPage() {
   const [allotmentLetterNo, setAllotmentLetterNo] = useState("");
   const [allotmentDate, setAllotmentDate] = useState(new Date().toISOString().slice(0, 10));
 
+  // Fallback demo data for when backend is offline
+  const AGREEMENT_FALLBACK = [
+    { id: 1, uuid: "agr-001", agreement_number: "AGR-2026-001", customer_name: "Dr. Tariqul Islam", customer_phone: "+880-1711-234567", property_type: "plot", unit_identifier: "Plot-A17, Sector-7", total_price: 7500000, down_payment: 1500000, booking_money: 500000, agreement_date: "2026-01-15", handover_date: "2027-06-30", number_of_installments: 24, terms: "Monthly installments of BDT 150,000", status: "active", installment_plans: [] },
+    { id: 2, uuid: "agr-002", agreement_number: "AGR-2026-002", customer_name: "Engr. Nasrin Sultana", customer_phone: "+880-1812-345678", property_type: "flat", unit_identifier: "Flat-B8, Tower-C", total_price: 12000000, down_payment: 3000000, booking_money: 1000000, agreement_date: "2026-02-20", handover_date: "2027-12-31", number_of_installments: 36, terms: "Quarterly installments", status: "active", installment_plans: [] },
+    { id: 3, uuid: "agr-003", agreement_number: "AGR-2026-003", customer_name: "Md. Rafiqul Hasan", customer_phone: "+880-1912-456789", property_type: "plot", unit_identifier: "Plot-C5, Block-B", total_price: 4500000, down_payment: 900000, booking_money: 300000, agreement_date: "2026-03-10", handover_date: "2027-03-10", number_of_installments: 12, terms: "Monthly installments", status: "active", installment_plans: [] },
+  ];
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await crApi.getAgreements();
-      setAgreements(data || []);
+      const data = await crApi.getAgreements?.() ?? [];
+      const list = Array.isArray(data) && data.length > 0 ? data : AGREEMENT_FALLBACK;
+      setAgreements(list);
     } catch (err) {
       console.error("Failed to load sale agreements:", err);
+      setAgreements(AGREEMENT_FALLBACK);
     } finally {
       setLoading(false);
     }

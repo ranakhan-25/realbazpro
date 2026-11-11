@@ -22,26 +22,61 @@ import {
 } from "lucide-react";
 import { crApi } from "@/lib/crApi";
 
+// ─── Fallback data for when backend is offline ─────────────────────────────────
+const FALLBACK_SUMMARY = {
+  total_contract_value: 185000000,
+  total_sale_agreements: 24,
+  total_collected: 92500000,
+  recovery_rate: "50.0%",
+  total_pending: 92500000,
+  overdue_count: 7,
+  total_overdue_amount: 14300000,
+};
+const FALLBACK_AGING = {
+  buckets: {
+    "0-30": { count: 3, amount: 4500000 },
+    "31-60": { count: 2, amount: 5800000 },
+    "61-90": { count: 1, amount: 2200000 },
+    "90+": { count: 1, amount: 1800000 },
+  },
+};
+const FALLBACK_OVERDUE = [
+  { id: "ov-001", sale_agreement: { customer_name: "Dr. Tariqul Islam", unit_identifier: "Plot-A17" }, title: "4th Installment", due_date: "2026-11-01", due_amount: 150000, status: "pending" },
+  { id: "ov-002", sale_agreement: { customer_name: "Engr. Nasrin Sultana", unit_identifier: "Flat-B8" }, title: "2nd Installment", due_date: "2026-10-15", due_amount: 200000, status: "overdue" },
+  { id: "ov-003", sale_agreement: { customer_name: "Alhaj Motiur Rahman", unit_identifier: "Plot-D12" }, title: "6th Installment", due_date: "2026-10-01", due_amount: 450000, status: "overdue" },
+];
+
 export default function CreditRealizationOverviewPage() {
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<any>(null);
-  const [aging, setAging] = useState<any>(null);
-  const [recentOverdue, setRecentOverdue] = useState<any[]>([]);
+  const [summary, setSummary] = useState<any>(FALLBACK_SUMMARY);
+  const [aging, setAging] = useState<any>(FALLBACK_AGING);
+  const [recentOverdue, setRecentOverdue] = useState<any[]>(FALLBACK_OVERDUE);
+  const [isFallback, setIsFallback] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [sumData, agingData, overdueData] = await Promise.all([
+      const [sumData, agingData, overdueData] = await Promise.allSettled([
         crApi.getRealizationSummary(),
         crApi.getAgingAnalysis(),
         crApi.getOverdueInstallments(),
       ]);
 
-      setSummary(sumData || {});
-      setAging(agingData || {});
-      setRecentOverdue((overdueData || []).slice(0, 5));
+      const sum = sumData.status === "fulfilled" ? (sumData.value ?? null) : null;
+      const aging = agingData.status === "fulfilled" ? (agingData.value ?? null) : null;
+      const overdue = overdueData.status === "fulfilled" ? (overdueData.value ?? []) : [];
+
+      const hasRealData = sum || aging || (Array.isArray(overdue) && overdue.length > 0);
+      setSummary(sum ?? FALLBACK_SUMMARY);
+      setAging(aging ?? FALLBACK_AGING);
+      setRecentOverdue((Array.isArray(overdue) && overdue.length > 0 ? overdue : FALLBACK_OVERDUE).slice(0, 5));
+      setIsFallback(!hasRealData);
     } catch (err) {
       console.error("Failed to load credit realization overview:", err);
+      setSummary(FALLBACK_SUMMARY);
+      setAging(FALLBACK_AGING);
+      setRecentOverdue(FALLBACK_OVERDUE);
+      setIsFallback(true);
     } finally {
       setLoading(false);
     }
@@ -51,10 +86,16 @@ export default function CreditRealizationOverviewPage() {
     loadData();
   }, [loadData]);
 
-  const buckets = aging?.buckets || {};
+  const buckets = aging?.buckets ?? {};
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+      {/* Demo data banner */}
+      {isFallback && !loading && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 px-4 py-2.5 text-sm text-amber-700 dark:text-amber-300 flex items-center gap-2">
+          <span className="font-semibold">⚠ Demo Mode:</span> Backend not connected — displaying sample CR data. Connect your API to see live figures.
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border">
         <div>

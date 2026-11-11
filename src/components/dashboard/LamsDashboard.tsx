@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useTransition } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { LamsHeaderNav, LamsTab } from "@/components/lams/LamsHeaderNav";
+import { useRouter } from "next/navigation";
+import type { LamsTab } from "@/components/lams/LamsHeaderNav";
 import { LamsMetrics } from "@/components/lams/LamsMetrics";
 import { LandOwnersView } from "@/components/lams/LandOwnersView";
 import { AcquisitionLeadsView } from "@/components/lams/AcquisitionLeadsView";
@@ -95,7 +95,6 @@ export default function LamsDashboard({
   initialFollowUps = [],
 }: LamsDashboardProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
   // Resolve initial tab from route path
@@ -122,15 +121,11 @@ export default function LamsDashboard({
   const isNegotiationsCreateOpen = activeTab === "negotiation" && parsedRoute.isOpenCreate;
   const isSettlementsCreateOpen = activeTab === "settlements" && parsedRoute.isOpenCreate;
 
-  // When tab is clicked in header, sync URL if inside /dashboard/lams or /land
+  // When tab changes, always push to /dashboard/lams sub-route
   const handleTabChange = (newTab: LamsTab) => {
     setActiveTab(newTab);
     const subPath = TAB_TO_PATH[newTab];
-    if (pathname?.startsWith("/dashboard")) {
-      router.push(`/dashboard/lams/${subPath}`);
-    } else if (pathname?.startsWith("/land")) {
-      router.push(`/land/${subPath}`);
-    }
+    router.push(`/dashboard/lams/${subPath}`);
   };
 
   // Handlers for Land Owners
@@ -329,28 +324,31 @@ export default function LamsDashboard({
 
   return (
     <div className="space-y-6 pb-12">
-      {/* 1. Header Navigation Tabs with Module Counts */}
-      <LamsHeaderNav
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        showInsights={showInsights}
-        onToggleInsights={() => setShowInsights((prev) => !prev)}
-        counts={{
-          leads: initialLeads.length,
-          owners: initialOwners.length,
-          valuations: initialValuations.length,
-          legal: initialLegalRecords.length,
-          duediligence: initialDueDiligence.length,
-          negotiation: initialNegotiations.length,
-          approvals: initialApprovals.length,
-          settlements: initialSettlements.length,
-          documents: initialDocuments.length,
-          reports: initialLeads.length,
-          followup: initialFollowUps.length,
-        }}
-      />
+      {/* Module Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/80 dark:border-slate-800">
+        <div>
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">
+            <span>Dashboard</span>
+            <span>/</span>
+            <span className="text-cyan-600 dark:text-cyan-400 font-semibold">Module 02 — LAMS</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Land Acquisition &amp; Management System
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            End-to-end land acquisition pipeline — leads, owners, valuations, legal, negotiations, settlements &amp; analytics.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowInsights((prev) => !prev)}
+          className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+        >
+          {showInsights ? "Hide" : "Show"} Insights
+        </button>
+      </div>
 
-      {/* 2. Executive Metric Strip */}
+      {/* Executive Metric Strip */}
       <LamsMetrics
         showInsights={showInsights}
         leads={initialLeads}

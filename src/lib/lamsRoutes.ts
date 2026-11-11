@@ -11,7 +11,7 @@ export type LamsTab =
   | "reports"
   | "followup";
 
-export const LAMS_BASE_PATH = "/land";
+export const LAMS_BASE_PATH = "/dashboard/lams";
 
 export const PATH_TO_TAB: Record<string, LamsTab> = {
   "": "leads",

@@ -15,7 +15,7 @@ export default function AgingReportPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await crApi.getAgingAnalysis();
+      const data = await crApi.getAgingAnalysis?.() ?? null;
       setAgingData(data);
     } catch (err) {
       console.error(err);
