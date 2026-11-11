@@ -180,9 +180,9 @@ export default function AgreementsViewPage() {
           <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors">
             <Download size={16} /> Export
           </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors shadow-lg shadow-indigo-600/20">
+          <Link href="/dashboard/sales-management/agreements_create" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors shadow-lg shadow-indigo-600/20">
             <Plus size={16} /> New Agreement
-          </button>
+          </Link>
         </div>
       </div>
 

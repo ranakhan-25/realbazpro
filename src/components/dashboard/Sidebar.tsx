@@ -157,6 +157,8 @@ function getMenuHref(node: MenuNode, module: ModuleKey) {
   }
 
   return `/dashboard/${module}/${routePath}`;
+}
+
 function normalizeMenuNodes(
   rawNodes: MenuNode[],
   moduleKey: string,
@@ -503,13 +505,6 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         }
 
         const href = getMenuHref(n, module);
-        const href = n.path.startsWith("http")
-          ? n.path
-          : n.path.startsWith("/")
-            ? n.path
-            : n.slug === "dashboard" || cleanNodePath === "dashboard" || !cleanNodePath
-              ? `/dashboard/${module}`
-              : `/dashboard/${module}/${cleanNodePath}`;
 
         return (
           <li key={n.path}>
@@ -616,13 +611,6 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         }
 
         const href = getMenuHref(n, module);
-        const href = n.path.startsWith("http")
-          ? n.path
-          : n.path.startsWith("/")
-            ? n.path
-            : n.slug === "dashboard" || cleanNodePath === "dashboard" || !cleanNodePath
-              ? `/dashboard/${module}`
-              : `/dashboard/${module}/${cleanNodePath}`;
 
         return (
           <li key={n.path} className="relative group">
@@ -768,5 +756,4 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
       </aside>
     </>
   );
-}
 }
