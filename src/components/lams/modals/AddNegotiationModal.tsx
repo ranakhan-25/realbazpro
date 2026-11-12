@@ -27,25 +27,34 @@ export function AddNegotiationModal({
   acquisitionLeads,
 }: AddNegotiationModalProps) {
   const [acquisitionLeadId, setAcquisitionLeadId] = useState(acquisitionLeads[0]?.uuid || "");
-  const [offeredTotalPrice, setOfferedTotalPrice] = useState<number>(38500000);
-  const [offeredPricePerDecimal, setOfferedPricePerDecimal] = useState<number>(1100000);
-  const [counterOfferByOwner, setCounterOfferByOwner] = useState<number>(42000000);
-  const [counterPricePerDecimal, setCounterPricePerDecimal] = useState<number>(1200000);
+  const [offeredTotalPrice, setOfferedTotalPrice] = useState<number | "">("");
+  const [offeredPricePerDecimal, setOfferedPricePerDecimal] = useState<number | "">("");
+  const [counterOfferByOwner, setCounterOfferByOwner] = useState<number | "">("");
+  const [counterPricePerDecimal, setCounterPricePerDecimal] = useState<number | "">("");
   const [negotiationStatus, setNegotiationStatus] = useState<NegotiationStatus>("In Progress");
-  const [meetingDate, setMeetingDate] = useState("2026-09-18 11:30 AM");
-  const [attendedBy, setAttendedBy] = useState("Sakib Al Hasan & Legal Valuer");
+  const [meetingDate, setMeetingDate] = useState("");
+  const [attendedBy, setAttendedBy] = useState("");
   const [remarks, setRemarks] = useState("");
 
   useEffect(() => {
     if (isOpen && editData) {
       setAcquisitionLeadId(editData.acquisitionLeadId || editData.lead_id || "");
-      setOfferedTotalPrice(editData.offeredTotalPrice || editData.offered_price || 0);
-      setCounterOfferByOwner(editData.counterOfferByOwner || editData.agreed_price || 0);
+      setOfferedTotalPrice(editData.offeredTotalPrice ?? editData.offered_price ?? "");
+      setOfferedPricePerDecimal(editData.offeredPricePerDecimal ?? "");
+      setCounterOfferByOwner(editData.counterOfferByOwner ?? editData.agreed_price ?? "");
+      setCounterPricePerDecimal(editData.counterPricePerDecimal ?? "");
       setNegotiationStatus(editData.negotiationStatus || editData.negotiation_status || "In Progress");
-      setMeetingDate(editData.meetingDate || (editData.negotiation_date ? new Date(editData.negotiation_date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]));
+      setMeetingDate(editData.meetingDate || editData.negotiation_date || "");
       setAttendedBy(editData.attendedBy || editData.attended_by || "");
       setRemarks(editData.remarks || editData.meeting_notes || "");
     } else if (isOpen && !editData) {
+      setOfferedTotalPrice("");
+      setOfferedPricePerDecimal("");
+      setCounterOfferByOwner("");
+      setCounterPricePerDecimal("");
+      setMeetingDate("");
+      setAttendedBy("");
+      setRemarks("");
       const defaultId = acquisitionLeads[0]?.uuid || acquisitionLeads[0]?.id || "";
       if (!acquisitionLeadId || !acquisitionLeads.some((l) => (l.uuid || l.id) === acquisitionLeadId)) {
         setAcquisitionLeadId(defaultId);
@@ -58,22 +67,22 @@ export function AddNegotiationModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const effectiveLeadId = acquisitionLeadId || acquisitionLeads[0]?.uuid || acquisitionLeads[0]?.id || "";
-    const lead = acquisitionLeads.find((l) => (l.uuid || l.id) === effectiveLeadId) || acquisitionLeads[0];
+    const lead = acquisitionLeads.find((l) => (l.uuid || l.id) === effectiveLeadId);
+    if (!effectiveLeadId || !lead || offeredTotalPrice === "" || counterOfferByOwner === "") return;
 
     const newRecord: NegotiationRecord = {
-      id: `NEG-${Date.now()}`,
-      uuid: `NEG-${Date.now()}`,
+      id: "",
       acquisitionLeadId: effectiveLeadId,
-      leadTitle: lead ? lead.title : "Land Parcel",
-      mouza: lead ? lead.mouza : "Mouza",
-      dagNo: lead ? lead.dagNo : "Dag No",
-      offeredTotalPrice: Number(offeredTotalPrice) || 0,
-      offeredPricePerDecimal: Number(offeredPricePerDecimal) || 0,
-      counterOfferByOwner: Number(counterOfferByOwner) || 0,
-      counterPricePerDecimal: Number(counterPricePerDecimal) || 0,
+      leadTitle: lead.title,
+      mouza: lead.mouza,
+      dagNo: lead.dagNo,
+      offeredTotalPrice: Number(offeredTotalPrice),
+      offeredPricePerDecimal: offeredPricePerDecimal === "" ? undefined : Number(offeredPricePerDecimal),
+      counterOfferByOwner: Number(counterOfferByOwner),
+      counterPricePerDecimal: counterPricePerDecimal === "" ? undefined : Number(counterPricePerDecimal),
       negotiationStatus,
-      meetingDate: meetingDate || "2026-09-20 10:00 AM",
-      attendedBy: attendedBy || "Acquisition Officer",
+      meetingDate: meetingDate || undefined,
+      attendedBy: attendedBy || undefined,
       remarks,
     };
 
@@ -143,7 +152,7 @@ export function AddNegotiationModal({
               <input
                 type="number"
                 value={offeredTotalPrice}
-                onChange={(e) => setOfferedTotalPrice(Number(e.target.value))}
+                onChange={(e) => setOfferedTotalPrice(e.target.value === "" ? "" : Number(e.target.value))}
                 required
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
               />
@@ -157,7 +166,7 @@ export function AddNegotiationModal({
               <input
                 type="number"
                 value={offeredPricePerDecimal}
-                onChange={(e) => setOfferedPricePerDecimal(Number(e.target.value))}
+                onChange={(e) => setOfferedPricePerDecimal(e.target.value === "" ? "" : Number(e.target.value))}
                 required
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
               />
@@ -171,7 +180,7 @@ export function AddNegotiationModal({
               <input
                 type="number"
                 value={counterOfferByOwner}
-                onChange={(e) => setCounterOfferByOwner(Number(e.target.value))}
+                onChange={(e) => setCounterOfferByOwner(e.target.value === "" ? "" : Number(e.target.value))}
                 required
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
               />
@@ -215,7 +224,7 @@ export function AddNegotiationModal({
             </label>
             <input
               type="text"
-              placeholder="e.g. Sakib Al Hasan, Valuation Specialist"
+              placeholder="Enter attendee names"
               value={attendedBy}
               onChange={(e) => setAttendedBy(e.target.value)}
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
@@ -247,6 +256,7 @@ export function AddNegotiationModal({
             </button>
             <button
               type="submit"
+              disabled={!acquisitionLeads.length}
               className="px-5 py-2 font-bold rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-md shadow-amber-600/20"
             >
               Submit Negotiation

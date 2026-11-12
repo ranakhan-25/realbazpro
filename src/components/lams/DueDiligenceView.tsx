@@ -21,6 +21,7 @@ import { AddDueDiligenceModal } from "./modals/AddDueDiligenceModal";
 interface DueDiligenceViewProps {
   records: DueDiligenceRecord[];
   acquisitionLeads: AcquisitionLead[];
+  initialOpenCreate?: boolean;
   onAddRecord?: (rec: any) => void;
   onEditRecord?: (uuid: string, rec: any) => void;
   onDeleteRecord?: (uuid: string) => void;
@@ -38,6 +39,7 @@ const DEFAULT_COLUMNS: ColumnDefinition[] = [
 export function DueDiligenceView({
   records = [],
   acquisitionLeads = [],
+  initialOpenCreate = false,
   onAddRecord,
   onEditRecord,
   onDeleteRecord,
@@ -47,8 +49,14 @@ export function DueDiligenceView({
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [columns, setColumns] = useState<ColumnDefinition[]>(DEFAULT_COLUMNS);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(Boolean(initialOpenCreate));
   const [editingRecord, setEditingRecord] = useState<DueDiligenceRecord | null>(null);
+
+  React.useEffect(() => {
+    if (initialOpenCreate) {
+      setIsModalOpen(true);
+    }
+  }, [initialOpenCreate]);
 
   const safeRecords = Array.isArray(records) ? records : [];
 
@@ -92,7 +100,7 @@ export function DueDiligenceView({
       r.completed_count,
       `${r.score}%`,
       r.status,
-      r.report || "N/A",
+      r.report || "Not found",
     ]);
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);

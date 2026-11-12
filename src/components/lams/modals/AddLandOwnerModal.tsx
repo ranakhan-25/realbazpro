@@ -19,7 +19,7 @@ export function AddLandOwnerModal({
     editData,
   acquisitionLeads,
 }: AddLandOwnerModalProps) {
-  const [code, setCode] = useState(`LW-${Math.floor(1000000 + Math.random() * 9000000)}`);
+  const [code, setCode] = useState("");
   const [acquisitionLeadId, setAcquisitionLeadId] = useState(acquisitionLeads[0]?.uuid || "");
   const [ownerName, setOwnerName] = useState("");
   const [fatherName, setFatherName] = useState("");
@@ -59,11 +59,11 @@ export function AddLandOwnerModal({
     const matchedLead = acquisitionLeads.find((l) => (l.uuid || l.id) === effectiveLeadId);
 
     const newRecord: LandOwner = {
-      id: `LO-${Date.now()}`,
-      uuid: `LO-${Date.now()}`,
-      code: code || `LW-${Math.floor(1000000 + Math.random() * 9000000)}`,
+      id: editData?.id ?? "",
+      uuid: editData?.uuid ?? "",
+      code,
       acquisitionLeadId: effectiveLeadId,
-      landPlot: matchedLead ? `${matchedLead.dagNo} (${matchedLead.mouza})` : "General Parcel",
+      landPlot: matchedLead ? `${matchedLead.dagNo ?? ""} (${matchedLead.mouza ?? ""})` : "",
       ownerName,
       isPrimary,
       fatherName,
@@ -71,9 +71,9 @@ export function AddLandOwnerModal({
       phone,
       address,
       status,
-      addedBy: "Sakib Al Hasan",
+      addedBy: editData?.addedBy ?? "",
       remarks,
-      ownershipSharePercentage: isPrimary ? 60 : 40,
+      ownershipSharePercentage: Number(editData?.ownershipSharePercentage ?? 0),
     };
 
     onAddOwner(newRecord);

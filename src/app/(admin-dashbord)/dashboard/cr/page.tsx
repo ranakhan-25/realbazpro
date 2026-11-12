@@ -31,17 +31,24 @@ export default function CreditRealizationOverviewPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [sumData, agingData, overdueData] = await Promise.all([
+      const [sumData, agingData, overdueData] = await Promise.allSettled([
         crApi.getRealizationSummary(),
         crApi.getAgingAnalysis(),
         crApi.getOverdueInstallments(),
       ]);
 
-      setSummary(sumData || {});
-      setAging(agingData || {});
-      setRecentOverdue((overdueData || []).slice(0, 5));
+      const sum = sumData.status === "fulfilled" ? (sumData.value ?? null) : null;
+      const aging = agingData.status === "fulfilled" ? (agingData.value ?? null) : null;
+      const overdue = overdueData.status === "fulfilled" ? (overdueData.value ?? []) : [];
+
+      setSummary(sum);
+      setAging(aging);
+      setRecentOverdue((Array.isArray(overdue) ? overdue : []).slice(0, 5));
     } catch (err) {
       console.error("Failed to load credit realization overview:", err);
+      setSummary(null);
+      setAging(null);
+      setRecentOverdue([]);
     } finally {
       setLoading(false);
     }
@@ -51,10 +58,15 @@ export default function CreditRealizationOverviewPage() {
     loadData();
   }, [loadData]);
 
-  const buckets = aging?.buckets || {};
+  const buckets = aging?.buckets ?? {};
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+      {!loading && !summary && !aging && recentOverdue.length === 0 && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Not found.
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border">
         <div>
@@ -96,10 +108,10 @@ export default function CreditRealizationOverviewPage() {
             </div>
           </div>
           <div className="text-2xl font-bold">
-            {Number(summary?.total_contract_value || 0).toLocaleString()} <span className="text-xs font-normal">BDT</span>
+            {summary ? Number(summary?.total_contract_value ?? 0).toLocaleString() : "Not found"} {summary && <span className="text-xs font-normal">BDT</span>}
           </div>
           <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-            <span className="font-semibold text-foreground">{summary?.total_sale_agreements || 0}</span> agreements executed
+            <span className="font-semibold text-foreground">{summary?.total_sale_agreements ?? "Not found"}</span> agreements executed
           </div>
         </div>
 
@@ -111,10 +123,10 @@ export default function CreditRealizationOverviewPage() {
             </div>
           </div>
           <div className="text-2xl font-bold text-emerald-600">
-            {Number(summary?.total_collected || 0).toLocaleString()} <span className="text-xs font-normal">BDT</span>
+            {summary ? Number(summary?.total_collected ?? 0).toLocaleString() : "Not found"} {summary && <span className="text-xs font-normal">BDT</span>}
           </div>
           <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-            Recovery Rate: <span className="font-semibold text-emerald-600">{summary?.recovery_rate || "0%"}</span>
+            Recovery Rate: <span className="font-semibold text-emerald-600">{summary?.recovery_rate ?? "Not found"}</span>
           </div>
         </div>
 
@@ -126,10 +138,10 @@ export default function CreditRealizationOverviewPage() {
             </div>
           </div>
           <div className="text-2xl font-bold text-rose-600">
-            {Number(summary?.total_overdue_principal || 0).toLocaleString()} <span className="text-xs font-normal">BDT</span>
+            {summary ? Number(summary?.total_overdue_principal ?? 0).toLocaleString() : "Not found"} {summary && <span className="text-xs font-normal">BDT</span>}
           </div>
           <div className="text-xs text-muted-foreground mt-2">
-            Late Penalty Accrued: <span className="font-medium text-rose-500">{Number(summary?.total_accrued_penalty || 0).toLocaleString()} BDT</span>
+            Late Penalty Accrued: <span className="font-medium text-rose-500">{summary ? `${Number(summary?.total_accrued_penalty ?? 0).toLocaleString()} BDT` : "Not found"}</span>
           </div>
         </div>
 
@@ -141,7 +153,7 @@ export default function CreditRealizationOverviewPage() {
             </div>
           </div>
           <div className="text-2xl font-bold text-amber-600">
-            {aging?.total_overdue_accounts || 0}
+            {aging?.total_overdue_accounts ?? "Not found"}
           </div>
           <div className="text-xs text-muted-foreground mt-2">
             Active overdue installment plans requiring recovery
@@ -172,15 +184,15 @@ export default function CreditRealizationOverviewPage() {
             { key: "91_120_days", label: "91 - 120 Days", color: "border-rose-400/40 bg-rose-50/50 dark:bg-rose-950/20" },
             { key: "over_120_days", label: "120+ Days", color: "border-rose-600/40 bg-rose-100/50 dark:bg-rose-900/30" },
           ].map((b) => {
-            const bucket = buckets[b.key] || { count: 0, total_due: 0 };
+            const bucket = buckets[b.key];
             return (
               <div key={b.key} className={`p-4 rounded-xl border ${b.color}`}>
                 <div className="text-xs font-semibold text-muted-foreground">{b.label}</div>
                 <div className="text-lg font-bold text-foreground mt-1">
-                  {Number(bucket.total_due || 0).toLocaleString()} <span className="text-[10px] font-normal">BDT</span>
+                  {bucket ? Number(bucket.total_due ?? 0).toLocaleString() : "Not found"} {bucket && <span className="text-[10px] font-normal">BDT</span>}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {bucket.count} installments
+                  {bucket?.count ?? "Not found"} installments
                 </div>
               </div>
             );
@@ -302,7 +314,7 @@ export default function CreditRealizationOverviewPage() {
             {recentOverdue.map((p) => (
               <div key={p.uuid || p.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <div className="font-medium text-foreground">{p.sale_agreement?.customer_name || "Customer"}</div>
+                  <div className="font-medium text-foreground">{p?.sale_agreement?.customer_name ?? "—"}</div>
                   <div className="text-xs text-muted-foreground">
                     {p.sale_agreement?.unit_identifier} • Due Date: {p.due_date}
                   </div>

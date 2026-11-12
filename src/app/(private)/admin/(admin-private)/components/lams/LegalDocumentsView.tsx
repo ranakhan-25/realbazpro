@@ -49,6 +49,16 @@ const STATUS_BADGES: Record<
     text: "text-amber-700",
     icon: Clock,
   },
+  Cleared: {
+    bg: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+    text: "text-emerald-700",
+    icon: CheckCircle2,
+  },
+  Flagged: {
+    bg: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
+    text: "text-rose-700",
+    icon: AlertCircle,
+  },
 };
 
 export function LegalDocumentsView({

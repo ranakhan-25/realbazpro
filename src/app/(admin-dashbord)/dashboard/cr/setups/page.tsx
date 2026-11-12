@@ -45,10 +45,12 @@ export default function InstallmentSetupsPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await crApi.getSetups();
-      setSetups(data || []);
+      const data = await crApi.getSetups?.() ?? [];
+      const list = Array.isArray(data) ? data : [];
+      setSetups(list);
     } catch (err) {
       console.error("Failed to load installment policy setups:", err);
+      setSetups([]);
     } finally {
       setLoading(false);
     }
@@ -72,7 +74,7 @@ export default function InstallmentSetupsPage() {
 
   const handleOpenCreateModal = () => {
     setEditingSetup(null);
-    setPlanCode(`PLAN-${Date.now().toString().slice(-4)}`);
+    setPlanCode("");
     setPlanName("");
     setNumberOfInstallments(12);
     setFrequency("monthly");

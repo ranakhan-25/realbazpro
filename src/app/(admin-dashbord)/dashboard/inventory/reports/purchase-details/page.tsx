@@ -4,7 +4,8 @@ import type { PurchaseItem } from "@/components/inventory/PurchaseDetailsTable";
 import PurchaseDetailsTable from "@/components/inventory/PurchaseDetailsTable";
 import React, { useState, useEffect, useMemo } from "react";
 import { FiSearch } from "react-icons/fi";
-import { purchasesApi, fallbackPurchases, fallbackCategories, fallbackItems, fallbackSuppliers } from "@/lib/inventoryApi";
+import { purchasesApi } from "@/lib/inventoryApi";
+import { toast } from "sonner";
 
 
 export default function PurchaseDetailsContainer() {
@@ -13,38 +14,24 @@ export default function PurchaseDetailsContainer() {
   useEffect(() => {
     async function loadPurchases() {
       try {
-        let raw = await purchasesApi.getAll().catch(() => null);
-        if (!Array.isArray(raw) || raw.length === 0) {
-          raw = fallbackPurchases;
-        }
-        const list = raw.map((item: any, idx: number) => ({
-          id: item.id || idx + 1,
-          date: item.date ? new Date(item.date).toLocaleDateString() : "-",
-          invoiceNo: item.purchase_no || item.code || `PUR-2026-00${idx + 1}`,
-          supplierName: item.supplier?.name || item.supplier_name || item.supplier || "Meghna Rebar & Building Supply",
-          category: item.category || "Deformed Rebar & Steels",
-          itemName: item.item_name || (item.items && item.items[0]?.name) || "BSRM 16mm TMT 500W High Strength Bar",
-          quantity: Number(item.total_quantity || (item.items && item.items[0]?.quantity) || 10),
-          price: Number(item.rate || (item.items && item.items[0]?.rate) || 94500),
-          subTotal: Number(item.subtotal || item.grand_total || 945000),
-          project: item.project?.name || item.project_name || item.project || "Dhaka Commercial Center",
+        const raw = await purchasesApi.getAll();
+        const list = (Array.isArray(raw) ? raw : []).map((item: any) => ({
+          id: item.id ?? item.uuid ?? item.purchase_no ?? "",
+          date: item.date ? new Date(item.date).toLocaleDateString() : "Not found",
+          invoiceNo: item.purchase_no || item.code || "Not found",
+          supplierName: item.supplier?.name || item.supplier_name || item.supplier || "Not found",
+          category: item.category || "Not found",
+          itemName: item.item_name || item.items?.[0]?.name || "Not found",
+          quantity: Number(item.total_quantity ?? item.items?.[0]?.quantity ?? 0),
+          price: Number(item.rate ?? item.items?.[0]?.rate ?? 0),
+          subTotal: Number(item.subtotal ?? item.grand_total ?? 0),
+          project: item.project?.name || item.project_name || item.project || "Not found",
         }));
         setPurchases(list);
       } catch (err) {
-        setPurchases(
-          fallbackPurchases.map((item: any, idx: number) => ({
-            id: item.id || idx + 1,
-            date: item.date ? new Date(item.date).toLocaleDateString() : "-",
-            invoiceNo: item.purchase_no || `PUR-2026-00${idx + 1}`,
-            supplierName: item.supplier?.name || "Supplier",
-            category: "Material",
-            itemName: "Construction Materials",
-            quantity: 10,
-            price: 94500,
-            subTotal: item.subtotal || item.grand_total || 945000,
-            project: item.project || "Head Office",
-          }))
-        );
+        console.error("Could not load purchase details.", err);
+        toast.error("Purchase details could not be loaded.");
+        setPurchases([]);
       }
     }
     loadPurchases();
@@ -55,7 +42,7 @@ export default function PurchaseDetailsContainer() {
 
   // Filter states
   const [selectedDateRange, setSelectedDateRange] = useState(
-    "1 September, 2026 - 30 September, 2026",
+    "",
   );
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedItem, setSelectedItem] = useState("");
@@ -64,20 +51,22 @@ export default function PurchaseDetailsContainer() {
 
   const categories = useMemo(() => {
     const fromData = purchases.map((p) => p.category).filter(Boolean);
-    const defaults = fallbackCategories.map((c) => c.name);
-    return Array.from(new Set([...fromData, ...defaults]));
+    return Array.from(new Set(fromData));
   }, [purchases]);
 
   const items = useMemo(() => {
     const fromData = purchases.map((p) => p.itemName).filter(Boolean);
-    const defaults = fallbackItems.map((i) => i.name);
-    return Array.from(new Set([...fromData, ...defaults]));
+    return Array.from(new Set(fromData));
   }, [purchases]);
 
   const suppliers = useMemo(() => {
     const fromData = purchases.map((p) => p.supplierName).filter(Boolean);
-    const defaults = fallbackSuppliers.map((s) => s.name);
-    return Array.from(new Set([...fromData, ...defaults]));
+    return Array.from(new Set(fromData));
+  }, [purchases]);
+
+  const projects = useMemo(() => {
+    const fromData = purchases.map((purchase) => purchase.project).filter(Boolean);
+    return Array.from(new Set(fromData));
   }, [purchases]);
 
   // Filtering Logic
@@ -201,9 +190,9 @@ export default function PurchaseDetailsContainer() {
             className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs focus:outline-none"
           >
             <option value="">Select Project</option>
-            <option value="Hena Heights">Hena Heights</option>
-            <option value="Rifat Eyecon City">Rifat Eyecon City</option>
-            <option value="Sheba Eyecon Tower">Sheba Eyecon Tower</option>
+            {projects
+              .filter((value) => value !== "Not found")
+              .map((value) => <option key={value} value={value}>{value}</option>)}
             <option value="Estern 19">Estern 19</option>
           </select>
         </div>

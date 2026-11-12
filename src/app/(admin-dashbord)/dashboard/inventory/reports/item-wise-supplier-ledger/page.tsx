@@ -3,7 +3,8 @@
 import type { ItemHistoryItem } from "@/components/inventory/ItemWiseSupplierLedgerTable";
 import ItemHistoryReportTable from "@/components/inventory/ItemWiseSupplierLedgerTable";
 import React, { useState, useEffect, useMemo } from "react";
-import { reportsApi, fallbackItemHistory, fallbackCategories, fallbackItems } from "@/lib/inventoryApi";
+import { reportsApi } from "@/lib/inventoryApi";
+import { toast } from "sonner";
 
 
 export default function ItemHistoryReportContainer() {
@@ -14,41 +15,28 @@ export default function ItemHistoryReportContainer() {
 
   // Filter States
   const [selectedDateRange, setSelectedDateRange] = useState(
-    "15 August, 2026 - 13 September, 2026",
+    "",
   );
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedItem, setSelectedItem] = useState("");
   const [selectedProject, setSelectedProject] = useState("");
   const [selectedTask, setSelectedTask] = useState("");
-  const [selectedSite, setSelectedSite] = useState("");
 
   useEffect(() => {
     async function loadData() {
       try {
-        let raw = await reportsApi.getItemHistory().catch(() => null);
-        if (!Array.isArray(raw) || raw.length === 0) {
-          raw = fallbackItemHistory;
-        }
-        setData(raw);
+        const raw = await reportsApi.getItemHistory();
+        setData(Array.isArray(raw) ? raw : []);
       } catch (err) {
-        setData(fallbackItemHistory);
+        console.error("Could not load item history report.", err);
+        toast.error("Item history could not be loaded.");
+        setData([]);
       }
     }
     loadData();
   }, []);
 
-  const categories = useMemo(() => {
-    return Array.from(new Set(fallbackCategories.map((c) => c.name)));
-  }, []);
-
-  const items = useMemo(() => {
-    return Array.from(new Set(fallbackItems.map((i) => i.name)));
-  }, []);
-
   const projects = useMemo(() => {
     const fromData = data.map((d) => d.project).filter(Boolean);
-    const defaults = ["Sheba Eyecon Tower", "Lake Garden Commercial", "Hena Heights", "Rifat Eyecon City"];
-    return Array.from(new Set([...fromData, ...defaults]));
+    return Array.from(new Set(fromData));
   }, [data]);
 
   // Filtering Logic
@@ -105,40 +93,6 @@ export default function ItemHistoryReportContainer() {
             />
           </div>
 
-          {/* Category */}
-          <div className="space-y-1">
-            <label className="text-xs text-gray-600 dark:text-gray-300 block">Category</label>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-gray-600 dark:text-gray-300 shadow-sm"
-            >
-              <option value="">Select Category</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Select Item */}
-          <div className="space-y-1">
-            <label className="text-xs text-gray-600 dark:text-gray-300 block">Select Item</label>
-            <select
-              value={selectedItem}
-              onChange={(e) => setSelectedItem(e.target.value)}
-              className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-gray-600 dark:text-gray-300 shadow-sm"
-            >
-              <option value="">Select Item</option>
-              {items.map((it) => (
-                <option key={it} value={it}>
-                  {it}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {/* Project */}
           <div className="space-y-1">
             <label className="text-xs text-gray-600 dark:text-gray-300 block">Project</label>
@@ -157,7 +111,7 @@ export default function ItemHistoryReportContainer() {
           </div>
         </div>
 
-        {/* Row 2: If Task, Site */}
+        {/* Row 2: Task */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           {/* If Task */}
           <div className="space-y-1">
@@ -168,21 +122,9 @@ export default function ItemHistoryReportContainer() {
               className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-gray-600 dark:text-gray-300 shadow-sm"
             >
               <option value="">Select Task</option>
-              <option value="Task 1">Task 1</option>
-              <option value="Task 2">Task 2</option>
-            </select>
-          </div>
-
-          {/* Site */}
-          <div className="space-y-1">
-            <label className="text-xs text-gray-600 dark:text-gray-300 block">Site</label>
-            <select
-              value={selectedSite}
-              onChange={(e) => setSelectedSite(e.target.value)}
-              className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-gray-600 dark:text-gray-300 shadow-sm"
-            >
-              <option value="">Select Site</option>
-              <option value="Site A">Site A</option>
+              {Array.from(new Set(data.map((item) => item.task)))
+                .filter(Boolean)
+                .map((task) => <option key={task} value={task}>{task}</option>)}
             </select>
           </div>
         </div>

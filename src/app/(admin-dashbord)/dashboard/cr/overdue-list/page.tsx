@@ -27,10 +27,11 @@ export default function OverdueInstallmentListPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await crApi.getOverdueInstallments();
-      setOverdueList(data || []);
+      const data = await crApi.getOverdueInstallments?.() ?? [];
+      setOverdueList(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load overdue installments:", err);
+      setOverdueList([]);
     } finally {
       setLoading(false);
     }
@@ -91,18 +92,22 @@ export default function OverdueInstallmentListPage() {
       showAlert.warning("Promised Date Required", "Please select the date the customer promised to pay.");
       return;
     }
+    if (!recoveryTarget.sale_agreement?.id) {
+      showAlert.warning("Agreement Required", "The overdue installment is not linked to a sale agreement.");
+      return;
+    }
 
     setLoggingRecovery(true);
     try {
       await crApi.createRecoveryLog({
-        sale_agreement_id: recoveryTarget.sale_agreement?.id || 1,
-        customer_id: recoveryTarget.sale_agreement?.customer_id || "CUST-001",
+        sale_agreement_id: recoveryTarget.sale_agreement?.id,
+        customer_id: recoveryTarget.sale_agreement?.customer_id,
         action_type: "phone_call",
         action_date: new Date().toISOString(),
         promised_payment_date: promisedDate,
         promised_amount: Number(recoveryTarget.due_amount) || 0,
-        officer_name: "Recovery Department Officer",
-        customer_response: officerNotes || "Customer agreed to pay overdue installment on promised date.",
+        officer_name: "",
+        customer_response: officerNotes,
         outcome: "promised",
       });
       setRecoveryTarget(null);

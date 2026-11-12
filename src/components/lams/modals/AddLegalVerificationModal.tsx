@@ -12,21 +12,6 @@ interface AddLegalVerificationModalProps {
   initialData?: LegalVerification | null;
 }
 
-const LAWYERS = [
-  "Adv. K. M. Saifuddin (High Court)",
-  "Adv. Nazmul Huda (Senior Title Advocate)",
-  "Barrister Imran Ahmed & Associates",
-  "Adv. Sultana Razia (Sub-Registry Specialist)",
-];
-
-const DEFAULT_FINDINGS: LegalChecklistFinding[] = [
-  { checklist_item: "25-Year CS, SA, RS Parcha chain continuity", result: "pass", note: "Chain unbroken from original owner" },
-  { checklist_item: "Mutation Khatian & DCR verification", result: "pass", note: "Verified on Land Ministry portal" },
-  { checklist_item: "Land Development Tax (Khajna) up-to-date", result: "pass", note: "Current 1431 BS receipt attached" },
-  { checklist_item: "12-Year Non-Encumbrance Certificate (NEC)", result: "conditional", note: "Awaiting final seal from Sub-Registry" },
-  { checklist_item: "Court injunction or acquisition notice search", result: "pass", note: "No civil suits or gazetted acquisition" },
-];
-
 export function AddLegalVerificationModal({
   isOpen,
   onClose,
@@ -35,36 +20,36 @@ export function AddLegalVerificationModal({
   initialData,
 }: AddLegalVerificationModalProps) {
   const [selectedLeadId, setSelectedLeadId] = useState("");
-  const [lawyer, setLawyer] = useState(LAWYERS[0]);
-  const [titleClear, setTitleClear] = useState(true);
-  const [mutationOk, setMutationOk] = useState(true);
-  const [taxClear, setTaxClear] = useState(true);
-  const [findings, setFindings] = useState<LegalChecklistFinding[]>(DEFAULT_FINDINGS);
+  const [lawyer, setLawyer] = useState("");
+  const [titleClear, setTitleClear] = useState(false);
+  const [mutationOk, setMutationOk] = useState(false);
+  const [taxClear, setTaxClear] = useState(false);
+  const [findings, setFindings] = useState<LegalChecklistFinding[]>([]);
   const [reportFileName, setReportFileName] = useState("");
   const [opinion, setOpinion] = useState("");
-  const [status, setStatus] = useState<"pending" | "cleared" | "flagged">("cleared");
+  const [status, setStatus] = useState<"pending" | "cleared" | "flagged">("pending");
 
   useEffect(() => {
     if (initialData) {
       setSelectedLeadId(initialData.lead_id || initialData.lead_code || "");
-      setLawyer(initialData.lawyer || LAWYERS[0]);
+      setLawyer(initialData.lawyer || "");
       setTitleClear(initialData.title_clear);
       setMutationOk(initialData.mutation_ok);
       setTaxClear(initialData.tax_clear);
-      setFindings(initialData.findings_json && initialData.findings_json.length > 0 ? initialData.findings_json : DEFAULT_FINDINGS);
+      setFindings(initialData.findings_json ?? []);
       setReportFileName(initialData.report || "");
       setOpinion(initialData.opinion || "");
-      setStatus(initialData.status || "cleared");
+      setStatus(initialData.status || "pending");
     } else {
       setSelectedLeadId(acquisitionLeads[0]?.id || acquisitionLeads[0]?.leadCode || "");
-      setLawyer(LAWYERS[0]);
-      setTitleClear(true);
-      setMutationOk(true);
-      setTaxClear(true);
-      setFindings(DEFAULT_FINDINGS);
+      setLawyer("");
+      setTitleClear(false);
+      setMutationOk(false);
+      setTaxClear(false);
+      setFindings([]);
       setReportFileName("");
       setOpinion("");
-      setStatus("cleared");
+      setStatus("pending");
     }
   }, [initialData, acquisitionLeads, isOpen]);
 
@@ -73,7 +58,7 @@ export function AddLegalVerificationModal({
   const handleAddFinding = () => {
     setFindings([
       ...findings,
-      { checklist_item: "", result: "pass", note: "" },
+      { checklist_item: "", result: "conditional", note: "" },
     ]);
   };
 
@@ -95,8 +80,8 @@ export function AddLegalVerificationModal({
     const leadCode = lead?.leadCode || lead?.code || selectedLeadId;
 
     onSave({
-      id: initialData?.id || `LEG-${Date.now()}`,
-      uuid: initialData?.uuid || `LEG-${Date.now()}`,
+      id: initialData?.id || "",
+      uuid: initialData?.uuid,
       lead_code: leadCode,
       lead_id: lead?.id || selectedLeadId,
       lawyer,
@@ -104,10 +89,9 @@ export function AddLegalVerificationModal({
       mutation_ok: mutationOk,
       tax_clear: taxClear,
       findings_json: findings,
-      report: reportFileName || "legal_opinion.pdf",
+      report: reportFileName || undefined,
       opinion,
       status,
-      verified_at: new Date().toISOString().split("T")[0],
     });
     onClose();
   };
@@ -160,16 +144,13 @@ export function AddLegalVerificationModal({
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Assigned Legal Counsel <span className="text-rose-500">*</span>
               </label>
-              <select
+              <input
+                type="text"
                 value={lawyer}
                 onChange={(e) => setLawyer(e.target.value)}
                 required
                 className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
-              >
-                {LAWYERS.map((adv) => (
-                  <option key={adv} value={adv}>{adv}</option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 

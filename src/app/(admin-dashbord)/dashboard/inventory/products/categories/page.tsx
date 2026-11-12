@@ -8,7 +8,7 @@ import { categoriesApi } from "@/lib/inventoryApi";
 
 // Category type definition
 export interface Category {
-  id: number;
+  id: string | number;
   type: string;
   code: string;
   name: string;
@@ -28,8 +28,8 @@ const CategoryAccounts = () => {
   const handleAddClick = () => {
     setModalMode("add");
     setSelectedCategory({
-      code: `C${Math.floor(1000000 + Math.random() * 9000000)}`,
       type: "Material",
+      code: "",
       name: "",
     });
     setIsModalOpen(true);
@@ -45,13 +45,13 @@ const CategoryAccounts = () => {
   // Form submit handler
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCategory.name) return;
+    if (!selectedCategory.name || !selectedCategory.code) return;
 
     try {
       setIsSubmitting(true);
       if (modalMode === "add") {
         await categoriesApi.create({
-          category_code: selectedCategory.code || `C${Date.now().toString().slice(-6)}`,
+          category_code: selectedCategory.code,
           name: selectedCategory.name,
         });
       } else if (modalMode === "update" && selectedCategory.id) {

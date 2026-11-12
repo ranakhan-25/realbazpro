@@ -94,6 +94,9 @@ export function UserAccessProvider({
       if (!moduleKey) return false;
       if (user?.isSuperUser) return true;
       const normalized = moduleKey.toLowerCase().trim();
+      if (normalized === "collection" && entitledModuleKeys.some((k) => k.toLowerCase() === "cr")) {
+        return true;
+      }
       return entitledModuleKeys.some((k) => k.toLowerCase() === normalized);
     },
     [user, entitledModuleKeys],
@@ -105,9 +108,12 @@ export function UserAccessProvider({
       if (user?.isSuperUser) return true;
       if (!hasAccessToModule(moduleKey)) return false;
 
-      const mod = accessibleModules.find(
+      let mod = accessibleModules.find(
         (m) => m.key.toLowerCase() === moduleKey.toLowerCase(),
       );
+      if (!mod && moduleKey.toLowerCase() === "collection") {
+        mod = accessibleModules.find((m) => m.key.toLowerCase() === "cr");
+      }
       if (!mod) return false;
       if (mod.allowedRoutes?.includes("*")) return true;
 

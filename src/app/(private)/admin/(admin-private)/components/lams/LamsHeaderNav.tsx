@@ -11,13 +11,24 @@ import {
   ChevronRight,
   Home,
   Layers,
+  Scale,
+  ShieldCheck,
+  ClipboardList,
+  BadgeCheck,
+  Banknote,
 } from "lucide-react";
 
 export type LamsTab =
-  | "owners"
   | "leads"
+  | "owners"
+  | "valuations"
+  | "legal"
+  | "duediligence"
   | "negotiation"
+  | "approvals"
+  | "settlements"
   | "documents"
+  | "reports"
   | "followup";
 
 interface LamsHeaderNavProps {
@@ -26,28 +37,46 @@ interface LamsHeaderNavProps {
   showInsights: boolean;
   onToggleInsights: () => void;
   counts: {
-    owners: number;
     leads: number;
+    owners: number;
+    valuations: number;
+    legal: number;
+    duediligence: number;
     negotiation: number;
+    approvals: number;
+    settlements: number;
     documents: number;
+    reports: number;
     followup: number;
   };
 }
 
 const TABS: { id: LamsTab; label: string; icon: React.ElementType }[] = [
-  { id: "owners", label: "Land Owners", icon: Users },
-  { id: "leads", label: "Acquisition Leads", icon: Compass },
-  { id: "negotiation", label: "Negotiation Process", icon: Handshake },
-  { id: "documents", label: "Legal Documents", icon: FileCheck2 },
-  { id: "followup", label: "Follow Up", icon: CalendarCheck2 },
+  { id: "leads",        label: "Acquisition Leads",   icon: Compass       },
+  { id: "owners",       label: "Land Owners",          icon: Users         },
+  { id: "valuations",   label: "Valuations",           icon: Scale         },
+  { id: "legal",        label: "Legal Verification",   icon: ShieldCheck   },
+  { id: "duediligence", label: "Due Diligence",        icon: ClipboardList },
+  { id: "negotiation",  label: "Negotiation",          icon: Handshake     },
+  { id: "approvals",    label: "Approvals",            icon: BadgeCheck    },
+  { id: "settlements",  label: "Settlements",          icon: Banknote      },
+  { id: "documents",    label: "Legal Documents",      icon: FileCheck2    },
+  { id: "followup",     label: "Follow Up",            icon: CalendarCheck2},
+  { id: "reports",      label: "Reports",              icon: BarChart3     },
 ];
 
 const TAB_TITLES: Record<LamsTab, string> = {
-  owners: "Land Owners Directory",
-  leads: "Land Acquisition Leads",
-  negotiation: "Negotiation & Price Offer Process",
-  documents: "Legal Title Deeds & Vetting Documents",
-  followup: "Follow-Up & Meeting Schedule",
+  leads:        "Land Acquisition Leads",
+  owners:       "Land Owners Directory",
+  valuations:   "Land Valuations",
+  legal:        "Legal Title Verification",
+  duediligence: "Technical & Physical Due Diligence",
+  negotiation:  "Negotiation & Price Offer Process",
+  approvals:    "Acquisition Approval Workflow",
+  settlements:  "Final Settlements & Agreements",
+  documents:    "Legal Title Deeds & Vetting Documents",
+  followup:     "Follow-Up & Meeting Schedule",
+  reports:      "LAMS Analytics & Reports",
 };
 
 export function LamsHeaderNav({
@@ -83,11 +112,11 @@ export function LamsHeaderNav({
             Land Acquisition & Management System
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            End-to-end lifecycle: Landowners, Acquisition Leads, Price Negotiations, Legal Vetting & Follow-ups.
+            End-to-end lifecycle: Leads, Owners, Valuations, Legal, Due Diligence, Negotiations, Approvals, Settlements, Documents & Reports.
           </p>
         </div>
 
-        {/* Action button: Toggle Executive Analytics */}
+        {/* Toggle Executive Analytics */}
         <div className="flex items-center gap-2">
           <button
             onClick={onToggleInsights}
@@ -103,7 +132,7 @@ export function LamsHeaderNav({
         </div>
       </div>
 
-      {/* Module Tabs Navigation Bar (Modernized from screenshot tabs) */}
+      {/* Module Tabs Navigation Bar */}
       <div className="bg-slate-100/80 dark:bg-slate-900/90 p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto shadow-inner scrollbar-none">
         {TABS.map((tab) => {
           const Icon = tab.icon;

@@ -1,18 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import {
-  mockAcquisitionLeads,
-  mockLandOwners,
-  mockNegotiationRecords,
-  mockLegalDocuments,
-  mockFollowUpItems,
-  mockLandValuations,
-  mockLegalVerifications,
-  mockDueDiligence,
-  mockAcquisitionApprovals,
-  mockSettlements,
-} from "@/data/lams/lams.mock";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5002/realbizpro/api/v1";
@@ -38,84 +26,84 @@ export async function getAcquisitionLeads() {
       next: { tags: ["lams-acquisition-leads"] },
     });
     if (!res.ok) {
-      return mockAcquisitionLeads;
+      return [];
     }
     const json = await res.json();
-    const rawData = json.data !== undefined ? json.data : json;
+    const rawData = json?.data ?? json;
     if (!Array.isArray(rawData) || rawData.length === 0) {
-      return mockAcquisitionLeads;
+      return [];
     }
 
-    return rawData.map((item: any, idx: number) => {
-      const idStr = String(item.id || item.uuid || `AL-${idx + 1}`);
+    return rawData.map((item: any) => {
+      const idStr = String(item?.id ?? item?.uuid ?? "");
       return {
         id: idStr,
         uuid: idStr,
-        code: item.code || item.lead_code || "AL-" + idStr.substring(0, 6).toUpperCase(),
-        leadCode: item.lead_code || item.code || "AL-" + idStr.substring(0, 6).toUpperCase(),
-        title: item.lead_title || item.title || "Prospective Land Parcel",
-        location: item.location || item.address || "Savar, Dhaka",
-        address: item.address || item.location || "Savar, Dhaka",
-        district: item.district || "Dhaka",
-        upazila: item.upazila || "Savar",
-        mouza: item.mouza || "Boliarpur",
-        dagNo: item.dag_no || item.dagNo || "102",
-        dag_no: item.dag_no || item.dagNo || "102",
-        khatianNo: item.khatian_no || item.khatianNo || "RS-405",
-        khatian_no: item.khatian_no || item.khatianNo || "RS-405",
-        landArea: Number(item.land_area || item.area_katha || item.landArea || 10),
-        area_katha: Number(item.area_katha || item.landArea || 10),
-        area_sqft: Number(item.area_sqft || (item.area_katha ? item.area_katha * 720 : 7200)),
-        landAreaUnit: item.land_area_unit || "Decimal",
-        landType: item.land_type || item.landType || "Commercial",
-        land_type: item.land_type || item.landType || "commercial",
-        leadStage: item.lead_status || item.status || item.leadStage || "New",
-        status: item.status || item.lead_status || item.leadStage || "New",
-        leadSource: item.lead_source || item.source || item.leadSource || "Direct Owner",
-        source: item.source || item.lead_source || "Direct Owner",
-        leadStatus: item.lead_status || "Active",
-        assignedUser: item.assigned_user || item.assignee || item.assignedUser || "Sakib Al Hasan",
-        assignee: item.assignee || item.assigned_user || "Sakib Al Hasan",
-        priority: item.priority || "Medium",
-        expectedPrice: Number(item.expected_price || item.asking_price || item.expectedPrice || 25000000),
-        asking_price: Number(item.asking_price || item.expected_price || 25000000),
-        offeredPrice: Number(item.offered_price || item.offeredPrice || 22000000),
-        ownerName: item.owner_name || item.ownerName || "Primary Landowner",
-        owner_name: item.owner_name || item.ownerName || "Primary Landowner",
-        ownerPhone: item.owner_phone || item.ownerPhone || "+880 1711-000000",
-        owner_phone: item.owner_phone || item.ownerPhone || "+880 1711-000000",
-        ownerAddress: item.owner_address || item.ownerAddress || "Dhaka",
-        createdAt: item.lead_date || item.createdAt || new Date().toISOString().split("T")[0],
-        notes: item.notes || item.remarks || "",
-        remarks: item.remarks || item.notes || "",
-        projectId: item.projectId || item.project_id,
-        co_owners_json: item.co_owners_json || [],
-        map_url: item.map_url || "",
+        code: item?.code ?? item?.lead_code ?? "",
+        leadCode: item?.lead_code ?? item?.code ?? "",
+        title: item?.lead_title ?? item?.title ?? "",
+        location: item?.location ?? item?.address ?? "",
+        address: item?.address ?? item?.location ?? "",
+        district: item?.district ?? "",
+        upazila: item?.upazila ?? "",
+        mouza: item?.mouza ?? "",
+        dagNo: item?.dag_no ?? item?.dagNo ?? "",
+        dag_no: item?.dag_no ?? item?.dagNo ?? "",
+        khatianNo: item?.khatian_no ?? item?.khatianNo ?? "",
+        khatian_no: item?.khatian_no ?? item?.khatianNo ?? "",
+        landArea: Number(item?.land_area ?? item?.area_katha ?? item?.landArea ?? 0),
+        area_katha: Number(item?.area_katha ?? item?.landArea ?? 0),
+        area_sqft: Number(item?.area_sqft ?? 0),
+        landAreaUnit: item?.land_area_unit ?? "",
+        landType: item?.land_type ?? item?.landType ?? "",
+        land_type: item?.land_type ?? item?.landType ?? "",
+        leadStage: item?.lead_status ?? item?.status ?? item?.leadStage ?? "",
+        status: item?.status ?? item?.lead_status ?? item?.leadStage ?? "",
+        leadSource: item?.lead_source ?? item?.source ?? item?.leadSource ?? "",
+        source: item?.source ?? item?.lead_source ?? "",
+        leadStatus: item?.lead_status ?? "",
+        assignedUser: item?.assigned_user ?? item?.assignee ?? item?.assignedUser ?? "",
+        assignee: item?.assignee ?? item?.assigned_user ?? "",
+        priority: item?.priority ?? "",
+        expectedPrice: Number(item?.expected_price ?? item?.asking_price ?? item?.expectedPrice ?? 0),
+        asking_price: Number(item?.asking_price ?? item?.expected_price ?? 0),
+        offeredPrice: Number(item?.offered_price ?? item?.offeredPrice ?? 0),
+        ownerName: item?.owner_name ?? item?.ownerName ?? "",
+        owner_name: item?.owner_name ?? item?.ownerName ?? "",
+        ownerPhone: item?.owner_phone ?? item?.ownerPhone ?? "",
+        owner_phone: item?.owner_phone ?? item?.ownerPhone ?? "",
+        ownerAddress: item?.owner_address ?? item?.ownerAddress ?? "",
+        createdAt: item?.lead_date ?? item?.createdAt ?? "",
+        notes: item?.notes ?? item?.remarks ?? "",
+        remarks: item?.remarks ?? item?.notes ?? "",
+        projectId: item?.projectId ?? item?.project_id,
+        co_owners_json: item?.co_owners_json ?? [],
+        map_url: item?.map_url ?? "",
       };
     });
   } catch (error) {
-    return mockAcquisitionLeads;
+    return [];
   }
 }
 
 export async function createAcquisitionLead(data: any) {
   const payload = {
-    code: data.code || `AL-2026-${Math.floor(100 + Math.random() * 900)}`,
-    lead_title: data.title || data.location || "Prospective Parcel",
+    code: data.code || undefined,
+    lead_title: data.title || data.location || "",
     location: data.location || "",
     area_katha: parseFloat(data.area_katha) || 0,
     area_sqft: parseFloat(data.area_sqft) || 0,
-    source: data.source || "Direct Owner",
+    source: data.source || "",
     owner_name: data.owner_name || data.ownerName || "",
     owner_phone: data.owner_phone || data.ownerPhone || "",
     asking_price: parseFloat(data.asking_price) || 0,
     notes: data.notes || "",
     owner_id: data.owner_id || "",
-    assignee: data.assigned_to || data.assignee || "Sakib Al Hasan",
-    priority: data.priority || "Medium",
+    assignee: data.assigned_to || data.assignee || "",
+    priority: data.priority || "",
     status: data.status || "Draft",
     lead_date: safeDate(data.createdAt || data.lead_date),
-    land_type: data.land_type || data.landType || "commercial",
+    land_type: data.land_type || data.landType || "",
     land_area: parseFloat(data.area_katha || data.landArea) || 0,
     lead_status: data.status || "Draft",
     projectId: data.projectId,
@@ -129,9 +117,10 @@ export async function createAcquisitionLead(data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || payload;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return payload;
+    throw err;
   }
 }
 
@@ -144,9 +133,10 @@ export async function updateAcquisitionLead(uuid: string, data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -171,45 +161,45 @@ export async function getLandOwners() {
       next: { tags: ["lams-land-owners"] },
     });
     if (!res.ok) {
-      return mockLandOwners;
+      return [];
     }
     const json = await res.json();
-    const rawData = json.data !== undefined ? json.data : json;
+    const rawData = json?.data ?? json;
     if (!Array.isArray(rawData) || rawData.length === 0) {
-      return mockLandOwners;
+      return [];
     }
 
-    return rawData.map((item: any, idx: number) => {
-      const idStr = String(item.id || item.uuid || `LO-${idx + 1}`);
+    return rawData.map((item: any) => {
+      const idStr = String(item?.id ?? item?.uuid ?? "");
       return {
         id: idStr,
         uuid: idStr,
-        code: item.code || "LW-" + idStr.substring(0, 6).toUpperCase(),
-        acquisitionLeadId: item.lead_id || item.acquisitionLeadId || "",
-        landPlot: item.land_plot || item.landPlot || "General Parcel",
-        ownerName: item.name || item.ownerName || "Owner",
-        name: item.name || item.ownerName || "Owner",
-        isPrimary: item.owner_type === "Owner" || item.isPrimary === true,
-        fatherName: item.father_name || item.fatherName || "-",
-        father_name: item.father_name || item.fatherName || "-",
-        nidNumber: item.nid || item.nidNumber || "",
-        nid: item.nid || item.nidNumber || "",
-        phone: item.phone || item.contact_number || "",
-        email: item.email || "",
-        address: item.address || "",
-        bank_name: item.bank_name || "",
-        bank_account: item.bank_account || "",
-        status: (item.status || "Active") as "Active" | "Inactive",
-        addedBy: item.added_by || item.addedBy || "Sakib Al Hasan",
-        remarks: item.remarks || "",
-        ownershipSharePercentage: Number(item.ownership_percentage || item.ownershipSharePercentage || 50),
-        lands_count: Number(item.lands_count || item.lands || 1),
-        nominee_json: item.nominee_json || [],
-        projectId: item.projectId || item.project_id,
+        code: item?.code ?? "",
+        acquisitionLeadId: item?.lead_id ?? item?.acquisitionLeadId ?? "",
+        landPlot: item?.land_plot ?? item?.landPlot ?? "",
+        ownerName: item?.name ?? item?.ownerName ?? "",
+        name: item?.name ?? item?.ownerName ?? "",
+        isPrimary: item?.owner_type === "Owner" || item?.isPrimary === true,
+        fatherName: item?.father_name ?? item?.fatherName ?? "",
+        father_name: item?.father_name ?? item?.fatherName ?? "",
+        nidNumber: item?.nid ?? item?.nidNumber ?? "",
+        nid: item?.nid ?? item?.nidNumber ?? "",
+        phone: item?.phone ?? item?.contact_number ?? "",
+        email: item?.email ?? "",
+        address: item?.address ?? "",
+        bank_name: item?.bank_name ?? "",
+        bank_account: item?.bank_account ?? "",
+        status: item?.status ?? "",
+        addedBy: item?.added_by ?? item?.addedBy ?? "",
+        remarks: item?.remarks ?? "",
+        ownershipSharePercentage: Number(item?.ownership_percentage ?? item?.ownershipSharePercentage ?? 0),
+        lands_count: Number(item?.lands_count ?? item?.lands ?? 0),
+        nominee_json: item?.nominee_json ?? [],
+        projectId: item?.projectId ?? item?.project_id,
       };
     });
   } catch (error) {
-    return mockLandOwners;
+    return [];
   }
 }
 
@@ -222,9 +212,10 @@ export async function createLandOwner(data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -237,9 +228,10 @@ export async function updateLandOwner(uuid: string, data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -263,12 +255,12 @@ export async function getLandValuations() {
       cache: "no-store",
       next: { tags: ["lams-valuations"] },
     });
-    if (!res.ok) return mockLandValuations;
+    if (!res.ok) return [];
     const json = await res.json();
     const rawData = json.data !== undefined ? json.data : json;
-    return Array.isArray(rawData) && rawData.length > 0 ? rawData : mockLandValuations;
+    return Array.isArray(rawData) ? rawData : [];
   } catch (error) {
-    return mockLandValuations;
+    return [];
   }
 }
 
@@ -281,9 +273,10 @@ export async function createLandValuation(data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -296,9 +289,10 @@ export async function updateLandValuation(uuid: string, data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -322,12 +316,12 @@ export async function getLegalVerifications() {
       cache: "no-store",
       next: { tags: ["lams-legal-verifications"] },
     });
-    if (!res.ok) return mockLegalVerifications;
+    if (!res.ok) return [];
     const json = await res.json();
     const rawData = json.data !== undefined ? json.data : json;
-    return Array.isArray(rawData) && rawData.length > 0 ? rawData : mockLegalVerifications;
+    return Array.isArray(rawData) ? rawData : [];
   } catch (error) {
-    return mockLegalVerifications;
+    return [];
   }
 }
 
@@ -340,9 +334,10 @@ export async function createLegalVerification(data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -355,9 +350,10 @@ export async function updateLegalVerification(uuid: string, data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -381,12 +377,12 @@ export async function getDueDiligenceRecords() {
       cache: "no-store",
       next: { tags: ["lams-due-diligence"] },
     });
-    if (!res.ok) return mockDueDiligence;
+    if (!res.ok) return [];
     const json = await res.json();
     const rawData = json.data !== undefined ? json.data : json;
-    return Array.isArray(rawData) && rawData.length > 0 ? rawData : mockDueDiligence;
+    return Array.isArray(rawData) ? rawData : [];
   } catch (error) {
-    return mockDueDiligence;
+    return [];
   }
 }
 
@@ -399,9 +395,10 @@ export async function createDueDiligence(data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -414,9 +411,10 @@ export async function updateDueDiligence(uuid: string, data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -441,48 +439,48 @@ export async function getNegotiationProcesses() {
       next: { tags: ["lams-negotiation-processes"] },
     });
     if (!res.ok) {
-      return mockNegotiationRecords;
+      return [];
     }
     const json = await res.json();
     const rawData = json.data !== undefined ? json.data : json;
     if (!Array.isArray(rawData) || rawData.length === 0) {
-      return mockNegotiationRecords;
+      return [];
     }
 
-    return rawData.map((item: any, idx: number) => {
-      const idStr = String(item.id || item.uuid || `NEG-${idx + 1}`);
+    return rawData.map((item: any) => {
+      const idStr = String(item?.id ?? item?.uuid ?? "");
       return {
         id: idStr,
         uuid: idStr,
-        acquisitionLeadId: item.lead_id || item.acquisitionLeadId || "",
-        lead: item.lead_code || item.lead || "AL-2026-001",
-        lead_code: item.lead_code || item.lead || "AL-2026-001",
-        leadTitle: item.lead_title || item.leadTitle || "Land Parcel",
-        mouza: item.mouza || "Kayetpara",
-        dagNo: item.dag_no || item.dagNo || "1405",
-        round_no: Number(item.round_no || idx + 1),
-        offer_amount: Number(item.offer_amount || item.offered_price || item.offeredTotalPrice || 0),
-        offeredTotalPrice: Number(item.offered_price || item.offeredTotalPrice || item.offer_amount || 0),
-        offeredPricePerDecimal: Number(item.offered_price_per_decimal || item.offeredPricePerDecimal || 0),
-        counter_amount: Number(item.counter_amount || item.agreed_price || item.counterOfferByOwner || 0),
-        counterOfferByOwner: Number(item.counter_amount || item.agreed_price || item.counterOfferByOwner || 0),
-        counterPricePerDecimal: Number(item.counter_price_per_decimal || item.counterPricePerDecimal || 0),
-        final_amount: Number(item.final_amount || item.agreed_price || 0),
-        negotiator: item.negotiator || item.attended_by || item.attendedBy || "Sakib Al Hasan",
-        attendedBy: item.attended_by || item.attendedBy || item.negotiator || "Sakib Al Hasan",
-        date: item.date || (item.negotiation_date ? safeDate(item.negotiation_date) : "2026-09-14"),
-        meetingDate: item.negotiation_date
+        acquisitionLeadId: item?.lead_id ?? item?.acquisitionLeadId,
+        lead: item?.lead_code ?? item?.lead,
+        lead_code: item?.lead_code ?? item?.lead,
+        leadTitle: item?.lead_title ?? item?.leadTitle,
+        mouza: item?.mouza,
+        dagNo: item?.dag_no ?? item?.dagNo,
+        round_no: item?.round_no == null ? undefined : Number(item.round_no),
+        offer_amount: item?.offer_amount ?? item?.offered_price ?? item?.offeredTotalPrice,
+        offeredTotalPrice: item?.offered_price ?? item?.offeredTotalPrice ?? item?.offer_amount,
+        offeredPricePerDecimal: item?.offered_price_per_decimal ?? item?.offeredPricePerDecimal,
+        counter_amount: item?.counter_amount ?? item?.agreed_price ?? item?.counterOfferByOwner,
+        counterOfferByOwner: item?.counter_amount ?? item?.agreed_price ?? item?.counterOfferByOwner,
+        counterPricePerDecimal: item?.counter_price_per_decimal ?? item?.counterPricePerDecimal,
+        final_amount: item?.final_amount ?? item?.agreed_price,
+        negotiator: item?.negotiator ?? item?.attended_by ?? item?.attendedBy ?? "",
+        attendedBy: item?.attended_by ?? item?.attendedBy ?? item?.negotiator ?? "",
+        date: item?.date ?? (item?.negotiation_date ? safeDate(item.negotiation_date) : undefined),
+        meetingDate: item?.negotiation_date
           ? new Date(item.negotiation_date).toLocaleString()
-          : item.meetingDate || "",
-        status: (item.status || (item.negotiation_status === "Agreed" ? "agreed" : item.negotiation_status === "Declined" ? "failed" : "ongoing")) as any,
-        negotiationStatus: item.negotiation_status || item.negotiationStatus || "In Progress",
-        notes: item.notes || item.remarks || item.meeting_notes || "",
-        remarks: item.meeting_notes || item.remarks || item.notes || "",
-        projectId: item.projectId || item.project_id,
+          : item?.meetingDate,
+        status: item?.status ?? (item?.negotiation_status === "Agreed" ? "agreed" : item?.negotiation_status === "Declined" ? "failed" : undefined),
+        negotiationStatus: item?.negotiation_status ?? item?.negotiationStatus,
+        notes: item?.notes ?? item?.remarks ?? item?.meeting_notes,
+        remarks: item?.meeting_notes ?? item?.remarks ?? item?.notes,
+        projectId: item?.projectId ?? item?.project_id,
       };
     });
   } catch (error) {
-    return mockNegotiationRecords;
+    return [];
   }
 }
 
@@ -495,9 +493,10 @@ export async function createNegotiationProcess(data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -510,9 +509,10 @@ export async function updateNegotiationProcess(uuid: string, data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -536,12 +536,12 @@ export async function getAcquisitionApprovals() {
       cache: "no-store",
       next: { tags: ["lams-approvals"] },
     });
-    if (!res.ok) return mockAcquisitionApprovals;
+    if (!res.ok) return [];
     const json = await res.json();
     const rawData = json.data !== undefined ? json.data : json;
-    return Array.isArray(rawData) && rawData.length > 0 ? rawData : mockAcquisitionApprovals;
+    return Array.isArray(rawData) ? rawData : [];
   } catch (error) {
-    return mockAcquisitionApprovals;
+    return [];
   }
 }
 
@@ -554,9 +554,10 @@ export async function createAcquisitionApproval(data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -569,9 +570,10 @@ export async function actionApproval(uuid: string, decision: "approved" | "rejec
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || { uuid, decision, comment };
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return { uuid, decision, comment };
+    throw err;
   }
 }
 
@@ -584,12 +586,12 @@ export async function getSettlements() {
       cache: "no-store",
       next: { tags: ["lams-settlements"] },
     });
-    if (!res.ok) return mockSettlements;
+    if (!res.ok) return [];
     const json = await res.json();
     const rawData = json.data !== undefined ? json.data : json;
-    return Array.isArray(rawData) && rawData.length > 0 ? rawData : mockSettlements;
+    return Array.isArray(rawData) ? rawData : [];
   } catch (error) {
-    return mockSettlements;
+    return [];
   }
 }
 
@@ -602,9 +604,10 @@ export async function createSettlement(data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -617,9 +620,10 @@ export async function updateSettlement(uuid: string, data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -632,9 +636,10 @@ export async function recordSettlementPayment(settlementId: string, paymentData:
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || paymentData;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return paymentData;
+    throw err;
   }
 }
 
@@ -647,9 +652,10 @@ export async function advanceLeadWorkflowStage(leadId: string, stage: string, re
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || { leadId, stage, remarks };
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return { leadId, stage, remarks };
+    throw err;
   }
 }
 
@@ -663,43 +669,43 @@ export async function getLegalDocuments() {
       next: { tags: ["lams-legal-documents"] },
     });
     if (!res.ok) {
-      return mockLegalDocuments;
+      return [];
     }
     const json = await res.json();
     const rawData = json.data !== undefined ? json.data : json;
     if (!Array.isArray(rawData) || rawData.length === 0) {
-      return mockLegalDocuments;
+      return [];
     }
 
-    return rawData.map((item: any, idx: number) => {
-      const idStr = String(item.id || item.uuid || `DOC-${idx + 1}`);
+    return rawData.map((item: any) => {
+      const idStr = String(item?.id ?? item?.uuid ?? "");
       return {
         id: idStr,
         uuid: idStr,
-        acquisitionLeadId: item.lead_id || item.acquisitionLeadId || "",
-        lead_code: item.lead_code || item.lead || "AL-2026-001",
-        leadTitle: item.lead_title || item.leadTitle || "Land Parcel",
-        category: item.category || item.document_type || "Deed",
-        title: item.title || item.document_number || item.documentFileName || "Document",
-        documentType: item.document_type || item.documentType || "Baya Deed",
-        documentFileName: item.document_number || item.documentFileName || "deed_document.pdf",
-        file: item.file || item.document_number || item.documentFileName || "document.pdf",
-        size: item.size || item.file_size || item.fileSize || "2.4 MB",
-        fileSize: item.file_size || item.fileSize || item.size || "2.4 MB",
-        version: item.version || "1.0",
-        uploaded_by: item.uploaded_by || item.verified_by || item.verifiedBy || "Sakib Al Hasan",
-        uploaded_at: item.uploaded_at || (item.issue_date ? safeDate(item.issue_date) : "2026-08-20"),
-        verificationStatus: item.verification_status || item.verificationStatus || "Pending",
-        verifiedBy: item.verified_by || item.verifiedBy || "Legal Officer",
-        verificationDate: item.issue_date
+        acquisitionLeadId: item?.lead_id ?? item?.acquisitionLeadId,
+        lead_code: item?.lead_code ?? item?.lead,
+        leadTitle: item?.lead_title ?? item?.leadTitle,
+        category: item?.category ?? item?.document_type,
+        title: item?.title ?? item?.document_number ?? item?.documentFileName,
+        documentType: item?.document_type ?? item?.documentType,
+        documentFileName: item?.document_number ?? item?.documentFileName,
+        file: item?.file ?? item?.document_number ?? item?.documentFileName,
+        size: item?.size ?? item?.file_size ?? item?.fileSize,
+        fileSize: item?.file_size ?? item?.fileSize ?? item?.size,
+        version: item?.version,
+        uploaded_by: item?.uploaded_by ?? item?.verified_by ?? item?.verifiedBy ?? "",
+        uploaded_at: item?.uploaded_at ?? (item?.issue_date ? safeDate(item.issue_date) : undefined),
+        verificationStatus: item?.verification_status ?? item?.verificationStatus,
+        verifiedBy: item?.verified_by ?? item?.verifiedBy,
+        verificationDate: item?.issue_date
           ? new Date(item.issue_date).toLocaleDateString()
-          : item.verificationDate || "",
-        remarks: item.vetting_remarks || item.remarks || "",
-        projectId: item.projectId || item.project_id,
+          : item?.verificationDate,
+        remarks: item?.vetting_remarks ?? item?.remarks,
+        projectId: item?.projectId ?? item?.project_id,
       };
     });
   } catch (error) {
-    return mockLegalDocuments;
+    return [];
   }
 }
 
@@ -712,9 +718,10 @@ export async function createLegalDocument(data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -727,9 +734,10 @@ export async function updateLegalDocument(uuid: string, data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -754,38 +762,38 @@ export async function getFollowUps() {
       next: { tags: ["lams-follow-ups"] },
     });
     if (!res.ok) {
-      return mockFollowUpItems;
+      return [];
     }
     const json = await res.json();
     const rawData = json.data !== undefined ? json.data : json;
     if (!Array.isArray(rawData) || rawData.length === 0) {
-      return mockFollowUpItems;
+      return [];
     }
 
     return rawData.map((item: any, idx: number) => {
-      const idStr = String(item.id || item.uuid || `FLW-${idx + 1}`);
+      const idStr = String(item?.id ?? item?.uuid ?? "");
       return {
         id: idStr,
         uuid: idStr,
-        sl: idx + 1,
-        acquisitionLeadId: item.lead_id || item.acquisitionLeadId || "",
-        date: item.follow_up_date
+        sl: item?.sl ?? idx + 1,
+        acquisitionLeadId: item?.lead_id ?? item?.acquisitionLeadId ?? "",
+        date: item?.follow_up_date
           ? new Date(item.follow_up_date).toLocaleDateString()
-          : item.date || new Date().toLocaleDateString(),
-        landDetails: item.land_details || item.landDetails || "Land Parcel",
-        ownerDetails: item.owner_details || item.ownerDetails || "Land Owner",
-        contact: item.contact || "+880 1711-000000",
-        followUpType: item.follow_up_type || item.followUpType || "Call",
-        status: (item.outcome === "Interested" || item.status === "Completed"
-          ? "Completed"
-          : "Pending") as any,
+          : item?.date,
+        landDetails: item?.land_details ?? item?.landDetails ?? "",
+        ownerDetails: item?.owner_details ?? item?.ownerDetails ?? "",
+        contact: item?.contact ?? "",
+        followUpType: item?.follow_up_type ?? item?.followUpType,
+        status: item?.status ?? (item?.outcome
+          ? item.outcome === "Interested" ? "Completed" : "Pending"
+          : undefined),
         note: item.remarks || item.note || "",
-        assignedTo: item.assigned_to || item.assignedTo || "Sakib Al Hasan",
+        assignedTo: item?.assigned_to ?? item?.assignedTo ?? "",
         projectId: item.projectId || item.project_id,
       };
     });
   } catch (error) {
-    return mockFollowUpItems;
+    return [];
   }
 }
 
@@ -798,9 +806,10 @@ export async function createFollowUp(data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 
@@ -813,9 +822,10 @@ export async function updateFollowUp(uuid: string, data: any) {
     });
     revalidatePath("/dashboard/lams");
     const json = await res.json().catch(() => null);
-    return json?.data || json || data;
+    if (!res.ok) throw new Error(json?.message || `LAMS request failed (${res.status})`);
+    return json?.data ?? json ?? null;
   } catch (err) {
-    return data;
+    throw err;
   }
 }
 

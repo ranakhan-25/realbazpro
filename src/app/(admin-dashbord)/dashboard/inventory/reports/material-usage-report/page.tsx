@@ -5,7 +5,8 @@ import MaterialUsageReportTable from "@/components/inventory/MaterialUsageReport
 import React, { useState, useEffect, useMemo } from "react";
 
 
-import { materialUsageApi, fallbackMaterialUsage } from "@/lib/inventoryApi";
+import { materialUsageApi } from "@/lib/inventoryApi";
+import { toast } from "sonner";
 
 export default function MaterialUsageReportContainer() {
   const [data, setData] = useState<MaterialUsageItem[]>([]);
@@ -13,45 +14,31 @@ export default function MaterialUsageReportContainer() {
   useEffect(() => {
     async function loadData() {
       try {
-        let raw = await materialUsageApi.getAll().catch(() => null);
-        if (!Array.isArray(raw) || raw.length === 0) {
-          raw = fallbackMaterialUsage;
+        const raw = await materialUsageApi.getAll();
+        if (!Array.isArray(raw)) {
+          setData([]);
+          return;
         }
-        const list = raw.map((u: any, idx: number) => ({
-          id: u.id || idx + 1,
-          invoiceNo: u.usage_no || u.code || `MU-2026-00${idx + 1}`,
-          date: u.date ? new Date(u.date).toLocaleDateString() : "-",
-          project: u.project?.name || u.project_name || "Hena Heights (PRJ-1001)",
-          titleOfWork: u.title_of_work || "RCC Casting (Beam & Column)",
-          task: u.task || "Beam Concreting Level-4",
-          site: u.site?.name || u.site_name || "Tower 1 Foundation Site",
-          workerName: u.worker_staff_name || "Rafiqul Islam (Site Engineer)",
-          category: u.category || "General",
-          itemCode: u.item_code || `ITM-50${idx + 1}`,
-          itemName: u.item_name || "Material",
-          quantity: Number(u.quantity || 0),
-          unit: u.unit || "Pcs",
+        const list = raw.map((u: any) => ({
+          id: u.id ?? u.uuid ?? u.usage_no ?? u.code ?? "",
+          invoiceNo: u.usage_no || u.code || "Not found",
+          date: u.date ? new Date(u.date).toLocaleDateString() : "Not found",
+          project: u.project?.name || u.project_name || "Not found",
+          titleOfWork: u.title_of_work || "Not found",
+          task: u.task || "Not found",
+          site: u.site?.name || u.site_name || "Not found",
+          workerName: u.worker_staff_name || "Not found",
+          category: u.category || "Not found",
+          itemCode: u.item_code || "Not found",
+          itemName: u.item_name || "Not found",
+          quantity: Number(u.quantity ?? u.items?.[0]?.quantity ?? 0),
+          unit: u.unit || "Not found",
         }));
         setData(list);
       } catch (err) {
-        console.warn("Error loading material usage report:", err);
-        setData(
-          fallbackMaterialUsage.map((u: any, idx: number) => ({
-            id: u.id || idx + 1,
-            invoiceNo: u.usage_no || `MU-2026-00${idx + 1}`,
-            date: u.date ? new Date(u.date).toLocaleDateString() : "-",
-            project: u.project_name,
-            titleOfWork: u.title_of_work,
-            task: u.task,
-            site: u.site_name,
-            workerName: u.worker_staff_name,
-            category: u.category,
-            itemCode: u.item_code,
-            itemName: u.item_name,
-            quantity: Number(u.quantity || 0),
-            unit: u.unit,
-          }))
-        );
+        console.error("Could not load material usage report.", err);
+        toast.error("Material usage data could not be loaded.");
+        setData([]);
       }
     }
     loadData();
@@ -62,7 +49,7 @@ export default function MaterialUsageReportContainer() {
 
   // Filter States
   const [selectedDateRange, setSelectedDateRange] = useState(
-    "1 September, 2026 - 30 September, 2026",
+    "",
   );
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedItem, setSelectedItem] = useState("");
@@ -89,8 +76,25 @@ export default function MaterialUsageReportContainer() {
         ? item.category === selectedCategory
         : true;
       const matchesItem = selectedItem ? item.itemName === selectedItem : true;
+      const matchesTitle = selectedTitleOfWork
+        ? item.titleOfWork === selectedTitleOfWork
+        : true;
+      const matchesTask = selectedTask ? item.task === selectedTask : true;
+      const matchesSite = selectedSite ? item.site === selectedSite : true;
+      const matchesWorker = selectedWorker
+        ? item.workerName === selectedWorker
+        : true;
 
-      return matchesSearch && matchesProject && matchesCategory && matchesItem;
+      return (
+        matchesSearch &&
+        matchesProject &&
+        matchesCategory &&
+        matchesItem &&
+        matchesTitle &&
+        matchesTask &&
+        matchesSite &&
+        matchesWorker
+      );
     });
   }, [data, searchQuery, selectedProject, selectedCategory, selectedItem]);
 
@@ -150,11 +154,9 @@ export default function MaterialUsageReportContainer() {
               className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-gray-600 dark:text-gray-300 shadow-sm"
             >
               <option value="">All Categories</option>
-              <option value="Raw Construction Materials">Raw Construction Materials</option>
-              <option value="Deformed Rebar & Steels">Deformed Rebar & Steels</option>
-              <option value="Cement & Aggregates">Cement & Aggregates</option>
-              <option value="Electrical & Conduits">Electrical & Conduits</option>
-              <option value="Plumbing & Sanitary">Plumbing & Sanitary</option>
+              {Array.from(new Set(data.map((item) => item.category)))
+                .filter((value) => value && value !== "Not found")
+                .map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
 
@@ -169,10 +171,9 @@ export default function MaterialUsageReportContainer() {
               className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-gray-600 dark:text-gray-300 shadow-sm"
             >
               <option value="">All Items</option>
-              <option value="BSRM 16mm TMT 500W High Strength Bar">BSRM 16mm TMT 500W High Strength Bar</option>
-              <option value="Seven Rings Gold PCC 42.5N Cement">Seven Rings Gold PCC 42.5N Cement</option>
-              <option value="Pakur Black Crushed Stone Chips (3/4)">Pakur Black Crushed Stone Chips (3/4)</option>
-              <option value="Coarse River Sand (Sylhet FM 2.5)">Coarse River Sand (Sylhet FM 2.5)</option>
+              {Array.from(new Set(data.map((item) => item.itemName)))
+                .filter((value) => value && value !== "Not found")
+                .map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
 
@@ -187,9 +188,9 @@ export default function MaterialUsageReportContainer() {
               className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-gray-600 dark:text-gray-300 shadow-sm"
             >
               <option value="">All Projects</option>
-              <option value="Hena Heights (PRJ-1001)">Hena Heights (PRJ-1001)</option>
-              <option value="Rifat Eyecon City (PRJ-1002)">Rifat Eyecon City (PRJ-1002)</option>
-              <option value="Green Valley Residency (PRJ-1003)">Green Valley Residency (PRJ-1003)</option>
+              {Array.from(new Set(data.map((item) => item.project)))
+                .filter((value) => value && value !== "Not found")
+                .map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
         </div>
@@ -207,10 +208,9 @@ export default function MaterialUsageReportContainer() {
               className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-gray-600 dark:text-gray-300 shadow-sm"
             >
               <option value="">All Works</option>
-              <option value="Substructure & Foundation">Substructure & Foundation</option>
-              <option value="RCC Casting (Beam & Column)">RCC Casting (Beam & Column)</option>
-              <option value="Brickwork & Masonry">Brickwork & Masonry</option>
-              <option value="Sanitary & Electrical Fitting">Sanitary & Electrical Fitting</option>
+              {Array.from(new Set(data.map((item) => item.titleOfWork)))
+                .filter((value) => value && value !== "Not found")
+                .map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
 
@@ -225,10 +225,9 @@ export default function MaterialUsageReportContainer() {
               className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-gray-600 dark:text-gray-300 shadow-sm"
             >
               <option value="">All Tasks</option>
-              <option value="Beam Concreting Level-4">Beam Concreting Level-4</option>
-              <option value="Slab Concreting Floor-3">Slab Concreting Floor-3</option>
-              <option value="Piling & Mat Foundation">Piling & Mat Foundation</option>
-              <option value="Column Casting Ground Floor">Column Casting Ground Floor</option>
+              {Array.from(new Set(data.map((item) => item.task)))
+                .filter((value) => value && value !== "Not found")
+                .map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
 
@@ -243,10 +242,9 @@ export default function MaterialUsageReportContainer() {
               className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-gray-600 dark:text-gray-300 shadow-sm"
             >
               <option value="">All Sites</option>
-              <option value="Tower 1 Foundation Site">Tower 1 Foundation Site</option>
-              <option value="Block-B Casting Yard">Block-B Casting Yard</option>
-              <option value="Main Central Warehouse">Main Central Warehouse</option>
-              <option value="Site Store - Level 2">Site Store - Level 2</option>
+              {Array.from(new Set(data.map((item) => item.site)))
+                .filter((value) => value && value !== "Not found")
+                .map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
 
@@ -261,10 +259,9 @@ export default function MaterialUsageReportContainer() {
               className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-gray-600 dark:text-gray-300 shadow-sm"
             >
               <option value="">All Workers</option>
-              <option value="Rafiqul Islam (Site Engineer)">Rafiqul Islam (Site Engineer)</option>
-              <option value="Abdul Karim (Head Mason)">Abdul Karim (Head Mason)</option>
-              <option value="Kabir Hossain (Foreman)">Kabir Hossain (Foreman)</option>
-              <option value="Tareq Aziz (Supervisor)">Tareq Aziz (Supervisor)</option>
+              {Array.from(new Set(data.map((item) => item.workerName)))
+                .filter((value) => value && value !== "Not found")
+                .map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
         </div>

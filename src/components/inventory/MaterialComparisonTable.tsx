@@ -3,7 +3,7 @@
 import React from "react";
 
 export interface MaterialItem {
-  id: number;
+  id: string | number;
   description: string;
   budgetQty: number;
   budgetAmount: number;

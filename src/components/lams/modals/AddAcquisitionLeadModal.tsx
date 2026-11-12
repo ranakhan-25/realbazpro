@@ -11,8 +11,6 @@ interface AddAcquisitionLeadModalProps {
     onAddLead: (lead: AcquisitionLead) => void;
 }
 
-const DISTRICTS = ["Dhaka", "Narayanganj", "Gazipur", "Munshiganj"];
-const UPAZILAS = ["Rupganj", "Keraniganj", "Savar", "Gazipur Sadar", "Sonargaon"];
 const STAGES: LeadStage[] = [
   "New",
   "Contacted",
@@ -28,8 +26,6 @@ const SOURCES: LeadSource[] = [
   "Referral",
   "Field Survey",
 ];
-const USERS = ["Sakib Al Hasan", "Rezaul Karim", "Tanvir Hossain", "Shamim Khan"];
-
 export function AddAcquisitionLeadModal({
   isOpen,
   onClose,
@@ -37,18 +33,18 @@ export function AddAcquisitionLeadModal({
     editData,
 }: AddAcquisitionLeadModalProps) {
   const [title, setTitle] = useState("");
-  const [district, setDistrict] = useState(DISTRICTS[0]);
-  const [upazila, setUpazila] = useState(UPAZILAS[0]);
+  const [district, setDistrict] = useState("");
+  const [upazila, setUpazila] = useState("");
   const [mouza, setMouza] = useState("");
   const [dagNo, setDagNo] = useState("");
   const [khatianNo, setKhatianNo] = useState("");
-  const [landArea, setLandArea] = useState<number>(25.0);
-  const [landType, setLandType] = useState<AcquisitionLead["landType"]>("Residential");
-  const [leadStage, setLeadStage] = useState<LeadStage>("New");
-  const [leadSource, setLeadSource] = useState<LeadSource>("Direct Owner");
-  const [assignedUser, setAssignedUser] = useState(USERS[0]);
-  const [expectedPrice, setExpectedPrice] = useState<number>(35000000);
-  const [offeredPrice, setOfferedPrice] = useState<number>(30000000);
+  const [landArea, setLandArea] = useState<number | "">("");
+  const [landType, setLandType] = useState<AcquisitionLead["landType"] | "">("");
+  const [leadStage, setLeadStage] = useState<LeadStage | "">("");
+  const [leadSource, setLeadSource] = useState<LeadSource | "">("");
+  const [assignedUser, setAssignedUser] = useState("");
+  const [expectedPrice, setExpectedPrice] = useState<number | "">("");
+  const [offeredPrice, setOfferedPrice] = useState<number | "">("");
   const [ownerName, setOwnerName] = useState("");
   const [ownerPhone, setOwnerPhone] = useState("");
   const [ownerAddress, setOwnerAddress] = useState("");
@@ -58,18 +54,18 @@ export function AddAcquisitionLeadModal({
   useEffect(() => {
     if (isOpen && editData) {
       setTitle(editData.title || "");
-      setDistrict(editData.district || DISTRICTS[0]);
-      setUpazila(editData.upazila || UPAZILAS[0]);
+      setDistrict(editData.district || "");
+      setUpazila(editData.upazila || "");
       setMouza(editData.mouza || "");
       setDagNo(editData.dagNo || "");
       setKhatianNo(editData.khatianNo || "");
-      setLandArea(editData.landArea || 25.0);
-      setLandType(editData.landType || "Residential");
-      setLeadStage(editData.leadStage || "New");
-      setLeadSource(editData.leadSource || "Direct Owner");
-      setAssignedUser(editData.assignedUser || USERS[0]);
-      setExpectedPrice(editData.expectedPrice || 35000000);
-      setOfferedPrice(editData.offeredPrice || 30000000);
+      setLandArea(editData.landArea ?? "");
+      setLandType(editData.landType || "");
+      setLeadStage(editData.leadStage || "");
+      setLeadSource(editData.leadSource || "");
+      setAssignedUser(editData.assignedUser || "");
+      setExpectedPrice(editData.expectedPrice ?? "");
+      setOfferedPrice(editData.offeredPrice ?? "");
       setOwnerName(editData.ownerName || "");
       setOwnerPhone(editData.ownerPhone || "");
       setOwnerAddress(editData.ownerAddress || "");
@@ -86,31 +82,28 @@ export function AddAcquisitionLeadModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !mouza || !dagNo) return;
+    if (!title || !district || !upazila || !mouza || !dagNo || landArea === "") return;
 
     const newLead: AcquisitionLead = {
-      id: `AL-${Date.now()}`,
-      leadCode: `AL-2026-${Math.floor(100 + Math.random() * 900)}`,
+      id: editData?.id ?? "",
+      leadCode: editData?.leadCode ?? "",
       title,
-      address: address || `${mouza}, ${upazila}, ${district}`,
+      address: address || undefined,
       district,
       upazila,
       mouza,
       dagNo,
-      khatianNo: khatianNo || "RS-Pending",
-      landArea: Number(landArea) || 10,
-      landAreaUnit: "Decimal",
-      landType,
-      leadStage,
-      leadSource,
-      leadStatus: "Active",
+      khatianNo,
+      landArea,
+      landType: landType || undefined,
+      leadStage: leadStage || undefined,
+      leadSource: leadSource || undefined,
       assignedUser,
-      expectedPrice: Number(expectedPrice) || 0,
-      offeredPrice: Number(offeredPrice) || 0,
-      ownerName: ownerName || "Unassigned Owner",
-      ownerPhone: ownerPhone || "+880 1700-000000",
+      expectedPrice: expectedPrice === "" ? undefined : Number(expectedPrice),
+      offeredPrice: offeredPrice === "" ? undefined : Number(offeredPrice),
+      ownerName,
+      ownerPhone,
       ownerAddress: ownerAddress || address,
-      createdAt: new Date().toISOString().split("T")[0],
       remarks,
     };
 
@@ -174,7 +167,7 @@ export function AddAcquisitionLeadModal({
                   type="number"
                   step="0.1"
                   value={landArea}
-                  onChange={(e) => setLandArea(Number(e.target.value))}
+                  onChange={(e) => setLandArea(e.target.value === "" ? "" : Number(e.target.value))}
                   required
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500/30"
                 />
@@ -184,30 +177,26 @@ export function AddAcquisitionLeadModal({
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   District <span className="text-rose-500">*</span>
                 </label>
-                <select
+                <input
+                  type="text"
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
+                  required
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
-                >
-                  {DISTRICTS.map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Upazila / Thana <span className="text-rose-500">*</span>
                 </label>
-                <select
+                <input
+                  type="text"
                   value={upazila}
                   onChange={(e) => setUpazila(e.target.value)}
+                  required
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
-                >
-                  {UPAZILAS.map((u) => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div>
@@ -260,6 +249,7 @@ export function AddAcquisitionLeadModal({
                   onChange={(e) => setLandType(e.target.value as AcquisitionLead["landType"])}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
                 >
+                  <option value="">Not found</option>
                   <option value="Residential">Residential</option>
                   <option value="Commercial">Commercial</option>
                   <option value="Mixed-use">Mixed-use</option>
@@ -282,9 +272,10 @@ export function AddAcquisitionLeadModal({
                 </label>
                 <select
                   value={leadStage}
-                  onChange={(e) => setLeadStage(e.target.value as LeadStage)}
+                  onChange={(e) => setLeadStage(e.target.value as LeadStage | "")}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
                 >
+                  <option value="">Not found</option>
                   {STAGES.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
@@ -297,9 +288,10 @@ export function AddAcquisitionLeadModal({
                 </label>
                 <select
                   value={leadSource}
-                  onChange={(e) => setLeadSource(e.target.value as LeadSource)}
+                  onChange={(e) => setLeadSource(e.target.value as LeadSource | "")}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
                 >
+                  <option value="">Not found</option>
                   {SOURCES.map((src) => (
                     <option key={src} value={src}>{src}</option>
                   ))}
@@ -310,15 +302,12 @@ export function AddAcquisitionLeadModal({
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Assigned User
                 </label>
-                <select
+                <input
+                  type="text"
                   value={assignedUser}
                   onChange={(e) => setAssignedUser(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
-                >
-                  {USERS.map((u) => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div>
@@ -328,7 +317,7 @@ export function AddAcquisitionLeadModal({
                 <input
                   type="number"
                   value={expectedPrice}
-                  onChange={(e) => setExpectedPrice(Number(e.target.value))}
+                  onChange={(e) => setExpectedPrice(e.target.value === "" ? "" : Number(e.target.value))}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
                 />
               </div>

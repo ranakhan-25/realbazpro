@@ -59,8 +59,8 @@ export interface MaterialUsageItem {
 
 export default function MaterialUsageAccounts() {
   // Filter states
-  const [dateRange, setDateRange] = useState("1 September, 2026 - 30 September, 2026");
-  const [company, setCompany] = useState("Somikoron IT Ltd");
+  const [dateRange, setDateRange] = useState("");
+  const [company, setCompany] = useState("");
   const [supplier, setSupplier] = useState("");
   const [project, setProject] = useState("");
   const [site, setSite] = useState("");
@@ -73,38 +73,32 @@ export default function MaterialUsageAccounts() {
   const [selectedUsage, setSelectedUsage] = useState<Partial<MaterialUsageItem>>({});
   const [itemsList, setItemsList] = useState<any[]>([]);
   const [selectedItemId, setSelectedItemId] = useState("");
-  const [usageQty, setUsageQty] = useState(1);
+  const [usageQty, setUsageQty] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     async function loadItems() {
       try {
-        const itms = await itemsApi.getAll().catch(() => []);
+        const itms = await itemsApi.getAll();
         if (Array.isArray(itms)) {
           setItemsList(itms);
-          if (itms.length > 0 && !selectedItemId) {
-            setSelectedItemId(itms[0].id);
-          }
         }
       } catch (err) {
-        console.warn("Could not load items for material usage:", err);
+        console.error("Could not load items for material usage.", err);
+        toast.error("Inventory items could not be loaded.");
+        setItemsList([]);
       }
     }
-    loadItems();
+    void loadItems();
   }, []);
 
   // Handler to open Create Module
   const handleCreateNewUsage = () => {
     setModalMode("create");
-    setSelectedUsage({
-      code: `MU${Math.floor(100000 + Math.random() * 900000)}`,
-      date: new Date().toISOString().split("T")[0],
-      projectType: "Office",
-      project: "PRJ-1001 - Dhaka Commercial Center",
-    });
-    if (itemsList.length > 0) setSelectedItemId(itemsList[0].id);
-    setUsageQty(1);
+    setSelectedUsage({});
+    setSelectedItemId("");
+    setUsageQty("");
     setIsModalOpen(true);
   };
 
@@ -112,6 +106,8 @@ export default function MaterialUsageAccounts() {
   const handleOpenModal = (item: MaterialUsageItem, mode: "update" | "view") => {
     setModalMode(mode);
     setSelectedUsage(item);
+    setSelectedItemId(String(item.items?.[0]?.item_id ?? item.item_code ?? ""));
+    setUsageQty(String(item.items?.[0]?.quantity ?? item.quantity ?? ""));
     setIsModalOpen(true);
   };
 
@@ -119,15 +115,27 @@ export default function MaterialUsageAccounts() {
   const handleSaveUsage = async () => {
     try {
       setIsSubmitting(true);
-      const chosenItemId = selectedItemId || itemsList[0]?.id || "item-01";
+      if (modalMode !== "create") {
+        toast.error("Updating material usage is not supported by the backend API.");
+        return;
+      }
+      const quantity = Number(usageQty);
+      if (!itemsList.some((item) => String(item.id) === selectedItemId)) {
+        toast.error("Choose an existing item.");
+        return;
+      }
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        toast.error("Enter a quantity greater than zero.");
+        return;
+      }
 
-      const payload: any = {
+      const payload = {
         date: selectedUsage.date && !isNaN(Date.parse(selectedUsage.date))
           ? new Date(selectedUsage.date).toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0],
-        note: `Material usage for ${selectedUsage.project || "site"}`,
-        items: [{ item_id: chosenItemId, quantity: Number(usageQty || 1) }],
-        projectId: "PRJ-1001",
+          : undefined,
+        note: selectedUsage.note || undefined,
+        items: [{ item_id: selectedItemId, quantity }],
+        projectId: selectedUsage.projectId || undefined,
       };
 
       await materialUsageApi.create(payload);
@@ -202,65 +210,58 @@ export default function MaterialUsageAccounts() {
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Supplier</label>
-            <select
+            <input
+              type="text"
               value={supplier}
               onChange={(e) => setSupplier(e.target.value)}
               className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="">Select an option</option>
-              <option value="Safety First Suppliers">Safety First Suppliers</option>
-              <option value="Mohin Business solution">Mohin Business solution</option>
-            </select>
+              placeholder="Supplier"
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Project</label>
-            <select
+            <input
+              type="text"
               value={project}
               onChange={(e) => setProject(e.target.value)}
               className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="">Select Project</option>
-              <option value="Rifat Eyecon City">Rifat Eyecon City</option>
-              <option value="Estern 19">Estern 19</option>
-            </select>
+              placeholder="Project"
+            />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Site</label>
-            <select
+            <input
+              type="text"
               value={site}
               onChange={(e) => setSite(e.target.value)}
               className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="">Select Site</option>
-              <option value="Site A">Site A</option>
-            </select>
+              placeholder="Site"
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">
               Title/Name of Work
             </label>
-            <select
+            <input
+              type="text"
               value={titleOfWork}
               onChange={(e) => setTitleOfWork(e.target.value)}
               className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="">Select Title/Name of Work</option>
-              <option value="Work 1">Work 1</option>
-            </select>
+              placeholder="Title/name of work"
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Task</label>
-            <select
+            <input
+              type="text"
               value={task}
               onChange={(e) => setTask(e.target.value)}
               className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="">Select Task</option>
-              <option value="Task 1">Task 1</option>
-            </select>
+              placeholder="Task"
+            />
           </div>
         </div>
       </div>
@@ -295,26 +296,26 @@ export default function MaterialUsageAccounts() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Code
+                    Date
                   </label>
                   <input
-                    type="text"
+                    type="date"
                     disabled={modalMode === "view"}
-                    value={selectedUsage.code || ""}
-                    onChange={(e) => setSelectedUsage({ ...selectedUsage, code: e.target.value })}
+                    value={selectedUsage.date || ""}
+                    onChange={(e) => setSelectedUsage({ ...selectedUsage, date: e.target.value })}
                     className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground disabled:opacity-60"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Project
+                    Project ID (optional)
                   </label>
                   <input
                     type="text"
                     disabled={modalMode === "view"}
-                    value={selectedUsage.project || ""}
+                    value={selectedUsage.projectId || ""}
                     onChange={(e) =>
-                      setSelectedUsage({ ...selectedUsage, project: e.target.value })
+                      setSelectedUsage({ ...selectedUsage, projectId: e.target.value })
                     }
                     className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground disabled:opacity-60"
                   />
@@ -324,32 +325,47 @@ export default function MaterialUsageAccounts() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Worker/Staff Name
+                    Item
                   </label>
-                  <input
-                    type="text"
+                  <select
                     disabled={modalMode === "view"}
-                    value={selectedUsage.workerStaffName || ""}
-                    onChange={(e) =>
-                      setSelectedUsage({ ...selectedUsage, workerStaffName: e.target.value })
-                    }
+                    value={selectedItemId}
+                    onChange={(e) => setSelectedItemId(e.target.value)}
                     className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground disabled:opacity-60"
-                  />
+                  >
+                    <option value="">Not found</option>
+                    {itemsList.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {[item.code, item.name].filter(Boolean).join(" - ")}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Grand Total
+                    Quantity
                   </label>
                   <input
                     type="number"
+                    min="0.01"
+                    step="0.01"
                     disabled={modalMode === "view"}
-                    value={selectedUsage.grandTotal || 0}
-                    onChange={(e) =>
-                      setSelectedUsage({ ...selectedUsage, grandTotal: Number(e.target.value) })
-                    }
+                    value={usageQty}
+                    onChange={(e) => setUsageQty(e.target.value)}
                     className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground disabled:opacity-60"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                  Note
+                </label>
+                <textarea
+                  disabled={modalMode === "view"}
+                  value={selectedUsage.note || ""}
+                  onChange={(e) => setSelectedUsage({ ...selectedUsage, note: e.target.value })}
+                  className="min-h-20 w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground disabled:opacity-60"
+                />
               </div>
             </div>
 
