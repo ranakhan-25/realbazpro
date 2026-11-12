@@ -5,43 +5,29 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { MapPin, Search, Loader2, RefreshCw } from "lucide-react";
 import { crApi } from "@/lib/crApi";
 
-const FALLBACK_VISITS = [
-  { id: "vis-001", customer_name: "Dr. Tariqul Islam", agreement_number: "AGR-2026-001", unit_identifier: "Plot-A17, Sector-7", visit_date: "2026-11-10", officer: "Md. Karim", purpose: "Payment collection", outcome: "Payment promised", address: "House 7, Road 4, Gulshan-2, Dhaka" },
-  { id: "vis-002", customer_name: "Engr. Nasrin Sultana", agreement_number: "AGR-2026-002", unit_identifier: "Flat-B8, Tower-C", visit_date: "2026-11-08", officer: "S. M. Faruk", purpose: "Overdue recovery", outcome: "Customer unavailable", address: "Apt 5B, Bashundhara R/A, Dhaka" },
-  { id: "vis-003", customer_name: "Alhaj Motiur Rahman", agreement_number: "AGR-2026-004", unit_identifier: "Plot-D12, Block-A", visit_date: "2026-11-05", officer: "Legal Department", purpose: "Legal notice delivery", outcome: "Notice delivered", address: "House 12, Sector-7, Uttara, Dhaka" },
-];
-
 export default function CRVisitsPage() {
   const [loading, setLoading] = useState(true);
   const [visits, setVisits] = useState<any[]>([]);
   const [search, setSearch] = useState("");
-  const [isFallback, setIsFallback] = useState(false);
-
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const data = await crApi.getRecoveryLogs?.() ?? [];
       const rows = (Array.isArray(data) ? data : []).filter((r: any) => r?.action_type === "in_person_visit");
-      if (rows.length > 0) {
-        setVisits(rows.map((r: any) => ({
+      setVisits(rows.map((r: any) => ({
           id: r?.id ?? r?.uuid,
-          customer_name: r?.sale_agreement?.customer_name ?? "Customer",
+          customer_name: r?.sale_agreement?.customer_name ?? "—",
           agreement_number: r?.sale_agreement?.agreement_number ?? "—",
           unit_identifier: r?.sale_agreement?.unit_identifier ?? "—",
           visit_date: r?.action_date ? String(r.action_date).slice(0, 10) : "—",
-          officer: r?.officer_name ?? "Recovery Officer",
-          purpose: r?.customer_response ?? "Recovery visit",
-          outcome: r?.outcome_status ?? "in_progress",
+          officer: r?.officer_name ?? "—",
+          purpose: r?.customer_response ?? "—",
+          outcome: r?.outcome_status ?? "",
           address: r?.address ?? "—",
         })));
-        setIsFallback(false);
-      } else {
-        setVisits(FALLBACK_VISITS);
-        setIsFallback(true);
-      }
-    } catch {
-      setVisits(FALLBACK_VISITS);
-      setIsFallback(true);
+    } catch (error) {
+      console.error("Failed to load field visits:", error);
+      setVisits([]);
     } finally {
       setLoading(false);
     }
@@ -114,7 +100,6 @@ export default function CRVisitsPage() {
             </table>
           </div>
         )}
-        {isFallback && <p className="text-[12px] text-amber-600 font-medium text-center">⚠ Showing demo data — backend not connected</p>}
       </div>
     </div>
   );

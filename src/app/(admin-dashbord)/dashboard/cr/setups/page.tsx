@@ -42,21 +42,15 @@ export default function InstallmentSetupsPage() {
   const [description, setDescription] = useState("");
   const [isActive, setIsActive] = useState(true);
 
-  const SETUPS_FALLBACK = [
-    { id: 1, uuid: "setup-001", plan_code: "PLAN-M24", plan_name: "24-Month Monthly Plan", number_of_installments: 24, frequency: "monthly", penalty_rate_percentage: 2.0, grace_period_days: 7, description: "Standard 24-month monthly installment plan with 2% late penalty", is_active: true },
-    { id: 2, uuid: "setup-002", plan_code: "PLAN-Q12", plan_name: "12-Quarter Quarterly Plan", number_of_installments: 12, frequency: "quarterly", penalty_rate_percentage: 1.5, grace_period_days: 15, description: "Quarterly payment plan for high-value plots", is_active: true },
-    { id: 3, uuid: "setup-003", plan_code: "PLAN-S6", plan_name: "6-Season Semi-Annual Plan", number_of_installments: 6, frequency: "semi-annual", penalty_rate_percentage: 3.0, grace_period_days: 30, description: "Semi-annual plan for large commercial properties", is_active: false },
-  ];
-
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const data = await crApi.getSetups?.() ?? [];
-      const list = Array.isArray(data) && data.length > 0 ? data : SETUPS_FALLBACK;
+      const list = Array.isArray(data) ? data : [];
       setSetups(list);
     } catch (err) {
       console.error("Failed to load installment policy setups:", err);
-      setSetups(SETUPS_FALLBACK);
+      setSetups([]);
     } finally {
       setLoading(false);
     }
@@ -80,7 +74,7 @@ export default function InstallmentSetupsPage() {
 
   const handleOpenCreateModal = () => {
     setEditingSetup(null);
-    setPlanCode(`PLAN-${Date.now().toString().slice(-4)}`);
+    setPlanCode("");
     setPlanName("");
     setNumberOfInstallments(12);
     setFrequency("monthly");

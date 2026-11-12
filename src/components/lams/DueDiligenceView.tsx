@@ -100,7 +100,7 @@ export function DueDiligenceView({
       r.completed_count,
       `${r.score}%`,
       r.status,
-      r.report || "N/A",
+      r.report || "Not found",
     ]);
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);

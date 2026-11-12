@@ -425,14 +425,14 @@ export function LandOwnersView({
                       {/* Email */}
                       {isColVisible("email") && (
                         <td className="py-3 px-3.5 text-slate-500 dark:text-slate-400">
-                          {owner.email || "N/A"}
+                          {owner.email || "Not found"}
                         </td>
                       )}
 
                       {/* Address */}
                       {isColVisible("address") && (
                         <td className="py-3 px-3.5 text-slate-500 dark:text-slate-400 truncate max-w-[160px]">
-                          {owner.address || "N/A"}
+                          {owner.address || "Not found"}
                         </td>
                       )}
 
@@ -746,7 +746,7 @@ export function LandOwnersView({
                 </div>
                 <div>
                   <p className="text-slate-400 font-bold uppercase text-[10px]">Father's / Spouse</p>
-                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.father_name || "N/A"}</p>
+                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.father_name || "Not found"}</p>
                 </div>
                 <div>
                   <p className="text-slate-400 font-bold uppercase text-[10px]">NID Number</p>
@@ -758,11 +758,11 @@ export function LandOwnersView({
                 </div>
                 <div className="col-span-2">
                   <p className="text-slate-400 font-bold uppercase text-[10px]">Email</p>
-                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.email || "N/A"}</p>
+                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.email || "Not found"}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-slate-400 font-bold uppercase text-[10px]">Address</p>
-                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.address || "N/A"}</p>
+                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.address || "Not found"}</p>
                 </div>
               </div>
 

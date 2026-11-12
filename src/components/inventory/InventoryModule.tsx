@@ -41,10 +41,6 @@ import {
   INVENTORY_BASE_PATH,
 } from "@/lib/inventoryRoutes";
 import {
-  fallbackBrands,
-  fallbackCategories,
-  fallbackItems,
-  fallbackUnits,
   brandsApi,
   categoriesApi,
   itemsApi,
@@ -64,7 +60,7 @@ type Item = Master & {
   maxQty: number;
   barcode: string;
   notes: string;
-  status: "Active" | "Inactive";
+  status: "Active" | "Inactive" | "Not found";
   avgCost: number;
   categoryId?: string;
   brandId?: string;
@@ -123,84 +119,17 @@ type InventoryData = {
   counts: CountSession[];
 };
 
-const STORAGE_KEY = "realbiz.inventory.module.v1";
-const today = new Date().toISOString().slice(0, 10);
-const MAIN_WAREHOUSE_ID = "wh-main";
-
 const initialData: InventoryData = {
-  items: fallbackItems.map((row, index) => ({
-    id: String(row.id),
-    code: row.item_code,
-    name: row.name,
-    category: row.category.name,
-    brand: row.brand.name,
-    uom: row.unit.name,
-    categoryId: String(row.category_id),
-    brandId: String(row.brand_id),
-    uomId: String(row.unit_id),
-    sku: `SKU-${501 + index}`,
-    reorderLevel: [15, 80, 25, 30, 100][index] ?? 10,
-    minQty: 0,
-    maxQty: 0,
-    barcode: "",
-    notes: "",
-    status: "Active",
-    avgCost: row.purchase_price,
-  })),
-  categories: fallbackCategories.map((row) => ({
-    id: String(row.id),
-    name: row.name,
-    parent: "",
-    code: row.category_code,
-  })),
-  brands: fallbackBrands.map((row) => ({
-    id: String(row.id),
-    name: row.name,
-    code: row.code,
-  })),
-  uoms: fallbackUnits.map((row) => ({
-    id: String(row.id),
-    name: row.name,
-    code: row.code,
-    baseUom: row.conversionUnit || row.code,
-    factor: Number(row.rate) || 1,
-  })),
-  warehouses: [
-    {
-      id: MAIN_WAREHOUSE_ID,
-      code: "WH-001",
-      name: "Central Store",
-      location: "Head Office, Dhaka",
-      type: "Store",
-    },
-    {
-      id: "wh-site",
-      code: "WH-002",
-      name: "Sheba Eyecon Site",
-      location: "Gulshan, Dhaka",
-      type: "Site",
-    },
-    {
-      id: "wh-transit",
-      code: "WH-003",
-      name: "Transit Warehouse",
-      location: "On the road",
-      type: "Transit",
-    },
-  ],
-  movements: fallbackItems.map((row, index) => ({
-    id: `open-${index + 1}`,
-    code: `OPEN-00${index + 1}`,
-    type: "opening",
-    itemId: String(row.id),
-    warehouseId: MAIN_WAREHOUSE_ID,
-    qty: [120, 420, 190, 260, 850][index] ?? 100,
-    rate: row.purchase_price,
-    date: "2026-01-01",
-    notes: "Initial opening balance",
-  })),
+  items: [],
+  categories: [],
+  brands: [],
+  uoms: [],
+  warehouses: [],
+  movements: [],
   counts: [],
 };
+
+const today = new Date().toISOString().slice(0, 10);
 
 const menu = [
   { label: "Overview", href: inventoryPath(), icon: LayoutDashboard },
@@ -262,28 +191,28 @@ const formatMoney = (value: number) =>
     currency: "BDT",
     maximumFractionDigits: 2,
   }).format(value);
-const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 const getFormValue = (form: FormData, key: string) =>
   String(form.get(key) ?? "").trim();
 const apiString = (value: unknown) =>
   typeof value === "string" || typeof value === "number" ? String(value) : "";
 const getMoneyValue = (form: FormData, key: string) =>
   Number(String(form.get(key) ?? "").replaceAll(",", ""));
-const mergeApiRecords = <T extends { id: string }>(
-  remote: T[],
-  local: T[],
-): T[] => {
-  const remoteIds = new Set(remote.map((record) => record.id));
-  return [...remote, ...local.filter((record) => !remoteIds.has(record.id))];
-};
 const apiResponseId = (response: unknown): string | undefined => {
   if (!response || typeof response !== "object") return undefined;
   const payload = response as {
     id?: string | number;
-    data?: { id?: string | number };
+    uuid?: string | number;
+    data?: { id?: string | number; uuid?: string | number };
   };
-  const id = payload.id ?? payload.data?.id;
+  const id = payload.id ?? payload.uuid ?? payload.data?.id ?? payload.data?.uuid;
   return id === undefined ? undefined : String(id);
+};
+const requiredApiResponseId = (response: unknown) => {
+  const id = apiResponseId(response);
+  if (!id) {
+    throw new Error("The backend did not return an ID for the created record.");
+  }
+  return id;
 };
 
 function balanceFor(
@@ -570,7 +499,7 @@ function DataTable({
                   {empty ?? (
                     <div className="flex flex-col items-center gap-2">
                       <PackageOpen className="h-8 w-8 opacity-40" />
-                      <span>No records yet.</span>
+                      <span>Not found</span>
                     </div>
                   )}
                 </td>
@@ -634,7 +563,7 @@ export default function InventoryModule() {
   const section = routeParts[0] ?? "home";
   const subroute = routeParts[1] ?? "";
   const [data, setData] = useState<InventoryData>(initialData);
-  const [ready, setReady] = useState(false);
+  const ready = true;
   const [search, setSearch] = useState("");
   const [selectedWarehouse, setSelectedWarehouse] = useState("");
   const [selectedItem, setSelectedItem] = useState("");
@@ -664,30 +593,6 @@ export default function InventoryModule() {
   const [transactionWarehouseId, setTransactionWarehouseId] = useState("");
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed: unknown = JSON.parse(saved);
-        if (
-          parsed &&
-          typeof parsed === "object" &&
-          "items" in parsed &&
-          "movements" in parsed &&
-          Array.isArray(parsed.items) &&
-          Array.isArray(parsed.movements)
-        ) {
-          setData(parsed as InventoryData);
-        }
-      }
-    } catch (error) {
-      console.error("Could not load local inventory data.", error);
-      toast.error("Inventory data could not be loaded from this browser.");
-    } finally {
-      setReady(true);
-    }
-  }, []);
-
-  useEffect(() => {
     if (!ready) return;
     let active = true;
     const loadApiMasters = async () => {
@@ -705,7 +610,7 @@ export default function InventoryModule() {
         const categories: Category[] = categoryRows.map((entry) => {
           const row = entry as Record<string, unknown>;
           return {
-            id: apiString(row.id) || newId(),
+            id: apiString(row.id ?? row.uuid),
             name: apiString(row.name),
             parent: apiString(row.parent_name ?? row.parent),
             code: apiString(row.category_code ?? row.code),
@@ -714,7 +619,7 @@ export default function InventoryModule() {
         const brands: Brand[] = brandRows.map((entry) => {
           const row = entry as Record<string, unknown>;
           return {
-            id: apiString(row.id) || newId(),
+            id: apiString(row.id ?? row.uuid),
             name: apiString(row.name),
             code: apiString(row.code),
           };
@@ -722,44 +627,21 @@ export default function InventoryModule() {
         const uoms: Uom[] = unitRows.map((entry) => {
           const row = entry as Record<string, unknown>;
           return {
-            id: apiString(row.id) || newId(),
+            id: apiString(row.id ?? row.uuid),
             name: apiString(row.name),
             code: apiString(row.code),
-            baseUom: apiString(row.base_uom ?? row.conversionUnit ?? row.code),
-            factor: Number(row.factor ?? row.rate) || 1,
+            baseUom: apiString(row.base_uom ?? row.conversionUnit),
+            factor: Number(row.factor ?? row.rate) || 0,
           };
         });
         setData((current) => ({
           ...current,
-          categories: mergeApiRecords(categories, current.categories).map(
-            (category) => ({
-              ...category,
-              parent:
-                category.parent ||
-                current.categories.find((row) => row.id === category.id)
-                  ?.parent ||
-                "",
-            }),
-          ),
-          brands: mergeApiRecords(brands, current.brands).map((brand) => ({
-            ...brand,
-            code:
-              brand.code ||
-              current.brands.find((row) => row.id === brand.id)?.code,
-          })),
-          uoms: mergeApiRecords(uoms, current.uoms).map((unit) => {
-            const local = current.uoms.find((row) => row.id === unit.id);
-            return {
-              ...unit,
-              baseUom: unit.baseUom || local?.baseUom || unit.code,
-              factor: local?.factor ?? unit.factor,
-            };
-          }),
-          items: mergeApiRecords(
-            itemRows.map((entry, index) => {
+          categories,
+          brands,
+          uoms,
+          items: itemRows.map((entry) => {
               const row = entry as Record<string, unknown>;
-              const id = apiString(row.id) || `api-item-${index}`;
-              const previous = current.items.find((item) => item.id === id);
+              const id = apiString(row.id ?? row.uuid);
               const nestedCategory =
                 row.category && typeof row.category === "object"
                   ? (row.category as Record<string, unknown>)
@@ -779,42 +661,35 @@ export default function InventoryModule() {
               const uomId = apiString(row.unit_id ?? nestedUnit?.id);
               return {
                 id,
-                code:
-                  apiString(row.item_code ?? row.code) || previous?.code || "",
-                name: apiString(row.name) || previous?.name || "",
+                code: apiString(row.item_code ?? row.code),
+                name: apiString(row.name),
                 category:
                   apiString(nestedCategory?.name) ||
                   categories.find((category) => category.id === categoryId)
-                    ?.name ||
-                  previous?.category ||
-                  "",
+                    ?.name || "",
                 brand:
                   apiString(nestedBrand?.name) ||
-                  brands.find((brand) => brand.id === brandId)?.name ||
-                  previous?.brand ||
-                  "",
+                  brands.find((brand) => brand.id === brandId)?.name || "",
                 uom:
                   apiString(nestedUnit?.name) ||
-                  uoms.find((unit) => unit.id === uomId)?.name ||
-                  previous?.uom ||
-                  "",
-                sku: apiString(row.sku) || previous?.sku || "",
-                reorderLevel:
-                  Number(row.reorder_level ?? previous?.reorderLevel) || 0,
-                minQty: Number(row.min_qty ?? previous?.minQty) || 0,
-                maxQty: Number(row.max_qty ?? previous?.maxQty) || 0,
-                barcode: apiString(row.barcode) || previous?.barcode || "",
-                notes: apiString(row.notes) || previous?.notes || "",
+                  uoms.find((unit) => unit.id === uomId)?.name || "",
+                sku: apiString(row.sku),
+                reorderLevel: Number(row.reorder_level) || 0,
+                minQty: Number(row.min_qty) || 0,
+                maxQty: Number(row.max_qty) || 0,
+                barcode: apiString(row.barcode),
+                notes: apiString(row.notes),
                 status:
-                  apiString(row.status) === "Inactive" ? "Inactive" : "Active",
-                avgCost: Number(row.purchase_price ?? previous?.avgCost) || 0,
-                categoryId: categoryId || previous?.categoryId,
-                brandId: brandId || previous?.brandId,
-                uomId: uomId || previous?.uomId,
+                  apiString(row.status) === "Active" ||
+                  apiString(row.status) === "Inactive"
+                    ? (apiString(row.status) as Item["status"])
+                    : "Not found",
+                avgCost: Number(row.purchase_price) || 0,
+                categoryId: categoryId || undefined,
+                brandId: brandId || undefined,
+                uomId: uomId || undefined,
               };
             }),
-            current.items,
-          ),
         }));
       } catch (error) {
         console.error(
@@ -829,16 +704,6 @@ export default function InventoryModule() {
       active = false;
     };
   }, [ready]);
-
-  useEffect(() => {
-    if (!ready) return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (error) {
-      console.error("Could not save local inventory data.", error);
-      toast.error("Inventory changes could not be saved in this browser.");
-    }
-  }, [data, ready]);
 
   useEffect(() => {
     setSelectedWarehouse("");
@@ -944,41 +809,17 @@ export default function InventoryModule() {
     ({ item, qty }) => item.reorderLevel > 0 && qty < item.reorderLevel,
   ).length;
 
-  const addMovement = (movement: Omit<Movement, "id">) => {
-    setData((current) => {
-      const currentItemQty = balanceFor(current.movements, movement.itemId);
-      const nextItems =
-        movement.type === "opening"
-          ? current.items.map((item) =>
-              item.id === movement.itemId
-                ? {
-                    ...item,
-                    avgCost:
-                      (currentItemQty * item.avgCost +
-                        movement.qty * movement.rate) /
-                      (currentItemQty + movement.qty),
-                  }
-                : item,
-            )
-          : current.items;
-      return {
-        ...current,
-        items: nextItems,
-        movements: [...current.movements, { ...movement, id: newId() }],
-      };
-    });
-  };
-
   const saveMaster = (
     kind: "items" | "categories" | "brands" | "uoms" | "warehouses",
     record: Record<string, string | number>,
   ) => {
+    const id = apiString(record.id);
+    if (!id) {
+      throw new Error("The backend did not return an ID for the created record.");
+    }
     setData((current) => ({
       ...current,
-      [kind]: [
-        ...current[kind],
-        { ...record, id: apiString(record.id) || newId() },
-      ],
+      [kind]: [...current[kind], { ...record, id }],
     }));
   };
 
@@ -995,124 +836,26 @@ export default function InventoryModule() {
     };
     const type = typeBySection[section];
     if (!type) return;
-    const selectedIssue =
-      type === "return"
-        ? data.movements.find(
-            (row) =>
-              row.id === getFormValue(form, "issueId") && row.type === "issue",
-          )
-        : undefined;
-    const itemId = selectedIssue?.itemId ?? getFormValue(form, "itemId");
-    const warehouseId =
-      getFormValue(form, "warehouseId") ||
-      getFormValue(form, "fromWarehouseId");
-    const qty = Number(
-      form.get(type === "adjustment" ? "adjustmentQty" : "qty"),
-    );
+    if (type !== "consumption") {
+      toast.error("This transaction is unavailable because its backend endpoint is not configured.");
+      return;
+    }
+    const itemId = getFormValue(form, "itemId");
+    const qty = Number(form.get("qty"));
     const item = items.find((row) => row.id === itemId);
-    if (
-      !item ||
-      !Number.isFinite(qty) ||
-      (type === "adjustment" ? qty === 0 : qty <= 0)
-    )
-      return;
-    const available = balanceFor(data.movements, itemId, warehouseId);
-
-    if (type === "issue" && qty > available) {
-      toast.error(
-        `Issue quantity cannot exceed the available balance (${formatNumber(available)}).`,
-      );
+    if (!item || !Number.isFinite(qty) || qty <= 0) {
+      toast.error("Choose an existing item and enter a quantity greater than zero.");
       return;
     }
-    if (type === "transfer" && qty > available) {
-      toast.error(
-        `Transfer quantity cannot exceed the available balance (${formatNumber(available)}).`,
-      );
-      return;
-    }
-    if (
-      type === "transfer" &&
-      warehouseId === getFormValue(form, "toWarehouseId")
-    ) {
-      toast.error("Choose two different warehouses for a transfer.");
-      return;
-    }
-    if (type === "adjustment") {
-      if (available + qty < 0) {
-        toast.error("The adjustment cannot reduce stock below zero.");
-        return;
-      }
-    }
-    const movement: Movement = {
-      id: newId(),
-      code: `${type.toUpperCase()}-${Date.now().toString().slice(-6)}`,
-      type,
-      itemId,
-      warehouseId,
-      toWarehouseId: getFormValue(form, "toWarehouseId") || undefined,
-      qty,
-      rate: getMoneyValue(form, "rate") || item.avgCost,
+    await materialUsageApi.create({
       date: getFormValue(form, "date") || today,
-      issuedTo:
-        getFormValue(form, "issuedTo") ||
-        getFormValue(form, "project") ||
-        undefined,
-      refType: getFormValue(form, "refType") || undefined,
-      refUuid: getFormValue(form, "refUuid") || undefined,
-      reason: getFormValue(form, "reason") || undefined,
-      approver: getFormValue(form, "approver") || undefined,
-      notes: getFormValue(form, "notes") || undefined,
-      project: getFormValue(form, "project") || undefined,
-      photoName: (form.get("photo") as File | null)?.name || undefined,
-    };
-    if (type === "adjustment") {
-      if (!movement.qty || !getFormValue(form, "reason")) {
-        toast.error("Enter a non-zero adjustment quantity and a reason.");
-        return;
-      }
-    }
-    if (type === "return") {
-      const issue = selectedIssue;
-      const alreadyReturned = data.movements
-        .filter((row) => row.type === "return" && row.refUuid === issue?.id)
-        .reduce((sum, row) => sum + row.qty, 0);
-      if (
-        !issue ||
-        issue.itemId !== itemId ||
-        qty > issue.qty - alreadyReturned
-      ) {
-        toast.error(
-          "Return quantity cannot exceed the unreturned quantity of the selected issue.",
-        );
-        return;
-      }
-      movement.refUuid = issue.id;
-      movement.refType = "Issue";
-      movement.warehouseId = issue.warehouseId;
-    }
-    if (type === "opening") {
-      movement.type = "opening";
-    }
-    if (type === "consumption") {
-      await materialUsageApi.create({
-        date: movement.date,
-        note: movement.notes,
-        items: [{ item_id: itemId, quantity: qty }],
-        projectId: movement.refUuid,
-      });
-    }
-    addMovement(movement);
+      note: getFormValue(form, "notes") || undefined,
+      items: [{ item_id: itemId, quantity: qty }],
+      projectId: getFormValue(form, "project") || undefined,
+    });
     setHasUnsavedChanges(false);
     toast.success(`${type[0].toUpperCase()}${type.slice(1)} saved.`);
-    router.push(
-      type === "opening"
-        ? inventoryPath("opening")
-        : type === "issue"
-          ? inventoryPath("issues")
-          : type === "transfer"
-            ? inventoryPath("balance")
-            : inventoryPath("ledger"),
-    );
+    router.push(inventoryPath("ledger"));
   };
 
   const handleMasterSubmit = async (
@@ -1120,6 +863,10 @@ export default function InventoryModule() {
     kind: "items" | "categories" | "brands" | "uoms" | "warehouses",
   ) => {
     event.preventDefault();
+    if (kind === "warehouses") {
+      toast.error("Warehouse records are unavailable because no backend API is configured.");
+      return;
+    }
     const form = new FormData(event.currentTarget);
     const record: Record<string, string | number> = {};
     for (const [key, value] of form.entries()) {
@@ -1182,7 +929,7 @@ export default function InventoryModule() {
         name: String(record.name),
       });
       record.code = code;
-      record.id = apiResponseId(response) || newId();
+      record.id = requiredApiResponseId(response);
     } else if (kind === "brands") {
       const code = `BR-${Date.now().toString().slice(-6)}`;
       const response = await brandsApi.create({
@@ -1190,13 +937,13 @@ export default function InventoryModule() {
         name: String(record.name),
       });
       record.code = code;
-      record.id = apiResponseId(response) || newId();
+      record.id = requiredApiResponseId(response);
     } else if (kind === "uoms") {
       const response = await unitsApi.create({
         code: String(record.code),
         name: String(record.name),
       });
-      record.id = apiResponseId(response) || newId();
+      record.id = requiredApiResponseId(response);
     } else if (kind === "items") {
       const category = data.categories.find(
         (row) => row.name === String(record.category),
@@ -1219,7 +966,7 @@ export default function InventoryModule() {
         unit_id: uom.id,
         brand_id: brand?.id,
       });
-      record.id = apiResponseId(response) || newId();
+      record.id = requiredApiResponseId(response);
       record.categoryId = category.id;
       record.uomId = uom.id;
       if (brand) record.brandId = brand.id;
@@ -1345,7 +1092,7 @@ export default function InventoryModule() {
         name: getFormValue(form, "name"),
       });
       saveMaster("brands", {
-        id: apiResponseId(response) || newId(),
+        id: requiredApiResponseId(response),
         code,
         name: getFormValue(form, "name"),
       });
@@ -1368,7 +1115,7 @@ export default function InventoryModule() {
         name: getFormValue(form, "name"),
       });
       saveMaster("uoms", {
-        id: apiResponseId(response) || newId(),
+        id: requiredApiResponseId(response),
         name: getFormValue(form, "name"),
         code,
         baseUom: getFormValue(form, "baseUom") || code,
@@ -1670,25 +1417,7 @@ export default function InventoryModule() {
 
   const createCount = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const warehouseId = getFormValue(form, "warehouseId");
-    const count: CountSession = {
-      id: newId(),
-      warehouseId,
-      countedAt: getFormValue(form, "countedAt") || today,
-      status: "Draft",
-      lines: items.map((item) => ({
-        itemId: item.id,
-        systemQty: balanceFor(data.movements, item.id, warehouseId),
-        countedQty: balanceFor(data.movements, item.id, warehouseId),
-        note: "",
-        saved: false,
-      })),
-    };
-    setData((current) => ({ ...current, counts: [...current.counts, count] }));
-    setHasUnsavedChanges(false);
-    toast.success("Physical count created.");
-    router.push(inventoryPath(`counts/${count.id}`));
+    toast.error("Physical counts are unavailable because the backend endpoint is not configured.");
   };
 
   const saveCountLine = (
@@ -1697,78 +1426,16 @@ export default function InventoryModule() {
     countedQty: number,
     note: string,
   ) => {
-    setData((current) => ({
-      ...current,
-      counts: current.counts.map((count) =>
-        count.id !== countId
-          ? count
-          : {
-              ...count,
-              lines: count.lines.map((line, index) =>
-                index === lineIndex
-                  ? { ...line, countedQty, note, saved: true }
-                  : line,
-              ),
-            },
-      ),
-    }));
-    const savedKey = `${countId}-${lineIndex}`;
-    const remaining = Object.fromEntries(
-      Object.entries(countDrafts).filter(([key]) => key !== savedKey),
-    );
-    setCountDrafts(remaining);
-    setHasUnsavedChanges(
-      Object.keys(remaining).some((key) => key.startsWith(`${countId}-`)),
-    );
-    toast.success("Count line saved.");
+    void countId;
+    void lineIndex;
+    void countedQty;
+    void note;
+    toast.error("Count lines are unavailable because the backend endpoint is not configured.");
   };
 
   const submitCount = (count: CountSession) => {
-    if (
-      Object.keys(countDrafts).some((key) => key.startsWith(`${count.id}-`))
-    ) {
-      toast.error("Save each edited count line before submitting the count.");
-      return;
-    }
-    const hasDifferences = count.lines.some(
-      (line) => line.countedQty !== line.systemQty,
-    );
-    if (
-      hasDifferences &&
-      !window.confirm("Create inventory adjustments for all count differences?")
-    ) {
-      return;
-    }
-    setData((current) => {
-      const adjustments = count.lines
-        .map((line) => ({
-          line,
-          diff: line.countedQty - line.systemQty,
-        }))
-        .filter(({ diff }) => diff !== 0)
-        .map(({ line, diff }) => ({
-          id: newId(),
-          code: `COUNT-${count.id.slice(-6)}`,
-          type: "adjustment" as const,
-          itemId: line.itemId,
-          warehouseId: count.warehouseId,
-          qty: diff,
-          rate:
-            current.items.find((item) => item.id === line.itemId)?.avgCost ?? 0,
-          date: count.countedAt,
-          reason: "Physical count adjustment",
-          notes: line.note,
-        }));
-      return {
-        ...current,
-        movements: [...current.movements, ...adjustments],
-        counts: current.counts.map((row) =>
-          row.id === count.id ? { ...row, status: "Adjusted" } : row,
-        ),
-      };
-    });
-    toast.success("Count submitted; stock adjustments were created.");
-    router.push(inventoryPath("counts"));
+    void count;
+    toast.error("Count submission is unavailable because the backend endpoint is not configured.");
   };
 
   const exportCsv = (
@@ -1824,6 +1491,17 @@ export default function InventoryModule() {
     kind: "items" | "categories" | "brands" | "uoms" | "warehouses",
     title: string,
   ) => {
+    if (kind === "warehouses") {
+      return (
+        <>
+          <PageTitle
+            title={title}
+            description="Not found: no backend warehouse endpoint is configured."
+          />
+          <DataTable columns={["Status"]} rows={[]} empty="Not found" />
+        </>
+      );
+    }
     const options = (values: string[]) =>
       values.map((value) => ({ value, label: value }));
     const onSubmit = (event: FormEvent<HTMLFormElement>) =>
@@ -2263,6 +1941,7 @@ export default function InventoryModule() {
                 items.filter((item) => item.category === category.name).length,
               ),
             ])}
+            empty="Not found"
           />
         </>
       );
@@ -2320,8 +1999,8 @@ export default function InventoryModule() {
             rows={data.uoms.map((row) => [
               row.name,
               row.code,
-              row.baseUom || "—",
-              formatNumber(row.factor),
+              row.baseUom || "Not found",
+              row.factor ? formatNumber(row.factor) : "Not found",
             ])}
           />
         </>
@@ -2330,12 +2009,7 @@ export default function InventoryModule() {
       <>
         <PageTitle
           title="Warehouses"
-          description="Stores, project sites, and transit stock locations."
-          action={
-            <ButtonLink href={links.warehouses}>
-              <Plus size={16} /> Add warehouse
-            </ButtonLink>
-          }
+          description="Not found: no backend warehouse endpoint is configured."
         />
         <DataTable
           columns={["Code", "Name", "Type", "Location", "Items #"]}
@@ -2355,6 +2029,7 @@ export default function InventoryModule() {
               ).length,
             ),
           ])}
+          empty="Not found"
         />
       </>
     );
@@ -2378,99 +2053,17 @@ export default function InventoryModule() {
       adjustment: "Correct stock with a signed quantity and reason.",
       consumption: "Record project material consumption.",
     };
-    if (type === "return") {
-      const issues = data.movements.filter(
-        (row) =>
-          row.type === "issue" &&
-          row.qty >
-            data.movements
-              .filter(
-                (movement) =>
-                  movement.type === "return" && movement.refUuid === row.id,
-              )
-              .reduce((sum, movement) => sum + movement.qty, 0),
-      );
-      const issueOptions = issues.map((issue) => ({
-        value: issue.id,
-        label: `${issue.code} — ${items.find((item) => item.id === issue.itemId)?.name ?? issue.itemId} (${formatNumber(issue.qty)} issued)`,
-      }));
-      const selectedIssue = issues.find(
-        (issue) => issue.id === selectedIssueId,
-      );
-      const returnedQty = selectedIssue
-        ? data.movements
-            .filter(
-              (movement) =>
-                movement.type === "return" &&
-                movement.refUuid === selectedIssue.id,
-            )
-            .reduce((sum, movement) => sum + movement.qty, 0)
-        : 0;
-      const remainingQty = selectedIssue
-        ? selectedIssue.qty - returnedQty
-        : undefined;
-      return renderForm(
-        title[type],
-        description[type],
-        saveTransaction,
+    if (type !== "consumption") {
+      return (
         <>
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
-              Issue <span className="text-rose-500">*</span>
-            </span>
-            <select
-              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-              name="issueId"
-              onChange={(event) => {
-                setSelectedIssueId(event.target.value);
-                setHasUnsavedChanges(true);
-              }}
-              required
-              value={selectedIssueId}
-            >
-              <option value="">Select an issue</option>
-              {issueOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {selectedIssue && (
-              <span className="block text-xs text-slate-500">
-                Item:{" "}
-                {items.find((item) => item.id === selectedIssue.itemId)?.name}
-                {" · "}Remaining: {formatNumber(remainingQty ?? 0)}
-              </span>
-            )}
-          </label>
-          <Field
-            label="Quantity"
-            name="qty"
-            type="number"
-            min={0.01}
-            max={remainingQty}
-            step={0.01}
-            required
+          <PageTitle
+            title={title[type]}
+            description="Not found: no backend endpoint is configured for this transaction."
           />
-          <TextArea label="Reason" name="reason" required />
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">Photo</span>
-            <input
-              type="file"
-              name="photo"
-              accept="image/*"
-              className="block w-full text-sm text-slate-500"
-            />
-          </label>
-        </>,
+          <DataTable columns={["Status"]} rows={[]} empty="Not found" />
+        </>
       );
     }
-    const isAdjustment = type === "adjustment";
-    const usesAvailableStock = type === "issue" || type === "transfer";
-    const transactionAvailable =
-      usesAvailableStock && transactionItemId && transactionWarehouseId
-        ? balanceFor(data.movements, transactionItemId, transactionWarehouseId)
-        : undefined;
     return renderForm(
       title[type],
       description[type],
@@ -2481,128 +2074,8 @@ export default function InventoryModule() {
           name="itemId"
           required
           options={itemOptions}
-          value={usesAvailableStock ? transactionItemId : undefined}
-          onValueChange={
-            usesAvailableStock
-              ? (value) => {
-                  setTransactionItemId(value);
-                  setHasUnsavedChanges(true);
-                }
-              : undefined
-          }
         />
-        {type === "transfer" ? (
-          <>
-            <SelectField
-              label="From warehouse"
-              name="fromWarehouseId"
-              required
-              options={warehouseOptions}
-              value={transactionWarehouseId}
-              onValueChange={(value) => {
-                setTransactionWarehouseId(value);
-                setHasUnsavedChanges(true);
-              }}
-            />
-            <SelectField
-              label="To warehouse"
-              name="toWarehouseId"
-              required
-              options={warehouseOptions.filter(
-                (option) => option.value !== transactionWarehouseId,
-              )}
-            />
-          </>
-        ) : (
-          <SelectField
-            label="Warehouse"
-            name="warehouseId"
-            required
-            options={warehouseOptions}
-            value={type === "issue" ? transactionWarehouseId : undefined}
-            onValueChange={
-              type === "issue"
-                ? (value) => {
-                    setTransactionWarehouseId(value);
-                    setHasUnsavedChanges(true);
-                  }
-                : undefined
-            }
-          />
-        )}
-        {isAdjustment ? (
-          <Field
-            label="Quantity (+/-)"
-            name="adjustmentQty"
-            type="number"
-            step={0.01}
-            required
-          />
-        ) : (
-          <Field
-            label="Quantity"
-            name="qty"
-            type="number"
-            min={0.01}
-            max={usesAvailableStock ? transactionAvailable : undefined}
-            step={0.01}
-            required
-          />
-        )}
-        {type === "opening" && (
-          <CurrencyField label="Rate" name="rate" required />
-        )}
-        {type === "issue" && (
-          <SelectField
-            label="Issued to"
-            name="issuedTo"
-            required
-            options={[
-              { value: "User", label: "User" },
-              { value: "Project", label: "Project" },
-            ]}
-          />
-        )}
-        {type === "consumption" && (
-          <SelectField
-            label="Project"
-            name="project"
-            required
-            options={[
-              { value: "Sheba Eyecon Tower", label: "Sheba Eyecon Tower" },
-              { value: "Bashundhara Tower", label: "Bashundhara Tower" },
-              {
-                value: "Dhaka Commercial Center",
-                label: "Dhaka Commercial Center",
-              },
-            ]}
-          />
-        )}
-        {(type === "issue" || type === "consumption") && (
-          <>
-            <SelectField
-              label="Reference type"
-              name="refType"
-              options={[
-                { value: "Project", label: "Project" },
-                { value: "Requisition", label: "Requisition" },
-                { value: "Manual", label: "Manual" },
-              ]}
-            />
-            <Field label="Reference UUID" name="refUuid" />
-          </>
-        )}
-        {isAdjustment && (
-          <SelectField
-            label="Approver"
-            name="approver"
-            options={[
-              { value: "Inventory Supervisor", label: "Inventory Supervisor" },
-              { value: "Operations Manager", label: "Operations Manager" },
-              { value: "System Admin", label: "System Admin" },
-            ]}
-          />
-        )}
+        <Field label="Project ID (optional)" name="project" />
         <Field
           label="Date"
           name="date"
@@ -2610,26 +2083,7 @@ export default function InventoryModule() {
           defaultValue={today}
           required
         />
-        {isAdjustment || type === "issue" ? (
-          <TextArea
-            label={isAdjustment ? "Reason" : "Notes"}
-            name={isAdjustment ? "reason" : "notes"}
-            required={isAdjustment}
-          />
-        ) : (
-          <TextArea label="Notes" name="notes" />
-        )}
-        {type === "issue" && (
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">Photo</span>
-            <input
-              type="file"
-              name="photo"
-              accept="image/*"
-              className="block w-full text-sm text-slate-500"
-            />
-          </label>
-        )}
+        <TextArea label="Notes" name="notes" />
       </>,
     );
   };
@@ -2651,9 +2105,9 @@ export default function InventoryModule() {
           columns={["Item", "Warehouse", "Qty", "Rate", "Value", "Date"]}
           rows={openings.map((row) => [
             items.find((item) => item.id === row.itemId)?.name ??
-              "Unknown item",
+              "Not found",
             warehouses.find((warehouse) => warehouse.id === row.warehouseId)
-              ?.name ?? "Unknown warehouse",
+              ?.name ?? "Not found",
             formatNumber(row.qty),
             formatMoney(row.rate),
             formatMoney(row.qty * row.rate),
@@ -2964,7 +2418,7 @@ export default function InventoryModule() {
           rows={ledgerRows.map(({ movement, inQty, outQty, balance }) => [
             movement.date,
             items.find((item) => item.id === movement.itemId)?.name ??
-              "Unknown item",
+              "Not found",
             movement.refType ?? movement.type,
             movement.code,
             inQty ? formatNumber(inQty) : "—",
@@ -3028,9 +2482,9 @@ export default function InventoryModule() {
           rows={issues.map((row) => [
             row.code,
             items.find((item) => item.id === row.itemId)?.name ??
-              "Unknown item",
+              "Not found",
             warehouses.find((warehouse) => warehouse.id === row.warehouseId)
-              ?.name ?? "Unknown warehouse",
+              ?.name ?? "Not found",
             formatNumber(row.qty),
             row.issuedTo ?? "—",
             row.refUuid ?? row.refType ?? "—",
@@ -3044,12 +2498,7 @@ export default function InventoryModule() {
     <>
       <PageTitle
         title="Physical counts"
-        description="Create count sessions and review line-by-line differences."
-        action={
-          <ButtonLink href={inventoryPath("counts/create")}>
-            <Plus size={16} /> Start count
-          </ButtonLink>
-        }
+        description="Not found: no backend physical-count endpoint is configured."
       />
       <DataTable
         columns={[
@@ -3063,7 +2512,7 @@ export default function InventoryModule() {
         rows={data.counts.map((count) => [
           count.id.slice(-8),
           warehouses.find((row) => row.id === count.warehouseId)?.name ??
-            "Unknown warehouse",
+            "Not found",
           count.countedAt,
           String(count.lines.length),
           <span
@@ -3080,6 +2529,7 @@ export default function InventoryModule() {
             Open count
           </Link>,
         ])}
+        empty="Not found"
       />
     </>
   );
@@ -3088,7 +2538,7 @@ export default function InventoryModule() {
     <>
       <PageTitle
         title="Count detail"
-        description={`Warehouse: ${warehouses.find((row) => row.id === count.warehouseId)?.name ?? "Unknown"} · Counted at ${count.countedAt}`}
+        description={`Warehouse: ${warehouses.find((row) => row.id === count.warehouseId)?.name ?? "Not found"} · Counted at ${count.countedAt}`}
         action={
           <button
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
@@ -3291,28 +2741,9 @@ export default function InventoryModule() {
     content = renderMovementForm("adjustment");
   else if (section === "consumption" && isCreate)
     content = renderMovementForm("consumption");
-  else if (section === "counts" && isCreate) {
-    content = renderForm(
-      "Start physical count",
-      "Choose a warehouse and date to snapshot system quantities.",
-      createCount,
-      <>
-        <SelectField
-          label="Warehouse"
-          name="warehouseId"
-          required
-          options={warehouseOptions}
-        />
-        <Field
-          label="Counted at"
-          name="countedAt"
-          type="date"
-          defaultValue={today}
-          required
-        />
-      </>,
-    );
-  } else if (section === "counts" && selectedCount)
+  else if (section === "counts" && isCreate)
+    content = renderCounts();
+  else if (section === "counts" && selectedCount)
     content = renderCountEditor(selectedCount);
   else if (section === "counts") content = renderCounts();
   else if (section === "slow-moving") {

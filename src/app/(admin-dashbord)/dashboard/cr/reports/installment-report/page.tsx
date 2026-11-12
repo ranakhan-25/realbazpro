@@ -8,19 +8,6 @@ import { crApi } from "@/lib/crApi";
 
 const flatLandMenu = ["Flat/Land", "Flat/Land Sale", "Flat/Land Sale Payment"];
 
-const salesByOptions = ["Tazmul Reza", "Rifat Hosain", "Mohin Uddin"];
-
-const teamOptions = ["Gladiators", "Team Warriors", "Go", "Diponkar Team"];
-
-const projectOptions = [
-  "Head Office",
-  "Lake Garden",
-  "Estern 19",
-  "Sheba Eyecon Tower",
-  "Hena Heights",
-  "Rifat Eyecon City",
-];
-
 const datePresets = [
   "Today",
   "Yesterday",
@@ -292,14 +279,10 @@ export default function InstallmentReportPage() {
       try {
         setLoading(true);
         const rawAgreements = await crApi.getAgreements?.() ?? [];
-        const agreements = Array.isArray(rawAgreements) && rawAgreements.length > 0 ? rawAgreements : [
-          { id: 1, agreement_number: "AGR-2026-001", customer_name: "Dr. Tariqul Islam", unit_identifier: "Plot-A17", total_price: 7500000, booking_money: 500000, down_payment: 1500000, installment_plans: [{ installment_no: 1, due_date: "2026-02-15", payable_amount: 150000, paid_amount: 150000 }, { installment_no: 2, due_date: "2026-03-15", payable_amount: 150000, paid_amount: 0 }], agreement_date: "2026-01-15" },
-          { id: 2, agreement_number: "AGR-2026-002", customer_name: "Engr. Nasrin Sultana", unit_identifier: "Flat-B8", total_price: 12000000, booking_money: 1000000, down_payment: 3000000, installment_plans: [{ installment_no: 1, due_date: "2026-03-20", payable_amount: 200000, paid_amount: 200000 }], agreement_date: "2026-02-20" },
-          { id: 3, agreement_number: "AGR-2026-003", customer_name: "Md. Rafiqul Hasan", unit_identifier: "Plot-C5", total_price: 4500000, booking_money: 300000, down_payment: 900000, installment_plans: [], agreement_date: "2026-03-10" },
-        ];
+        const agreements = Array.isArray(rawAgreements) ? rawAgreements : [];
         if (!mounted) return;
         const transformed: any[] = [];
-        agreements.forEach((ag: any, idx: number) => {
+        agreements.forEach((ag: any) => {
           const plans = ag.installment_plans || ag.schedule || [];
           const totalVal = Number(ag.total_price || ag.agreed_price || 0);
           const totalPaid = plans.reduce((acc: number, p: any) => acc + Number(p.paid_amount || 0), Number(ag.booking_money || 0) + Number(ag.down_payment || 0));
@@ -313,33 +296,35 @@ export default function InstallmentReportPage() {
 
               transformed.push({
                 id: `${ag.agreement_number || ag.agreement_no || ag.id}-${inst.installment_no}`,
-                project: ag.project_id || ag.project_name || "Purbachal Project",
-                flatLand: ag.unit_identifier || ag.unit_no || "Plot / Flat",
-                customer: ag.customer_name || "Customer",
+                project: ag.project_id || ag.project_name || "Not found",
+                flatLand: ag.unit_identifier || ag.unit_no || "Not found",
+                customer: ag.customer_name || "Not found",
                 totalValue: totalVal.toLocaleString(),
                 paid: totalPaid.toLocaleString(),
                 due: totalDue.toLocaleString(),
-                installmentDate: inst.due_date ? String(inst.due_date).slice(0, 10) : "N/A",
+                installmentDate: inst.due_date ? String(inst.due_date).slice(0, 10) : "Not found",
                 installmentAmount: instPayable.toLocaleString(),
                 recovered: instPaid.toLocaleString(),
                 installmentDue: instDue.toLocaleString(),
-                salesBy: ag.created_by || ag.sales_person_name || "Account Manager",
+                salesBy: ag.created_by || ag.sales_person_name || "Not found",
+                team: ag.team_name || ag.team || "Not found",
               });
             });
           } else {
             transformed.push({
-              id: ag.agreement_number || ag.agreement_no || `#${ag.id || idx + 1}`,
-              project: ag.project_id || ag.project_name || "Purbachal Project",
-              flatLand: ag.unit_identifier || ag.unit_no || "Plot / Flat",
-              customer: ag.customer_name || "Customer",
+              id: ag.agreement_number || ag.agreement_no || ag.id || "Not found",
+              project: ag.project_id || ag.project_name || "Not found",
+              flatLand: ag.unit_identifier || ag.unit_no || "Not found",
+              customer: ag.customer_name || "Not found",
               totalValue: totalVal.toLocaleString(),
               paid: totalPaid.toLocaleString(),
               due: totalDue.toLocaleString(),
-              installmentDate: ag.agreement_date || (ag.createdAt ? String(ag.createdAt).slice(0, 10) : "N/A"),
+              installmentDate: ag.agreement_date || (ag.createdAt ? String(ag.createdAt).slice(0, 10) : "Not found"),
               installmentAmount: totalVal.toLocaleString(),
               recovered: totalPaid.toLocaleString(),
               installmentDue: totalDue.toLocaleString(),
-              salesBy: ag.created_by || ag.sales_person_name || "Account Manager",
+              salesBy: ag.created_by || ag.sales_person_name || "Not found",
+              team: ag.team_name || ag.team || "Not found",
             });
           }
         });
@@ -366,7 +351,9 @@ export default function InstallmentReportPage() {
         r.flatLand.toLowerCase().includes(q) ||
         String(r.id).includes(q);
       const matchProject = !project || r.project === project;
-      return matchSearch && matchProject;
+      const matchSalesBy = !salesBy || r.salesBy === salesBy;
+      const matchTeam = !team || r.team === team;
+      return matchSearch && matchProject && matchSalesBy && matchTeam;
     });
   }, [rows, search, project]);
 
@@ -430,7 +417,7 @@ export default function InstallmentReportPage() {
               setSalesBy(v);
               setPage(1);
             }}
-            options={salesByOptions}
+            options={Array.from(new Set(rows.map((row) => row.salesBy).filter((value) => value !== "Not found")))}
           />
 
           <SearchableSelect
@@ -440,7 +427,7 @@ export default function InstallmentReportPage() {
               setTeam(v);
               setPage(1);
             }}
-            options={teamOptions}
+            options={Array.from(new Set(rows.map((row) => row.team).filter((value) => value !== "Not found")))}
           />
 
           <SearchableSelect
@@ -450,7 +437,7 @@ export default function InstallmentReportPage() {
               setProject(v);
               setPage(1);
             }}
-            options={projectOptions}
+            options={Array.from(new Set(rows.map((row) => row.project).filter((value) => value !== "Not found")))}
           />
         </div>
 

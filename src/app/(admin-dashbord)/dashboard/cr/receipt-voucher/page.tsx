@@ -42,7 +42,7 @@ export default function ReceiptVoucherPage() {
 
   // Form states
   const [selectedPlanUuid, setSelectedPlanUuid] = useState("");
-  const [voucherNo, setVoucherNo] = useState(`R${Date.now().toString().slice(-5)}`);
+  const [voucherNo, setVoucherNo] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
   const [chequeNo, setChequeNo] = useState("");
@@ -71,51 +71,26 @@ export default function ReceiptVoucherPage() {
           (plan.payments || []).forEach((pay: any) => {
             rows.push({
               sl: sl++,
-              date: pay.payment_date || String(pay.createdAt).slice(0, 10),
-              project: agr.unit_identifier || "Purbachal Project",
-              code: pay.payment_voucher_no || `VCHR-${pay.id}`,
-              credit: agr.customer_name || "Client",
-              debit: pay.payment_method?.replace(/_/g, " ").toUpperCase() || "CASH",
+              date: pay?.payment_date || (pay?.createdAt ? String(pay.createdAt).slice(0, 10) : "Not found"),
+              project: agr?.unit_identifier || "Not found",
+              code: pay?.payment_voucher_no || "Not found",
+              credit: agr?.customer_name || "Not found",
+              debit: pay?.payment_method?.replace(/_/g, " ").toUpperCase() || "Not found",
               total: Number(pay.paid_amount || 0).toLocaleString(undefined, {
                 minimumFractionDigits: 2,
               }),
-              ref: plan.title || `Installment #${plan.installment_no}`,
-              cheque: pay.cheque_no || pay.transaction_reference || "—",
-              comment: pay.remarks || agr.agreement_number || "Payment Voucher",
-              addedBy: pay.createdBy || "Accountant",
+              ref: plan?.title || (plan?.installment_no ? `Installment #${plan.installment_no}` : "Not found"),
+              cheque: pay?.cheque_no || pay?.transaction_reference || "Not found",
+              comment: pay?.remarks || agr?.agreement_number || "Not found",
+              addedBy: pay?.createdBy || "Not found",
               editedBy: "—",
-              approve: "Completed & Verified",
-              attachment: "1",
-              status: "Approved",
+              approve: pay?.approval_status || "Not found",
+              attachment: pay?.attachment ? "1" : "Not found",
+              status: pay?.status || "Not found",
             });
           });
         });
       });
-
-      // If no payments yet, show active installments
-      if (rows.length === 0 && (overdue || []).length > 0) {
-        (overdue || []).slice(0, 5).forEach((p: any) => {
-          rows.push({
-            sl: sl++,
-            date: p.due_date || "2026-10-01",
-            project: p.sale_agreement?.unit_identifier || "Purbachal Sector 17",
-            code: `DUE-${p.installment_no}`,
-            credit: p.sale_agreement?.customer_name || "Dr. Tariqul Islam",
-            debit: "PENDING",
-            total: Number(p.payable_amount || 0).toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-            }),
-            ref: p.title || `Installment #${p.installment_no}`,
-            cheque: "—",
-            comment: `Due Amount: ${p.due_amount} BDT`,
-            addedBy: "Amortization Engine",
-            editedBy: "—",
-            approve: p.status === "paid" ? "Paid" : "Overdue Scheduled",
-            attachment: "0",
-            status: p.status,
-          });
-        });
-      }
 
       setTableRows(rows);
     } catch (err) {
@@ -160,12 +135,7 @@ export default function ReceiptVoucherPage() {
     }
 
     // Determine target installment plan uuid
-    let targetUuid = selectedPlanUuid;
-    if (!targetUuid && overduePlans.length > 0) {
-      targetUuid = overduePlans[0].uuid;
-    } else if (!targetUuid && agreements.length > 0 && agreements[0].installment_plans?.length > 0) {
-      targetUuid = agreements[0].installment_plans[0].uuid;
-    }
+    const targetUuid = selectedPlanUuid;
 
     if (!targetUuid) {
       showAlert.warning(
@@ -184,11 +154,11 @@ export default function ReceiptVoucherPage() {
         payment_date: paymentDate,
         payment_method: paymentMethod,
         cheque_no: chequeNo || undefined,
-        remarks: comment || "Payment voucher submitted via Credit Realization UI",
+        remarks: comment || undefined,
       });
 
       // Reset form
-      setVoucherNo(`R${Date.now().toString().slice(-5)}`);
+      setVoucherNo("");
       setAmount("");
       setChequeNo("");
       setComment("");

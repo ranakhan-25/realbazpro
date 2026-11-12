@@ -43,7 +43,7 @@ const SubCategoryAccounts = () => {
   const handleAddClick = () => {
     setModalMode("add");
     setSelectedSubCategory({
-      code: `SC${Math.floor(1000000 + Math.random() * 9000000)}`,
+      code: "",
       category_id: categoriesList[0]?.id || "",
       name: "",
     });
@@ -73,7 +73,7 @@ const SubCategoryAccounts = () => {
       if (modalMode === "add") {
         await subCategoriesApi.create({
           category_id: categoryId,
-          sub_category_code: selectedSubCategory.code || `SC${Date.now().toString().slice(-6)}`,
+          sub_category_code: selectedSubCategory.code || "",
           name: selectedSubCategory.name,
         });
       } else if (modalMode === "update" && selectedSubCategory.id) {

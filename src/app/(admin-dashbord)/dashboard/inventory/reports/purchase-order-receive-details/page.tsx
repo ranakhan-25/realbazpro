@@ -4,7 +4,8 @@ import type { OrderReceiveItem } from "@/components/inventory/PurchaseOrderRecei
 import PurchaseOrderReceiveTable from "@/components/inventory/PurchaseOrderReceiveTable";
 import React, { useState, useEffect, useMemo } from "react";
 import { FiSearch } from "react-icons/fi";
-import { purchasesApi, fallbackPurchases, fallbackItems, fallbackSuppliers } from "@/lib/inventoryApi";
+import { purchasesApi } from "@/lib/inventoryApi";
+import { toast } from "sonner";
 
 
 export default function PurchaseOrderReceiveContainer() {
@@ -13,34 +14,22 @@ export default function PurchaseOrderReceiveContainer() {
   useEffect(() => {
     async function loadOrders() {
       try {
-        let raw = await purchasesApi.getAll().catch(() => null);
-        if (!Array.isArray(raw) || raw.length === 0) {
-          raw = fallbackPurchases;
-        }
-        const list = raw.map((item: any, idx: number) => ({
-          id: item.id || idx + 1,
-          date: item.date ? new Date(item.date).toLocaleDateString() : "-",
-          invoiceNo: item.purchase_no || item.code || `PUR-2026-00${idx + 1}`,
-          supplierName: item.supplier?.name || item.supplier_name || item.supplier || "Meghna Rebar & Building Supply",
-          category: item.category || "Deformed Rebar & Steels",
-          itemName: item.item_name || (item.items && item.items[0]?.name) || "BSRM 16mm TMT 500W High Strength Bar",
-          quantity: Number(item.total_quantity || (item.items && item.items[0]?.quantity) || 10),
-          receive: Number(item.total_quantity || (item.items && item.items[0]?.quantity) || 10),
+        const raw = await purchasesApi.getAll();
+        const list = (Array.isArray(raw) ? raw : []).map((item: any) => ({
+          id: item.id ?? item.uuid ?? item.purchase_no ?? "",
+          date: item.date ? new Date(item.date).toLocaleDateString() : "Not found",
+          invoiceNo: item.purchase_no || item.code || "Not found",
+          supplierName: item.supplier?.name || item.supplier_name || item.supplier || "Not found",
+          category: item.category || "Not found",
+          itemName: item.item_name || item.items?.[0]?.name || "Not found",
+          quantity: Number(item.total_quantity ?? item.items?.[0]?.quantity ?? 0),
+          receive: Number(item.received_quantity ?? item.total_quantity ?? 0),
         }));
         setOrders(list);
       } catch (err) {
-        setOrders(
-          fallbackPurchases.map((item: any, idx: number) => ({
-            id: item.id || idx + 1,
-            date: item.date ? new Date(item.date).toLocaleDateString() : "-",
-            invoiceNo: item.purchase_no || `PUR-2026-00${idx + 1}`,
-            supplierName: item.supplier?.name || "Meghna Rebar & Building Supply",
-            category: "Material",
-            itemName: "Construction Materials",
-            quantity: 10,
-            receive: 10,
-          }))
-        );
+        console.error("Could not load purchase receiving details.", err);
+        toast.error("Purchase receiving details could not be loaded.");
+        setOrders([]);
       }
     }
     loadOrders();
@@ -51,21 +40,19 @@ export default function PurchaseOrderReceiveContainer() {
 
   // Filter states
   const [selectedDateRange, setSelectedDateRange] = useState(
-    "1 September, 2026 - 30 September, 2026",
+    "",
   );
   const [selectedItem, setSelectedItem] = useState("");
   const [selectedSupplier, setSelectedSupplier] = useState("");
 
   const items = useMemo(() => {
     const fromData = orders.map((o) => o.itemName).filter(Boolean);
-    const defaults = fallbackItems.map((i) => i.name);
-    return Array.from(new Set([...fromData, ...defaults]));
+    return Array.from(new Set(fromData));
   }, [orders]);
 
   const suppliers = useMemo(() => {
     const fromData = orders.map((o) => o.supplierName).filter(Boolean);
-    const defaults = fallbackSuppliers.map((s) => s.name);
-    return Array.from(new Set([...fromData, ...defaults]));
+    return Array.from(new Set(fromData));
   }, [orders]);
 
   // Filtering Logic

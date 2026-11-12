@@ -12,19 +12,6 @@ const realizationMenu = [
   "Installment Report",
 ];
 
-const customerOptions = [
-  "Openinig Balance",
-  "Flat Sales",
-  "Closing Stock",
-  "Interest Income",
-  "Office Salary",
-  "Grn Clearing A/C",
-  "Security Deposit",
-  "Labor/ Worker Bill Expence",
-];
-
-const flatOptions = ["A1", "C-10", "C-9", "E5", "F2", "F 3", "F 4", "56"];
-
 /* ── Reusable Searchable Select ── */
 function SearchableSelect({
   label,
@@ -136,22 +123,18 @@ export default function RealizationSummaryReportPage() {
       try {
         setLoading(true);
         const rawAgreements = await crApi.getAgreements?.() ?? [];
-        const agreements = Array.isArray(rawAgreements) && rawAgreements.length > 0 ? rawAgreements : [
-          { id: 1, agreement_number: "AGR-2026-001", customer_name: "Dr. Tariqul Islam", unit_identifier: "Plot-A17", total_price: 7500000, booking_money: 500000, down_payment: 1500000, installment_plans: [{ paid_amount: 450000 }, { paid_amount: 150000 }], agreement_date: "2026-01-15" },
-          { id: 2, agreement_number: "AGR-2026-002", customer_name: "Engr. Nasrin Sultana", unit_identifier: "Flat-B8", total_price: 12000000, booking_money: 1000000, down_payment: 3000000, installment_plans: [{ paid_amount: 500000 }], agreement_date: "2026-02-20" },
-          { id: 3, agreement_number: "AGR-2026-003", customer_name: "Md. Rafiqul Hasan", unit_identifier: "Plot-C5", total_price: 4500000, booking_money: 300000, down_payment: 900000, installment_plans: [], agreement_date: "2026-03-10" },
-        ];
+        const agreements = Array.isArray(rawAgreements) ? rawAgreements : [];
         if (!mounted) return;
-        const mapped = agreements.map((ag: any, idx: number) => {
+        const mapped = agreements.map((ag: any) => {
           const plans = ag.installment_plans || ag.schedule || [];
           const saleVal = Number(ag.total_price || ag.agreed_price || 0);
           const realized = plans.reduce((acc: number, p: any) => acc + Number(p.paid_amount || 0), Number(ag.booking_money || 0) + Number(ag.down_payment || 0));
           const balance = Math.max(0, saleVal - realized);
           const percent = saleVal > 0 ? ((realized / saleVal) * 100).toFixed(2) : "0.00";
           return {
-            id: ag.agreement_number || ag.agreement_no || `#${ag.id || idx + 1}`,
-            customer: ag.customer_name || "Customer",
-            flatNo: ag.unit_identifier || ag.unit_no || "Plot / Flat",
+            id: ag.agreement_number || ag.agreement_no || ag.id || "Not found",
+            customer: ag.customer_name || "Not found",
+            flatNo: ag.unit_identifier || ag.unit_no || "Not found",
             saleValue: saleVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
             amountRealized: realized.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
             balanceDue: balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
@@ -282,7 +265,7 @@ export default function RealizationSummaryReportPage() {
               setCustomer(v);
               setPage(1);
             }}
-            options={customerOptions}
+            options={Array.from(new Set(rows.map((row) => row.customer).filter((value) => value !== "Not found")))}
           />
 
           {/* Flat — searchable */}
@@ -293,7 +276,7 @@ export default function RealizationSummaryReportPage() {
               setFlat(v);
               setPage(1);
             }}
-            options={flatOptions}
+            options={Array.from(new Set(rows.map((row) => row.flatNo).filter((value) => value !== "Not found")))}
           />
         </div>
 

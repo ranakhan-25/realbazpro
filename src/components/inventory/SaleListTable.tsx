@@ -4,7 +4,7 @@ import type { SaleListItem } from "@/app/(admin-dashbord)/dashboard/inventory/sa
 import React, { useState, useEffect, useMemo } from "react";
 import { FiEdit, FiTrash2, FiEye, FiSearch } from "react-icons/fi";
 
-import { fallbackSales } from "@/lib/inventoryApi";
+import { salesApi } from "@/lib/inventoryApi";
 
 interface SaleListTableProps {
   refreshTrigger?: number;
@@ -24,21 +24,27 @@ export default function SaleListTable({ refreshTrigger, onEdit, onView }: SaleLi
     const fetchSalesData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/sales?_t=${Date.now()}`, {
-          cache: "no-store",
-          headers: { "Cache-Control": "no-cache" },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch from API");
-        }
-
-        const json = await response.json();
-        const raw = json.data !== undefined ? json.data : json;
-        const list = Array.isArray(raw) && raw.length > 0 ? raw : fallbackSales;
-        setSales(list);
+        const raw = await salesApi.getAll();
+        const rows = Array.isArray(raw) ? raw : [];
+        setSales(
+          rows.map((item: any) => ({
+            id: item?.id ?? item?.uuid,
+            projectType: item?.project_type ?? item?.projectType ?? "",
+            project: item?.project?.name ?? item?.project_name ?? item?.project ?? "",
+            titleOfWork: item?.title_of_work ?? item?.titleOfWork ?? "",
+            customerName: item?.customer_name ?? item?.customerName ?? "",
+            code: item?.code ?? item?.sale_no ?? "",
+            ref: item?.ref ?? item?.reference ?? "",
+            date: item?.date ?? "",
+            grandTotal: Number(item?.grand_total ?? item?.grandTotal ?? 0),
+            addedBy: item?.added_by ?? item?.addedBy ?? "",
+            attachment: item?.attachment ?? "",
+            approve: item?.approve ?? item?.status ?? "",
+          })),
+        );
       } catch (error) {
-        setSales(fallbackSales);
+        console.error("Could not fetch sales:", error);
+        setSales([]);
       } finally {
         setLoading(false);
       }
@@ -59,10 +65,10 @@ export default function SaleListTable({ refreshTrigger, onEdit, onView }: SaleLi
     return sales.filter((item) => {
       const query = searchQuery.toLowerCase();
       return (
-        item.code.toLowerCase().includes(query) ||
-        item.customerName.toLowerCase().includes(query) ||
-        item.project.toLowerCase().includes(query) ||
-        item.projectType.toLowerCase().includes(query)
+        String(item.code ?? "").toLowerCase().includes(query) ||
+        String(item.customerName ?? "").toLowerCase().includes(query) ||
+        String(item.project ?? "").toLowerCase().includes(query) ||
+        String(item.projectType ?? "").toLowerCase().includes(query)
       );
     });
   }, [sales, searchQuery]);

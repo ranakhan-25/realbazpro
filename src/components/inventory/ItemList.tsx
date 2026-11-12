@@ -3,7 +3,8 @@
 import type { Item } from "@/app/(admin-dashbord)/dashboard/inventory/products/item-entry/page";
 import React, { useState, useEffect, useMemo } from "react";
 import { FiEdit, FiTrash2, FiSearch } from "react-icons/fi";
-import { API_BASE, itemsApi, fallbackItems } from "@/lib/inventoryApi";
+import { API_BASE, itemsApi } from "@/lib/inventoryApi";
+import { toast } from "sonner";
 
 interface ItemListProps {
   apiEndpoint?: string;
@@ -32,17 +33,14 @@ export default function ItemList({
     async function fetchItems() {
       try {
         setLoading(true);
-        let raw = await itemsApi.getAll().catch(() => null);
-        if (!Array.isArray(raw) || raw.length === 0) {
-          raw = fallbackItems;
-        }
-        const list = raw.map((it: any) => ({
+        const raw = await itemsApi.getAll();
+        const list = (Array.isArray(raw) ? raw : []).map((it: any) => ({
           id: it.id,
           code: it.item_code || it.code || "",
           name: it.name || "",
-          category: it.category?.name || it.category_id || (typeof it.category === "string" ? it.category : "General"),
+          category: it.category?.name || it.category_id || (typeof it.category === "string" ? it.category : "Not found"),
           category_id: it.category_id,
-          unit: it.unit?.name || it.unit_id || (typeof it.unit === "string" ? it.unit : "Pcs"),
+          unit: it.unit?.name || it.unit_id || (typeof it.unit === "string" ? it.unit : "Not found"),
           unit_id: it.unit_id,
           brand: it.brand?.name || it.brand_id || (typeof it.brand === "string" ? it.brand : ""),
           brand_id: it.brand_id,
@@ -52,21 +50,8 @@ export default function ItemList({
         setItems(list);
       } catch (error) {
         console.error("Error fetching items:", error);
-        setItems(
-          fallbackItems.map((it: any) => ({
-            id: it.id,
-            code: it.code || "",
-            name: it.name || "",
-            category: it.category?.name || "General",
-            category_id: it.category_id,
-            unit: it.unit?.name || "Pcs",
-            unit_id: it.unit_id,
-            brand: it.brand?.name || "",
-            brand_id: it.brand_id,
-            purchasePrice: Number(it.purchase_price ?? 0),
-            salePrice: Number(it.sale_price ?? 0),
-          }))
-        );
+        toast.error("Items could not be loaded.");
+        setItems([]);
       } finally {
         setLoading(false);
       }

@@ -356,7 +356,7 @@ export function FollowUpView({
                         {/* Land Details */}
                         {isColVisible("land") && (
                           <td className="py-3 px-3.5 font-bold text-slate-800 dark:text-slate-100">
-                            {item.landDetails || item.leadTitle || "Land Parcel"}
+                            {item.landDetails || item.leadTitle || "Not found"}
                           </td>
                         )}
 
@@ -392,7 +392,7 @@ export function FollowUpView({
                         {/* Notes */}
                         {isColVisible("notes") && (
                           <td className="py-3 px-3.5 text-slate-500 dark:text-slate-400 truncate max-w-[160px]">
-                            {item.note || item.notes || "N/A"}
+                            {item.note || item.notes || "Not found"}
                           </td>
                         )}
 

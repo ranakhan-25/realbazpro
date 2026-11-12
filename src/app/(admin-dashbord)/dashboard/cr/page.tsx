@@ -22,36 +22,11 @@ import {
 } from "lucide-react";
 import { crApi } from "@/lib/crApi";
 
-// ─── Fallback data for when backend is offline ─────────────────────────────────
-const FALLBACK_SUMMARY = {
-  total_contract_value: 185000000,
-  total_sale_agreements: 24,
-  total_collected: 92500000,
-  recovery_rate: "50.0%",
-  total_pending: 92500000,
-  overdue_count: 7,
-  total_overdue_amount: 14300000,
-};
-const FALLBACK_AGING = {
-  buckets: {
-    "0-30": { count: 3, amount: 4500000 },
-    "31-60": { count: 2, amount: 5800000 },
-    "61-90": { count: 1, amount: 2200000 },
-    "90+": { count: 1, amount: 1800000 },
-  },
-};
-const FALLBACK_OVERDUE = [
-  { id: "ov-001", sale_agreement: { customer_name: "Dr. Tariqul Islam", unit_identifier: "Plot-A17" }, title: "4th Installment", due_date: "2026-11-01", due_amount: 150000, status: "pending" },
-  { id: "ov-002", sale_agreement: { customer_name: "Engr. Nasrin Sultana", unit_identifier: "Flat-B8" }, title: "2nd Installment", due_date: "2026-10-15", due_amount: 200000, status: "overdue" },
-  { id: "ov-003", sale_agreement: { customer_name: "Alhaj Motiur Rahman", unit_identifier: "Plot-D12" }, title: "6th Installment", due_date: "2026-10-01", due_amount: 450000, status: "overdue" },
-];
-
 export default function CreditRealizationOverviewPage() {
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<any>(FALLBACK_SUMMARY);
-  const [aging, setAging] = useState<any>(FALLBACK_AGING);
-  const [recentOverdue, setRecentOverdue] = useState<any[]>(FALLBACK_OVERDUE);
-  const [isFallback, setIsFallback] = useState(false);
+  const [summary, setSummary] = useState<any>(null);
+  const [aging, setAging] = useState<any>(null);
+  const [recentOverdue, setRecentOverdue] = useState<any[]>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -66,17 +41,14 @@ export default function CreditRealizationOverviewPage() {
       const aging = agingData.status === "fulfilled" ? (agingData.value ?? null) : null;
       const overdue = overdueData.status === "fulfilled" ? (overdueData.value ?? []) : [];
 
-      const hasRealData = sum || aging || (Array.isArray(overdue) && overdue.length > 0);
-      setSummary(sum ?? FALLBACK_SUMMARY);
-      setAging(aging ?? FALLBACK_AGING);
-      setRecentOverdue((Array.isArray(overdue) && overdue.length > 0 ? overdue : FALLBACK_OVERDUE).slice(0, 5));
-      setIsFallback(!hasRealData);
+      setSummary(sum);
+      setAging(aging);
+      setRecentOverdue((Array.isArray(overdue) ? overdue : []).slice(0, 5));
     } catch (err) {
       console.error("Failed to load credit realization overview:", err);
-      setSummary(FALLBACK_SUMMARY);
-      setAging(FALLBACK_AGING);
-      setRecentOverdue(FALLBACK_OVERDUE);
-      setIsFallback(true);
+      setSummary(null);
+      setAging(null);
+      setRecentOverdue([]);
     } finally {
       setLoading(false);
     }
@@ -90,10 +62,9 @@ export default function CreditRealizationOverviewPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* Demo data banner */}
-      {isFallback && !loading && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 px-4 py-2.5 text-sm text-amber-700 dark:text-amber-300 flex items-center gap-2">
-          <span className="font-semibold">⚠ Demo Mode:</span> Backend not connected — displaying sample CR data. Connect your API to see live figures.
+      {!loading && !summary && !aging && recentOverdue.length === 0 && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Not found.
         </div>
       )}
       {/* Header */}
@@ -137,10 +108,10 @@ export default function CreditRealizationOverviewPage() {
             </div>
           </div>
           <div className="text-2xl font-bold">
-            {Number(summary?.total_contract_value || 0).toLocaleString()} <span className="text-xs font-normal">BDT</span>
+            {summary ? Number(summary?.total_contract_value ?? 0).toLocaleString() : "Not found"} {summary && <span className="text-xs font-normal">BDT</span>}
           </div>
           <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-            <span className="font-semibold text-foreground">{summary?.total_sale_agreements || 0}</span> agreements executed
+            <span className="font-semibold text-foreground">{summary?.total_sale_agreements ?? "Not found"}</span> agreements executed
           </div>
         </div>
 
@@ -152,10 +123,10 @@ export default function CreditRealizationOverviewPage() {
             </div>
           </div>
           <div className="text-2xl font-bold text-emerald-600">
-            {Number(summary?.total_collected || 0).toLocaleString()} <span className="text-xs font-normal">BDT</span>
+            {summary ? Number(summary?.total_collected ?? 0).toLocaleString() : "Not found"} {summary && <span className="text-xs font-normal">BDT</span>}
           </div>
           <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-            Recovery Rate: <span className="font-semibold text-emerald-600">{summary?.recovery_rate || "0%"}</span>
+            Recovery Rate: <span className="font-semibold text-emerald-600">{summary?.recovery_rate ?? "Not found"}</span>
           </div>
         </div>
 
@@ -167,10 +138,10 @@ export default function CreditRealizationOverviewPage() {
             </div>
           </div>
           <div className="text-2xl font-bold text-rose-600">
-            {Number(summary?.total_overdue_principal || 0).toLocaleString()} <span className="text-xs font-normal">BDT</span>
+            {summary ? Number(summary?.total_overdue_principal ?? 0).toLocaleString() : "Not found"} {summary && <span className="text-xs font-normal">BDT</span>}
           </div>
           <div className="text-xs text-muted-foreground mt-2">
-            Late Penalty Accrued: <span className="font-medium text-rose-500">{Number(summary?.total_accrued_penalty || 0).toLocaleString()} BDT</span>
+            Late Penalty Accrued: <span className="font-medium text-rose-500">{summary ? `${Number(summary?.total_accrued_penalty ?? 0).toLocaleString()} BDT` : "Not found"}</span>
           </div>
         </div>
 
@@ -182,7 +153,7 @@ export default function CreditRealizationOverviewPage() {
             </div>
           </div>
           <div className="text-2xl font-bold text-amber-600">
-            {aging?.total_overdue_accounts || 0}
+            {aging?.total_overdue_accounts ?? "Not found"}
           </div>
           <div className="text-xs text-muted-foreground mt-2">
             Active overdue installment plans requiring recovery
@@ -213,15 +184,15 @@ export default function CreditRealizationOverviewPage() {
             { key: "91_120_days", label: "91 - 120 Days", color: "border-rose-400/40 bg-rose-50/50 dark:bg-rose-950/20" },
             { key: "over_120_days", label: "120+ Days", color: "border-rose-600/40 bg-rose-100/50 dark:bg-rose-900/30" },
           ].map((b) => {
-            const bucket = buckets[b.key] || { count: 0, total_due: 0 };
+            const bucket = buckets[b.key];
             return (
               <div key={b.key} className={`p-4 rounded-xl border ${b.color}`}>
                 <div className="text-xs font-semibold text-muted-foreground">{b.label}</div>
                 <div className="text-lg font-bold text-foreground mt-1">
-                  {Number(bucket.total_due || 0).toLocaleString()} <span className="text-[10px] font-normal">BDT</span>
+                  {bucket ? Number(bucket.total_due ?? 0).toLocaleString() : "Not found"} {bucket && <span className="text-[10px] font-normal">BDT</span>}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {bucket.count} installments
+                  {bucket?.count ?? "Not found"} installments
                 </div>
               </div>
             );
@@ -343,7 +314,7 @@ export default function CreditRealizationOverviewPage() {
             {recentOverdue.map((p) => (
               <div key={p.uuid || p.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <div className="font-medium text-foreground">{p.sale_agreement?.customer_name || "Customer"}</div>
+                  <div className="font-medium text-foreground">{p?.sale_agreement?.customer_name ?? "—"}</div>
                   <div className="text-xs text-muted-foreground">
                     {p.sale_agreement?.unit_identifier} • Due Date: {p.due_date}
                   </div>

@@ -35,12 +35,12 @@ export default function AgingReportPage() {
 
     const allItems: any[] = [];
     const pushItems = (items: any[], bucketKey: string) => {
-      (items || []).forEach((item: any) => {
+      (items || []).forEach((item: any, index: number) => {
         allItems.push({
-          id: item.plan_uuid || Math.random(),
-          customer: item.customer_name || "Dr. Tariqul Islam Chowdhury",
-          invoiceNo: item.title || `Installment #${item.installment_no}`,
-          invoiceDate: item.due_date || "2026-08-01",
+          id: item?.plan_uuid ?? item?.id ?? `${bucketKey}-${index}`,
+          customer: item?.customer_name || "Not found",
+          invoiceNo: item?.title || (item?.installment_no ? `Installment #${item.installment_no}` : "Not found"),
+          invoiceDate: item?.due_date || "Not found",
           amount: Number(item.due_amount || 0),
           d0_30: bucketKey === "0_30_days" ? Number(item.due_amount || 0) : 0,
           d31_60: bucketKey === "31_60_days" ? Number(item.due_amount || 0) : 0,

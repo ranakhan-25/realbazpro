@@ -60,21 +60,6 @@ interface AcquisitionLeadsViewProps {
   onPaySettlement?: (payment: any) => void;
 }
 
-const SOURCES = [
-  "Direct Owner",
-  "Broker",
-  "Referral",
-  "Media / Ad",
-  "Cold Contact",
-  "Online Listing",
-];
-const USERS = [
-  "Sakib Al Hasan",
-  "Rezaul Karim",
-  "Tanvir Hossain",
-  "Shamim Khan",
-  "Farhana Ahmed",
-];
 const STATUSES = [
   "Draft",
   "Submitted",
@@ -153,7 +138,7 @@ export function AcquisitionLeadsView({
     notes: "",
     owner_id: "",
     assigned_to: "",
-    priority: "Medium",
+    priority: "",
   });
 
   React.useEffect(() => {
@@ -163,6 +148,14 @@ export function AcquisitionLeadsView({
   }, [initialOpenCreate]);
 
   const safeLeads = Array.isArray(leads) ? leads : [];
+  const sourceOptions = useMemo(
+    () => Array.from(new Set(safeLeads.map((lead) => lead?.source ?? lead?.leadSource).filter(Boolean))),
+    [safeLeads],
+  );
+  const userOptions = useMemo(
+    () => Array.from(new Set(safeLeads.map((lead) => lead?.assignee ?? lead?.assignedUser).filter(Boolean))),
+    [safeLeads],
+  );
 
   // Comprehensive Detail Modal State
   const [detailModalLead, setDetailModalLead] = useState<AcquisitionLead | null>(null);
@@ -313,7 +306,7 @@ export function AcquisitionLeadsView({
         notes: lead.notes || "",
         owner_id: lead.owner_id || "",
         assigned_to: lead.assignee || lead.assignedUser || "",
-        priority: lead.priority || "Medium",
+        priority: lead.priority || "",
       });
     } else {
       setEditingLead(null);
@@ -337,7 +330,7 @@ export function AcquisitionLeadsView({
         notes: "",
         owner_id: "",
         assigned_to: "",
-        priority: "Medium",
+        priority: "",
       });
     }
     setFormStep(1);
@@ -421,7 +414,7 @@ export function AcquisitionLeadsView({
               className="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500/20"
             >
               <option value="ALL">All Sources</option>
-              {SOURCES.map((s) => (
+              {sourceOptions.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
@@ -440,7 +433,7 @@ export function AcquisitionLeadsView({
               className="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500/20"
             >
               <option value="ALL">All Assignees</option>
-              {USERS.map((u) => (
+              {userOptions.map((u) => (
                 <option key={u} value={u}>
                   {u}
                 </option>
@@ -601,11 +594,11 @@ export function AcquisitionLeadsView({
                       {isColVisible("location") && (
                         <td className="py-3 px-3.5">
                           <span className="font-semibold text-slate-800 dark:text-slate-100 block">
-                            {lead.location || lead.mouza || "N/A"}
+                            {lead.location || lead.mouza || "—"}
                           </span>
                           {lead.khatian_no && (
                             <span className="text-[10px] text-slate-400 block">
-                              Kh: {lead.khatian_no} • Dag: {lead.dag_no || "N/A"}
+                              Kh: {lead.khatian_no || "—"} • Dag: {lead.dag_no || "—"}
                             </span>
                           )}
                         </td>
@@ -624,7 +617,7 @@ export function AcquisitionLeadsView({
                       {isColVisible("owner_name") && (
                         <td className="py-3 px-3.5">
                           <span className="font-medium text-slate-800 dark:text-slate-200 block">
-                            {lead.owner_name || lead.ownerName || lead.owner || "N/A"}
+                            {lead.owner_name || lead.ownerName || lead.owner || "—"}
                           </span>
                           {(lead.owner_phone || lead.ownerPhone) && (
                             <span className="text-[10px] text-slate-400">
@@ -644,7 +637,7 @@ export function AcquisitionLeadsView({
                       {/* Source */}
                       {isColVisible("source") && (
                         <td className="py-3 px-3.5 text-slate-600 dark:text-slate-300">
-                          {lead.source || "N/A"}
+                          {lead.source || "—"}
                         </td>
                       )}
 
@@ -658,14 +651,14 @@ export function AcquisitionLeadsView({
                       {/* Assignee */}
                       {isColVisible("assignee") && (
                         <td className="py-3 px-3.5 text-slate-600 dark:text-slate-300 font-medium">
-                          {lead.assignee || lead.assignedUser || "Unassigned"}
+                          {lead.assignee || lead.assignedUser || "—"}
                         </td>
                       )}
 
                       {/* Created Date */}
                       {isColVisible("created_at") && (
                         <td className="py-3 px-3.5 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
-                          {lead.created_at || (lead as any).createdAt || "2026-02-15"}
+                          {lead.created_at || (lead as any).createdAt || "Not found"}
                         </td>
                       )}
 
@@ -922,7 +915,7 @@ export function AcquisitionLeadsView({
                       className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
                     >
                       <option value="">Select Sourcing Channel</option>
-                      {SOURCES.map((s) => (
+                      {sourceOptions.map((s) => (
                         <option key={s} value={s}>
                           {s}
                         </option>
@@ -1078,7 +1071,7 @@ export function AcquisitionLeadsView({
                       className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
                     >
                       <option value="">Select Assignee</option>
-                      {USERS.map((u) => (
+                      {userOptions.map((u) => (
                         <option key={u} value={u}>
                           {u}
                         </option>

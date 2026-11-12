@@ -16,80 +16,6 @@ import {
 } from "lucide-react";
 import { crApi } from "@/lib/crApi";
 
-// ─── Fallback Data ─────────────────────────────────────────────────────────────
-const FALLBACK_SCHEDULES = [
-  {
-    id: "sched-001",
-    agreement_number: "AGR-2026-001",
-    customer_name: "Dr. Tariqul Islam",
-    unit_identifier: "Plot-A17, Sector-7",
-    installment_no: 3,
-    title: "3rd Monthly Installment",
-    due_date: "2026-10-01",
-    payable_amount: 150000,
-    paid_amount: 150000,
-    due_amount: 0,
-    penalty_amount: 0,
-    status: "paid",
-  },
-  {
-    id: "sched-002",
-    agreement_number: "AGR-2026-001",
-    customer_name: "Dr. Tariqul Islam",
-    unit_identifier: "Plot-A17, Sector-7",
-    installment_no: 4,
-    title: "4th Monthly Installment",
-    due_date: "2026-11-01",
-    payable_amount: 150000,
-    paid_amount: 0,
-    due_amount: 150000,
-    penalty_amount: 0,
-    status: "pending",
-  },
-  {
-    id: "sched-003",
-    agreement_number: "AGR-2026-002",
-    customer_name: "Engr. Nasrin Sultana",
-    unit_identifier: "Flat-B8, Tower-C",
-    installment_no: 1,
-    title: "1st Down-Payment Installment",
-    due_date: "2026-09-15",
-    payable_amount: 500000,
-    paid_amount: 500000,
-    due_amount: 0,
-    penalty_amount: 0,
-    status: "paid",
-  },
-  {
-    id: "sched-004",
-    agreement_number: "AGR-2026-002",
-    customer_name: "Engr. Nasrin Sultana",
-    unit_identifier: "Flat-B8, Tower-C",
-    installment_no: 2,
-    title: "2nd Monthly Installment",
-    due_date: "2026-10-15",
-    payable_amount: 200000,
-    paid_amount: 0,
-    due_amount: 200000,
-    penalty_amount: 5000,
-    status: "overdue",
-  },
-  {
-    id: "sched-005",
-    agreement_number: "AGR-2026-003",
-    customer_name: "Md. Rafiqul Hasan",
-    unit_identifier: "Plot-C5, Block-B",
-    installment_no: 1,
-    title: "1st Quarterly Installment",
-    due_date: "2026-12-01",
-    payable_amount: 300000,
-    paid_amount: 0,
-    due_amount: 0,
-    penalty_amount: 0,
-    status: "upcoming",
-  },
-];
-
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   paid: { label: "Paid", color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300", icon: CheckCircle },
   overdue: { label: "Overdue", color: "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300", icon: AlertTriangle },
@@ -113,24 +39,25 @@ export default function CRSchedulePage() {
       (Array.isArray(agreements) ? agreements : []).forEach((agr: any) => {
         (agr?.installment_plans ?? agr?.schedule ?? []).forEach((plan: any) => {
           rows.push({
-            id: plan?.id ?? plan?.uuid ?? `plan-${Math.random()}`,
+            id: String(plan?.id ?? plan?.uuid ?? ""),
             agreement_number: agr?.agreement_number ?? "—",
-            customer_name: agr?.customer_name ?? "Customer",
+            customer_name: agr?.customer_name ?? "—",
             unit_identifier: agr?.unit_identifier ?? "—",
-            installment_no: plan?.installment_no ?? 1,
-            title: plan?.title ?? `Installment #${plan?.installment_no ?? 1}`,
+            installment_no: plan?.installment_no ?? "",
+            title: plan?.title ?? "",
             due_date: plan?.due_date ?? "—",
             payable_amount: Number(plan?.payable_amount ?? plan?.amount ?? 0),
             paid_amount: Number(plan?.paid_amount ?? 0),
             due_amount: Number(plan?.due_amount ?? 0),
             penalty_amount: Number(plan?.penalty_amount ?? 0),
-            status: plan?.status ?? "pending",
+            status: plan?.status ?? "",
           });
         });
       });
-      setSchedules(rows.length > 0 ? rows : FALLBACK_SCHEDULES);
-    } catch {
-      setSchedules(FALLBACK_SCHEDULES);
+      setSchedules(rows);
+    } catch (error) {
+      console.error("Failed to load installment schedule:", error);
+      setSchedules([]);
     } finally {
       setLoading(false);
     }
@@ -298,9 +225,6 @@ export default function CRSchedulePage() {
 
         <div className="flex items-center justify-between pt-1 text-[12px] text-ink-muted">
           <span>Showing {Math.min(paged.length, filtered.length)} of {filtered.length} entries</span>
-          {schedules === FALLBACK_SCHEDULES && (
-            <span className="text-amber-600 font-medium">⚠ Showing demo data — backend not connected</span>
-          )}
         </div>
       </div>
     </div>

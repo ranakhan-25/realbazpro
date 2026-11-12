@@ -65,16 +65,6 @@ export default function RecoveryLedgerPage() {
   const [remarks, setRemarks] = useState("");
   const [nextFollowupDate, setNextFollowupDate] = useState("");
 
-  const RECOVERY_FALLBACK = [
-    { id: "rec-001", uuid: "rec-001", sale_agreement_id: 1, sale_agreement: { customer_name: "Dr. Tariqul Islam", agreement_number: "AGR-2026-001", unit_identifier: "Plot-A17" }, action_type: "phone_call", action_date: "2026-11-10T10:00:00", officer_name: "S. M. Faruk (Recovery Officer)", outcome_status: "promised", customer_response: "Customer promised payment by Nov 20", next_followup_date: "2026-11-20" },
-    { id: "rec-002", uuid: "rec-002", sale_agreement_id: 2, sale_agreement: { customer_name: "Engr. Nasrin Sultana", agreement_number: "AGR-2026-002", unit_identifier: "Flat-B8" }, action_type: "in_person_visit", action_date: "2026-11-08T14:00:00", officer_name: "Md. Karim", outcome_status: "in_progress", customer_response: "Customer not at home, left notice", next_followup_date: "2026-11-15" },
-  ];
-  const AGREEMENTS_FALLBACK = [
-    { id: 1, agreement_number: "AGR-2026-001", customer_name: "Dr. Tariqul Islam" },
-    { id: 2, agreement_number: "AGR-2026-002", customer_name: "Engr. Nasrin Sultana" },
-    { id: 3, agreement_number: "AGR-2026-003", customer_name: "Md. Rafiqul Hasan" },
-  ];
-
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -82,8 +72,8 @@ export default function RecoveryLedgerPage() {
         crApi.getRecoveryLogs?.() ?? Promise.resolve([]),
         crApi.getAgreements?.() ?? Promise.resolve([]),
       ]);
-      const logs = logsResult.status === "fulfilled" && Array.isArray(logsResult.value) && logsResult.value.length > 0 ? logsResult.value : RECOVERY_FALLBACK;
-      const agrs = agrsResult.status === "fulfilled" && Array.isArray(agrsResult.value) && agrsResult.value.length > 0 ? agrsResult.value : AGREEMENTS_FALLBACK;
+      const logs = logsResult.status === "fulfilled" && Array.isArray(logsResult.value) ? logsResult.value : [];
+      const agrs = agrsResult.status === "fulfilled" && Array.isArray(agrsResult.value) ? agrsResult.value : [];
       setRecoveryLogs(logs);
       setAgreements(agrs);
       if (!saleAgreementId && agrs?.length) {
@@ -91,8 +81,8 @@ export default function RecoveryLedgerPage() {
       }
     } catch (err) {
       console.error("Failed to load recovery logs:", err);
-      setRecoveryLogs(RECOVERY_FALLBACK);
-      setAgreements(AGREEMENTS_FALLBACK);
+      setRecoveryLogs([]);
+      setAgreements([]);
     } finally {
       setLoading(false);
     }

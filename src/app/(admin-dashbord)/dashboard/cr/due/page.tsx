@@ -12,91 +12,34 @@ import {
 } from "lucide-react";
 import { crApi } from "@/lib/crApi";
 
-// ─── Fallback Data ─────────────────────────────────────────────────────────────
-const FALLBACK_DUES = [
-  {
-    id: "due-001",
-    agreement_number: "AGR-2026-001",
-    customer_name: "Dr. Tariqul Islam",
-    customer_phone: "+880-1711-234567",
-    unit_identifier: "Plot-A17, Sector-7",
-    installment_no: 4,
-    title: "4th Monthly Installment",
-    due_date: "2026-11-01",
-    payable_amount: 150000,
-    due_amount: 150000,
-    penalty_amount: 0,
-    days_overdue: 10,
-    status: "pending",
-  },
-  {
-    id: "due-002",
-    agreement_number: "AGR-2026-002",
-    customer_name: "Engr. Nasrin Sultana",
-    customer_phone: "+880-1812-345678",
-    unit_identifier: "Flat-B8, Tower-C",
-    installment_no: 2,
-    title: "2nd Monthly Installment",
-    due_date: "2026-10-15",
-    payable_amount: 200000,
-    due_amount: 200000,
-    penalty_amount: 5000,
-    days_overdue: 27,
-    status: "overdue",
-  },
-  {
-    id: "due-003",
-    agreement_number: "AGR-2026-004",
-    customer_name: "Alhaj Motiur Rahman",
-    customer_phone: "+880-1912-456789",
-    unit_identifier: "Plot-D12, Block-A",
-    installment_no: 6,
-    title: "6th Quarterly Installment",
-    due_date: "2026-10-01",
-    payable_amount: 450000,
-    due_amount: 450000,
-    penalty_amount: 22500,
-    days_overdue: 41,
-    status: "overdue",
-  },
-];
-
 export default function CRDuePage() {
   const [loading, setLoading] = useState(true);
   const [dues, setDues] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [entries, setEntries] = useState(10);
-  const [isFallback, setIsFallback] = useState(false);
-
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const overdue = await crApi.getOverdueInstallments?.() ?? [];
       const data = Array.isArray(overdue) ? overdue : [];
-      if (data.length > 0) {
-        setDues(data.map((p: any) => ({
-          id: p?.id ?? p?.uuid ?? `due-${Math.random()}`,
-          agreement_number: p?.sale_agreement?.agreement_number ?? p?.agreement_number ?? "—",
-          customer_name: p?.sale_agreement?.customer_name ?? p?.customer_name ?? "Customer",
-          customer_phone: p?.sale_agreement?.customer_phone ?? p?.customer_phone ?? "—",
-          unit_identifier: p?.sale_agreement?.unit_identifier ?? p?.unit_identifier ?? "—",
-          installment_no: p?.installment_no ?? 1,
-          title: p?.title ?? `Installment #${p?.installment_no ?? 1}`,
-          due_date: p?.due_date ?? "—",
-          payable_amount: Number(p?.payable_amount ?? p?.amount ?? 0),
-          due_amount: Number(p?.due_amount ?? p?.payable_amount ?? 0),
-          penalty_amount: Number(p?.penalty_amount ?? p?.late_fee ?? 0),
-          days_overdue: p?.days_overdue ?? 0,
-          status: p?.status ?? "pending",
-        })));
-        setIsFallback(false);
-      } else {
-        setDues(FALLBACK_DUES);
-        setIsFallback(true);
-      }
-    } catch {
-      setDues(FALLBACK_DUES);
-      setIsFallback(true);
+      setDues(data.map((p: any) => ({
+        id: String(p?.id ?? p?.uuid ?? ""),
+        agreement_number: p?.sale_agreement?.agreement_number ?? p?.agreement_number ?? "—",
+        customer_name: p?.sale_agreement?.customer_name ?? p?.customer_name ?? "—",
+        customer_phone: p?.sale_agreement?.customer_phone ?? p?.customer_phone ?? "—",
+        unit_identifier: p?.sale_agreement?.unit_identifier ?? p?.unit_identifier ?? "—",
+        installment_no: p?.installment_no ?? "",
+        title: p?.title ?? "",
+        due_date: p?.due_date ?? "—",
+        payable_amount: Number(p?.payable_amount ?? p?.amount ?? 0),
+        due_amount: Number(p?.due_amount ?? p?.payable_amount ?? 0),
+        penalty_amount: Number(p?.penalty_amount ?? p?.late_fee ?? 0),
+        days_overdue: p?.days_overdue ?? 0,
+        status: p?.status ?? "",
+      })));
+    } catch (error) {
+      console.error("Failed to load customer dues:", error);
+      setDues([]);
     } finally {
       setLoading(false);
     }
@@ -223,7 +166,6 @@ export default function CRDuePage() {
         )}
         <div className="flex items-center justify-between pt-1 text-[12px] text-ink-muted">
           <span>Showing {paged.length} of {filtered.length} entries</span>
-          {isFallback && <span className="text-amber-600 font-medium">⚠ Showing demo data — backend not connected</span>}
         </div>
       </div>
     </div>
