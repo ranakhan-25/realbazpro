@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Plus,
@@ -93,7 +96,7 @@ export default function ContractorSupplierBillPage() {
   // ==================== FETCHERS ====================
   const fetchOptions = async (endpoint: string) => {
     try {
-      const res = await fetch(
+      const res = await projectFetch(
         `${API_BASE}${API_PREFIX}${endpoint}?page=1&limit=100`,
       );
       if (!res.ok) return [];
@@ -156,7 +159,7 @@ export default function ContractorSupplierBillPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(
+      const res = await projectFetch(
         `${API_BASE}${API_PREFIX}/project-billing/contractor-bills?page=1&limit=100`,
       );
       if (!res.ok) {
@@ -229,7 +232,7 @@ export default function ContractorSupplierBillPage() {
     if (!confirm(`Are you sure you want to delete bill ${bill.code}?`)) return;
     try {
       setActiveDropdown(null);
-      const res = await fetch(`${API_BASE}${API_PREFIX}/project-billing/contractor-bills/${bill.uuid}`, { method: "DELETE" });
+      const res = await projectFetch(`${API_BASE}${API_PREFIX}/project-billing/contractor-bills/${bill.uuid}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete bill");
       await loadBills();
     } catch (err: any) {
@@ -273,7 +276,7 @@ export default function ContractorSupplierBillPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`${API_BASE}${API_PREFIX}/project-billing/contractor-bills${editingBillUuid ? `/${editingBillUuid}` : ""}`, {
+      const res = await projectFetch(`${API_BASE}${API_PREFIX}/project-billing/contractor-bills${editingBillUuid ? `/${editingBillUuid}` : ""}`, {
         method: editingBillUuid ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -303,7 +306,7 @@ export default function ContractorSupplierBillPage() {
       return;
     }
     try {
-      const response = await fetch(`${API_BASE}${API_PREFIX}/project-billing/bill-items`, {
+      const response = await projectFetch(`${API_BASE}${API_PREFIX}/project-billing/bill-items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
+
 import React, { useState, useEffect } from "react";
 import { Loader2, Check } from "lucide-react";
 import toast from "react-hot-toast";
@@ -61,7 +63,7 @@ async function fetchPendingAttendances(date: string, shiftId: string, department
   if (shiftId) url += `&shiftId=${shiftId}`;
   if (departmentId) url += `&departmentId=${departmentId}`;
 
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch pending attendances");
   return json?.data?.data || json?.data || [];
 }
@@ -69,7 +71,7 @@ async function fetchPendingAttendances(date: string, shiftId: string, department
 // ২. Shift ফেচ
 async function fetchShifts(): Promise<Shift[]> {
   const url = `${API_BASE}/realbizpro/api/v1/shift?page=1&limit=100&withDeleted=false`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch shifts");
   return (json?.data?.data || json?.data || []).map((s: any) => ({ id: s.uuid, name: s.name }));
 }
@@ -77,7 +79,7 @@ async function fetchShifts(): Promise<Shift[]> {
 // ৩. Department ফেচ
 async function fetchDepartments(): Promise<Department[]> {
   const url = `${API_BASE}/realbizpro/api/v1/department?page=1&limit=100&withDeleted=false`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch departments");
   return (json?.data?.data || json?.data || []).map((d: any) => ({ id: d.uuid, name: d.name }));
 }
@@ -85,7 +87,7 @@ async function fetchDepartments(): Promise<Department[]> {
 // ৪. Employee ফেচ
 async function fetchEmployees(): Promise<Employee[]> {
   const url = `${API_BASE}/realbizpro/api/v1/employee-list?page=1&limit=100&withDeleted=false`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch employees");
   return (json?.data?.data || json?.data || []).map((e: any) => ({
     uuid: e.uuid,
@@ -96,7 +98,7 @@ async function fetchEmployees(): Promise<Employee[]> {
 
 // ৫. Attendance আপডেট
 async function updateAttendance(uuid: string, payload: any) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/attendance/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/attendance/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

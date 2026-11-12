@@ -2,6 +2,9 @@
 
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import {
   FileSpreadsheet,
@@ -88,7 +91,7 @@ export default function BoqComparisonPage() {
     try {
       setLoading(true);
 
-      const res = await fetch(
+      const res = await projectFetch(
         `${API_BASE}/realbizpro/api/v1/boq-comparison`,
       );
 
@@ -264,7 +267,7 @@ export default function BoqComparisonPage() {
     }
 
     try {
-      const res = await fetch(
+      const res = await projectFetch(
         `${API_BASE}/realbizpro/api/v1/boq-comparison/${uuid}`,
         {
           method: "DELETE",
@@ -290,7 +293,7 @@ export default function BoqComparisonPage() {
 
   const handleRestore = async (uuid: string) => {
     try {
-      const res = await fetch(
+      const res = await projectFetch(
         `${API_BASE}/realbizpro/api/v1/boq-comparison/${uuid}/restore`,
         {
           method: "POST",
@@ -398,7 +401,7 @@ export default function BoqComparisonPage() {
       // ---------------------------------------------
 
       if (isEditMode && currentUuid) {
-        res = await fetch(
+        res = await projectFetch(
           `${API_BASE}/realbizpro/api/v1/boq-comparison/${currentUuid}`,
           {
             method: "PUT",
@@ -415,7 +418,7 @@ export default function BoqComparisonPage() {
       // ---------------------------------------------
 
       else {
-        res = await fetch(
+        res = await projectFetch(
           `${API_BASE}/realbizpro/api/v1/boq-comparison`,
           {
             method: "POST",

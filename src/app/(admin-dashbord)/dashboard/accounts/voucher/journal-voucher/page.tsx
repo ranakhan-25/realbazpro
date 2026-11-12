@@ -1,5 +1,9 @@
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+import { useVoucherOptions } from "../voucher-options";
+import { VoucherDateRange } from "../voucher-date-range";
+
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -37,6 +41,9 @@ export interface JournalVoucherRow {
   approval: string[];
   attachment: number;
   status: string;
+  project?: string;
+  site?: string;
+  task?: string;
 }
 
 const initialJournalVouchers: JournalVoucherRow[] = [
@@ -91,12 +98,14 @@ const actionMenuItems: { key: ActionKey; label: string; icon: React.ElementType;
 ];
 
 export default function JournalVoucherListPage() {
+  const voucherOptions = useVoucherOptions();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [deletingUuid, setDeletingUuid] = useState<string | null>(null);
   // Filter States (API ready)
   const [filters, setFilters] = useState({
-    dateRange: "1 September, 2026 - 30 September, 2026",
+    fromDate: "",
+    toDate: "",
     debitAccount: "",
     creditAccount: "",
     project: "",
@@ -133,7 +142,7 @@ export default function JournalVoucherListPage() {
   const fetchVouchers = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/backend/journal-vouchers", { cache: "no-store" });
+      const response = await accountsFetch("/api/backend/journal-vouchers", { cache: "no-store" });
       const result = await response.json();
       if (!response.ok || result.success === false) {
         throw new Error(result.message || "Journal vouchers could not be loaded.");
@@ -145,6 +154,9 @@ export default function JournalVoucherListPage() {
         uuid: String(record.uuid ?? record.id ?? ""),
         sl: Number(record.sl ?? index + 1),
         date: String(record.date ?? record.voucherDate ?? ""),
+        project: String(record.projectId ?? record.project ?? ""),
+        site: String(record.siteId ?? record.site ?? ""),
+        task: String(record.taskId ?? record.task ?? ""),
         titleOfWork: String(record.titleOfWork ?? record.title ?? "—"),
         type: String(record.type ?? "Journal"),
         code: String(record.voucherNo ?? record.code ?? record.voucherCode ?? `JV-${index + 1}`),
@@ -197,7 +209,7 @@ export default function JournalVoucherListPage() {
   };
 
   const requestJson = async (url: string, method = "GET", payload?: unknown) => {
-    const response = await fetch(url, {
+    const response = await accountsFetch(url, {
       method,
       headers: payload ? { "Content-Type": "application/json" } : undefined,
       body: payload ? JSON.stringify(payload) : undefined,
@@ -267,13 +279,10 @@ export default function JournalVoucherListPage() {
   };
 
   // Filter Logic
-  const filteredRows = vouchers.filter((r) =>
-    search.trim()
-      ? [r.code, r.debit, r.credit, r.type, r.addedBy, r.date].some((field) =>
-          field.toLowerCase().includes(search.trim().toLowerCase())
-        )
-      : true
-  );
+  const filteredRows = vouchers.filter((r) => {
+    const matchesSearch = !search.trim() || [r.code, r.debit, r.credit, r.type, r.addedBy, r.date].some((field) => field.toLowerCase().includes(search.trim().toLowerCase()));
+    return matchesSearch && (!filters.fromDate || r.date >= filters.fromDate) && (!filters.toDate || r.date <= filters.toDate) && (!filters.debitAccount || r.debit === filters.debitAccount) && (!filters.creditAccount || r.credit === filters.creditAccount) && (!filters.project || r.project === filters.project) && (!filters.titleOfWork || r.titleOfWork === filters.titleOfWork) && (!filters.site || r.site === filters.site) && (!filters.task || r.task === filters.task);
+  });
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / entriesPerPage));
   const safePage = Math.min(currentPage, totalPages);
@@ -326,12 +335,7 @@ export default function JournalVoucherListPage() {
               <label className="block text-[10px] font-medium text-slate-600 dark:text-slate-400 mb-0.5">
                 Select Date
               </label>
-              <input
-                type="text"
-                readOnly
-                value={filters.dateRange}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-1 text-[11px] text-slate-700 dark:text-slate-200 truncate focus:outline-none"
-              />
+              <VoucherDateRange fromDate={filters.fromDate} toDate={filters.toDate} onFromDateChange={(value) => setFilters({ ...filters, fromDate: value })} onToDateChange={(value) => setFilters({ ...filters, toDate: value })} />
             </div>
 
             <div>
@@ -344,8 +348,7 @@ export default function JournalVoucherListPage() {
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-1 text-[11px] text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
               >
                 <option value="">Select Chart Of Account</option>
-                <option value="Others Inventory">Others Inventory</option>
-                <option value="Sanitary Work Inventory">Sanitary Work Inventory</option>
+                {voucherOptions.accounts.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
 
@@ -359,8 +362,7 @@ export default function JournalVoucherListPage() {
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-1 text-[11px] text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
               >
                 <option value="">Select Chart Of Account</option>
-                <option value="Riva Steel Mils">Riva Steel Mils</option>
-                <option value="Rifat Thai House">Rifat Thai House</option>
+                {voucherOptions.accounts.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
 
@@ -374,8 +376,7 @@ export default function JournalVoucherListPage() {
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-1 text-[11px] text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
               >
                 <option value="">Select Project</option>
-                <option value="Project A">Project A</option>
-                <option value="Project B">Project B</option>
+                {voucherOptions.projects.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
           </div>
@@ -392,6 +393,7 @@ export default function JournalVoucherListPage() {
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-1 text-[11px] text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
               >
                 <option value="">Select Title/Name of Work</option>
+                {voucherOptions.workNames.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
 
@@ -405,6 +407,7 @@ export default function JournalVoucherListPage() {
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-1 text-[11px] text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
               >
                 <option value="">Select Site</option>
+                {voucherOptions.sites.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
 
@@ -418,6 +421,7 @@ export default function JournalVoucherListPage() {
                 className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded px-2 py-1 text-[11px] text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
               >
                 <option value="">Select Task</option>
+                {voucherOptions.tasks.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
           </div>

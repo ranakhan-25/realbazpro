@@ -1,5 +1,7 @@
 'use client';
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { 
@@ -88,7 +90,7 @@ export default function AssetManagementSystem() {
   const fetchAssets = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/backend/assets', { headers: { accept: 'application/json' } });
+      const response = await accountsFetch('/api/backend/assets', { headers: { accept: 'application/json' } });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || 'Assets could not be loaded.');
       const rows = normalizeArray(result.data);
@@ -135,7 +137,7 @@ export default function AssetManagementSystem() {
   // Edit Asset from Table Action
   const handleViewAsset = async (item: AssetListItem) => {
     try {
-      const response = await fetch(`/api/backend/assets/${encodeURIComponent(item.uuid)}`);
+      const response = await accountsFetch(`/api/backend/assets/${encodeURIComponent(item.uuid)}`);
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || 'Asset details could not be loaded.');
       const detail = result.data?.data ?? result.data ?? result;
@@ -147,7 +149,7 @@ export default function AssetManagementSystem() {
 
   const handleEditAsset = async (item: AssetListItem) => {
     try {
-      const response = await fetch(`/api/backend/assets/${encodeURIComponent(item.uuid)}`);
+      const response = await accountsFetch(`/api/backend/assets/${encodeURIComponent(item.uuid)}`);
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || 'Asset could not be loaded.');
       const asset = result.data?.data ?? result.data ?? result;
@@ -183,7 +185,7 @@ export default function AssetManagementSystem() {
           toast.dismiss(notification.id);
           const loadingToast = toast.loading('Deleting asset...');
           try {
-            const response = await fetch(`/api/backend/assets/${encodeURIComponent(item.uuid)}`, { method: 'DELETE' });
+            const response = await accountsFetch(`/api/backend/assets/${encodeURIComponent(item.uuid)}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Asset could not be deleted.');
             toast.success('Asset deleted successfully.', { id: loadingToast });
             await fetchAssets();
@@ -199,7 +201,7 @@ export default function AssetManagementSystem() {
   const handleRestoreAsset = async (uuid: string) => {
     const loadingToast = toast.loading('Restoring asset...');
     try {
-      const response = await fetch(`/api/backend/assets/${encodeURIComponent(uuid)}/restore`, { method: 'PATCH' });
+      const response = await accountsFetch(`/api/backend/assets/${encodeURIComponent(uuid)}/restore`, { method: 'PATCH' });
       const result = await response.json();
       if (!response.ok || result.success === false) throw new Error(result.message || 'Asset could not be restored.');
       toast.success('Asset restored successfully.', { id: loadingToast });
@@ -245,7 +247,7 @@ export default function AssetManagementSystem() {
     };
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/backend/assets${editingUuid ? `/${encodeURIComponent(editingUuid)}` : ''}`, {
+      const response = await accountsFetch(`/api/backend/assets${editingUuid ? `/${encodeURIComponent(editingUuid)}` : ''}`, {
         method: editingUuid ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json', accept: 'application/json' },
         body: JSON.stringify(payload),

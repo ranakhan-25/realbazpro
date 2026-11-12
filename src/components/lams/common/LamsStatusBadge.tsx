@@ -5,6 +5,7 @@ import React from "react";
 interface LamsStatusBadgeProps {
   status: string;
   size?: "sm" | "md";
+  type?: string;
 }
 
 const BADGE_THEMES: Record<string, { bg: string; text: string; ring: string }> = {

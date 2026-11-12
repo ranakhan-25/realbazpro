@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
+
 import React, { useState, useEffect } from "react";
 import { Plus, X, Loader2, Search, Check, XCircle, Edit3 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -55,11 +57,11 @@ export default function LeaveApplicationPage() {
   // ====================== FETCH DROPDOWNS ======================
   const fetchDropdowns = async () => {
     try {
-      const resStaff = await fetch(`${API_PATH}/employee-list?page=1&limit=100`);
+      const resStaff = await hrmFetch(`${API_PATH}/employee-list?page=1&limit=100`);
       const jsonStaff = await resStaff.json();
       if (jsonStaff.success) setStaffs(jsonStaff.data.data || jsonStaff.data || []);
 
-      const resType = await fetch(`${API_PATH}/leave-type?page=1&limit=100`);
+      const resType = await hrmFetch(`${API_PATH}/leave-type?page=1&limit=100`);
       const jsonType = await resType.json();
       if (jsonType.success) setLeaveTypes(jsonType.data.data || jsonType.data || []);
     } catch (err) {
@@ -77,16 +79,16 @@ export default function LeaveApplicationPage() {
 
       if (currentStaffs.length === 0 || currentLeaveTypes.length === 0) {
         await fetchDropdowns();
-        const resStaff = await fetch(`${API_PATH}/employee-list?page=1&limit=100`);
+        const resStaff = await hrmFetch(`${API_PATH}/employee-list?page=1&limit=100`);
         const jsonStaff = await resStaff.json();
         currentStaffs = jsonStaff.data?.data || jsonStaff.data || [];
 
-        const resType = await fetch(`${API_PATH}/leave-type?page=1&limit=100`);
+        const resType = await hrmFetch(`${API_PATH}/leave-type?page=1&limit=100`);
         const jsonType = await resType.json();
         currentLeaveTypes = jsonType.data?.data || jsonType.data || [];
       }
 
-      const res = await fetch(`${API_PATH}/leave-application?page=1&limit=100`);
+      const res = await hrmFetch(`${API_PATH}/leave-application?page=1&limit=100`);
       const json = await res.json();
       
       if (json.success) {
@@ -141,7 +143,7 @@ export default function LeaveApplicationPage() {
         : `${API_PATH}/leave-application`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await hrmFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -167,7 +169,7 @@ export default function LeaveApplicationPage() {
   const handleDelete = async (item: LeaveApplication) => {
     if (!window.confirm(`Delete this leave application?`)) return;
     try {
-      const res = await fetch(`${API_PATH}/leave-application/${item.uuid}`, {
+      const res = await hrmFetch(`${API_PATH}/leave-application/${item.uuid}`, {
         method: "DELETE",
       });
       if (res.ok) {

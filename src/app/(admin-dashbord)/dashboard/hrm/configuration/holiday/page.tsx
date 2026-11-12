@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
+
 import React, { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, X, Loader2, Check, Search } from "lucide-react";
 
@@ -31,7 +33,7 @@ async function handleRes(res: Response, action: string) {
 // ১. Holiday লিস্ট ফেচ
 async function fetchHolidays(): Promise<Holiday[]> {
   const url = `${API_BASE}/realbizpro/api/v1/holiday?page=1&limit=100&withDeleted=false`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch holidays");
 
   return (json?.data?.data || [])
@@ -49,7 +51,7 @@ async function fetchHolidays(): Promise<Holiday[]> {
 
 // ২. Holiday তৈরি
 async function createHoliday(payload: { reason: string; fromDate: string; toDate: string; description: string }) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/holiday`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/holiday`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -59,7 +61,7 @@ async function createHoliday(payload: { reason: string; fromDate: string; toDate
 
 // ৩. Holiday আপডেট
 async function updateHoliday(uuid: string, payload: { reason: string; fromDate: string; toDate: string; description: string }) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/holiday/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/holiday/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -69,7 +71,7 @@ async function updateHoliday(uuid: string, payload: { reason: string; fromDate: 
 
 // ৪. Holiday ডিলিট
 async function softDeleteHoliday(uuid: string) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/holiday/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/holiday/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

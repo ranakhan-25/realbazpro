@@ -1,6 +1,8 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
 import React, { useState, useEffect, useMemo } from "react";
 import { Search, Loader2, Users, AlertCircle } from "lucide-react";
 
@@ -64,7 +66,7 @@ async function fetchAllPages(
 
     let res: Response;
     try {
-      res = await fetch(url, {
+      res = await hrmFetch(url, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",

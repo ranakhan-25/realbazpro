@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import {
   Search,
@@ -72,7 +75,7 @@ async function handleRes(res: Response, action: string) {
 }
 
 async function fetchCustomers(): Promise<{ data: Customer[]; meta: any }> {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/customer-account`, {
+  const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/customer-account`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -110,7 +113,7 @@ async function fetchCustomers(): Promise<{ data: Customer[]; meta: any }> {
 
 // POST /realbizpro/api/v1/customer-account
 async function createCustomer(form: Partial<Customer>) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/customer-account`, {
+  const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/customer-account`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(toPayload(form)),
@@ -120,7 +123,7 @@ async function createCustomer(form: Partial<Customer>) {
 
 // PATCH /realbizpro/api/v1/customer-account/{uuid}
 async function updateCustomer(uuid: string, form: Partial<Customer>) {
-  const res = await fetch(
+  const res = await projectFetch(
     `${API_BASE}/realbizpro/api/v1/customer-account/${uuid}`,
     {
       method: "PATCH",
@@ -133,7 +136,7 @@ async function updateCustomer(uuid: string, form: Partial<Customer>) {
 
 // DELETE /realbizpro/api/v1/customer-account/{uuid}
 async function softDeleteCustomer(uuid: string) {
-  const res = await fetch(
+  const res = await projectFetch(
     `${API_BASE}/realbizpro/api/v1/customer-account/${uuid}`,
     {
       method: "DELETE",

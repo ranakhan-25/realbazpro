@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable prettier/prettier */
 "use client";
 
 import React, { useState, useEffect, useTransition } from "react";

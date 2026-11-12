@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
+
 import React, { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, X, Loader2, Check, Search } from "lucide-react";
 
@@ -29,7 +31,7 @@ async function handleRes(res: Response, action: string) {
 // ১. Leave Type লিস্ট ফেচ
 async function fetchLeaveTypes(): Promise<LeaveType[]> {
   const url = `${API_BASE}/realbizpro/api/v1/leave-type?page=1&limit=100&withDeleted=false`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch leave types");
 
   return (json?.data?.data || [])
@@ -45,7 +47,7 @@ async function fetchLeaveTypes(): Promise<LeaveType[]> {
 
 // ২. Leave Type তৈরি
 async function createLeaveType(payload: { name: string; allocationDay: number }) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/leave-type`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/leave-type`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -55,7 +57,7 @@ async function createLeaveType(payload: { name: string; allocationDay: number })
 
 // ৩. Leave Type আপডেট
 async function updateLeaveType(uuid: string, payload: { name: string; allocationDay: number }) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/leave-type/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/leave-type/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -65,7 +67,7 @@ async function updateLeaveType(uuid: string, payload: { name: string; allocation
 
 // ৪. Leave Type ডিলিট
 async function softDeleteLeaveType(uuid: string) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/leave-type/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/leave-type/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

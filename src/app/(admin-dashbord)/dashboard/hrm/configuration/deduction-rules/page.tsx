@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
+
 import React, { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, X, Loader2, Check, Search } from "lucide-react";
 
@@ -30,7 +32,7 @@ async function handleRes(res: Response, action: string) {
 
 async function fetchRules(): Promise<DeductionRule[]> {
   const url = `${API_BASE}/realbizpro/api/v1/deduction-rule?page=1&limit=100&skip=0&withDeleted=false`;
-  const res = await fetch(url, {
+  const res = await hrmFetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -51,7 +53,7 @@ async function fetchRules(): Promise<DeductionRule[]> {
 }
 
 async function createRule(payload: Record<string, any>) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/deduction-rule`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/deduction-rule`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -60,7 +62,7 @@ async function createRule(payload: Record<string, any>) {
 }
 
 async function updateRule(uuid: string, payload: Record<string, any>) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/deduction-rule/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/deduction-rule/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -69,7 +71,7 @@ async function updateRule(uuid: string, payload: Record<string, any>) {
 }
 
 async function softDeleteRule(uuid: string) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/deduction-rule/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/deduction-rule/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

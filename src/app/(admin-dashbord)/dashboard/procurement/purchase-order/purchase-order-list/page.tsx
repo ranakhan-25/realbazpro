@@ -23,6 +23,7 @@ import {
   ArrowDownToLine,
   Trash2,
 } from "lucide-react";
+import { procurementPurchaseOrderApi, BackendPurchaseOrder } from "@/lib/procurement";
 
 // ==========================================
 // Types & Interfaces
@@ -53,6 +54,7 @@ export interface GrnItem {
 
 export interface PurchaseOrderRow {
   id: number;
+  uuid?: string;
   projectType: string;
   project: string;
   titleOfWork: string;
@@ -538,7 +540,8 @@ export default function PurchaseOrderList({
   const [viewMode, setViewMode] = useState<"list" | "create" | "grn">("list");
 
   // Orders State
-  const [rows, setRows] = useState<PurchaseOrderRow[]>(INITIAL_PURCHASE_ORDERS);
+  const [rows, setRows] = useState<PurchaseOrderRow[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeActionId, setActiveActionId] = useState<number | null>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
@@ -559,10 +562,78 @@ export default function PurchaseOrderList({
   const [search, setSearch] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [apiTotalPages, setApiTotalPages] = useState(1);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof PurchaseOrderRow;
     direction: "asc" | "desc";
   }>({ key: "id", direction: "desc" });
+
+  // Load Real Orders from Backend API
+  const fetchOrders = async () => {
+    setIsLoading(true);
+    try {
+      const res = await procurementPurchaseOrderApi.getOrders({
+        page: currentPage,
+        limit: entriesPerPage,
+        search: search.trim() || undefined,
+        withDeleted: false,
+      });
+
+      const mapped: PurchaseOrderRow[] = (res.data || []).map((o, idx) => ({
+        id: (currentPage - 1) * entriesPerPage + idx + 1,
+        uuid: o.uuid,
+        projectType: o.projectType?.name || "Material",
+        project: o.project?.name || "—",
+        titleOfWork: o.titleOfWork?.name || "—",
+        task: o.task?.taskName || "—",
+        supplierName: o.supplier?.supplierName || "—",
+        supplierAddress: o.supplier?.address || "",
+        supplierMobile: o.supplier?.mobile || "",
+        supplierEmail: o.supplier?.email || "",
+        shippingAddress: "",
+        code: o.code,
+        reference: o.reference || "—",
+        rfqCode: o.requisition?.code || "—",
+        date: o.date ? new Date(o.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—",
+        subTotal: Number(o.subtotal || 0),
+        grandTotal: Number(o.grand_total || 0),
+        addedBy: o.addedBy?.name || "Admin",
+        approvalSteps: [o.approval_layer || "All Approvals Completed"],
+        note: o.note || "",
+        attachment: o.attachment || "",
+        site: o.site?.name || "",
+        category: o.category?.name || "",
+        items: (o.items || []).map((item, lIdx) => ({
+          id: item.uuid || String(lIdx + 1),
+          itemCode: item.item?.item_code || item.item_code || "ITM",
+          itemName: item.item?.name || item.item_name || "Material Item",
+          details: item.details || "",
+          unit: item.unit || "Pcs",
+          quantity: Number(item.quantity || 0),
+          rate: Number(item.rate || 0),
+          budgetQty: Number(item.budget_qty || 0),
+          purchaseQty: Number(item.purchase_qty || 0),
+          stockQty: Number(item.stock_qty || 0),
+          amount: Number(item.amount || (item.quantity * (item.rate || 0))),
+        })),
+      }));
+
+      setRows(mapped);
+      if (res.meta) {
+        setTotalRecords(res.meta.total || mapped.length);
+        setApiTotalPages(res.meta.totalPages || 1);
+      }
+    } catch (err) {
+      console.error("Failed to fetch purchase orders:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, [currentPage, entriesPerPage, search]);
 
   // Create Form State (Purchase Form)
   const [formDate, setFormDate] = useState("25/10/2026");
@@ -695,7 +766,10 @@ export default function PurchaseOrderList({
     return items;
   }, [filteredRows, sortConfig]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedRows.length / entriesPerPage));
+  const totalPages =
+    apiTotalPages > 1
+      ? apiTotalPages
+      : Math.max(1, Math.ceil(sortedRows.length / entriesPerPage));
   const safePage = Math.min(currentPage, totalPages);
   const startIdx = (safePage - 1) * entriesPerPage;
   const visibleRows = sortedRows.slice(startIdx, startIdx + entriesPerPage);
@@ -1322,6 +1396,28 @@ export default function PurchaseOrderList({
                                     <ArrowDownToLine className="w-3.5 h-3.5" />
                                     <span>GRN</span>
                                   </button>
+
+                                  {/* Delete Button */}
+                                  {row.uuid && (
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        if (!confirm(`Delete purchase order ${row.code}?`)) return;
+                                        try {
+                                          await procurementPurchaseOrderApi.deleteOrder(row.uuid!);
+                                          showToast("Purchase order deleted successfully", "success");
+                                          fetchOrders();
+                                        } catch {
+                                          showToast("Failed to delete purchase order", "error");
+                                        }
+                                        setActiveActionId(null);
+                                      }}
+                                      className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-all cursor-pointer active:scale-95"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete</span>
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </div>

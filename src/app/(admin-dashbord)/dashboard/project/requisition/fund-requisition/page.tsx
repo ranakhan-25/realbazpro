@@ -1,5 +1,8 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useCallback, useEffect, useState } from "react";
 
 import {
@@ -76,7 +79,7 @@ async function fetchRelatedOptions(
   label: string,
 ): Promise<RelatedOption[]> {
   const query = new URLSearchParams({ page: "1", limit: "100" });
-  const res = await fetch(`${endpoint}?${query}`, {
+  const res = await projectFetch(`${endpoint}?${query}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -223,7 +226,7 @@ export default function FundRequisitionModule() {
       if (userFilter !== "All") params.set("addedById", userFilter);
       if (statusFilter !== "All") params.set("paymentStatus", statusFilter);
 
-      const response = await fetch(
+      const response = await projectFetch(
         `${FUND_REQUISITION_ENDPOINT}?${params.toString()}`,
         {
           method: "GET",
@@ -282,7 +285,7 @@ export default function FundRequisitionModule() {
         updatedBy: formData.updatedBy,
       };
 
-      const response = await fetch(FUND_REQUISITION_ENDPOINT, {
+      const response = await projectFetch(FUND_REQUISITION_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -337,7 +340,7 @@ export default function FundRequisitionModule() {
         updatedBy: formData.updatedBy,
       };
 
-      const response = await fetch(
+      const response = await projectFetch(
         `${FUND_REQUISITION_ENDPOINT}/${selectedItem.uuid}`,
         {
           method: "PATCH",
@@ -377,7 +380,7 @@ export default function FundRequisitionModule() {
       setSubmitting(true);
       setError("");
 
-      const response = await fetch(`${FUND_REQUISITION_ENDPOINT}/${uuid}`, {
+      const response = await projectFetch(`${FUND_REQUISITION_ENDPOINT}/${uuid}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });

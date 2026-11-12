@@ -186,13 +186,14 @@ export function NegotiationProcessView({
                 </tr>
               ) : (
                 displayedNegotiations.map((item, idx) => {
-                  const isExpanded = expandedId === item.uuid;
+                  const itemId = item.uuid || item.id || `neg-${idx}`;
+                  const isExpanded = expandedId === itemId;
                   const statusInfo = STATUS_CONFIG[item.negotiationStatus as NegotiationStatus] || { bg: "bg-slate-100 text-slate-800", text: "text-slate-700", icon: AlertTriangle };
                   const StatusIcon = statusInfo.icon;
                   const priceGap = (item.counterOfferByOwner ?? 0) - (item.offeredTotalPrice ?? 0);
 
                   return (
-                    <React.Fragment key={item.uuid}>
+                    <React.Fragment key={itemId}>
                       <tr
                         className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
                           isExpanded ? "bg-amber-50/40 dark:bg-amber-950/20" : ""
@@ -200,7 +201,7 @@ export function NegotiationProcessView({
                       >
                         <td className="py-3 px-3 text-center">
                           <button
-                            onClick={() => toggleExpand(item.uuid || item.id)}
+                            onClick={() => toggleExpand(itemId)}
                             className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 transition-all font-bold"
                             title={isExpanded ? "Collapse" : "Expand"}
                           >
@@ -251,7 +252,7 @@ export function NegotiationProcessView({
 
                         <td className="py-3 px-3 text-center">
                             <button
-                              onClick={() => onDeleteNegotiation(item.uuid || item.id)}
+                              onClick={() => onDeleteNegotiation(itemId)}
                               className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
                               title="Delete Negotiation"
                             >

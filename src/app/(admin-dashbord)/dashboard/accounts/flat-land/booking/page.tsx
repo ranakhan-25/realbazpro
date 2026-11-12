@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+
 import React, { useState, useEffect, useMemo } from "react";
 import { Plus, X, Loader2, Edit3, Trash2, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
@@ -133,7 +135,7 @@ export default function FlatLandShareBookingPage() {
       const token = localStorage.getItem("accessToken");
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       
-      const res = await fetch(`${API_PATH}/flat-land-bookings?page=1&limit=100`, { headers });
+      const res = await accountsFetch(`${API_PATH}/flat-land-bookings?page=1&limit=100`, { headers });
       const json = await res.json();
       if (json.success) {
         setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
@@ -150,38 +152,38 @@ export default function FlatLandShareBookingPage() {
       const token = localStorage.getItem("accessToken");
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const resCus = await fetch(`${API_PATH}/customer-account?status=active`, { headers });
+      const resCus = await accountsFetch(`${API_PATH}/customer-account?status=active`, { headers });
       const jsonCus = await resCus.json();
       if (jsonCus.success) setCustomers(jsonCus.data?.data || jsonCus.data || []);
 
-      const resProj = await fetch(`${API_PATH}/project`, { headers });
+      const resProj = await accountsFetch(`${API_PATH}/project`, { headers });
       const jsonProj = await resProj.json();
       if (jsonProj.success) setProjects(jsonProj.data?.data || jsonProj.data || []);
 
-      const resSite = await fetch(`${API_PATH}/project-sites`, { headers });
+      const resSite = await accountsFetch(`${API_PATH}/project-sites`, { headers });
       const jsonSite = await resSite.json();
       if (jsonSite.success) setSites(jsonSite.data?.data || jsonSite.data || []);
 
-      const resType = await fetch(`${API_PATH}/project-type`, { headers });
+      const resType = await accountsFetch(`${API_PATH}/project-type`, { headers });
       const jsonType = await resType.json();
       if (jsonType.success) setProjectTypes(jsonType.data?.data || jsonType.data || []);
 
-      const resUsers = await fetch(`${API_PATH}/crm/configuration/teams/dropdown/users`, { headers });
+      const resUsers = await accountsFetch(`${API_PATH}/crm/configuration/teams/dropdown/users`, { headers });
       const jsonUsers = await resUsers.json();
       if (jsonUsers.success) {
         const userData = jsonUsers.data?.users || jsonUsers.data?.data || jsonUsers.data || [];
         setSalesPersons(Array.isArray(userData) ? userData : []);
       }
 
-      const resTeams = await fetch(`${API_PATH}/crm/configuration/teams/dropdown`, { headers });
+      const resTeams = await accountsFetch(`${API_PATH}/crm/configuration/teams/dropdown`, { headers });
       const jsonTeams = await resTeams.json();
       if (jsonTeams.success) setTeams(jsonTeams.data || []);
 
-      const resItems = await fetch(`${API_PATH}/item`, { headers });
+      const resItems = await accountsFetch(`${API_PATH}/item`, { headers });
       const jsonItems = await resItems.json();
       if (jsonItems.success) setItems(jsonItems.data?.data || jsonItems.data || []);
 
-      const resFlats = await fetch(`${API_PATH}/flat-land/flats?page=1&limit=100`, { headers });
+      const resFlats = await accountsFetch(`${API_PATH}/flat-land/flats?page=1&limit=100`, { headers });
       const jsonFlats = await resFlats.json();
       if (jsonFlats.success) {
         setFlatsOrLands(jsonFlats.data?.data || jsonFlats.data || []);
@@ -256,7 +258,7 @@ export default function FlatLandShareBookingPage() {
         : `${API_PATH}/flat-land-bookings`;
       const method = isEdit ? "PUT" : "POST";
       
-      const res = await fetch(url, {
+      const res = await accountsFetch(url, {
         method,
         headers: { 
           "Content-Type": "application/json",
@@ -288,7 +290,7 @@ export default function FlatLandShareBookingPage() {
 
     try {
       const token = localStorage.getItem("accessToken");
-      const res = await fetch(`${API_PATH}/flat-land-bookings/${uuid}`, {
+      const res = await accountsFetch(`${API_PATH}/flat-land-bookings/${uuid}`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -402,7 +404,7 @@ export default function FlatLandShareBookingPage() {
         status: "active",
         nominees: newCustomer.nominees
       };
-      const res = await fetch(`${API_PATH}/customer-account`, {
+      const res = await accountsFetch(`${API_PATH}/customer-account`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",

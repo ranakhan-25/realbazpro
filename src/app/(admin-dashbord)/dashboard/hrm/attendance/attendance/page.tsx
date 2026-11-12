@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
+
 import React, { useState, useEffect } from "react";
 import { Loader2, Check, Search } from "lucide-react";
 import toast from "react-hot-toast";
@@ -53,7 +55,7 @@ async function fetchAttendances(date: string, departmentId: string): Promise<any
   if (date) url += `&date=${date}`;
   if (departmentId) url += `&departmentId=${departmentId}`;
 
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch attendances");
   
   return json?.data?.data || json?.data || [];
@@ -62,7 +64,7 @@ async function fetchAttendances(date: string, departmentId: string): Promise<any
 // ২. Department লিস্ট ফেচ (limit=100)
 async function fetchDepartments(): Promise<Department[]> {
   const url = `${API_BASE}/realbizpro/api/v1/department?page=1&limit=100&withDeleted=false`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch departments");
 
   return (json?.data?.data || json?.data || []).map((d: any) => ({
@@ -74,7 +76,7 @@ async function fetchDepartments(): Promise<Department[]> {
 // ৩. Employee লিস্ট ফেচ (limit=100)
 async function fetchEmployees(): Promise<Employee[]> {
   const url = `${API_BASE}/realbizpro/api/v1/employee-list?page=1&limit=100&withDeleted=false`;
-  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const res = await hrmFetch(url, { method: "GET", cache: "no-store" });
   const json = await handleRes(res, "fetch employees");
 
   return (json?.data?.data || json?.data || []).map((e: any) => ({
@@ -86,7 +88,7 @@ async function fetchEmployees(): Promise<Employee[]> {
 
 // ৪. Attendance আপডেট
 async function updateAttendance(uuid: string, payload: any) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/attendance/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/attendance/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

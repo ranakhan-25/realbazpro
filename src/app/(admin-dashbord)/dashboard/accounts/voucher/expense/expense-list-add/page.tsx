@@ -1,5 +1,8 @@
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+import { useVoucherOptions } from "../../voucher-options";
+
 import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, X, ChevronsLeft, Trash2 } from "lucide-react";
@@ -14,6 +17,7 @@ interface AccountItem {
 }
 
 export default function ExpenseAddPage() {
+  const voucherOptions = useVoucherOptions();
   const router = useRouter();
   const searchParams = useSearchParams();
   const editUuid = searchParams.get("uuid");
@@ -56,7 +60,7 @@ export default function ExpenseAddPage() {
     const loadAccounts = async () => {
       setIsLoadingAccounts(true);
       try {
-        const response = await fetch(`${API_BASE}/chart-of-accounts`, {
+        const response = await accountsFetch(`${API_BASE}/chart-of-accounts`, {
           headers: { accept: "application/json" },
         });
         const result = await response.json();
@@ -94,7 +98,7 @@ export default function ExpenseAddPage() {
     if (!editUuid) return;
     const loadExpense = async () => {
       try {
-        const response = await fetch(`${API_BASE}/expenses/${editUuid}`);
+        const response = await accountsFetch(`${API_BASE}/expenses/${editUuid}`);
         const result = await response.json();
         const expense = result.data?.data ?? result.data ?? {};
         setProjectType(expense.projectType ?? "");
@@ -192,7 +196,7 @@ export default function ExpenseAddPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`${API_BASE}/expenses${editUuid ? `/${editUuid}` : ""}`, {
+      const response = await accountsFetch(`${API_BASE}/expenses${editUuid ? `/${editUuid}` : ""}`, {
         method: editUuid ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json", accept: "application/json" },
         body: JSON.stringify(payload),
@@ -274,8 +278,7 @@ export default function ExpenseAddPage() {
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Select Project Type</option>
-              <option value="Residential">Residential</option>
-              <option value="Commercial">Commercial</option>
+              {voucherOptions.projectTypes.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
             </select>
           </div>
 
@@ -289,8 +292,7 @@ export default function ExpenseAddPage() {
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Select Project</option>
-              <option value="Rifat Eyecon City">Rifat Eyecon City</option>
-              <option value="Skyline Tower">Skyline Tower</option>
+              {voucherOptions.projects.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
             </select>
           </div>
 
@@ -304,8 +306,7 @@ export default function ExpenseAddPage() {
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Select Title/Name of Work</option>
-              <option value="Foundation Work">Foundation Work</option>
-              <option value="Electrical Wiring">Electrical Wiring</option>
+              {voucherOptions.workNames.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
             </select>
           </div>
 
@@ -319,8 +320,7 @@ export default function ExpenseAddPage() {
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Select Task</option>
-              <option value="Task 1">Task 1</option>
-              <option value="Task 2">Task 2</option>
+              {voucherOptions.tasks.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
             </select>
           </div>
 
@@ -334,8 +334,7 @@ export default function ExpenseAddPage() {
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Select Site</option>
-              <option value="Site A">Site A</option>
-              <option value="Site B">Site B</option>
+              {voucherOptions.sites.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
             </select>
           </div>
         </div>
@@ -347,7 +346,7 @@ export default function ExpenseAddPage() {
               Date
             </label>
             <input
-              type="text"
+              type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -480,8 +479,7 @@ export default function ExpenseAddPage() {
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Select From Contact</option>
-              <option value="John Doe">John Doe</option>
-              <option value="Rahim Ali">Rahim Ali</option>
+              {voucherOptions.contacts.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
             </select>
           </div>
 
@@ -495,8 +493,7 @@ export default function ExpenseAddPage() {
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Select One Option</option>
-              <option value="Petty Cash">Petty Cash</option>
-              <option value="Main Bank Account">Main Bank Account</option>
+              {voucherOptions.accounts.filter((option) => /cash|bank/i.test(option.label)).map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
             </select>
           </div>
 
@@ -510,8 +507,7 @@ export default function ExpenseAddPage() {
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Select or type cheque number</option>
-              <option value="CHK-9988">CHK-9988</option>
-              <option value="RCT-1122">RCT-1122</option>
+              {voucherOptions.cheques.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
             </select>
           </div>
 
@@ -606,10 +602,7 @@ export default function ExpenseAddPage() {
                       className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     >
                       <option value="">Select value</option>
-                      <option value="Assets">Assets</option>
-                      <option value="Liabilities">Liabilities</option>
-                      <option value="Expenses">Expenses</option>
-                      <option value="Income">Income</option>
+                      {voucherOptions.chartGroups.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                     </select>
                   </div>
 

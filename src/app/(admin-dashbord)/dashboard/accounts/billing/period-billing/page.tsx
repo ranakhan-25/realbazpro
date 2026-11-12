@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+
 import React, { useState, useEffect } from "react";
 import { Plus, X, Loader2, Edit3, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -79,7 +81,7 @@ export default function PeriodBillPage() {
   const fetchPeriodBills = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_PATH}/project-billing/period-billings`);
+      const res = await accountsFetch(`${API_PATH}/project-billing/period-billings`);
       const json = await res.json();
       if (json.success) {
         setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
@@ -95,17 +97,17 @@ export default function PeriodBillPage() {
   const fetchDropdowns = async () => {
     try {
       // ১. কাস্টমার
-      const resCus = await fetch(`${API_PATH}/customer-account`);
+      const resCus = await accountsFetch(`${API_PATH}/customer-account`);
       const jsonCus = await resCus.json();
       if (jsonCus.success) setCustomers(jsonCus.data.data || jsonCus.data || []);
 
       // ২. প্রজেক্ট
-      const resProj = await fetch(`${API_PATH}/project`);
+      const resProj = await accountsFetch(`${API_PATH}/project`);
       const jsonProj = await resProj.json();
       if (jsonProj.success) setProjects(jsonProj.data.data || jsonProj.data || []);
 
       // ৩. সাইট (সব সাইট ফেচ করে রাখছি, পরে প্রজেক্ট অনুযায়ী ফিল্টার হবে)
-      const resSite = await fetch(`${API_PATH}/project-sites`);
+      const resSite = await accountsFetch(`${API_PATH}/project-sites`);
       const jsonSite = await resSite.json();
       if (jsonSite.success) setSites(jsonSite.data.data || jsonSite.data || []);
     } catch (err) {
@@ -154,7 +156,7 @@ export default function PeriodBillPage() {
         : `${API_PATH}/project-billing/period-billings`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await accountsFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -180,7 +182,7 @@ export default function PeriodBillPage() {
   const handleDelete = async (item: PeriodBill) => {
     if (!window.confirm(`Delete "${item.code}"?`)) return;
     try {
-      const res = await fetch(`${API_PATH}/project-billing/period-billings/${item.uuid}`, {
+      const res = await accountsFetch(`${API_PATH}/project-billing/period-billings/${item.uuid}`, {
         method: "DELETE",
       });
       if (res.ok) {
