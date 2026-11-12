@@ -69,7 +69,7 @@ const CategoryAccounts = () => {
             onClick={() => window.history.back()}
             className="flex items-center gap-2 bg-[#334155] hover:bg-[#1e293b] text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-all"
           >
-            <FiArrowLeft className="text-base" /> Back to Previous
+            <FiArrowLeft className="text-base" /> Back to Previous......
           </button>
         </div>
       </div>

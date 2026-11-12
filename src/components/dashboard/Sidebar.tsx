@@ -164,6 +164,22 @@ function cloneTree(nodes: MenuNode[] | undefined): MenuNode[] {
   }));
 }
 
+function getMenuHref(node: MenuNode, module: ModuleKey) {
+  if (node.path.startsWith("/")) return node.path;
+  if (node.path.startsWith("http")) return node.path;
+
+  const modulePrefix = new RegExp(`^dashboard/${module}/?`, "i");
+  const routePath = node.path.replace(/^\/+/, "").replace(modulePrefix, "");
+
+  // A module's dashboard is its root route. This also handles legacy
+  // menu data such as `dashboard/dashboard` without creating a bad URL.
+  if (node.slug === "dashboard" || /^dashboard(?:\/dashboard)*$/i.test(routePath)) {
+    return `/dashboard/${module}`;
+  }
+
+  return `/dashboard/${module}/${routePath}`;
+}
+
 function normalizeMenuNodes(
   rawNodes: MenuNode[],
   moduleKey: string,
@@ -509,13 +525,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           );
         }
 
-        const href = n.path.startsWith("http")
-          ? n.path
-          : n.path.startsWith("/")
-            ? n.path
-            : n.slug === "dashboard" || cleanNodePath === "dashboard" || !cleanNodePath
-              ? `/dashboard/${module}`
-              : `/dashboard/${module}/${cleanNodePath}`;
+        const href = getMenuHref(n, module);
 
         return (
           <li key={n.path}>
@@ -621,13 +631,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           );
         }
 
-        const href = n.path.startsWith("http")
-          ? n.path
-          : n.path.startsWith("/")
-            ? n.path
-            : n.slug === "dashboard" || cleanNodePath === "dashboard" || !cleanNodePath
-              ? `/dashboard/${module}`
-              : `/dashboard/${module}/${cleanNodePath}`;
+        const href = getMenuHref(n, module);
 
         return (
           <li key={n.path} className="relative group">
