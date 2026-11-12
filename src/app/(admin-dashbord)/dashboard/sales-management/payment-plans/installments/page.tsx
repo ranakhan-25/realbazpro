@@ -1,583 +1,286 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
-  ChevronRight,
-  ArrowLeft,
-  Calendar,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  CreditCard,
-  Wallet,
-  DollarSign,
-  User,
-  Mail,
-  Phone,
-  Building2,
-  LandPlot,
-  MapPin,
-  FileText,
-  Download,
-  Printer,
-  Hash,
-  Copy,
-  Check,
-  TrendingUp,
-  Layers,
-  Receipt,
-  Info,
-  Plus,
-  ChevronDown,
-  Tag,
+  ChevronRight, ArrowLeft, Calendar, Clock, CheckCircle2, AlertCircle,
+  CreditCard, Wallet, Building2, Mail, Phone, FileText, Hash,
+  Copy, Check, TrendingUp, Plus, X, Loader2,
 } from "lucide-react";
+import { toast } from "react-hot-toast";
 
-// ============ STATIC DATA ============
-const planData = {
-  id: "PLN-2024-0021",
+// ============ TYPES ============
+interface Installment {
+  id: string;
+  uuid?: string;
+  no?: number;
+  installmentNo?: number;
+  dueDate: string;
+  amount: number | string;
+  status: string;
+  paidDate?: string | null;
+}
+
+interface PlanDetails {
+  uuid: string;
+  planCode: string;
+  status: string;
+  property: { totalPrice: number | string; name?: string; area?: string; };
+  buyer?: { name: string; email: string; phone: string; avatar?: string; };
+  plan: { totalInstallments: number; };
+  progress: { paidAmount: number; remainingAmount: number; nextDueAmount: number; nextDueDate: string | null; paidInstallments: number; remainingInstallments: number; };
+  installments: Installment[];
+}
+
+// ============ MOCK DATA ============
+const MOCK_PLAN: PlanDetails = {
+  uuid: "f6ecd9f3-a700-48a5-a40d-ceaf73b60d98",
+  planCode: "PLN-2024-001",
   status: "Active",
-  property: {
-    name: "Gulshan Plot 12/A",
-    code: "GUL-PLT-012",
-    type: "Residential Land",
-    area: "5 katha",
-    totalPrice: 12000000,
-    image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&h=300&fit=crop",
-    location: "Gulshan-2, Dhaka",
-  },
-  buyer: {
-    name: "Ayesha Rahman",
-    email: "ayesha.rahman@example.com",
-    phone: "+880 1712-345678",
-    avatar: "https://i.pravatar.cc/150?img=5",
-    nid: "1990123456789",
-  },
-  plan: {
-    type: "12-Month Installment",
-    downPayment: 2400000,
-    financed: 9600000,
-    interestRate: 8,
-    totalInstallments: 12,
-    monthlyAmount: 830000,
-    startDate: "2024-02-01",
-    endDate: "2025-02-01",
-  },
-  progress: {
-    paidAmount: 4980000,
-    paidInstallments: 6,
-    remainingAmount: 7020000,
-    remainingInstallments: 6,
-    nextDueDate: "2024-08-01",
-    nextDueAmount: 830000,
-    daysUntilDue: 14,
-  },
+  property: { totalPrice: 12000000, name: "Gulshan Plot 12/A", area: "5 Katha" },
+  buyer: { name: "Ayesha Rahman", email: "ayesha@example.com", phone: "+880 1712-345678", avatar: "https://i.pravatar.cc/150?img=5" },
+  plan: { totalInstallments: 36 },
+  progress: { paidAmount: 4980000, remainingAmount: 7020000, nextDueAmount: 266666, nextDueDate: "2024-05-15", paidInstallments: 18, remainingInstallments: 18 },
   installments: [
-    { no: 1, dueDate: "2024-02-01", amount: 830000, status: "Paid", paidDate: "2024-01-28", method: "Bank Transfer", txn: "TXN-CB-8A2F" },
-    { no: 2, dueDate: "2024-03-01", amount: 830000, status: "Paid", paidDate: "2024-02-26", method: "Bank Transfer", txn: "TXN-CB-8B3F" },
-    { no: 3, dueDate: "2024-04-01", amount: 830000, status: "Paid", paidDate: "2024-03-29", method: "Bank Transfer", txn: "TXN-CB-8C4F" },
-    { no: 4, dueDate: "2024-05-01", amount: 830000, status: "Paid", paidDate: "2024-04-30", method: "Bank Transfer", txn: "TXN-CB-8D5F" },
-    { no: 5, dueDate: "2024-06-01", amount: 830000, status: "Paid", paidDate: "2024-05-28", method: "Bank Transfer", txn: "TXN-CB-8E6F" },
-    { no: 6, dueDate: "2024-07-01", amount: 830000, status: "Paid", paidDate: "2024-06-29", method: "Bank Transfer", txn: "TXN-CB-8F7F" },
-    { no: 7, dueDate: "2024-08-01", amount: 830000, status: "Due", paidDate: null, method: null, txn: null },
-    { no: 8, dueDate: "2024-09-01", amount: 830000, status: "Upcoming", paidDate: null, method: null, txn: null },
-    { no: 9, dueDate: "2024-10-01", amount: 830000, status: "Upcoming", paidDate: null, method: null, txn: null },
-    { no: 10, dueDate: "2024-11-01", amount: 830000, status: "Upcoming", paidDate: null, method: null, txn: null },
-    { no: 11, dueDate: "2024-12-01", amount: 830000, status: "Upcoming", paidDate: null, method: null, txn: null },
-    { no: 12, dueDate: "2025-01-01", amount: 830000, status: "Upcoming", paidDate: null, method: null, txn: null },
+    { id: "1", uuid: "6ba7b810-9dad-41d1-80b4-00c04fd430c8", no: 1, dueDate: "2024-01-15", amount: 2400000, status: "Paid", paidDate: "2024-01-10" },
+    { id: "2", uuid: "6ba7b811-9dad-41d1-80b4-00c04fd430c8", no: 2, dueDate: "2024-02-15", amount: 266666, status: "Paid", paidDate: "2024-02-12" },
+    { id: "3", uuid: "6ba7b812-9dad-41d1-80b4-00c04fd430c8", no: 3, dueDate: "2024-03-15", amount: 266666, status: "Paid", paidDate: "2024-03-10" },
+    { id: "4", uuid: "6ba7b813-9dad-41d1-80b4-00c04fd430c8", no: 4, dueDate: "2024-04-15", amount: 266666, status: "Due" },
+    { id: "5", uuid: "6ba7b814-9dad-41d1-80b4-00c04fd430c8", no: 5, dueDate: "2024-05-15", amount: 266666, status: "Upcoming" },
   ],
 };
 
-const statusConfig: Record<string, { bg: string; text: string; icon: any }> = {
-  Paid: {
-    bg: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800",
-    text: "text-emerald-700 dark:text-emerald-400",
-    icon: CheckCircle2,
-  },
-  Due: {
-    bg: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800",
-    text: "text-amber-700 dark:text-amber-400",
-    icon: AlertCircle,
-  },
-  Upcoming: {
-    bg: "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700",
-    text: "text-gray-600 dark:text-gray-400",
-    icon: Clock,
-  },
-  Overdue: {
-    bg: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
-    text: "text-red-700 dark:text-red-400",
-    icon: AlertCircle,
-  },
-};
-
-// ============ COMPONENTS ============
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002/realbizpro/api/v1";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <button
-      onClick={handleCopy}
-      className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-    >
-      {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-    </button>
-  );
+  const handleCopy = () => { navigator.clipboard.writeText(text); setCopied(true); toast.success("Copied!"); setTimeout(() => setCopied(false), 2000); };
+  return <button onClick={handleCopy} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600">{copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}</button>;
 }
 
-function InfoRow({
-  icon: Icon,
-  label,
-  value,
-  copyable = false,
-}: {
-  icon: any;
-  label: string;
-  value: string;
-  copyable?: boolean;
-}) {
-  return (
-    <div className="flex items-start gap-3 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
-      <div className="p-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 shrink-0">
-        <Icon size={16} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">{label}</p>
-        <div className="flex items-center gap-1">
-          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-            {value}
-          </p>
-          {copyable && <CopyButton text={value} />}
-        </div>
-      </div>
-    </div>
-  );
+function formatMoney(n: number | string) {
+  const num = Number(n);
+  if (!num && num !== 0) return "৳0";
+  if (num >= 10_000_000) return `৳${(num / 10_000_000).toFixed(2)} Cr`;
+  if (num >= 100_000) return `৳${(num / 100_000).toFixed(2)} L`;
+  return `৳${num.toLocaleString()}`;
 }
 
-function SectionCard({
-  title,
-  icon: Icon,
-  children,
-  action,
-}: {
-  title: string;
-  icon: any;
-  children: React.ReactNode;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
-            <Icon size={18} />
-          </div>
-          <h3 className="font-bold text-gray-900 dark:text-white">{title}</h3>
-        </div>
-        {action}
-      </div>
-      <div className="p-6">{children}</div>
-    </div>
-  );
-}
-
-function formatMoney(n: number) {
-  if (n >= 10_000_000) return `৳${(n / 10_000_000).toFixed(2)} Cr`;
-  if (n >= 100_000) return `৳${(n / 100_000).toFixed(2)} L`;
-  return `৳${n.toLocaleString()}`;
-}
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function formatDate(d?: string | null) {
+  if (!d) return "N/A";
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return "N/A";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 // ============ MAIN PAGE ============
-
 export default function InstallmentsPage() {
-  const plan = planData;
-  const paidPercent = Math.round(
-    (plan.progress.paidAmount / plan.property.totalPrice) * 100
-  );
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const planUuid = (params?.uuid || params?.id || searchParams.get("uuid")) as string;
+
+  const [plan, setPlan] = useState<PlanDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedInstallment, setSelectedInstallment] = useState<Installment | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("Bank Transfer");
+  const [txnId, setTxnId] = useState("");
+
+  // ✅ ফেচ ও ফলব্যাক লজিক
+  const fetchPlan = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/installment-plans/${planUuid}`);
+      if (res.ok) {
+        const responseData = await res.json();
+        const actualData = responseData?.data || responseData;
+        if (actualData && actualData.installments) {
+          setPlan(actualData);
+          return;
+        }
+      }
+    } catch (error) {
+      console.log("API error, using mock data");
+    } finally {
+      setIsLoading(false);
+    }
+    setPlan(MOCK_PLAN);
+  }, [planUuid]);
+
+  useEffect(() => { fetchPlan(); }, [fetchPlan]);
+
+  const handleOpenModal = (installment?: Installment) => {
+    if (installment) {
+      setSelectedInstallment(installment);
+    } else if (plan) {
+      const nextDue = plan.installments.find((i) => i.status === "Due") || plan.installments[0];
+      setSelectedInstallment(nextDue);
+    }
+    setIsModalOpen(true);
+  };
+
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!txnId) return toast.error("Please enter a Transaction ID");
+    if (!plan || !selectedInstallment) return;
+
+    setIsSubmitting(true);
+    try {
+      // ✅ ডাটাবেসের আসল id বা uuid পাঠানো হচ্ছে
+      const payload = {
+        planUuid: plan.uuid || MOCK_PLAN.uuid,
+        installmentUuid: selectedInstallment.uuid || selectedInstallment.id,
+        paymentMethod,
+        transactionId: txnId,
+      };
+
+      const res = await fetch(`${API_BASE_URL}/installment-plans/pay`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Payment failed");
+
+      toast.success("Payment Successful!");
+      setIsModalOpen(false);
+      setTxnId("");
+      fetchPlan(); 
+    } catch (error: any) {
+      toast.error(error.message || "Something went wrong");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 size={40} className="animate-spin text-indigo-600" /></div>;
+  }
+
+  const displayPlan = plan || MOCK_PLAN;
+  const paidPercent = Math.round((Number(displayPlan.progress.paidAmount) / (Number(displayPlan.property.totalPrice) || 1)) * 100);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-8">
-      {/* BREADCRUMB */}
-      <nav className="flex items-center gap-2 text-sm mb-6 text-gray-500 dark:text-gray-400 flex-wrap">
-        <Link href="/dashboard" className="hover:text-indigo-600 transition-colors">
-          Dashboard
-        </Link>
-        <ChevronRight size={14} />
-        <Link
-          href="/dashboard/sales-management/inventory"
-          className="hover:text-indigo-600 transition-colors"
-        >
-          Properties
-        </Link>
-        <ChevronRight size={14} />
-        <Link
-          href="/dashboard/sales-management/inventory/payment-plans"
-          className="hover:text-indigo-600 transition-colors"
-        >
-          Payment Plans
-        </Link>
-        <ChevronRight size={14} />
-        <span className="text-gray-900 dark:text-white font-medium">
-          {plan.id}
-        </span>
-      </nav>
+      
+      {/* MODAL */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden border">
+            <div className="flex items-center justify-between p-5 border-b">
+              <h3 className="font-bold text-lg flex items-center gap-2"><CreditCard className="text-indigo-600" size={20} /> Pay Installment</h3>
+              <button onClick={() => setIsModalOpen(false)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><X size={20} /></button>
+            </div>
+            <form onSubmit={handlePaymentSubmit} className="p-5 space-y-4">
+              <div className="p-4 bg-indigo-50 rounded-xl mb-4 border border-indigo-100">
+                <p className="text-xs text-indigo-600 mb-1">Amount to Pay</p>
+                <p className="text-2xl font-bold text-gray-900">{formatMoney(selectedInstallment?.amount || displayPlan.progress.nextDueAmount)}</p>
+                <p className="text-xs text-gray-500 mt-1">Installment #{selectedInstallment?.no || "Next"}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border text-sm">
+                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Bkash">Bkash</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Transaction ID</label>
+                <input type="text" required value={txnId} onChange={(e) => setTxnId(e.target.value)} placeholder="TXN-CB-8A2F" className="w-full px-3 py-2.5 rounded-xl border text-sm" />
+              </div>
+              <button type="submit" disabled={isSubmitting} className="w-full mt-4 flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:opacity-70">
+                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                {isSubmitting ? "Processing..." : "Confirm Payment"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* HEADER */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
-        <div className="flex items-start gap-4">
-          <Link
-            href="/dashboard/sales-management/inventory/payment-plans"
-            className="p-2.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shrink-0"
-          >
-            <ArrowLeft size={20} className="text-gray-600 dark:text-gray-400" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                Installment Schedule
-              </h1>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                <CheckCircle2 size={12} />
-                {plan.status}
-              </span>
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2">
-              <Hash size={14} />
-              {plan.id}
-              <CopyButton text={plan.id} />
-            </p>
-          </div>
-        </div>
+      <nav className="flex items-center gap-2 text-sm mb-6 text-gray-500">
+        <Link href="/dashboard">Dashboard</Link> <ChevronRight size={14} />
+        <Link href="/dashboard/sales-management/inventory">Properties</Link> <ChevronRight size={14} />
+        <span className="text-gray-900 font-medium">{displayPlan.planCode}</span>
+      </nav>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors">
-            <Printer size={16} /> Print
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors">
-            <Download size={16} /> Export
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors shadow-lg shadow-indigo-600/20">
-            <Plus size={16} /> Pay Now
-          </button>
+      <div className="flex items-start gap-4 mb-8">
+        <Link href="/dashboard" className="p-2.5 rounded-xl bg-white border"><ArrowLeft size={20} className="text-gray-600" /></Link>
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-3">
+            Installment Schedule
+            <span className="text-xs bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full"><CheckCircle2 size={12} /> {displayPlan.status}</span>
+          </h1>
+          <p className="text-sm text-gray-500 mt-1 flex items-center gap-2"><Hash size={14} /> {displayPlan.planCode} <CopyButton text={displayPlan.planCode} /></p>
         </div>
       </div>
 
-      {/* STATS ROW */}
+      {/* STATS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-5 text-white shadow-lg shadow-indigo-500/20">
-          <div className="flex items-center gap-2 mb-2 opacity-90">
-            <Building2 size={16} />
-            <span className="text-xs font-medium">Total Price</span>
-          </div>
-          <p className="text-2xl font-bold">{formatMoney(plan.property.totalPrice)}</p>
-          <p className="text-xs mt-1 opacity-80">{plan.property.area}</p>
+        <div className="rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-5 text-white">
+          <p className="text-xs opacity-90">Total Price</p>
+          <p className="text-2xl font-bold">{formatMoney(displayPlan.property.totalPrice)}</p>
         </div>
-        <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5">
-          <div className="flex items-center gap-2 mb-2 text-emerald-600">
-            <CheckCircle2 size={16} />
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-              Paid
-            </span>
-          </div>
-          <p className="text-lg font-bold text-gray-900 dark:text-white">
-            {formatMoney(plan.progress.paidAmount)}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {plan.progress.paidInstallments}/{plan.plan.totalInstallments} installments
-          </p>
+        <div className="rounded-2xl bg-white border p-5">
+          <p className="text-xs text-gray-500">Paid</p>
+          <p className="text-lg font-bold text-gray-900">{formatMoney(displayPlan.progress.paidAmount)}</p>
         </div>
-        <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5">
-          <div className="flex items-center gap-2 mb-2 text-amber-600">
-            <Wallet size={16} />
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-              Remaining
-            </span>
-          </div>
-          <p className="text-lg font-bold text-gray-900 dark:text-white">
-            {formatMoney(plan.progress.remainingAmount)}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {plan.progress.remainingInstallments} installments left
-          </p>
+        <div className="rounded-2xl bg-white border p-5">
+          <p className="text-xs text-gray-500">Remaining</p>
+          <p className="text-lg font-bold text-gray-900">{formatMoney(displayPlan.progress.remainingAmount)}</p>
         </div>
-        <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5">
-          <div className="flex items-center gap-2 mb-2 text-blue-600">
-            <Clock size={16} />
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-              Next Due
-            </span>
-          </div>
-          <p className="text-lg font-bold text-gray-900 dark:text-white">
-            {formatMoney(plan.progress.nextDueAmount)}
-          </p>
-          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
-            <AlertCircle size={12} /> in {plan.progress.daysUntilDue} days
-          </p>
+        <div className="rounded-2xl bg-white border p-5">
+          <p className="text-xs text-gray-500">Next Due</p>
+          <p className="text-lg font-bold text-gray-900">{formatMoney(displayPlan.progress.nextDueAmount)}</p>
         </div>
       </div>
 
-      {/* PROGRESS CARD */}
-      <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 mb-8">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <TrendingUp size={18} className="text-indigo-600" />
-            <h3 className="font-bold text-gray-900 dark:text-white">
-              Payment Progress
-            </h3>
-          </div>
-          <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
-            {paidPercent}%
-          </span>
-        </div>
-        <div className="w-full h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-700"
-            style={{ width: `${paidPercent}%` }}
-          />
-        </div>
-        <div className="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
-          <span className="flex items-center gap-1">
-            <CheckCircle2 size={12} className="text-emerald-500" />
-            {formatMoney(plan.progress.paidAmount)} paid
-          </span>
-          <span>{formatMoney(plan.progress.remainingAmount)} remaining</span>
-        </div>
+      {/* PROGRESS */}
+      <div className="rounded-2xl bg-white border p-6 mb-8">
+        <div className="flex justify-between mb-2"><h3 className="font-bold">Progress</h3><span className="text-indigo-600 font-bold">{paidPercent}%</span></div>
+        <div className="w-full h-3 bg-gray-100 rounded-full"><div className="h-full bg-indigo-500 rounded-full" style={{ width: `${paidPercent}%` }} /></div>
       </div>
 
-      {/* MAIN GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT - 2/3: Installment Table */}
-        <div className="lg:col-span-2 space-y-6">
-          <SectionCard
-            title="Installment Schedule"
-            icon={Calendar}
-            action={
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {plan.installments.length} installments
-              </span>
-            }
-          >
-            <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 dark:bg-gray-800/50">
-                    <tr>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">
-                        #
-                      </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">
-                        Due Date
-                      </th>
-                      <th className="text-right px-4 py-3 font-medium text-gray-500 dark:text-gray-400">
-                        Amount
-                      </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">
-                        Status
-                      </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400">
-                        Paid On
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {plan.installments.map((inst) => {
-                      const cfg = statusConfig[inst.status];
-                      const StatusIcon = cfg.icon;
-                      return (
-                        <tr
-                          key={inst.no}
-                          className="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
-                        >
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-700 dark:text-gray-300">
-                              {inst.no}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">
-                            {formatDate(inst.dueDate)}
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">
-                            {formatMoney(inst.amount)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold border ${cfg.bg} ${cfg.text}`}
-                            >
-                              <StatusIcon size={10} />
-                              {inst.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">
-                            {inst.paidDate ? formatDate(inst.paidDate) : "—"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </SectionCard>
-
-          {/* Plan Details */}
-          <SectionCard title="Plan Details" icon={Layers}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-1">
-                <InfoRow icon={Tag} label="Plan Type" value={plan.plan.type} />
-                <InfoRow
-                  icon={DollarSign}
-                  label="Down Payment"
-                  value={formatMoney(plan.plan.downPayment)}
-                />
-                <InfoRow
-                  icon={Wallet}
-                  label="Financed Amount"
-                  value={formatMoney(plan.plan.financed)}
-                />
-                <InfoRow
-                  icon={TrendingUp}
-                  label="Interest Rate"
-                  value={`${plan.plan.interestRate}% per annum`}
-                />
-              </div>
-              <div className="space-y-1">
-                <InfoRow
-                  icon={Layers}
-                  label="Total Installments"
-                  value={`${plan.plan.totalInstallments} months`}
-                />
-                <InfoRow
-                  icon={CreditCard}
-                  label="Monthly Amount"
-                  value={formatMoney(plan.plan.monthlyAmount)}
-                />
-                <InfoRow icon={Calendar} label="Start Date" value={formatDate(plan.plan.startDate)} />
-                <InfoRow icon={Calendar} label="End Date" value={formatDate(plan.plan.endDate)} />
-              </div>
-            </div>
-          </SectionCard>
-        </div>
-
-        {/* RIGHT - 1/3: Sidebar */}
-        <div className="space-y-6">
-          {/* Buyer Card */}
-          <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 overflow-hidden">
-            <div className="h-20 bg-gradient-to-br from-indigo-500 to-purple-600" />
-            <div className="px-6 pb-6 -mt-10">
-              <img
-                src={plan.buyer.avatar}
-                alt={plan.buyer.name}
-                className="w-20 h-20 rounded-2xl border-4 border-white dark:border-gray-900 object-cover"
-              />
-              <div className="mt-3">
-                <h3 className="font-bold text-gray-900 dark:text-white">
-                  {plan.buyer.name}
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Property Buyer
-                </p>
-              </div>
-
-              <div className="space-y-1 mt-4">
-                <InfoRow icon={Mail} label="Email" value={plan.buyer.email} copyable />
-                <InfoRow icon={Phone} label="Phone" value={plan.buyer.phone} copyable />
-                <InfoRow icon={FileText} label="NID" value={plan.buyer.nid} copyable />
-              </div>
-            </div>
-          </div>
-
-          {/* Property Card */}
-          <SectionCard title="Property" icon={LandPlot}>
-            <div className="flex items-center gap-3 mb-3">
-              <img
-                src={plan.property.image}
-                alt={plan.property.name}
-                className="w-14 h-14 rounded-xl object-cover"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900 dark:text-white truncate">
-                  {plan.property.name}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {plan.property.code}
-                </p>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <InfoRow icon={MapPin} label="Location" value={plan.property.location} />
-              <InfoRow icon={Layers} label="Type" value={plan.property.type} />
-              <InfoRow icon={Building2} label="Area" value={plan.property.area} />
-            </div>
-          </SectionCard>
-
-          {/* Next Payment */}
-          <div className="rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 p-6 text-white shadow-lg shadow-amber-500/20">
-            <div className="flex items-center gap-2 mb-3">
-              <AlertCircle size={18} />
-              <h3 className="font-bold">Next Payment Due</h3>
-            </div>
-            <p className="text-3xl font-bold mb-1">
-              {formatMoney(plan.progress.nextDueAmount)}
-            </p>
-            <p className="text-sm opacity-90 flex items-center gap-1">
-              <Calendar size={14} />
-              {formatDate(plan.progress.nextDueDate)} • in {plan.progress.daysUntilDue} days
-            </p>
-            <button className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-sm font-semibold transition-colors border border-white/20">
-              <CreditCard size={16} />
-              Pay Now
-            </button>
-          </div>
-
-          {/* Quick Actions */}
-          <SectionCard title="Quick Actions" icon={Wallet}>
-            <div className="space-y-2">
-              <button className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
-                <span className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  <Receipt size={16} className="text-indigo-600" />
-                  View All Receipts
-                </span>
-                <ChevronRight size={16} className="text-gray-400 group-hover:text-indigo-600 transition-colors" />
-              </button>
-              <button className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
-                <span className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  <Download size={16} className="text-indigo-600" />
-                  Download Statement
-                </span>
-                <ChevronRight size={16} className="text-gray-400 group-hover:text-indigo-600 transition-colors" />
-              </button>
-              <button className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
-                <span className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  <Calendar size={16} className="text-indigo-600" />
-                  Reschedule Plan
-                </span>
-                <ChevronRight size={16} className="text-gray-400 group-hover:text-indigo-600 transition-colors" />
-              </button>
-            </div>
-          </SectionCard>
-
-          {/* Info Alert */}
-          <div className="flex items-start gap-2 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-            <Info size={16} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-700 dark:text-blue-400">
-              Late payments incur a 2% penalty per month. Contact support if you need to reschedule.
-            </p>
-          </div>
-        </div>
+      {/* TABLE */}
+      <div className="rounded-2xl bg-white border overflow-hidden mb-8">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="text-left px-4 py-3">#</th>
+              <th className="text-left px-4 py-3">Due Date</th>
+              <th className="text-right px-4 py-3">Amount</th>
+              <th className="text-left px-4 py-3">Status</th>
+              <th className="text-right px-4 py-3">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayPlan.installments.map((inst) => (
+              <tr key={inst.id} className="border-t">
+                <td className="px-4 py-3 font-medium">{inst.no || inst.installmentNo}</td>
+                <td className="px-4 py-3">{formatDate(inst.dueDate)}</td>
+                <td className="px-4 py-3 text-right font-semibold">{formatMoney(inst.amount)}</td>
+                <td className="px-4 py-3">
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${inst.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {inst.status}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {inst.status === "Due" && (
+                    <button onClick={() => handleOpenModal(inst)} className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">Pay</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+
+      <button onClick={() => handleOpenModal()} className="w-full py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors">
+        Pay Next Installment
+      </button>
     </div>
   );
 }

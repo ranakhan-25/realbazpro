@@ -150,9 +150,18 @@ export default function CreateBookingPage() {
     };
 
     try {
+      // Get auth token for the API call
+      const token =
+        localStorage.getItem("admin_access_token") ||
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("token");
+
       const response = await fetch(`${API_URL}/bookings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
 
