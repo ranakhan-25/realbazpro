@@ -12,14 +12,6 @@ interface AddLandValuationModalProps {
   initialData?: LandValuation | null;
 }
 
-const VALUERS = [
-  "Engr. Zahidul Haque (Certified Valuer)",
-  "Apex Survey & Valuation Ltd",
-  "Surveyor Rafiqul Islam",
-  "National Real Estate Appraisal Firm",
-  "Deloitte Real Estate Advisory",
-];
-
 const METHODS: { id: ValuationMethod; label: string }[] = [
   { id: "comparative", label: "Comparative Market Analysis (CMA)" },
   { id: "income", label: "Income Capitalization Method" },
@@ -35,7 +27,7 @@ export function AddLandValuationModal({
   initialData,
 }: AddLandValuationModalProps) {
   const [selectedLeadId, setSelectedLeadId] = useState("");
-  const [valuer, setValuer] = useState(VALUERS[0]);
+  const [valuer, setValuer] = useState("");
   const [marketRate, setMarketRate] = useState<number | "">("");
   const [govtRate, setGovtRate] = useState<number | "">("");
   const [totalValue, setTotalValue] = useState<number | "">("");
@@ -49,10 +41,10 @@ export function AddLandValuationModal({
   useEffect(() => {
     if (initialData) {
       setSelectedLeadId(initialData.lead_id || initialData.lead_code || "");
-      setValuer(initialData.valuer || VALUERS[0]);
-      setMarketRate(initialData.market_rate || "");
-      setGovtRate(initialData.govt_rate || "");
-      setTotalValue(initialData.total_value || "");
+      setValuer(initialData.valuer || "");
+      setMarketRate(initialData.market_rate ?? "");
+      setGovtRate(initialData.govt_rate ?? "");
+      setTotalValue(initialData.total_value ?? "");
       setIsManualTotal(true);
       setMethod(initialData.method || "comparative");
       setValuedAt(initialData.valued_at || new Date().toISOString().split("T")[0]);
@@ -61,7 +53,7 @@ export function AddLandValuationModal({
       setStatus(initialData.status || "Pending");
     } else {
       setSelectedLeadId(acquisitionLeads[0]?.id || acquisitionLeads[0]?.leadCode || "");
-      setValuer(VALUERS[0]);
+      setValuer("");
       setMarketRate("");
       setGovtRate("");
       setTotalValue("");
@@ -80,7 +72,8 @@ export function AddLandValuationModal({
       const lead = acquisitionLeads.find(
         (l) => (l.id && l.id === selectedLeadId) || (l.leadCode && l.leadCode === selectedLeadId)
       );
-      const area = lead?.area_katha || lead?.landArea || 1;
+      const area = lead?.area_katha ?? lead?.landArea;
+      if (area == null) return;
       const calculated = Number(marketRate) * Number(area);
       setTotalValue(calculated);
     }
@@ -94,18 +87,19 @@ export function AddLandValuationModal({
       (l) => (l.id && l.id === selectedLeadId) || (l.leadCode && l.leadCode === selectedLeadId)
     );
     const leadCode = lead?.leadCode || lead?.code || selectedLeadId;
+    if (!lead || !valuer || marketRate === "" || totalValue === "") return;
 
     onSave({
-      id: initialData?.id || `VAL-${Date.now()}`,
-      uuid: initialData?.uuid || `VAL-${Date.now()}`,
+      id: initialData?.id || "",
+      uuid: initialData?.uuid,
       lead_code: leadCode,
       lead_id: lead?.id || selectedLeadId,
       valuer,
-      market_rate: Number(marketRate) || 0,
-      govt_rate: Number(govtRate) || 0,
-      total_value: Number(totalValue) || 0,
+      market_rate: Number(marketRate),
+      govt_rate: govtRate === "" ? undefined : Number(govtRate),
+      total_value: Number(totalValue),
       method,
-      report: reportFileName || "valuation_assessment.pdf",
+      report: reportFileName || undefined,
       valued_at: valuedAt,
       notes,
       status,
@@ -161,16 +155,13 @@ export function AddLandValuationModal({
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Appraiser / Valuer <span className="text-rose-500">*</span>
               </label>
-              <select
+              <input
+                type="text"
                 value={valuer}
                 onChange={(e) => setValuer(e.target.value)}
                 required
                 className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-cyan-500"
-              >
-                {VALUERS.map((v) => (
-                  <option key={v} value={v}>{v}</option>
-                ))}
-              </select>
+              />
             </div>
 
             {/* Valuation Method */}

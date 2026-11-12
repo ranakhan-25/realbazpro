@@ -27,7 +27,7 @@ const UnitAccounts = () => {
   const handleAddClick = () => {
     setModalMode("add");
     setSelectedUnit({
-      code: `UN${Math.floor(1000 + Math.random() * 9000)}`,
+      code: "",
       name: "",
       conversionUnit: "",
       rate: "",
@@ -51,7 +51,7 @@ const UnitAccounts = () => {
       setIsSubmitting(true);
       if (modalMode === "add") {
         await unitsApi.create({
-          code: selectedUnit.code || `UN${Date.now().toString().slice(-4)}`,
+          code: selectedUnit.code || "",
           name: selectedUnit.name,
         });
       } else if (modalMode === "update" && selectedUnit.id) {

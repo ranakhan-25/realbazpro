@@ -3,7 +3,8 @@
 import type { MaterialItem } from "@/components/inventory/MaterialComparisonTable";
 import MaterialComparisonTable from "@/components/inventory/MaterialComparisonTable";
 import React, { useState, useEffect, useMemo } from "react";
-import { reportsApi, fallbackMaterialComparison } from "@/lib/inventoryApi";
+import { reportsApi } from "@/lib/inventoryApi";
+import { toast } from "sonner";
 
 
 export default function MaterialComparisonContainer() {
@@ -14,49 +15,39 @@ export default function MaterialComparisonContainer() {
 
   // Filter States
   const [selectedProject, setSelectedProject] = useState("");
-  const [selectedTask, setSelectedTask] = useState("");
 
   useEffect(() => {
     async function loadComparison() {
       try {
-        const res = await reportsApi.getMaterialComparison(1).catch(() => null);
+        const projectId = selectedProject ? Number(selectedProject) : undefined;
+        if (selectedProject && !Number.isFinite(projectId)) {
+          toast.error("Project ID must be a number.");
+          setData([]);
+          return;
+        }
+        const res = await reportsApi.getMaterialComparison(projectId);
         const apiRaw = res?.data || res;
-        const raw = (Array.isArray(apiRaw) && apiRaw.length > 0) ? apiRaw : fallbackMaterialComparison;
+        const raw = Array.isArray(apiRaw) ? apiRaw : [];
         const list = raw.map((r: any, idx: number) => ({
-          id: idx + 1,
-          description: r.item_name || "Material",
-          budgetQty: Number(r.budget_qty || 0),
-          budgetAmount: Number((r.budget_qty || 0) * 100),
-          purchaseQty: Number(r.purchase_qty || 0),
-          purchaseAmount: Number((r.purchase_qty || 0) * 100),
-          issueQty: Number(r.issue_qty || 0),
-          issueAmount: Number((r.issue_qty || 0) * 100),
-          stockQty: Number((r.purchase_qty || 0) - (r.issue_qty || 0)),
-          stockAmount: Number(((r.purchase_qty || 0) - (r.issue_qty || 0)) * 100),
-          availableQty: Number(r.available_qty || 0),
-          availableAmount: Number((r.available_qty || 0) * 100),
-          status: "Normal",
+          id: r.id ?? r.item_id ?? idx,
+          description: r.item_name || r.name || "Not found",
+          budgetQty: Number(r.budget_qty ?? 0),
+          budgetAmount: Number(r.budget_amount ?? 0),
+          purchaseQty: Number(r.purchase_qty ?? 0),
+          purchaseAmount: Number(r.purchase_amount ?? 0),
+          issueQty: Number(r.issue_qty ?? 0),
+          issueAmount: Number(r.issue_amount ?? 0),
+          stockQty: Number(r.stock_qty ?? (Number(r.purchase_qty ?? 0) - Number(r.issue_qty ?? 0))),
+          stockAmount: Number(r.stock_amount ?? 0),
+          availableQty: Number(r.available_qty ?? 0),
+          availableAmount: Number(r.available_amount ?? 0),
+          status: r.status || "Not found",
         }));
         setData(list);
       } catch (err) {
-        console.warn("Could not load material comparison report, using default:", err);
-        setData(
-          fallbackMaterialComparison.map((r: any, idx: number) => ({
-            id: idx + 1,
-            description: r.item_name || "Material",
-            budgetQty: Number(r.budget_qty || 0),
-            budgetAmount: Number((r.budget_qty || 0) * 100),
-            purchaseQty: Number(r.purchase_qty || 0),
-            purchaseAmount: Number((r.purchase_qty || 0) * 100),
-            issueQty: Number(r.issue_qty || 0),
-            issueAmount: Number((r.issue_qty || 0) * 100),
-            stockQty: Number((r.purchase_qty || 0) - (r.issue_qty || 0)),
-            stockAmount: Number(((r.purchase_qty || 0) - (r.issue_qty || 0)) * 100),
-            availableQty: Number(r.available_qty || 0),
-            availableAmount: Number((r.available_qty || 0) * 100),
-            status: "Normal",
-          }))
-        );
+        console.error("Could not load material comparison report.", err);
+        toast.error("Material comparison data could not be loaded.");
+        setData([]);
       }
     }
     loadComparison();
@@ -68,12 +59,9 @@ export default function MaterialComparisonContainer() {
       const query = searchQuery.toLowerCase();
       const matchesSearch = item.description.toLowerCase().includes(query);
 
-      const matchesProject = selectedProject ? true : true; // Project filter logic placeholder
-      const matchesTask = selectedTask ? true : true; // Task filter logic placeholder
-
-      return matchesSearch && matchesProject && matchesTask;
+      return matchesSearch;
     });
-  }, [data, searchQuery, selectedProject, selectedTask]);
+  }, [data, searchQuery]);
 
   // Totals Calculation
   const totals = useMemo(() => {
@@ -137,35 +125,14 @@ export default function MaterialComparisonContainer() {
             <label className="text-xs text-gray-600 dark:text-gray-300 block">
               Project
             </label>
-            <select
+            <input
+              type="number"
+              min="1"
               value={selectedProject}
               onChange={(e) => setSelectedProject(e.target.value)}
               className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-gray-600 dark:text-gray-300 shadow-sm"
-            >
-              <option value="">All Projects</option>
-              <option value="PRJ-1001">Hena Heights (PRJ-1001)</option>
-              <option value="PRJ-1002">Rifat Eyecon City (PRJ-1002)</option>
-              <option value="PRJ-1003">Green Valley Residency (PRJ-1003)</option>
-              <option value="PRJ-1004">Metro Sky Tower (PRJ-1004)</option>
-            </select>
-          </div>
-
-          {/* Task */}
-          <div className="space-y-1">
-            <label className="text-xs text-gray-600 dark:text-gray-300 block">
-              Task
-            </label>
-            <select
-              value={selectedTask}
-              onChange={(e) => setSelectedTask(e.target.value)}
-              className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-gray-600 dark:text-gray-300 shadow-sm"
-            >
-              <option value="">All Tasks</option>
-              <option value="Substructure & Foundation">Substructure & Foundation</option>
-              <option value="RCC Casting (Beam & Column)">RCC Casting (Beam & Column)</option>
-              <option value="Brickwork & Masonry">Brickwork & Masonry</option>
-              <option value="Finishing & Fitting">Finishing & Fitting</option>
-            </select>
+              placeholder="All projects"
+            />
           </div>
         </div>
       </div>

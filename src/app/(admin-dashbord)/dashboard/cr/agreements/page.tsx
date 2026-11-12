@@ -41,33 +41,35 @@ export default function SaleAgreementsPage() {
   const [customerId, setCustomerId] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [propertyType, setPropertyType] = useState("plot");
+  const [propertyType, setPropertyType] = useState("");
   const [unitIdentifier, setUnitIdentifier] = useState("");
   const [totalPrice, setTotalPrice] = useState<number | string>("");
   const [downPayment, setDownPayment] = useState<number | string>("");
   const [bookingMoney, setBookingMoney] = useState<number | string>("");
   const [agreementDate, setAgreementDate] = useState(new Date().toISOString().slice(0, 10));
   const [handoverDate, setHandoverDate] = useState("");
-  const [numberOfInstallments, setNumberOfInstallments] = useState<number | string>(24);
+  const [numberOfInstallments, setNumberOfInstallments] = useState<number | string>("");
   const [terms, setTerms] = useState("");
 
   // Plot Form Fields
   const [plotNo, setPlotNo] = useState("");
   const [roadNo, setRoadNo] = useState("");
   const [sectorBlock, setSectorBlock] = useState("");
-  const [plotSizeKatha, setPlotSizeKatha] = useState<number | string>(5.0);
-  const [facing, setFacing] = useState("South-Facing");
-  const [allotmentStatus, setAllotmentStatus] = useState("confirmed");
+  const [plotSizeKatha, setPlotSizeKatha] = useState<number | string>("");
+  const [facing, setFacing] = useState("");
+  const [allotmentStatus, setAllotmentStatus] = useState("");
   const [allotmentLetterNo, setAllotmentLetterNo] = useState("");
-  const [allotmentDate, setAllotmentDate] = useState(new Date().toISOString().slice(0, 10));
+  const [allotmentDate, setAllotmentDate] = useState("");
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await crApi.getAgreements();
-      setAgreements(data || []);
+      const data = await crApi.getAgreements?.() ?? [];
+      const list = Array.isArray(data) ? data : [];
+      setAgreements(list);
     } catch (err) {
       console.error("Failed to load sale agreements:", err);
+      setAgreements([]);
     } finally {
       setLoading(false);
     }
@@ -92,19 +94,19 @@ export default function SaleAgreementsPage() {
 
   const handleOpenCreateAgreement = () => {
     setEditingAgreement(null);
-    setAgreementNumber(`AGR-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`);
-    setCustomerId(`CUST-${Date.now().toString().slice(-3)}`);
+    setAgreementNumber("");
+    setCustomerId("");
     setCustomerName("");
     setCustomerPhone("");
-    setPropertyType("plot");
+    setPropertyType("");
     setUnitIdentifier("");
     setTotalPrice("");
     setDownPayment("");
     setBookingMoney("");
     setAgreementDate(new Date().toISOString().slice(0, 10));
     setHandoverDate("");
-    setNumberOfInstallments(24);
-    setTerms("Standard sale agreement terms with automatic installment amortization schedule.");
+    setNumberOfInstallments("");
+    setTerms("");
     setIsAgreementModalOpen(true);
   };
 
@@ -114,14 +116,14 @@ export default function SaleAgreementsPage() {
     setCustomerId(item.customer_id || "");
     setCustomerName(item.customer_name || "");
     setCustomerPhone(item.customer_phone || "");
-    setPropertyType(item.property_type || "plot");
+    setPropertyType(item.property_type || "");
     setUnitIdentifier(item.unit_identifier || "");
     setTotalPrice(item.total_price || "");
     setDownPayment(item.down_payment || "");
     setBookingMoney(item.booking_money || "");
     setAgreementDate(item.agreement_date ? String(item.agreement_date).slice(0, 10) : "");
     setHandoverDate(item.handover_date ? String(item.handover_date).slice(0, 10) : "");
-    setNumberOfInstallments(item.number_of_installments || 24);
+    setNumberOfInstallments(item.number_of_installments ?? "");
     setTerms(item.terms_and_conditions || "");
     setIsAgreementModalOpen(true);
   };
@@ -144,7 +146,7 @@ export default function SaleAgreementsPage() {
     try {
       const payload: any = {
         agreement_number: agreementNumber.trim(),
-        customer_id: customerId.trim() || `CUST-${Date.now().toString().slice(-3)}`,
+        customer_id: customerId.trim() || undefined,
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim() || undefined,
         property_type: propertyType,
@@ -195,20 +197,20 @@ export default function SaleAgreementsPage() {
       setPlotNo(existingPlot.plot_no || "");
       setRoadNo(existingPlot.road_no || "");
       setSectorBlock(existingPlot.sector_block || "");
-      setPlotSizeKatha(existingPlot.plot_size_katha || 5.0);
-      setFacing(existingPlot.facing || "South-Facing");
-      setAllotmentStatus(existingPlot.allotment_status || "confirmed");
+      setPlotSizeKatha(existingPlot.plot_size_katha ?? "");
+      setFacing(existingPlot.facing || "");
+      setAllotmentStatus(existingPlot.allotment_status || "");
       setAllotmentLetterNo(existingPlot.allotment_letter_no || "");
       setAllotmentDate(existingPlot.allotment_date ? String(existingPlot.allotment_date).slice(0, 10) : "");
     } else {
-      setPlotNo(agreement.unit_identifier || "Plot-");
-      setRoadNo("Road-04");
-      setSectorBlock("Block-B");
-      setPlotSizeKatha(5.0);
-      setFacing("South-Facing");
-      setAllotmentStatus("confirmed");
-      setAllotmentLetterNo(`AL-${Date.now().toString().slice(-5)}`);
-      setAllotmentDate(new Date().toISOString().slice(0, 10));
+      setPlotNo(agreement.unit_identifier || "");
+      setRoadNo("");
+      setSectorBlock("");
+      setPlotSizeKatha("");
+      setFacing("");
+      setAllotmentStatus("");
+      setAllotmentLetterNo("");
+      setAllotmentDate("");
     }
     setIsPlotModalOpen(true);
   };

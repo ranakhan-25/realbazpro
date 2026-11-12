@@ -14,19 +14,6 @@ import { crApi } from "@/lib/crApi";
 
 const flatLandMenu = ["Flat/Land", "Flat/Land Sale", "Flat/Land Sale Payment"];
 
-const salesByOptions = ["Admin", "Tazmul Reza", "Rifat Hosain", "User", "Sarna", "Rowza"];
-
-const teamOptions = ["Gladiators", "Team Warriors", "Go", "Diponkar Team"];
-
-const projectOptions = [
-  "Head Office",
-  "Lake Garden",
-  "Estern 19",
-  "Sheba Eyecon Tower",
-  "Hena Heights",
-  "Rifat Eyecon City",
-];
-
 const datePresets = [
   "Today",
   "Yesterday",
@@ -301,24 +288,26 @@ export default function SaleCollectionReportPage() {
     async function loadData() {
       try {
         setLoading(true);
-        const agreements = await crApi.getAgreements();
+        const rawAgreements = await crApi.getAgreements?.() ?? [];
+        const agreements = Array.isArray(rawAgreements) ? rawAgreements : [];
         if (!mounted) return;
-        const mapped = agreements.map((ag: any, idx: number) => {
+        const mapped = agreements.map((ag: any) => {
           const plans = ag.installment_plans || ag.schedule || [];
           const totalVal = Number(ag.total_price || ag.agreed_price || 0);
           const totalRec = plans.reduce((acc: number, p: any) => acc + Number(p.paid_amount || 0), Number(ag.booking_money || 0) + Number(ag.down_payment || 0));
           const dueVal = Math.max(0, totalVal - totalRec);
           return {
-            id: ag.agreement_number || ag.agreement_no || `#${ag.id || idx + 1}`,
-            customer: ag.customer_name || "Customer",
-            project: ag.project_id || ag.project_name || "Purbachal Project",
-            flatNo: ag.unit_identifier || ag.unit_no || "Plot / Flat",
+            id: ag.agreement_number || ag.agreement_no || ag.id || "Not found",
+            customer: ag.customer_name || "Not found",
+            project: ag.project_id || ag.project_name || "Not found",
+            flatNo: ag.unit_identifier || ag.unit_no || "Not found",
             totalValue: totalVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
             totalReceive: totalRec.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
             due: dueVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
             dueForRecovery: dueVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
             recovered: totalRec.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-            salesBy: ag.created_by || ag.sales_person_name || "Account Manager",
+            salesBy: ag.created_by || ag.sales_person_name || "Not found",
+            team: ag.team_name || ag.team || "Not found",
           };
         });
         setRows(mapped);
@@ -345,8 +334,9 @@ export default function SaleCollectionReportPage() {
         r.salesBy.toLowerCase().includes(q) ||
         String(r.id).includes(q);
       const matchSalesBy = !salesBy || r.salesBy === salesBy;
+      const matchTeam = !team || r.team === team;
       const matchProject = !project || r.project === project;
-      return matchSearch && matchSalesBy && matchProject;
+      return matchSearch && matchSalesBy && matchTeam && matchProject;
     });
   }, [rows, search, salesBy, project]);
 
@@ -439,7 +429,7 @@ export default function SaleCollectionReportPage() {
               setSalesBy(v);
               setPage(1);
             }}
-            options={salesByOptions}
+            options={Array.from(new Set(rows.map((row) => row.salesBy).filter((value) => value !== "Not found")))}
           />
 
           <SearchableSelect
@@ -449,7 +439,7 @@ export default function SaleCollectionReportPage() {
               setTeam(v);
               setPage(1);
             }}
-            options={teamOptions}
+            options={Array.from(new Set(rows.map((row) => row.team).filter((value) => value !== "Not found")))}
           />
 
           <SearchableSelect
@@ -459,7 +449,7 @@ export default function SaleCollectionReportPage() {
               setProject(v);
               setPage(1);
             }}
-            options={projectOptions}
+            options={Array.from(new Set(rows.map((row) => row.project).filter((value) => value !== "Not found")))}
           />
         </div>
 

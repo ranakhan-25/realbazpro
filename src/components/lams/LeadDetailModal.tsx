@@ -48,6 +48,7 @@ interface LeadDetailModalProps {
   approvals?: AcquisitionApproval[];
   settlements?: SettlementRecord[];
   documents?: LegalDocument[];
+  initialTab?: string;
   onQualify?: (leadId: string) => void;
   onReject?: (leadId: string, remarks: string) => void;
   onAdvance?: (leadId: string, nextStage: string, remarks: string) => void;
@@ -94,12 +95,19 @@ export function LeadDetailModal({
   approvals = [],
   settlements = [],
   documents = [],
+  initialTab = "Overview",
   onQualify,
   onReject,
   onAdvance,
   onPaySettlement,
 }: LeadDetailModalProps) {
-  const [activeTab, setActiveTab] = useState("Overview");
+  const [activeTab, setActiveTab] = useState(initialTab || "Overview");
+
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [payingSettlement, setPayingSettlement] = useState<SettlementRecord | null>(null);
@@ -153,7 +161,7 @@ export function LeadDetailModal({
             </span>
             <LamsStatusBadge status={lead.status || lead.leadStage || "Draft"} size="md" />
             <h2 className="text-base font-bold text-slate-900 dark:text-white truncate max-w-md">
-              {lead.title || lead.location || "Land Acquisition Lead"}
+              {lead.title || lead.location || "Not found"}
             </h2>
           </div>
 
@@ -244,20 +252,20 @@ export function LeadDetailModal({
                 <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
                   <p className="text-[10px] uppercase font-bold text-slate-400">Lead Source</p>
                   <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200 mt-1">
-                    {lead.source || lead.leadSource || "Direct Owner"}
+                    {lead.source || lead.leadSource || "—"}
                   </p>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    Priority: <span className="font-bold text-cyan-600">{lead.priority || "Medium"}</span>
+                    Priority: <span className="font-bold text-cyan-600">{lead.priority || "—"}</span>
                   </p>
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
                   <p className="text-[10px] uppercase font-bold text-slate-400">Assigned Officer</p>
                   <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200 mt-1 truncate">
-                    {lead.assignee || lead.assignedUser || "Sakib Al Hasan"}
+                    {lead.assignee || lead.assignedUser || "—"}
                   </p>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    Created: {lead.createdAt || "2026-08-20"}
+                    Created: {lead.createdAt || "Not found"}
                   </p>
                 </div>
               </div>
@@ -273,7 +281,7 @@ export function LeadDetailModal({
                   <div className="space-y-2 text-xs">
                     <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                       <span className="text-slate-500">Location / Address:</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-200 text-right">{lead.location || lead.address || "N/A"}</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-right">{lead.location || lead.address || "Not found"}</span>
                     </div>
                     <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                       <span className="text-slate-500">Mouza & Upazila:</span>
@@ -281,7 +289,7 @@ export function LeadDetailModal({
                     </div>
                     <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                       <span className="text-slate-500">District:</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-200">{lead.district || "Dhaka"}</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{lead.district || "—"}</span>
                     </div>
                     <div className="flex justify-between py-1.5">
                       <span className="text-slate-500">Land Type Classification:</span>
@@ -307,7 +315,7 @@ export function LeadDetailModal({
                     </div>
                     <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                       <span className="text-slate-500">Owner Address:</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-200 text-right">{lead.ownerAddress || "Uttara, Dhaka"}</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-right">{lead.ownerAddress || "—"}</span>
                     </div>
                     <div className="flex justify-between py-1.5">
                       <span className="text-slate-500">Notes / Remarks:</span>
@@ -353,7 +361,7 @@ export function LeadDetailModal({
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-400 font-bold uppercase">Dag No</p>
-                  <p className="font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">{lead.dag_no || lead.dagNo || "1405, 1406"}</p>
+                  <p className="font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">{lead.dag_no || lead.dagNo || "Not found"}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-400 font-bold uppercase">Land Type</p>

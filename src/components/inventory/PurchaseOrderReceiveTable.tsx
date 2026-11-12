@@ -3,7 +3,7 @@
 import React from "react";
 
 export interface OrderReceiveItem {
-  id: number;
+  id: string | number;
   date: string;
   invoiceNo: string;
   supplierName: string;
