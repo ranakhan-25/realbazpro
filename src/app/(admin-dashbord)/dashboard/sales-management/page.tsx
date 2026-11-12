@@ -361,7 +361,7 @@ export default function InstallmentsPage() {
           <thead className="bg-gray-50">
             <tr>
               <th className="text-left px-4 py-3 font-medium text-gray-500">#</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">Due Date</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-500">Due to Date</th>
               <th className="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500">Status</th>
               <th className="text-right px-4 py-3 font-medium text-gray-500">Action</th>
@@ -396,7 +396,7 @@ export default function InstallmentsPage() {
       </div>
 
       <button onClick={() => handleOpenModal()} className="w-full py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20">
-        <CreditCard size={18} className="inline mr-2" /> Pay Next Installment
+        <CreditCard size={18} className="inline mr-2" /> Pay Next Installment..
       </button>
     </div>
   );
