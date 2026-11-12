@@ -302,7 +302,7 @@ export default function InstallmentsPage() {
         <ChevronRight size={14} />
         <Link href="/dashboard/sales-management/inventory" className="hover:text-indigo-600">Properties</Link>
         <ChevronRight size={14} />
-        <Link href="/dashboard/sales-management/inventory/payment-plans" className="hover:text-indigo-600">Payment Plans</Link>
+        <Link href="/dashboard/sales-management/inventory/payment-plans" className="hover:text-indigo-600">Payment to Plans</Link>
         <ChevronRight size={14} />
         <span className="text-gray-900 font-medium">{displayPlan.planCode}</span>
       </nav>
