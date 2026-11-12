@@ -33,6 +33,7 @@ interface QuoteItem {
 interface Quote {
   id: string;
   uuid: string;
+  createdBy?: string;
   code: string;
   title: string;
   recordDate: string;
@@ -208,6 +209,8 @@ export default function QuotePage() {
   // Filter States
   const [filterProject, setFilterProject] = useState("");
   const [filterProjectType, setFilterProjectType] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
 
   // Form Data
   const [formData, setFormData] = useState({
@@ -672,11 +675,15 @@ export default function QuotePage() {
   };
 
   const filteredData = dataList.filter((item) => {
-    const matchSearch = item.code?.toLowerCase().includes(search.toLowerCase()) || 
-                        item.project?.name?.toLowerCase().includes(search.toLowerCase());
+    const normalizedSearch = search.trim().toLowerCase();
+    const matchSearch = !normalizedSearch || [item.code, item.project?.name, item.details?.customerName, item.title]
+      .some(value => String(value || "").toLowerCase().includes(normalizedSearch));
     const matchProject = filterProject ? item.project?.uuid === filterProject : true;
     const matchType = filterProjectType ? item.details?.projectType === filterProjectType : true;
-    return matchSearch && matchProject && matchType;
+    const recordDate = String(item.recordDate || "").slice(0, 10);
+    const matchDateFrom = filterDateFrom ? recordDate >= filterDateFrom : true;
+    const matchDateTo = filterDateTo ? recordDate <= filterDateTo : true;
+    return matchSearch && matchProject && matchType && matchDateFrom && matchDateTo;
   });
 
   // ====================== RENDER ======================
@@ -699,7 +706,10 @@ export default function QuotePage() {
       <div className="bg-white p-4 border rounded shadow-sm mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label className="block text-xs text-gray-600 mb-1">Select Date</label>
-          <input type="text" placeholder="1 October, 2026 - 31 October, 2026" className="w-full border rounded px-3 py-2 text-sm" />
+          <div className="flex gap-2">
+            <input aria-label="From date" type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="w-full border rounded px-3 py-2 text-sm" />
+            <input aria-label="To date" type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="w-full border rounded px-3 py-2 text-sm" />
+          </div>
         </div>
         <div>
           <label className="block text-xs text-gray-600 mb-1">Project</label>
@@ -755,7 +765,7 @@ export default function QuotePage() {
                       <td className="px-3 py-2 font-medium">{item.project?.name || "Unknown"}</td>
                       <td className="px-3 py-2">{item.details?.customerName || "N/A"}</td>
                       <td className="px-3 py-2 font-bold text-green-700">{item.amount}</td>
-                      <td className="px-3 py-2">Admin</td>
+                      <td className="px-3 py-2">{item.createdBy || "—"}</td>
                       
                       <td className="px-3 py-2 text-center">
                         <div className="flex justify-center">
