@@ -203,7 +203,7 @@ export function LegalDocumentsView({
               <option value="ALL">All Acquisition Leads</option>
               {acquisitionLeads.map((l) => (
                 <option key={l.id || l.uuid} value={l.id || l.uuid}>
-                  {l.lead_code || l.title}
+                  {l.leadCode || l.code || l.title}
                 </option>
               ))}
             </select>
@@ -289,10 +289,10 @@ export function LegalDocumentsView({
           setSelectedIds([]);
         }}
         statusOptions={[
-          { label: "Verified", value: "Verified" },
-          { label: "Under Review", value: "Under Review" },
-          { label: "Discrepancy Found", value: "Discrepancy Found" },
-          { label: "Pending", value: "Pending" },
+          "Verified",
+          "Under Review",
+          "Discrepancy Found",
+          "Pending",
         ]}
       />
 
@@ -301,8 +301,8 @@ export function LegalDocumentsView({
         {displayedDocs.length === 0 ? (
           <LamsEmptyState
             title="No title documents found"
-            subtitle="Upload deeds, khatian copies, or NEC certificates to establish legal chain of title."
-            buttonText="Upload Title Document"
+            description="Upload deeds, khatian copies, or NEC certificates to establish legal chain of title."
+            actionLabel="Upload Title Document"
             onAction={() => {
               setEditingDocument(null);
               setIsAddModalOpen(true);
@@ -421,7 +421,7 @@ export function LegalDocumentsView({
                         {/* Status */}
                         {isColVisible("status") && (
                           <td className="py-3 px-3.5 text-center">
-                            <LamsStatusBadge status={statusKey} type="legal" />
+                            <LamsStatusBadge status={statusKey} />
                           </td>
                         )}
 

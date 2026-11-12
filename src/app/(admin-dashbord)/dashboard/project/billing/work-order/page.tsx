@@ -32,6 +32,9 @@ export default function WorkOrderPage() {
   const [error, setError] = useState<string | null>(null);
   const [dropdownError, setDropdownError] = useState<string | null>(null);
   const [selectedListProjectId, setSelectedListProjectId] = useState("");
+  const [listSearch, setListSearch] = useState("");
+  const [listDateFrom, setListDateFrom] = useState("");
+  const [listDateTo, setListDateTo] = useState("");
 
   // Modals
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -49,6 +52,14 @@ export default function WorkOrderPage() {
   const [sites, setSites] = useState<any[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [subCategoryId, setSubCategoryId] = useState("");
+  const [itemDraft, setItemDraft] = useState({
+    itemName: "",
+    brand: "",
+    unit: "Nos",
+    purchasePrice: 0,
+    salePrice: 0,
+  });
+  const [savingItem, setSavingItem] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -84,7 +95,23 @@ export default function WorkOrderPage() {
   const aitAmount = formData.aitInclude
     ? (subtotal * formData.aitPercent) / 100
     : 0;
-  const grandTotal = subtotal + vatAmount + aitAmount;
+  const grandTotal = subtotal + vatAmount - aitAmount;
+
+  const filteredOrders = orders.filter((order) => {
+    const projectMatches = !selectedListProjectId ||
+      order.projectId === selectedListProjectId ||
+      order.project?.uuid === selectedListProjectId ||
+      order.details?.projectId === selectedListProjectId;
+    const query = listSearch.trim().toLowerCase();
+    const customerName = order.customer?.customerName || order.customer?.name ||
+      customers.find((customer) => customer.uuid === order.details?.customerId)?.name || "";
+    const searchMatches = !query || [order.code, order.clientOrderNo, order.details?.poNo, customerName]
+      .some((value) => String(value || "").toLowerCase().includes(query));
+    const date = String(order.recordDate || order.details?.date || "").slice(0, 10);
+    return projectMatches && searchMatches &&
+      (!listDateFrom || date >= listDateFrom) &&
+      (!listDateTo || date <= listDateTo);
+  });
 
   // ==================== API FETCHERS ====================
   const fetchOptions = async (endpoint: string) => {
@@ -108,16 +135,18 @@ export default function WorkOrderPage() {
         uuid: r.uuid || r.id,
         projectId: r.projectId || r.project?.uuid || r.details?.projectId,
         details: r.details || {},
-        rate: Number(r.details?.salePrice ?? r.amount ?? 0),
-        unit: r.details?.unit || "Nos",
+        categoryId: r.categoryId || r.details?.categoryId || "",
+        subCategoryId: r.subCategoryId || r.details?.subCategoryId || "",
+        rate: Number(r.salePrice ?? r.rate ?? r.details?.salePrice ?? r.amount ?? 0),
+        unit: r.unit || r.details?.unit || "Nos",
         description: r.description || "",
         name:
           r.name ||
           r.customerName ||
           r.siteName ||
           r.projectName ||
-          r.title ||
           r.itemName ||
+          r.title ||
           r.code ||
           "Unnamed",
       }));
@@ -134,7 +163,7 @@ export default function WorkOrderPage() {
       fetchOptions("/project-type"),
       fetchOptions("/category"),
       fetchOptions("/billing-sub-category"),
-      fetchOptions("/project-billing/bill-items"),
+      fetchOptions("/item"),
       fetchOptions("/project-sites"),
     ]);
     const failedEndpoints = results
@@ -234,20 +263,56 @@ export default function WorkOrderPage() {
     setIsAddOpen(true);
   };
 
-  const handleAddItemToTable = () => {
-    setOrderItems([
-      ...orderItems,
-      {
-        id: String(Date.now()),
-        itemName: "",
-        description: "",
-        unit: "Nos",
-        quantity: 1,
-        rate: 0,
-        amount: 0,
-      },
-    ]);
-    setIsItemModalOpen(false);
+  const handleAddItemToTable = async () => {
+    const itemName = itemDraft.itemName.trim();
+    if (!categoryId || !itemName) {
+      alert("Select a category and enter an item name");
+      return;
+    }
+    setSavingItem(true);
+    try {
+      const response = await projectFetch(`${API_BASE}${API_PREFIX}/item`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          itemName,
+          categoryId,
+          subCategoryId: subCategoryId || undefined,
+          brand: itemDraft.brand || undefined,
+          unit: itemDraft.unit || "Nos",
+          purchasePrice: Number(itemDraft.purchasePrice) || 0,
+          salePrice: Number(itemDraft.salePrice) || 0,
+        }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json.message || "Could not create item");
+
+      const refreshedItems = await fetchOptions("/item");
+      setItems(refreshedItems);
+      const createdItem = refreshedItems.find(
+        (item: any) => item.itemName === itemName && item.categoryId === categoryId,
+      );
+      const rate = Number(createdItem?.rate ?? itemDraft.salePrice) || 0;
+      setOrderItems((current) => [
+        ...current,
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          itemId: createdItem?.uuid,
+          itemName,
+          description: "",
+          unit: createdItem?.unit || itemDraft.unit || "Nos",
+          quantity: 1,
+          rate,
+          amount: rate,
+        },
+      ]);
+      setItemDraft({ itemName: "", brand: "", unit: "Nos", purchasePrice: 0, salePrice: 0 });
+      setIsItemModalOpen(false);
+    } catch (error: any) {
+      alert(error.message || "Could not create item");
+    } finally {
+      setSavingItem(false);
+    }
   };
 
   const handleSaveOrder = async () => {
@@ -258,8 +323,18 @@ export default function WorkOrderPage() {
         projectId: formData.projectId,
         title: `Work Order ${formData.code}`,
         code: formData.code,
+        date: formData.date,
         recordDate: formData.date,
         amount: grandTotal,
+        items: orderItems.map(({ id, ...item }) => item),
+        subtotal,
+        vatPercent: formData.vatPercent,
+        vatInclude: formData.vatInclude,
+        vatAmount,
+        aitPercent: formData.aitPercent,
+        aitInclude: formData.aitInclude,
+        aitAmount,
+        grandTotal,
         details: {
           ...formData,
           categoryId,
@@ -401,12 +476,10 @@ export default function WorkOrderPage() {
           <div className="bg-white p-3 rounded-xl border grid grid-cols-1 md:grid-cols-2 gap-3 text-xs shadow-sm">
             <div>
               <label className="block font-semibold mb-1">Select Date</label>
-              <input
-                type="text"
-                value="1 October, 2026 - 31 October, 2026"
-                readOnly
-                className="w-full border rounded-lg px-3 py-2 bg-slate-50"
-              />
+              <div className="flex gap-2">
+                <input aria-label="From date" type="date" value={listDateFrom} onChange={(e) => setListDateFrom(e.target.value)} className="w-full border rounded-lg px-3 py-2" />
+                <input aria-label="To date" type="date" value={listDateTo} onChange={(e) => setListDateTo(e.target.value)} className="w-full border rounded-lg px-3 py-2" />
+              </div>
             </div>
             <div>
               <label className="block font-semibold mb-1">Project</label>
@@ -455,11 +528,7 @@ export default function WorkOrderPage() {
               </div>
               <div className="relative w-64">
                 <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  className="border pl-9 pr-3 py-1.5 rounded-lg text-sm w-full"
-                />
+                <input type="text" placeholder="Search..." value={listSearch} onChange={(e) => setListSearch(e.target.value)} className="border pl-9 pr-3 py-1.5 rounded-lg text-sm w-full" />
               </div>
             </div>
 
@@ -474,22 +543,14 @@ export default function WorkOrderPage() {
                     <th className="py-2 px-3">Date</th>
                     <th className="py-2 px-3 text-right">Sub Total</th>
                     <th className="py-2 px-3 text-right">VAT</th>
-                    <th className="py-2 px-3 text-right">Discount</th>
+                    <th className="py-2 px-3 text-right">AIT</th>
                     <th className="py-2 px-3 text-right">Grand Total</th>
                     <th className="py-2 px-3">Added By</th>
                     <th className="py-2 px-3 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {orders
-                    .filter(
-                      (order) =>
-                        !selectedListProjectId ||
-                        order.projectId === selectedListProjectId ||
-                        order.project?.uuid === selectedListProjectId ||
-                        order.details?.projectId === selectedListProjectId,
-                    )
-                    .map((order, index) => (
+                  {filteredOrders.map((order, index) => (
                     <tr key={order.uuid || index}>
                       <td className="py-2 px-3">{index + 1}</td>
                       <td className="py-2 px-3">
@@ -521,7 +582,7 @@ export default function WorkOrderPage() {
                           order.vatAmount ?? order.details?.vatAmount ?? 0,
                         ).toFixed(2)}
                       </td>
-                      <td className="py-2 px-3 text-right">0.00</td>
+                      <td className="py-2 px-3 text-right">{Number(order.aitAmount ?? order.details?.aitAmount ?? 0).toFixed(2)}</td>
                       <td className="py-2 px-3 text-right font-semibold">
                         {Number(
                           order.grandTotal ??
@@ -531,7 +592,7 @@ export default function WorkOrderPage() {
                         ).toFixed(2)}
                       </td>
                       <td className="py-2 px-3">
-                        {order.createdBy || "Admin"}
+                        {order.createdBy || "—"}
                       </td>
                       <td className="py-2 px-3 text-center relative">
                         {/* Action Dropdown Wrapper */}
@@ -674,6 +735,7 @@ export default function WorkOrderPage() {
               </label>
               <select
                 value={formData.customerId}
+                required
                 onChange={(e) =>
                   setFormData({ ...formData, customerId: e.target.value })
                 }
@@ -723,8 +785,9 @@ export default function WorkOrderPage() {
               </label>
               <select
                 value={formData.projectId}
+                required
                 onChange={(e) =>
-                  setFormData({ ...formData, projectId: e.target.value })
+                  setFormData({ ...formData, projectId: e.target.value, siteId: "" })
                 }
                 className="w-full border rounded-lg px-3 py-2"
               >
@@ -742,6 +805,7 @@ export default function WorkOrderPage() {
               </label>
               <select
                 value={formData.siteId}
+                disabled={!formData.projectId}
                 onChange={(e) =>
                   setFormData({ ...formData, siteId: e.target.value })
                 }
@@ -751,7 +815,8 @@ export default function WorkOrderPage() {
                 {sites
                   .filter(
                     (site) =>
-                      !site.projectId || site.projectId === formData.projectId,
+                      Boolean(formData.projectId) &&
+                      String(site.projectId || "").toLowerCase() === formData.projectId.toLowerCase(),
                   )
                   .map((site) => (
                     <option key={site.uuid} value={site.uuid}>
@@ -890,12 +955,8 @@ export default function WorkOrderPage() {
                     (item) =>
                       (!item.projectId ||
                         item.projectId === formData.projectId) &&
-                      (!categoryId ||
-                        !item.details?.categoryId ||
-                        item.details.categoryId === categoryId) &&
-                      (!subCategoryId ||
-                        !item.details?.subCategoryId ||
-                        item.details.subCategoryId === subCategoryId),
+                      (!categoryId || item.categoryId === categoryId) &&
+                      (!subCategoryId || item.subCategoryId === subCategoryId),
                   )
                   .map((i) => (
                     <option key={i.uuid} value={i.uuid}>
@@ -903,6 +964,9 @@ export default function WorkOrderPage() {
                     </option>
                   ))}
               </select>
+              {items.length === 0 && (
+                <p className="mt-1 text-amber-700">No item records loaded. Check item permissions or add an item.</p>
+              )}
             </div>
           </div>
 
@@ -1192,33 +1256,35 @@ export default function WorkOrderPage() {
             <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
                 <label className="block font-semibold mb-1">Category</label>
-                <select className="w-full border rounded px-2 py-1.5">
-                  <option>Select Category</option>
+                <select value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setSubCategoryId(""); }} className="w-full border rounded px-2 py-1.5">
+                  <option value="">Select Category</option>
+                  {categories.map((category) => <option key={category.uuid} value={category.uuid}>{category.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block font-semibold mb-1">Sub Category</label>
-                <select className="w-full border rounded px-2 py-1.5">
-                  <option>Select Sub Category</option>
+                <select value={subCategoryId} onChange={(e) => setSubCategoryId(e.target.value)} disabled={!categoryId} className="w-full border rounded px-2 py-1.5">
+                  <option value="">Select Sub Category</option>
+                  {subCategories.filter((subcategory) => subcategory.categoryId === categoryId).map((subcategory) => <option key={subcategory.uuid} value={subcategory.uuid}>{subcategory.name}</option>)}
                 </select>
               </div>
               <div className="sm:col-span-2">
                 <label className="block font-semibold mb-1">Item Name</label>
                 <input
                   type="text"
+                  value={itemDraft.itemName}
+                  onChange={(e) => setItemDraft({ ...itemDraft, itemName: e.target.value })}
                   className="w-full border rounded px-2 py-1.5"
                 />
               </div>
               <div>
                 <label className="block font-semibold mb-1">Brand</label>
-                <select className="w-full border rounded px-2 py-1.5">
-                  <option>Select Brand</option>
-                </select>
+                <input type="text" value={itemDraft.brand} onChange={(e) => setItemDraft({ ...itemDraft, brand: e.target.value })} className="w-full border rounded px-2 py-1.5" />
               </div>
               <div>
                 <label className="block font-semibold mb-1">Unit</label>
-                <select className="w-full border rounded px-2 py-1.5">
-                  <option>Select Unit</option>
+                <select value={itemDraft.unit} onChange={(e) => setItemDraft({ ...itemDraft, unit: e.target.value })} className="w-full border rounded px-2 py-1.5">
+                  {["Nos", "Pcs", "Kg", "Bag", "Cft", "Sft", "Rft", "Job"].map((unit) => <option key={unit} value={unit}>{unit}</option>)}
                 </select>
               </div>
               <div>
@@ -1227,6 +1293,9 @@ export default function WorkOrderPage() {
                 </label>
                 <input
                   type="number"
+                  min="0"
+                  value={itemDraft.purchasePrice}
+                  onChange={(e) => setItemDraft({ ...itemDraft, purchasePrice: Number(e.target.value) })}
                   className="w-full border rounded px-2 py-1.5"
                 />
               </div>
@@ -1234,6 +1303,9 @@ export default function WorkOrderPage() {
                 <label className="block font-semibold mb-1">Sale Price</label>
                 <input
                   type="number"
+                  min="0"
+                  value={itemDraft.salePrice}
+                  onChange={(e) => setItemDraft({ ...itemDraft, salePrice: Number(e.target.value) })}
                   className="w-full border rounded px-2 py-1.5"
                 />
               </div>
@@ -1247,9 +1319,10 @@ export default function WorkOrderPage() {
               </button>
               <button
                 onClick={handleAddItemToTable}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold"
+                disabled={savingItem}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold disabled:opacity-50"
               >
-                Submit
+                {savingItem ? "Saving..." : "Submit"}
               </button>
             </div>
           </div>

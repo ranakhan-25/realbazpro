@@ -274,10 +274,10 @@ export function FollowUpView({
           setSelectedIds([]);
         }}
         statusOptions={[
-          { label: "Pending", value: "Pending" },
-          { label: "Completed", value: "Completed" },
-          { label: "Rescheduled", value: "Rescheduled" },
-          { label: "Cancelled", value: "Cancelled" },
+          "Pending",
+          "Completed",
+          "Rescheduled",
+          "Cancelled",
         ]}
       />
 
@@ -286,8 +286,8 @@ export function FollowUpView({
         {displayedFollowUps.length === 0 ? (
           <LamsEmptyState
             title="No scheduled follow-up meetings"
-            subtitle="Add a follow-up appointment or adjust filters to review scheduled dates."
-            buttonText="Schedule Follow-Up"
+            description="Add a follow-up appointment or adjust filters to review scheduled dates."
+            actionLabel="Schedule Follow-Up"
             onAction={() => {
               setEditingFollowUp(null);
               setIsAddModalOpen(true);
@@ -356,7 +356,7 @@ export function FollowUpView({
                         {/* Land Details */}
                         {isColVisible("land") && (
                           <td className="py-3 px-3.5 font-bold text-slate-800 dark:text-slate-100">
-                            {item.landDetails || item.leadTitle || "Land Parcel"}
+                            {item.landDetails || item.leadTitle || "Not found"}
                           </td>
                         )}
 
@@ -392,7 +392,7 @@ export function FollowUpView({
                         {/* Notes */}
                         {isColVisible("notes") && (
                           <td className="py-3 px-3.5 text-slate-500 dark:text-slate-400 truncate max-w-[160px]">
-                            {item.note || item.notes || "N/A"}
+                            {item.note || item.notes || "Not found"}
                           </td>
                         )}
 

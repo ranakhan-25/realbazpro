@@ -10,6 +10,7 @@ import { isModuleKey, type ModuleKey } from "@/lib/menus";
 import { UserAccessProvider, useUserAccess } from "@/context/UserAccessContext";
 import { SidebarProvider, useSidebar } from "@/context/SidebarContext";
 import { getInventoryPermissionPath } from "@/lib/inventoryRoutes";
+import { getCollectionPermissionPath } from "@/lib/collectionRoutes";
 
 function DashboardAccessGuard({
   moduleKey,
@@ -49,7 +50,9 @@ function DashboardAccessGuard({
   const permissionPath =
     moduleKey === "inventory"
       ? getInventoryPermissionPath(activePath)
-      : activePath;
+      : moduleKey === "collection"
+        ? getCollectionPermissionPath(activePath)
+        : activePath;
   const isRouteAllowed =
     isModuleAllowed && hasAccessToRoute(moduleKey, permissionPath);
 

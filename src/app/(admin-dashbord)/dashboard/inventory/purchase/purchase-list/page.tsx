@@ -33,8 +33,8 @@ export interface PurchaseListItem {
 const PurchaseListAccounts = () => {
   const router = useRouter();
   // Filter states
-  const [dateRange, setDateRange] = useState("1 September, 2026 - 30 September, 2026");
-  const [company, setCompany] = useState("Somikoron IT Ltd");
+  const [dateRange, setDateRange] = useState("");
+  const [company, setCompany] = useState("");
   const [supplier, setSupplier] = useState("");
   const [project, setProject] = useState("");
   const [titleOfWork, setTitleOfWork] = useState("");
@@ -114,27 +114,23 @@ const PurchaseListAccounts = () => {
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Supplier</label>
-            <select
+            <input
+              type="text"
               value={supplier}
               onChange={(e) => setSupplier(e.target.value)}
               className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="">Select an option</option>
-              <option value="Safety First Suppliers">Safety First Suppliers</option>
-              <option value="Mohin Business solution">Mohin Business solution</option>
-            </select>
+              placeholder="Supplier"
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Project</label>
-            <select
+            <input
+              type="text"
               value={project}
               onChange={(e) => setProject(e.target.value)}
               className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="">Select Project</option>
-              <option value="Sheba Eyecon Tower">Sheba Eyecon Tower</option>
-              <option value="Rifat Eyecon City">Rifat Eyecon City</option>
-            </select>
+              placeholder="Project"
+            />
           </div>
         </div>
       </div>

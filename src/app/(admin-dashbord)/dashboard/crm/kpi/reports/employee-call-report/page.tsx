@@ -30,16 +30,26 @@ interface ReportData {
 // ==========================================
 // 2. ENV SETUP
 // ==========================================
-const API_REPORT_URL = `${API_BASE}/crm/reports/employee-kpi-call-report`;
-const API_DROPDOWN_URL = `${API_REPORT_URL}/dropdowns`;
+const DEFAULT_API_REPORT_URL = `${API_BASE}/crm/reports/employee-kpi-call-report`;
+const localDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 // ==========================================
 // 3. MAIN COMPONENT
 // ==========================================
-export default function EmployeeKpiCallReportPage() {
+export default function EmployeeKpiCallReportPage({
+  apiReportUrl = DEFAULT_API_REPORT_URL,
+  mode = "all",
+}: { apiReportUrl?: string; mode?: "all" | "tasks" } = {}) {
+  const apiDropdownUrl = `${apiReportUrl}/dropdowns`;
+  const columnCount = mode === "tasks" ? 8 : 11;
   // Filters
-  const [dateFrom, setDateFrom] = useState("2026-07-01");
-  const [dateTo, setDateTo] = useState("2026-07-31");
+  const [dateFrom, setDateFrom] = useState(() => localDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
+  const [dateTo, setDateTo] = useState(() => localDate(new Date()));
   const [selectedUser, setSelectedUser] = useState("");
 
   // Data States
@@ -80,7 +90,7 @@ export default function EmployeeKpiCallReportPage() {
     const fetchDropdowns = async () => {
       setIsDropdownLoading(true);
       try {
-        const json = await safeFetch(API_DROPDOWN_URL);
+        const json = await safeFetch(apiDropdownUrl);
         if (json.success) {
           setUsers(json.data.users || []);
         }
@@ -105,11 +115,17 @@ export default function EmployeeKpiCallReportPage() {
       if (dateTo) params.append("dateTo", dateTo);
       if (selectedUser) params.append("userId", selectedUser);
 
-      const url = `${API_REPORT_URL}?${params.toString()}`;
+      const url = `${apiReportUrl}?${params.toString()}`;
       const json = await safeFetch(url);
 
       if (json.success) {
-        setReportData(json.data.data || []);
+        setReportData((json.data.data || []).map((row: ReportData & { from?: string; to?: string; callPercentage?: number; taskPercentage?: number }) => ({
+          ...row,
+          fromDate: row.fromDate || row.from || "",
+          toDate: row.toDate || row.to || "",
+          percentageCall: row.percentageCall ?? row.callPercentage ?? 0,
+          percentageTask: row.percentageTask ?? row.taskPercentage ?? 0,
+        })));
       }
     } catch (error) {
       console.error("Report Fetch Error:", error);
@@ -130,12 +146,12 @@ export default function EmployeeKpiCallReportPage() {
       <div className="text-sm text-gray-500 mb-4">
         Home &gt; Employee &gt;{" "}
         <span className="text-gray-800 font-medium">
-          Employee KPI Call Report
+          {mode === "tasks" ? "Employee Task Report" : "Employee KPI Call Report"}
         </span>
       </div>
 
       <h1 className="text-xl font-semibold text-gray-800 mb-6">
-        Employee KPI Call Report
+        {mode === "tasks" ? "Employee Task Report" : "Employee KPI Call Report"}
       </h1>
 
       {/* Filters */}
@@ -225,18 +241,16 @@ export default function EmployeeKpiCallReportPage() {
                 <th className="px-4 py-2 font-medium">FROM</th>
                 <th className="px-4 py-2 font-medium">TO</th>
                 <th className="px-4 py-2 font-medium">LEFT DAYS</th>
-                <th className="px-4 py-2 font-medium">TARGET CALL</th>
-                <th className="px-4 py-2 font-medium">ACHIEVE CALL</th>
-                <th className="px-4 py-2 font-medium">PERCENTAGE</th>
+                {mode === "all" && <><th className="px-4 py-2 font-medium">TARGET CALL</th><th className="px-4 py-2 font-medium">ACHIEVE CALL</th><th className="px-4 py-2 font-medium">CALL %</th></>}
                 <th className="px-4 py-2 font-medium">TARGET TASK</th>
                 <th className="px-4 py-2 font-medium">ACHIEVE TASK</th>
-                <th className="px-4 py-2 font-medium">PERCENTAGE</th>
+                <th className="px-4 py-2 font-medium">TASK %</th>
               </tr>
             </thead>
             <tbody>
               {isFetching ? (
                 <tr>
-                  <td colSpan={11} className="text-center py-8 text-gray-500">
+                  <td colSpan={columnCount} className="text-center py-8 text-gray-500">
                     Loading data...
                   </td>
                 </tr>
@@ -248,15 +262,13 @@ export default function EmployeeKpiCallReportPage() {
                     <td className="px-4 py-3">{item.fromDate}</td>
                     <td className="px-4 py-3">{item.toDate}</td>
                     <td className="px-4 py-3">{item.leftDays}</td>
-                    <td className="px-4 py-3">{item.targetCall}</td>
-                    <td className="px-4 py-3">{item.achieveCall}</td>
-                    <td className="px-4 py-3">
+                    {mode === "all" && <><td className="px-4 py-3">{item.targetCall}</td><td className="px-4 py-3">{item.achieveCall}</td><td className="px-4 py-3">
                       <span
                         className={`px-2 py-1 rounded text-xs font-medium text-white ${item.percentageCall > 50 ? "bg-green-500" : "bg-red-500"}`}
                       >
                         {item.percentageCall}%
                       </span>
-                    </td>
+                    </td></>}
                     <td className="px-4 py-3">{item.targetTask}</td>
                     <td className="px-4 py-3">{item.achieveTask}</td>
                     <td className="px-4 py-3">
@@ -270,13 +282,13 @@ export default function EmployeeKpiCallReportPage() {
                 ))
               ) : hasSearched ? (
                 <tr>
-                  <td colSpan={11} className="text-center py-8 text-gray-500">
+                  <td colSpan={columnCount} className="text-center py-8 text-gray-500">
                     No data available
                   </td>
                 </tr>
               ) : (
                 <tr>
-                  <td colSpan={11} className="text-center py-8 text-gray-500">
+                  <td colSpan={columnCount} className="text-center py-8 text-gray-500">
                     Please select filters and click Search
                   </td>
                 </tr>

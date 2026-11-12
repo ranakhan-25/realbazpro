@@ -12,15 +12,6 @@ interface AddDueDiligenceModalProps {
   initialData?: DueDiligenceRecord | null;
 }
 
-const DEFAULT_ITEMS: DueDiligenceItem[] = [
-  { area: "Physical Access", item: "Frontage road width > 40ft and legal access", status: "ok", note: "Road verified on site" },
-  { area: "Soil & Topography", item: "Soil bearing capacity test > 1.5 tsf", status: "ok", note: "Borehole sample taken" },
-  { area: "Demarcation", item: "Boundary demarcation pillars agreed by neighbors", status: "ok", note: "Demarcation sheet signed" },
-  { area: "Environmental", item: "Distance from wetland or water reserve", status: "ok", note: "Adequate buffer confirmed" },
-  { area: "Utility Feasibility", item: "Power line & water line proximity", status: "pending", note: "DESCO substation 100m away" },
-  { area: "Flood Plain", item: "Highest historical water level clearance", status: "issue", note: "Earth filling of 2ft needed" },
-];
-
 export function AddDueDiligenceModal({
   isOpen,
   onClose,
@@ -29,17 +20,17 @@ export function AddDueDiligenceModal({
   initialData,
 }: AddDueDiligenceModalProps) {
   const [selectedLeadId, setSelectedLeadId] = useState("");
-  const [items, setItems] = useState<DueDiligenceItem[]>(DEFAULT_ITEMS);
+  const [items, setItems] = useState<DueDiligenceItem[]>([]);
   const [reportFileName, setReportFileName] = useState("");
 
   useEffect(() => {
     if (initialData) {
       setSelectedLeadId(initialData.lead_id || initialData.lead_code || initialData.lead || "");
-      setItems(initialData.checklist_json && initialData.checklist_json.length > 0 ? initialData.checklist_json : DEFAULT_ITEMS);
+      setItems(initialData.checklist_json ?? []);
       setReportFileName(initialData.report || "");
     } else {
       setSelectedLeadId(acquisitionLeads[0]?.id || acquisitionLeads[0]?.leadCode || "");
-      setItems(DEFAULT_ITEMS);
+      setItems([]);
       setReportFileName("");
     }
   }, [initialData, acquisitionLeads, isOpen]);
@@ -54,7 +45,7 @@ export function AddDueDiligenceModal({
   const handleAddItem = () => {
     setItems([
       ...items,
-      { area: "General", item: "", status: "ok", note: "" },
+      { area: "", item: "", status: "pending", note: "" },
     ]);
   };
 
@@ -78,8 +69,8 @@ export function AddDueDiligenceModal({
     const statusVal = score >= 80 ? "completed" : score >= 50 ? "ok" : "issues_found";
 
     onSave({
-      id: initialData?.id || `DD-${Date.now()}`,
-      uuid: initialData?.uuid || `DD-${Date.now()}`,
+      id: initialData?.id ?? "",
+      uuid: initialData?.uuid ?? "",
       lead: leadCode,
       lead_code: leadCode,
       lead_id: lead?.id || selectedLeadId,
@@ -87,7 +78,7 @@ export function AddDueDiligenceModal({
       completed_count: okCount,
       score,
       status: statusVal,
-      report: reportFileName || "due_diligence_report.pdf",
+      report: reportFileName || undefined,
       checklist_json: items,
       created_at: new Date().toISOString().split("T")[0],
     });

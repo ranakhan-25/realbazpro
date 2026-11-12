@@ -3,7 +3,8 @@
 import type { SubCategory } from "@/app/(admin-dashbord)/dashboard/inventory/products/sub-categories/page";
 import React, { useState, useEffect, useMemo } from "react";
 import { FiEdit, FiTrash2, FiSearch } from "react-icons/fi";
-import { API_BASE, categoriesApi, subCategoriesApi, fallbackSubCategories, fallbackCategories } from "@/lib/inventoryApi";
+import { API_BASE, categoriesApi, subCategoriesApi } from "@/lib/inventoryApi";
+import { toast } from "sonner";
 
 interface SubCategoryListProps {
   apiEndpoint?: string;
@@ -34,13 +35,12 @@ export default function SubCategoryList({
   useEffect(() => {
     async function loadFilterCategories() {
       try {
-        let raw = await categoriesApi.getAll().catch(() => null);
-        if (!Array.isArray(raw) || raw.length === 0) {
-          raw = fallbackCategories;
-        }
-        setCategoriesList(raw.map((c: any) => ({ id: c.id, name: c.name })));
+        const raw = await categoriesApi.getAll();
+        setCategoriesList((Array.isArray(raw) ? raw : []).map((c: any) => ({ id: c.id, name: c.name })));
       } catch (err) {
-        setCategoriesList(fallbackCategories.map((c: any) => ({ id: c.id, name: c.name })));
+        console.error("Could not load inventory categories.", err);
+        toast.error("Categories could not be loaded.");
+        setCategoriesList([]);
       }
     }
     loadFilterCategories();
@@ -51,13 +51,10 @@ export default function SubCategoryList({
     async function fetchSubCategories() {
       try {
         setLoading(true);
-        let raw = await subCategoriesApi.getAll().catch(() => null);
-        if (!Array.isArray(raw) || raw.length === 0) {
-          raw = fallbackSubCategories;
-        }
-        const list = raw.map((item: any) => ({
+        const raw = await subCategoriesApi.getAll();
+        const list = (Array.isArray(raw) ? raw : []).map((item: any) => ({
           id: item.id,
-          category: item.category?.name || item.category_name || item.category || "Category",
+          category: item.category?.name || item.category_name || item.category || "Not found",
           category_id: item.category_id,
           code: item.sub_category_code || item.code || "",
           name: item.name || "",
@@ -65,15 +62,8 @@ export default function SubCategoryList({
         setSubCategories(list);
       } catch (error) {
         console.error("Error fetching sub-categories:", error);
-        setSubCategories(
-          fallbackSubCategories.map((item: any) => ({
-            id: item.id,
-            category: item.category || "Category",
-            category_id: item.category_id,
-            code: item.code || "",
-            name: item.name || "",
-          }))
-        );
+        toast.error("Sub-categories could not be loaded.");
+        setSubCategories([]);
       } finally {
         setLoading(false);
       }

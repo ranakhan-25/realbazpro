@@ -4,7 +4,7 @@ import type { StockItem } from "@/components/inventory/StockReportTable";
 import StockReportTable from "@/components/inventory/StockReportTable";
 import React, { useState, useEffect, useMemo } from "react";
 import { FiSearch } from "react-icons/fi";
-import { reportsApi, categoriesApi, brandsApi, fallbackStockReport } from "@/lib/inventoryApi";
+import { reportsApi, categoriesApi, brandsApi } from "@/lib/inventoryApi";
 
 
 export default function StockReportContainer() {
@@ -25,26 +25,29 @@ export default function StockReportContainer() {
           brandsApi.getAll(),
         ]);
 
-        let raw = fallbackStockReport;
+        let raw: any[] = [];
         if (reportRes.status === "fulfilled") {
           const res = reportRes.value;
           const apiRaw = res?.data || res;
-          if (Array.isArray(apiRaw) && apiRaw.length > 0) {
+          if (Array.isArray(apiRaw)) {
             raw = apiRaw;
           }
         }
 
         const list = raw.map((r: any, idx: number) => ({
           id: r.item_id || idx + 1,
-          name: r.item_name || r.name || "Item",
-          opening: Number(r.opening || 0),
-          in: Number(r.total_purchased || r.in || 0),
-          out: Number(r.total_issued || r.out || 0),
-          unit: r.unit || "Pcs",
-          closing: Number(r.current_stock || r.closing || 0),
-          closingAmount: Number(r.closingAmount || 0),
-          category: r.category || "General",
-          brand: r.brand || "Standard",
+          name: r.item_name || r.name || "Not found",
+          opening: Number(r.opening ?? 0),
+          in: Number(r.total_purchased ?? r.in ?? 0),
+          out: Number(r.total_issued ?? r.out ?? 0),
+          unit: r.unit || "Not found",
+          closing: Number(r.current_stock ?? r.closing ?? 0),
+          closingAmount: Number(r.closing_amount ?? r.closingAmount ?? 0),
+          category: r.category || "Not found",
+          brand: r.brand || "Not found",
+          company: r.company?.name || r.company_name || r.company || "Not found",
+          project: r.project?.name || r.project_name || r.project || "Not found",
+          site: r.site?.name || r.site_name || r.site || "Not found",
         }));
         setStocks(list);
 
@@ -64,7 +67,7 @@ export default function StockReportContainer() {
 
   // Filter states
   const [selectedDateRange, setSelectedDateRange] = useState(
-    "1 September, 2026 - 30 September, 2026",
+    "",
   );
   const [selectedCompany, setSelectedCompany] = useState("");
   const [selectedProject, setSelectedProject] = useState("");
@@ -75,14 +78,12 @@ export default function StockReportContainer() {
 
   const availableCategories = useMemo(() => {
     const fromStocks = stocks.map((s) => s.category).filter(Boolean);
-    const defaults = ["Raw Construction Materials", "Deformed Rebar & Steels", "Cement & Aggregates", "Electrical & Conduits", "Plumbing & Sanitary"];
-    return Array.from(new Set([...categoryOptions, ...fromStocks, ...defaults]));
+    return Array.from(new Set([...categoryOptions, ...fromStocks]));
   }, [categoryOptions, stocks]);
 
   const availableBrands = useMemo(() => {
     const fromStocks = stocks.map((s) => s.brand).filter(Boolean);
-    const defaults = ["BSRM Steels", "Seven Rings Cement", "Bashundhara Cement", "BRB Cable Industries", "RFL Plastics & Pipes"];
-    return Array.from(new Set([...brandOptions, ...fromStocks, ...defaults]));
+    return Array.from(new Set([...brandOptions, ...fromStocks]));
   }, [brandOptions, stocks]);
 
   // Filtering Logic
@@ -97,10 +98,34 @@ export default function StockReportContainer() {
         ? item.category === selectedCategory
         : true;
       const matchesBrand = selectedBrand ? item.brand === selectedBrand : true;
+      const matchesCompany = selectedCompany
+        ? item.company?.toLowerCase().includes(selectedCompany.toLowerCase())
+        : true;
+      const matchesProject = selectedProject
+        ? item.project?.toLowerCase().includes(selectedProject.toLowerCase())
+        : true;
+      const matchesSite = selectedSite
+        ? item.site?.toLowerCase().includes(selectedSite.toLowerCase())
+        : true;
 
-      return matchesSearch && matchesCategory && matchesBrand;
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesBrand &&
+        matchesCompany &&
+        matchesProject &&
+        matchesSite
+      );
     });
-  }, [stocks, searchQuery, selectedCategory, selectedBrand]);
+  }, [
+    stocks,
+    searchQuery,
+    selectedCategory,
+    selectedBrand,
+    selectedCompany,
+    selectedProject,
+    selectedSite,
+  ]);
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredStocks.length / entriesPerPage) || 1;
@@ -160,64 +185,37 @@ export default function StockReportContainer() {
         {/* Company */}
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground block">Company</label>
-          <select
+          <input
+            type="text"
             value={selectedCompany}
             onChange={(e) => setSelectedCompany(e.target.value)}
             className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs focus:outline-none"
-          >
-            <option value="">All Companies</option>
-            <option value="RealBiz Ltd">RealBiz Ltd</option>
-            <option value="RealBiz Holdings Ltd">RealBiz Holdings Ltd</option>
-            <option value="Apex Construction">Apex Construction</option>
-          </select>
+            placeholder="Company"
+          />
         </div>
 
         {/* Project */}
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground block">Project</label>
-          <select
+          <input
+            type="text"
             value={selectedProject}
             onChange={(e) => setSelectedProject(e.target.value)}
             className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs focus:outline-none"
-          >
-            <option value="">All Projects</option>
-            <option value="PRJ-1001">Hena Heights (PRJ-1001)</option>
-            <option value="PRJ-1002">Rifat Eyecon City (PRJ-1002)</option>
-            <option value="PRJ-1003">Green Valley Residency (PRJ-1003)</option>
-            <option value="PRJ-1004">Metro Sky Tower (PRJ-1004)</option>
-          </select>
-        </div>
-
-        {/* If Task */}
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground block">Task</label>
-          <select
-            value={selectedTask}
-            onChange={(e) => setSelectedTask(e.target.value)}
-            className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs focus:outline-none"
-          >
-            <option value="">All Tasks</option>
-            <option value="Substructure & Foundation">Substructure & Foundation</option>
-            <option value="RCC Casting (Beam & Column)">RCC Casting (Beam & Column)</option>
-            <option value="Brickwork & Masonry">Brickwork & Masonry</option>
-            <option value="Sanitary & Electrical Fitting">Sanitary & Electrical Fitting</option>
-          </select>
+            placeholder="Project"
+          />
         </div>
 
         {/* Site */}
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground block">Site</label>
-          <select
+          <input
+            type="text"
             value={selectedSite}
             onChange={(e) => setSelectedSite(e.target.value)}
             className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs focus:outline-none"
-          >
-            <option value="">All Sites</option>
-            <option value="Site A - Tower 1">Site A - Tower 1</option>
-            <option value="Site B - Commercial Block">Site B - Commercial Block</option>
-            <option value="Main Central Warehouse">Main Central Warehouse</option>
-            <option value="Site Store - Level 2">Site Store - Level 2</option>
-          </select>
+            placeholder="Site"
+          />
         </div>
 
         {/* Category */}

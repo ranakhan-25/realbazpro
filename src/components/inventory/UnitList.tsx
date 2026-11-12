@@ -3,7 +3,8 @@
 import type { Unit } from "@/app/(admin-dashbord)/dashboard/inventory/products/units/page";
 import React, { useState, useEffect, useMemo } from "react";
 import { FiEdit, FiTrash2, FiSearch } from "react-icons/fi";
-import { API_BASE, unitsApi, fallbackUnits } from "@/lib/inventoryApi";
+import { API_BASE, unitsApi } from "@/lib/inventoryApi";
+import { toast } from "sonner";
 
 interface UnitListProps {
   apiEndpoint?: string;
@@ -32,11 +33,8 @@ export default function UnitList({
     async function fetchUnits() {
       try {
         setLoading(true);
-        let raw = await unitsApi.getAll().catch(() => null);
-        if (!Array.isArray(raw) || raw.length === 0) {
-          raw = fallbackUnits;
-        }
-        const list = raw.map((u: any) => ({
+        const raw = await unitsApi.getAll();
+        const list = (Array.isArray(raw) ? raw : []).map((u: any) => ({
           id: u.id,
           code: u.code || "",
           name: u.name || "",
@@ -46,15 +44,8 @@ export default function UnitList({
         setUnits(list);
       } catch (error) {
         console.error("Error fetching units:", error);
-        setUnits(
-          fallbackUnits.map((u: any) => ({
-            id: u.id,
-            code: u.code || "",
-            name: u.name || "",
-            conversionUnit: u.conversionUnit || "",
-            rate: u.rate || "",
-          }))
-        );
+        toast.error("Units could not be loaded.");
+        setUnits([]);
       } finally {
         setLoading(false);
       }

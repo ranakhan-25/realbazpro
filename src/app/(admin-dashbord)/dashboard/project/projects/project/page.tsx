@@ -502,7 +502,7 @@ export default function ProjectPage() {
                     <td className="px-4 py-3">{p.code}</td>
                  <td className="px-4 py-3 text-blue-600 font-medium">
   <Link
-    href={`/dashboard/project/projects/project/project-details/${p.uuid}`}
+    href={`/dashboard/project/dashboard/${encodeURIComponent(p.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `project-${p.uuid.slice(0, 8)}`)}?uuid=${encodeURIComponent(p.uuid)}`}
     className="hover:underline"
   >
     {p.name}

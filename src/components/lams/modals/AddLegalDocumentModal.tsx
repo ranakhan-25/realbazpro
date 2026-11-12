@@ -40,20 +40,24 @@ export function AddLegalDocumentModal({
   acquisitionLeads,
 }: AddLegalDocumentModalProps) {
   const [acquisitionLeadId, setAcquisitionLeadId] = useState(acquisitionLeads[0]?.uuid || "");
-  const [documentType, setDocumentType] = useState(DOC_TYPES[0]);
+  const [documentType, setDocumentType] = useState("");
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>("Pending");
-  const [documentFileName, setDocumentFileName] = useState("deed_scan_copy.pdf");
-  const [verifiedBy, setVerifiedBy] = useState("Adv. K. M. Saifuddin");
+  const [documentFileName, setDocumentFileName] = useState("");
+  const [verifiedBy, setVerifiedBy] = useState("");
   const [remarks, setRemarks] = useState("");
 
   useEffect(() => {
     if (isOpen && editData) {
       setAcquisitionLeadId(editData.acquisitionLeadId || editData.lead_id || "");
-      setDocumentType(editData.documentType || editData.document_type || "Deed");
+      setDocumentType(editData.documentType || editData.document_type || "");
       setDocumentFileName(editData.documentFileName || editData.document_number || "");
+      setVerifiedBy(editData.verifiedBy || editData.verified_by || "");
       setVerificationStatus(editData.verificationStatus || editData.verification_status || "Pending");
       setRemarks(editData.remarks || editData.vetting_remarks || "");
     } else if (isOpen && !editData) {
+      setDocumentType("");
+      setDocumentFileName("");
+      setVerifiedBy("");
       const defaultId = acquisitionLeads[0]?.uuid || acquisitionLeads[0]?.id || "";
       if (!acquisitionLeadId || !acquisitionLeads.some((l) => (l.uuid || l.id) === acquisitionLeadId)) {
         setAcquisitionLeadId(defaultId);
@@ -72,18 +76,17 @@ export function AddLegalDocumentModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const effectiveLeadId = acquisitionLeadId || acquisitionLeads[0]?.uuid || acquisitionLeads[0]?.id || "";
-    const lead = acquisitionLeads.find((l) => (l.uuid || l.id) === effectiveLeadId) || acquisitionLeads[0];
+    const lead = acquisitionLeads.find((l) => (l.uuid || l.id) === effectiveLeadId);
+    if (!effectiveLeadId || !lead || !documentType || !documentFileName) return;
 
     const newDoc: LegalDocument = {
-      id: `DOC-${Date.now()}`,
-      uuid: `DOC-${Date.now()}`,
+      id: "",
       acquisitionLeadId: effectiveLeadId,
-      leadTitle: lead ? lead.title : "Acquisition Parcel",
+      leadTitle: lead.title,
       documentType,
       verificationStatus,
-      documentFileName: documentFileName || "legal_document.pdf",
-      fileSize: "3.5 MB",
-      verifiedBy,
+      documentFileName,
+      verifiedBy: verifiedBy || undefined,
       verificationDate: verificationStatus === "Verified" ? new Date().toISOString().split("T")[0] : undefined,
       remarks,
     };
@@ -153,8 +156,10 @@ export function AddLegalDocumentModal({
             <select
               value={documentType}
               onChange={(e) => setDocumentType(e.target.value)}
+              required
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
             >
+              <option value="">Select document type</option>
               {DOC_TYPES.map((d) => (
                 <option key={d} value={d}>{d}</option>
               ))}

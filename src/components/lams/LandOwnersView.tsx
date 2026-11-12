@@ -28,6 +28,7 @@ import { LamsEmptyState } from "./common/LamsEmptyState";
 interface LandOwnersViewProps {
   owners: LandOwner[];
   acquisitionLeads?: AcquisitionLead[];
+  initialOpenCreate?: boolean;
   onAddOwner?: (owner: any) => void;
   onEditOwner?: (uuid: string, data: any) => void;
   onDeleteOwner?: (uuid: string) => void;
@@ -45,6 +46,7 @@ const DEFAULT_COLUMNS: ColumnDefinition[] = [
 export function LandOwnersView({
   owners = [],
   acquisitionLeads = [],
+  initialOpenCreate = false,
   onAddOwner,
   onEditOwner,
   onDeleteOwner,
@@ -56,7 +58,13 @@ export function LandOwnersView({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Modals
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(Boolean(initialOpenCreate));
+
+  React.useEffect(() => {
+    if (initialOpenCreate) {
+      setIsFormModalOpen(true);
+    }
+  }, [initialOpenCreate]);
   const [editingOwner, setEditingOwner] = useState<any>(null);
   const [selectedOwner, setSelectedOwner] = useState<any>(null);
   const [nidError, setNidError] = useState("");
@@ -317,8 +325,8 @@ export function LandOwnersView({
         {displayedOwners.length === 0 ? (
           <LamsEmptyState
             title="No landowners found"
-            subtitle="Add a landowner profile or clear filters to view registered landowners."
-            buttonText="Add Landowner Profile"
+            description="Add a landowner profile or clear filters to view registered landowners."
+            actionLabel="Add Landowner Profile"
             onAction={() => openForm()}
             icon={Users}
           />
@@ -417,14 +425,14 @@ export function LandOwnersView({
                       {/* Email */}
                       {isColVisible("email") && (
                         <td className="py-3 px-3.5 text-slate-500 dark:text-slate-400">
-                          {owner.email || "N/A"}
+                          {owner.email || "Not found"}
                         </td>
                       )}
 
                       {/* Address */}
                       {isColVisible("address") && (
                         <td className="py-3 px-3.5 text-slate-500 dark:text-slate-400 truncate max-w-[160px]">
-                          {owner.address || "N/A"}
+                          {owner.address || "Not found"}
                         </td>
                       )}
 
@@ -738,7 +746,7 @@ export function LandOwnersView({
                 </div>
                 <div>
                   <p className="text-slate-400 font-bold uppercase text-[10px]">Father's / Spouse</p>
-                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.father_name || "N/A"}</p>
+                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.father_name || "Not found"}</p>
                 </div>
                 <div>
                   <p className="text-slate-400 font-bold uppercase text-[10px]">NID Number</p>
@@ -750,11 +758,11 @@ export function LandOwnersView({
                 </div>
                 <div className="col-span-2">
                   <p className="text-slate-400 font-bold uppercase text-[10px]">Email</p>
-                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.email || "N/A"}</p>
+                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.email || "Not found"}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-slate-400 font-bold uppercase text-[10px]">Address</p>
-                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.address || "N/A"}</p>
+                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.address || "Not found"}</p>
                 </div>
               </div>
 

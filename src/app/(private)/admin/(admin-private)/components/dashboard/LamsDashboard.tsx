@@ -47,10 +47,16 @@ const PATH_TO_TAB: Record<string, LamsTab> = {
 };
 
 const TAB_TO_PATH: Record<LamsTab, string> = {
-  owners: "land-owners",
   leads: "acquisition-leads",
+  owners: "land-owners",
+  valuations: "valuations",
+  legal: "legal-verification",
+  duediligence: "due-diligence",
   negotiation: "negotiation-process",
+  approvals: "approvals",
+  settlements: "settlements",
   documents: "legal-documents",
+  reports: "reports",
   followup: "follow-up",
 };
 
