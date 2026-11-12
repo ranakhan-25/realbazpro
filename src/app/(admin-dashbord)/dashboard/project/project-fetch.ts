@@ -38,6 +38,19 @@ export function normalizeProjectText(value: unknown): string {
   return result;
 }
 
+/** Normalize the API's common paginated and direct-array response envelopes. */
+export function projectApiList<T = unknown>(payload: unknown): T[] {
+  let value: unknown = payload;
+  for (let depth = 0; depth < 5; depth += 1) {
+    if (Array.isArray(value)) return value as T[];
+    if (!value || typeof value !== "object") return [];
+    const record = value as Record<string, unknown>;
+    if (Array.isArray(record.data)) return record.data as T[];
+    value = record.data;
+  }
+  return [];
+}
+
 export async function projectFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
   if (typeof window === "undefined") return fetch(input, init);
   const inputUrl = input instanceof Request ? input.url : input instanceof URL ? input.href : input;

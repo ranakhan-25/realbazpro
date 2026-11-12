@@ -49,6 +49,8 @@ export default function SaleOfferPage() {
     site: "",
     flatLandId: "",
     customerName: "",
+    collectionOfficer: "",
+    attachment: "",
     salesBy: "",
     rate: 0,
     otherCost: 0,
@@ -73,9 +75,14 @@ export default function SaleOfferPage() {
       }
 
       // ২. প্রজেক্ট
-      const resProj = await projectFetch(`${API_PATH}/project`, { headers });
-      const jsonProj = await resProj.json();
-      if (jsonProj.success) setProjects(jsonProj.data?.data || jsonProj.data || []);
+      const resDropdowns = await projectFetch(`${API_PATH}/flat-land-offers/dropdowns`, { headers });
+      const jsonDropdowns = await resDropdowns.json();
+      if (!resDropdowns.ok) throw new Error(jsonDropdowns.message || "Failed to load offer dropdowns");
+      const dropdowns = jsonDropdowns.data || jsonDropdowns;
+      setProjects(Array.isArray(dropdowns.projects) ? dropdowns.projects : []);
+      setFlats(Array.isArray(dropdowns.properties) ? dropdowns.properties : []);
+      setTeams(Array.isArray(dropdowns.teams) ? dropdowns.teams : []);
+      setSalesUsers(Array.isArray(dropdowns.salesPeople) ? dropdowns.salesPeople : []);
 
       // ৩. প্রজেক্ট টাইপ
       const resType = await projectFetch(`${API_PATH}/project-type`, { headers });

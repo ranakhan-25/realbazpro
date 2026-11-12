@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+import { projectApiList, projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
 
 
 import React, { useState, useEffect } from "react";
@@ -10,7 +10,7 @@ import { useParams } from "next/navigation";
 import { Loader2, X, Plus, Search, Edit3 } from "lucide-react";
 import toast from "react-hot-toast";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
 
 // ====================== TYPES ======================
 export interface FlatLand {
@@ -69,11 +69,11 @@ export default function FlatLandPage() {
   const fetchFlatLands = async () => {
     try {
       setLoading(true);
-      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/flat-land?page=1&limit=100`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/flat-land?page=1&limit=100&projectId=${encodeURIComponent(String(uuid))}`);
       const json = await res.json();
       if (json.success) {
         // ✅ deletedAt ফিল্টার
-        setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
+        setDataList(projectApiList<FlatLand>(json).filter((item: any) => !item.deletedAt && item.projectId === uuid));
       }
     } catch (err) {
       toast.error("Failed to load flat/land data");
@@ -84,9 +84,9 @@ export default function FlatLandPage() {
 
   const fetchSites = async () => {
     try {
-      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/project-sites`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/project-sites?page=1&limit=100&projectId=${encodeURIComponent(String(uuid))}`);
       const json = await res.json();
-      if (json.success) setSites(json.data.data || []);
+      if (res.ok) setSites(projectApiList<ProjectSite>(json).filter((site: any) => site.projectId === uuid || site.project?.uuid === uuid));
     } catch (err) {
       console.error(err);
     }
@@ -94,9 +94,12 @@ export default function FlatLandPage() {
 
   const fetchProjects = async () => {
     try {
-      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/project`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/project/${encodeURIComponent(String(uuid))}`);
       const json = await res.json();
-      if (json.success) setProjects(json.data.data || []);
+      if (res.ok) {
+        const project = json?.data?.data ?? json?.data ?? json;
+        setProjects(project ? [project] : []);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -106,7 +109,7 @@ export default function FlatLandPage() {
     fetchFlatLands();
     fetchSites();
     fetchProjects();
-  }, []);
+  }, [uuid]);
 
   // ====================== SUBMIT (POST / PUT) ======================
   const handleSubmit = async (formData: any) => {
