@@ -554,14 +554,13 @@ export function AcquisitionLeadsView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {displayedLeads.map((lead: any) => {
-                  const leadId = lead.uuid || lead.id;
+                {displayedLeads.map((lead: any, idx: number) => {
+                  const leadId = lead.uuid || lead.id || `lead-${idx}`;
                   const isSelected = selectedIds.includes(leadId);
-                  const statusKey = lead.status || lead.leadStage || "Draft";
-                  const code = lead.code || lead.leadCode || lead.lead_code || lead.title || "LEAD";
-                  const area = lead.area_katha || lead.landArea || 0;
-                  const asking = lead.asking_price || lead.expectedPrice || 0;
-
+                  const statusKey = lead.lead_status || lead.status || lead.leadStage || "Draft";
+                  const code = lead.lead_code || lead.leadCode || lead.code || lead.title || `AL-${idx + 1}`;
+                  const area = lead.area_katha || lead.areaKatha || lead.landArea || 0;
+                  const asking = lead.asking_price || lead.askingPrice || lead.expectedPrice || 0;
                   return (
                     <tr
                       key={leadId}

@@ -22,6 +22,7 @@ export const mockAcquisitionLeads: AcquisitionLead[] = [];
 export const mockLandValuations: LandValuation[] = [];
 export const mockLegalVerifications: LegalVerification[] = [];
 export const mockDueDiligence: DueDiligenceRecord[] = [];
+export const mockDueDiligences: DueDiligenceRecord[] = mockDueDiligence;
 export const mockNegotiations: NegotiationRecord[] = [];
 export const mockAcquisitionApprovals: AcquisitionApproval[] = [];
 export const mockSettlements: SettlementRecord[] = [];

@@ -67,6 +67,7 @@ export function LandOwnersView({
   }, [initialOpenCreate]);
   const [editingOwner, setEditingOwner] = useState<any>(null);
   const [selectedOwner, setSelectedOwner] = useState<any>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [nidError, setNidError] = useState("");
 
   // Form State
@@ -358,48 +359,51 @@ export function LandOwnersView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {displayedOwners.map((owner: any) => {
-                  const ownerId = owner.uuid || owner.id;
+                {displayedOwners.map((owner: any, idx: number) => {
+                  const ownerId = owner.uuid || owner.id || `owner-${idx}`;
+                  const isExpanded = expandedId === ownerId;
                   const isSelected = selectedIds.includes(ownerId);
-                  const landsCount = acquisitionLeads.filter(
-                    (lead: any) =>
-                      lead.owner_id === ownerId ||
-                      lead.owner_name === owner.name ||
-                      lead.owner === owner.name
-                  ).length;
-
+                  const landsCount = Array.isArray(owner.lands)
+                    ? owner.lands.length
+                    : (owner.lands_count || acquisitionLeads.filter(
+                        (lead: any) =>
+                          lead.owner_id === ownerId ||
+                          lead.owner_name === owner.name ||
+                          lead.owner === owner.name
+                      ).length);
                   return (
-                    <tr
-                      key={ownerId}
-                      className={`transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${
-                        isSelected ? "bg-cyan-50/40 dark:bg-cyan-950/20" : ""
-                      }`}
-                    >
-                      <td className="py-3 px-3.5 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleSelectOne(ownerId)}
-                          className="rounded border-slate-300 dark:border-slate-600 text-cyan-600 focus:ring-cyan-500"
-                        />
-                      </td>
-
-                      {/* Name */}
-                      {isColVisible("name") && (
-                        <td className="py-3 px-3.5 font-bold text-slate-900 dark:text-white">
-                          <button
-                            onClick={() => setSelectedOwner(owner)}
-                            className="hover:underline text-cyan-700 dark:text-cyan-400"
-                          >
-                            {owner.name}
-                          </button>
-                          {owner.father_name && (
-                            <span className="text-[10px] text-slate-400 block font-normal">
-                              C/O {owner.father_name}
-                            </span>
-                          )}
+                    <React.Fragment key={ownerId}>
+                      <tr
+                        className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
+                          isExpanded ? "bg-cyan-50/40 dark:bg-cyan-950/20" : ""
+                        }`}
+                      >
+                        {/* Selection Checkbox */}
+                        <td className="py-3 px-3.5 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleSelectOne(ownerId)}
+                            className="rounded border-slate-300 dark:border-slate-600 text-cyan-600 focus:ring-cyan-500"
+                          />
                         </td>
-                      )}
+
+                        {/* Landowner Name */}
+                        {isColVisible("name") && (
+                          <td className="py-3 px-3.5">
+                            <button
+                              onClick={() => setSelectedOwner(owner)}
+                              className="font-semibold text-slate-800 dark:text-slate-100 hover:underline text-left block"
+                            >
+                              {owner.name}
+                            </button>
+                            {owner.father_name && (
+                              <span className="text-[10px] text-slate-400 block font-normal">
+                                C/O {owner.father_name}
+                              </span>
+                            )}
+                          </td>
+                        )}
 
                       {/* NID */}
                       {isColVisible("nid") && (
@@ -478,7 +482,8 @@ export function LandOwnersView({
                         </div>
                       </td>
                     </tr>
-                  );
+                  </React.Fragment>
+                );
                 })}
               </tbody>
             </table>
@@ -689,9 +694,10 @@ export function LandOwnersView({
                           <button
                             type="button"
                             onClick={() => removeNomineeField(index)}
-                            className="text-rose-500 hover:text-rose-700 p-1"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
+                            title="Remove Nominee"
                           >
-                            <X className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>

@@ -34,6 +34,32 @@ interface NegotiationProcessViewProps {
   initialOpenCreate?: boolean;
 }
 
+const STATUS_CONFIG: Record<
+  NegotiationStatus,
+  { bg: string; text: string; icon: React.ElementType }
+> = {
+  "In Progress": {
+    bg: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+    text: "text-blue-700",
+    icon: Clock,
+  },
+  Agreed: {
+    bg: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+    text: "text-emerald-700",
+    icon: CheckCircle2,
+  },
+  "Revision Needed": {
+    bg: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+    text: "text-amber-700",
+    icon: AlertTriangle,
+  },
+  Declined: {
+    bg: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
+    text: "text-rose-700",
+    icon: XCircle,
+  },
+};
+
 const DEFAULT_COLUMNS: ColumnDefinition[] = [
   { key: "lead", label: "Lead / Parcel", visible: true },
   { key: "round_no", label: "Round #", visible: true },
@@ -432,15 +458,17 @@ export function NegotiationProcessView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {displayedNegotiations.map((item: any) => {
-                  const itemId = item.uuid || item.id;
-                  const isSelected = selectedIds.includes(itemId);
+                {displayedNegotiations.map((item: any, idx: number) => {
+                  const itemId = item.uuid || item.id || `neg-${idx}`;
                   const isExpanded = expandedId === itemId;
+                  const isSelected = selectedIds.includes(itemId);
+                  const statusInfo = STATUS_CONFIG[item.negotiationStatus as NegotiationStatus] || { bg: "bg-slate-100 text-slate-800", text: "text-slate-700", icon: AlertTriangle };
+                  const StatusIcon = statusInfo.icon;
+                  const roundNo = item.roundNo || item.round_no || idx + 1;
                   const offered = item.offeredTotalPrice || item.offer_amount || 0;
                   const counter = item.counterOfferByOwner || item.counter_amount || 0;
-                  const gap = counter - offered;
+                  const gap = item.gap !== undefined ? item.gap : (counter - offered);
                   const statusKey = item.negotiationStatus || item.status || "In Progress";
-                  const roundNo = item.round_no || 1;
 
                   return (
                     <React.Fragment key={itemId}>
@@ -558,6 +586,7 @@ export function NegotiationProcessView({
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               onClick={() => {
+                                onEditNegotiation?.(itemId, item);
                                 setEditingNegotiation(item);
                                 setIsAddModalOpen(true);
                               }}

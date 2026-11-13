@@ -373,9 +373,9 @@ export async function deleteLegalVerification(uuid: string) {
 // ----------------------------------------------------------------------
 export async function getDueDiligenceRecords() {
   try {
-    const res = await fetch(`${API_BASE_URL}/lams/due-diligence`, {
+    const res = await fetch(`${API_BASE_URL}/lams/due-diligences`, {
       cache: "no-store",
-      next: { tags: ["lams-due-diligence"] },
+      next: { tags: ["lams-due-diligences"] },
     });
     if (!res.ok) return [];
     const json = await res.json();
@@ -388,7 +388,7 @@ export async function getDueDiligenceRecords() {
 
 export async function createDueDiligence(data: any) {
   try {
-    const res = await fetch(`${API_BASE_URL}/lams/due-diligence`, {
+    const res = await fetch(`${API_BASE_URL}/lams/due-diligences`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -404,7 +404,7 @@ export async function createDueDiligence(data: any) {
 
 export async function updateDueDiligence(uuid: string, data: any) {
   try {
-    const res = await fetch(`${API_BASE_URL}/lams/due-diligence/${uuid}`, {
+    const res = await fetch(`${API_BASE_URL}/lams/due-diligences/${uuid}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -420,7 +420,7 @@ export async function updateDueDiligence(uuid: string, data: any) {
 
 export async function deleteDueDiligence(uuid: string) {
   try {
-    await fetch(`${API_BASE_URL}/lams/due-diligence/${uuid}`, {
+    await fetch(`${API_BASE_URL}/lams/due-diligences/${uuid}`, {
       method: "DELETE",
     });
     revalidatePath("/dashboard/lams");
