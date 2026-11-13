@@ -1,6 +1,26 @@
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5002/realbizpro/api/v1";
 
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const local =
+      window.localStorage.getItem("admin_access_token") ||
+      window.localStorage.getItem("access_token") ||
+      window.localStorage.getItem("token");
+    if (local) return local;
+  } catch {}
+
+  try {
+    if (typeof document !== "undefined" && document.cookie) {
+      const match = document.cookie.match(/(?:^|;\s*)(?:admin_access_token|access_token|token)=([^;]+)/);
+      if (match) return decodeURIComponent(match[1]);
+    }
+  } catch {}
+
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Fallback Mock Datasets (Ensures frontend never displays blank dropdowns/tables)
 // ---------------------------------------------------------------------------
@@ -937,12 +957,14 @@ async function apiFetch<T>(
     internalProxyEndpoints.some((p) => endpoint.startsWith(p));
   const url = useInternalProxy ? `/api${endpoint}` : `${API_BASE}${endpoint}`;
   const method = (options.method || "GET").toUpperCase();
+  const token = getAuthToken();
 
   try {
     const res = await fetch(url, {
       cache: "no-store",
       headers: {
         "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(options.headers || {}),
       },
       ...options,

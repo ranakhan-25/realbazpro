@@ -140,61 +140,73 @@ export type ValuationMethod = "comparative" | "income" | "cost" | "residual";
 export interface LandValuation {
   id: string;
   uuid?: string;
-  lead_code: string;
+  lead_code?: string;
   lead_id?: string;
-  valuer: string;
+  valuer?: string;
+  valuer_id?: string;
   market_rate: number;
   govt_rate?: number;
   total_value: number;
-  method: ValuationMethod;
+  method: ValuationMethod | string;
   report?: string;
-  valued_at: string;
+  report_url?: string;
+  valued_at?: string;
   notes?: string;
-  status: "Draft" | "Pending" | "Verified" | "Approved";
+  status?: "Draft" | "Pending" | "Verified" | "Approved" | string;
+  org_id?: string;
+  createdAt?: string;
 }
 
 export interface LegalChecklistFinding {
   checklist_item: string;
-  result: "pass" | "fail" | "conditional";
+  result: "pass" | "fail" | "conditional" | string;
   note: string;
 }
 
 export interface LegalVerification {
   id: string;
   uuid?: string;
-  lead_code: string;
+  lead_code?: string;
   lead_id?: string;
-  lawyer: string;
+  lawyer?: string;
+  lawyer_name?: string;
   title_clear: boolean;
   mutation_ok: boolean;
   tax_clear: boolean;
-  findings_json?: LegalChecklistFinding[];
+  findings_json?: LegalChecklistFinding[] | any;
   report?: string;
+  report_url?: string;
   opinion?: string;
-  status: "pending" | "cleared" | "flagged";
-  verified_at: string;
+  status: "pending" | "cleared" | "flagged" | string;
+  verified_at?: string;
+  org_id?: string;
+  createdAt?: string;
 }
 
 export interface DueDiligenceItem {
   area: string;
   item: string;
-  status: "pending" | "ok" | "issue";
+  status: "pending" | "ok" | "issue" | string;
   note: string;
 }
 
 export interface DueDiligenceRecord {
   id: string;
   uuid?: string;
-  lead: string;
+  lead?: string;
   lead_code?: string;
   lead_id?: string;
-  checklist_items_count: number;
-  completed_count: number;
-  score: number; // 0-100
-  status: "pending" | "ok" | "issue" | "completed";
+  surveyor_name?: string;
+  checklist_items_count?: number;
+  completed_count?: number;
+  score?: number; // 0-100
+  status: "pending" | "ok" | "issue" | "completed" | string;
   report?: string;
-  checklist_json?: DueDiligenceItem[];
+  report_url?: string;
+  checklist_json?: DueDiligenceItem[] | any;
   created_at?: string;
+  org_id?: string;
+  createdAt?: string;
 }
 
 export interface NegotiationRecord {
@@ -222,21 +234,25 @@ export interface NegotiationRecord {
   final_amount?: number;
   negotiator?: string;
   date?: string;
-  status?: "ongoing" | "agreed" | "failed";
+  status?: "ongoing" | "agreed" | "failed" | string;
   notes?: string;
 }
 
 export interface AcquisitionApproval {
   id: string;
   uuid?: string;
-  lead: string;
+  lead?: string;
   lead_code?: string;
   lead_id?: string;
-  level: string; // "Level 1 (Legal)" | "Level 2 (Finance)" | "Level 3 (MD)"
-  approver: string;
-  decision: "pending" | "approved" | "rejected";
+  level?: string; // "Level 1 (Legal)" | "Level 2 (Finance)" | "Level 3 (MD)"
+  approver?: string;
+  approver_name?: string;
+  decision: "pending" | "approved" | "rejected" | string;
   comment?: string;
-  decided_at: string;
+  decided_at?: string;
+  stage?: string;
+  org_id?: string;
+  createdAt?: string;
 }
 
 export interface SettlementPaymentSchedule {
@@ -244,25 +260,31 @@ export interface SettlementPaymentSchedule {
   installment_no: number;
   due_date: string;
   amount: number;
-  status?: "Paid" | "Pending";
+  status?: "Paid" | "Pending" | string;
 }
 
 export interface SettlementRecord {
   id: string;
   uuid?: string;
-  lead: string;
+  lead?: string;
   lead_code?: string;
   lead_id?: string;
-  owner: string;
+  owner?: string;
+  owner_id?: string;
   agreed_amount: number;
-  advance: number;
-  paid: number;
-  due: number;
-  payment_mode: "cash" | "bank" | "cheque";
-  scheduled_at: string;
-  status: "Pending" | "Partially Paid" | "Settled" | "Overdue";
-  payment_schedule?: SettlementPaymentSchedule[];
+  advance?: number;
+  advance_amount?: number;
+  paid?: number;
+  paid_amount?: number;
+  due?: number;
+  due_amount?: number;
+  payment_mode?: "cash" | "bank" | "cheque" | string;
+  scheduled_at?: string;
+  status?: "Pending" | "Partially Paid" | "Settled" | "Overdue" | string;
+  payment_schedule?: SettlementPaymentSchedule[] | any;
   notes?: string;
+  org_id?: string;
+  createdAt?: string;
 }
 
 export interface SettlementPayment {
@@ -342,82 +364,4 @@ export interface MouzaDistributionStat {
   color: string;
 }
 
-export interface LandValuation {
-  id: string;
-  uuid?: string;
-  lead_id: string;
-  valuer_id?: string;
-  market_rate: number;
-  govt_rate: number;
-  total_value: number;
-  method: string;
-  report_url?: string;
-  valued_at?: string;
-  status: string;
-  notes?: string;
-  org_id?: string;
-  createdAt?: string;
-}
-
-export interface LegalVerification {
-  id: string;
-  uuid?: string;
-  lead_id: string;
-  lawyer_name?: string;
-  title_clear: boolean;
-  mutation_ok: boolean;
-  tax_clear: boolean;
-  status: string;
-  verified_at?: string;
-  opinion?: string;
-  report_url?: string;
-  findings_json?: any;
-  org_id?: string;
-  createdAt?: string;
-}
-
-export interface DueDiligenceRecord {
-  id: string;
-  uuid?: string;
-  lead_id: string;
-  score: number;
-  status: string;
-  surveyor_name?: string;
-  report_url?: string;
-  checklist_json?: any;
-  org_id?: string;
-  createdAt?: string;
-}
-
-export interface AcquisitionApproval {
-  id: string;
-  uuid?: string;
-  lead_id: string;
-  level: string;
-  approver_name?: string;
-  decision: string;
-  comment?: string;
-  decided_at?: string;
-  stage: string;
-  org_id?: string;
-  createdAt?: string;
-}
-
-export interface SettlementRecord {
-  id: string;
-  uuid?: string;
-  lead_id: string;
-  owner_id?: string;
-  agreed_amount: number;
-  advance_amount: number;
-  paid_amount: number;
-  due_amount: number;
-  payment_mode: string;
-  scheduled_at?: string;
-  status: string;
-  payment_schedule?: any;
-  notes?: string;
-  org_id?: string;
-  createdAt?: string;
-}
 

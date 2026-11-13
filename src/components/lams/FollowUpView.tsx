@@ -36,6 +36,32 @@ interface FollowUpViewProps {
   acquisitionLeads: AcquisitionLead[];
 }
 
+const STATUS_BADGES: Record<
+  FollowUpStatus,
+  { bg: string; text: string; icon: React.ElementType }
+> = {
+  Pending: {
+    bg: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+    text: "text-amber-700",
+    icon: Clock,
+  },
+  Completed: {
+    bg: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+    text: "text-emerald-700",
+    icon: CheckCircle2,
+  },
+  Rescheduled: {
+    bg: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+    text: "text-blue-700",
+    icon: RotateCcw,
+  },
+  Cancelled: {
+    bg: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
+    text: "text-rose-700",
+    icon: XCircle,
+  },
+};
+
 const DEFAULT_COLUMNS: ColumnDefinition[] = [
   { key: "land", label: "Land Details / Mouza", visible: true },
   { key: "owner", label: "Owner & Contact", visible: true },
@@ -319,11 +345,14 @@ export function FollowUpView({
                   {isColVisible("status") && <th className="py-3 px-3.5 text-center">Status</th>}
                   <th className="py-3 px-3.5 text-right">Actions</th>
                 </tr>
-              ) : (
-                displayedFollowUps.map((item, idx) => {
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {displayedFollowUps.map((item, idx) => {
                   const itemId = item.uuid || item.id || `flw-${idx}`;
                   const rowKey = `flw-row-${item.uuid || item.id || "item"}-${idx}`;
                   const isExpanded = expandedId === itemId;
+                  const isSelected = selectedIds.includes(itemId);
+                  const isCompleted = item.status === "Completed";
                   const statusInfo = STATUS_BADGES[item.status as FollowUpStatus] || { bg: "bg-slate-100 text-slate-800", text: "text-slate-700", icon: Clock };
                   const StatusIcon = statusInfo.icon;
 

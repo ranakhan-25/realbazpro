@@ -34,6 +34,32 @@ interface LegalDocumentsViewProps {
   acquisitionLeads: AcquisitionLead[];
 }
 
+const STATUS_BADGES: Record<
+  VerificationStatus,
+  { bg: string; text: string; icon: React.ElementType }
+> = {
+  Verified: {
+    bg: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+    text: "text-emerald-700",
+    icon: CheckCircle2,
+  },
+  "Under Review": {
+    bg: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+    text: "text-blue-700",
+    icon: Clock,
+  },
+  "Discrepancy Found": {
+    bg: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
+    text: "text-rose-700",
+    icon: AlertCircle,
+  },
+  Pending: {
+    bg: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+    text: "text-amber-700",
+    icon: Clock,
+  },
+};
+
 const DEFAULT_COLUMNS: ColumnDefinition[] = [
   { key: "lead", label: "Lead / Parcel", visible: true },
   { key: "category", label: "Document Category", visible: true },
@@ -335,12 +361,17 @@ export function LegalDocumentsView({
                   {isColVisible("status") && <th className="py-3 px-3.5 text-center">Status</th>}
                   <th className="py-3 px-3.5 text-right">Actions</th>
                 </tr>
-              ) : (
-                displayedDocs.map((doc, idx) => {
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {displayedDocs.map((doc, idx) => {
                   const docId = doc.uuid || doc.id || `doc-${idx}`;
                   const isExpanded = expandedId === docId;
+                  const isSelected = selectedIds.includes(docId);
                   const statusInfo = STATUS_BADGES[doc.verificationStatus as VerificationStatus] || { bg: "bg-slate-100 text-slate-800", text: "text-slate-700", icon: AlertCircle };
                   const StatusIcon = statusInfo.icon;
+                  const fileName = doc.documentName || (doc as any).fileName || (doc as any).title || "Document";
+                  const version = doc.versionNumber ? `v${doc.versionNumber}` : (doc as any).version || "v1.0";
+                  const statusKey = doc.verificationStatus || (doc as any).status || "Pending";
 
                   return (
                     <React.Fragment key={docId}>
@@ -353,7 +384,7 @@ export function LegalDocumentsView({
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={() => handleSelectOne(itemId)}
+                            onChange={() => handleSelectOne(docId)}
                             className="rounded border-slate-300 dark:border-slate-600 text-cyan-600 focus:ring-cyan-500"
                           />
                         </td>
@@ -371,14 +402,14 @@ export function LegalDocumentsView({
                         {/* Lead */}
                         {isColVisible("lead") && (
                           <td className="py-3 px-3.5 font-bold text-slate-800 dark:text-slate-100">
-                            {item.leadTitle || item.lead || "Acquisition Lead"}
+                            {doc.leadTitle || (doc as any).lead || "Acquisition Lead"}
                           </td>
                         )}
 
                         {/* Category */}
                         {isColVisible("category") && (
                           <td className="py-3 px-3.5 font-semibold text-slate-700 dark:text-slate-300">
-                            {item.documentType || item.category || "Deed / Parcha"}
+                            {doc.documentType || (doc as any).category || "Deed / Parcha"}
                           </td>
                         )}
 
@@ -404,14 +435,14 @@ export function LegalDocumentsView({
                         {/* Verified By */}
                         {isColVisible("verified_by") && (
                           <td className="py-3 px-3.5 text-slate-600 dark:text-slate-300 font-medium">
-                            {item.verifiedBy || item.uploaded_by || "Legal Panel"}
+                            {doc.verifiedBy || (doc as any).uploaded_by || "Legal Panel"}
                           </td>
                         )}
 
                         {/* Uploaded At */}
                         {isColVisible("uploaded_at") && (
                           <td className="py-3 px-3.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                            {item.verificationDate || item.uploaded_at || "Recent"}
+                            {doc.verificationDate || (doc as any).uploaded_at || "Recent"}
                           </td>
                         )}
 
@@ -427,7 +458,7 @@ export function LegalDocumentsView({
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               onClick={() => {
-                                setEditingDocument(item);
+                                setEditingDocument(doc);
                                 setIsAddModalOpen(true);
                               }}
                               className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-all"
@@ -456,7 +487,7 @@ export function LegalDocumentsView({
                               Lawyer Vetting Notes & Remarks:
                             </div>
                             <p className="text-slate-600 dark:text-slate-300 pl-5">
-                              {item.remarks || "All legal checks verified against Sub-Registry records. Clean chain of title."}
+                              {doc.remarks || "All legal checks verified against Sub-Registry records. Clean chain of title."}
                             </p>
                           </td>
                         </tr>

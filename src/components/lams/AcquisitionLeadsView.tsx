@@ -520,10 +520,15 @@ export function AcquisitionLeadsView({
                   {isColVisible("assignee") && <th className="py-3 px-3.5">Assignee</th>}
                   <th className="py-3 px-3.5 text-right">Actions</th>
                 </tr>
-              ) : (
-                displayedLeads.map((lead, idx) => {
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {displayedLeads.map((lead, idx) => {
                   const leadId = lead.uuid || lead.id || `lead-${idx}`;
-                  const stageStyle = STAGE_BADGES[lead.leadStage as LeadStage] || { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-700 dark:text-slate-300", ring: "ring-slate-200 dark:ring-slate-700" };
+                  const isSelected = selectedIds.includes(leadId);
+                  const code = lead.lead_code || lead.code || `AL-${idx + 1}`;
+                  const area = lead.area_katha || lead.areaKatha || 0;
+                  const asking = lead.asking_price || lead.askingPrice || 0;
+                  const statusKey = lead.lead_status || lead.status || lead.leadStage || "Draft";
                   return (
                     <tr
                       key={leadId}
@@ -642,11 +647,13 @@ export function AcquisitionLeadsView({
                             >
                               <CheckCircle className="w-3.5 h-3.5" />
                             </button>
-                              <button
-                                onClick={() => onDeleteLead(leadId)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
-                                title="Delete Lead"
-                              >
+                          )}
+
+                          <button
+                            onClick={() => onDeleteLead(leadId)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
+                            title="Delete Lead"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>

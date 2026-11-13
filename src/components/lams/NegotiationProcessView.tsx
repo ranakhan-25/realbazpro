@@ -33,6 +33,32 @@ interface NegotiationProcessViewProps {
   acquisitionLeads: AcquisitionLead[];
 }
 
+const STATUS_CONFIG: Record<
+  NegotiationStatus,
+  { bg: string; text: string; icon: React.ElementType }
+> = {
+  "In Progress": {
+    bg: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+    text: "text-blue-700",
+    icon: Clock,
+  },
+  Agreed: {
+    bg: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+    text: "text-emerald-700",
+    icon: CheckCircle2,
+  },
+  "Revision Needed": {
+    bg: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+    text: "text-amber-700",
+    icon: AlertTriangle,
+  },
+  Declined: {
+    bg: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
+    text: "text-rose-700",
+    icon: XCircle,
+  },
+};
+
 const DEFAULT_COLUMNS: ColumnDefinition[] = [
   { key: "lead", label: "Lead / Parcel", visible: true },
   { key: "round_no", label: "Round #", visible: true },
@@ -422,13 +448,19 @@ export function NegotiationProcessView({
                   {isColVisible("status") && <th className="py-3 px-3.5 text-center">Status</th>}
                   <th className="py-3 px-3.5 text-right">Actions</th>
                 </tr>
-              ) : (
-                displayedNegotiations.map((item, idx) => {
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {displayedNegotiations.map((item, idx) => {
                   const itemId = item.uuid || item.id || `neg-${idx}`;
                   const isExpanded = expandedId === itemId;
+                  const isSelected = selectedIds.includes(itemId);
                   const statusInfo = STATUS_CONFIG[item.negotiationStatus as NegotiationStatus] || { bg: "bg-slate-100 text-slate-800", text: "text-slate-700", icon: AlertTriangle };
                   const StatusIcon = statusInfo.icon;
-                  const priceGap = item.counterOfferByOwner - item.offeredTotalPrice;
+                  const roundNo = item.roundNo || (item as any).round_no || idx + 1;
+                  const offered = item.offeredTotalPrice || (item as any).offer_amount || 0;
+                  const counter = item.counterOfferByOwner || (item as any).counter_amount || 0;
+                  const gap = (item as any).gap !== undefined ? (item as any).gap : (counter - offered);
+                  const statusKey = item.negotiationStatus || (item as any).status || "In Progress";
 
                   return (
                     <React.Fragment key={itemId}>
@@ -545,9 +577,9 @@ export function NegotiationProcessView({
                         <td className="py-3 px-3.5 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
-                              onClick={() => onDeleteNegotiation(itemId)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
-                              title="Delete Negotiation"
+                              onClick={() => onEditNegotiation?.(itemId, item)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 transition-all"
+                              title="Edit Negotiation"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
