@@ -3,7 +3,7 @@
 import React from "react";
 
 export interface MaterialUsageItem {
-  id: number;
+  id: string | number;
   date: string;
   invoiceNo: string;
   titleOfWork: string;
@@ -12,6 +12,7 @@ export interface MaterialUsageItem {
   site: string;
   itemName: string;
   category: string;
+  task?: string;
   quantity: number;
   unit: string;
 }

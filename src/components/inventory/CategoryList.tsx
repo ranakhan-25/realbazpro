@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { FiEdit, FiTrash2, FiSearch, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import type { Category } from "@/app/(admin-dashbord)/dashboard/inventory/products/categories/page";
-import { API_BASE, categoriesApi, fallbackCategories } from "@/lib/inventoryApi";
+import { API_BASE, categoriesApi } from "@/lib/inventoryApi";
 
 interface CategoryListProps {
   apiEndpoint?: string;
@@ -33,31 +33,19 @@ export default function CategoryList({
     async function fetchCategories() {
       try {
         setLoading(true);
-        let raw = await categoriesApi.getAll().catch(() => null);
-        if (!Array.isArray(raw) || raw.length === 0) {
-          raw = fallbackCategories;
-        }
+        const raw = await categoriesApi.getAll();
         const list = raw.map((c: any) => ({
-          id: c.id,
-          type: c.type || "Material",
-          code: c.category_code || c.code || "",
-          name: c.name || "",
-          inventoryCoa: c.inventoryCoa || "Inventory Asset",
-          consumptionCoa: c.consumptionCoa || "Site Consumption",
+          id: c?.id ?? "",
+          type: c?.type || "Not found",
+          code: c?.category_code || c?.code || "Not found",
+          name: c?.name || "Not found",
+          inventoryCoa: c?.inventoryCoa || c?.inventory_coa || "Not found",
+          consumptionCoa: c?.consumptionCoa || c?.consumption_coa || "Not found",
         }));
         setCategories(list);
       } catch (error) {
         console.error("Error fetching categories:", error);
-        setCategories(
-          fallbackCategories.map((c: any) => ({
-            id: c.id,
-            type: c.type || "Material",
-            code: c.category_code || c.code || "",
-            name: c.name || "",
-            inventoryCoa: c.inventoryCoa || "Inventory Asset",
-            consumptionCoa: c.consumptionCoa || "Site Consumption",
-          }))
-        );
+        setCategories([]);
       } finally {
         setLoading(false);
       }

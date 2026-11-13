@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Fragment, useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Search,
   CalendarCheck2,
@@ -300,10 +300,10 @@ export function FollowUpView({
           setSelectedIds([]);
         }}
         statusOptions={[
-          { label: "Pending", value: "Pending" },
-          { label: "Completed", value: "Completed" },
-          { label: "Rescheduled", value: "Rescheduled" },
-          { label: "Cancelled", value: "Cancelled" },
+          "Pending",
+          "Completed",
+          "Rescheduled",
+          "Cancelled",
         ]}
       />
 
@@ -312,8 +312,8 @@ export function FollowUpView({
         {displayedFollowUps.length === 0 ? (
           <LamsEmptyState
             title="No scheduled follow-up meetings"
-            subtitle="Add a follow-up appointment or adjust filters to review scheduled dates."
-            buttonText="Schedule Follow-Up"
+            description="Add a follow-up appointment or adjust filters to review scheduled dates."
+            actionLabel="Schedule Follow-Up"
             onAction={() => {
               setEditingFollowUp(null);
               setIsAddModalOpen(true);
@@ -347,7 +347,7 @@ export function FollowUpView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {displayedFollowUps.map((item, idx) => {
+                {displayedFollowUps.map((item: any, idx: number) => {
                   const itemId = item.uuid || item.id || `flw-${idx}`;
                   const rowKey = `flw-row-${item.uuid || item.id || "item"}-${idx}`;
                   const isExpanded = expandedId === itemId;
@@ -357,7 +357,7 @@ export function FollowUpView({
                   const StatusIcon = statusInfo.icon;
 
                   return (
-                    <Fragment key={rowKey}>
+                    <React.Fragment key={itemId}>
                       <tr
                         className={`transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${
                           isSelected ? "bg-cyan-50/40 dark:bg-cyan-950/20" : ""
@@ -375,8 +375,8 @@ export function FollowUpView({
                         <td className="py-3 px-2 text-center">
                           <button
                             onClick={() => toggleExpand(itemId)}
-                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 transition-all font-bold"
-                            title={isExpanded ? "Collapse" : "Expand"}
+                            className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-cyan-100 hover:text-cyan-700 transition-all"
+                            title={isExpanded ? "Collapse notes" : "Expand notes"}
                           >
                             {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                           </button>
@@ -385,7 +385,7 @@ export function FollowUpView({
                         {/* Land Details */}
                         {isColVisible("land") && (
                           <td className="py-3 px-3.5 font-bold text-slate-800 dark:text-slate-100">
-                            {item.landDetails || item.leadTitle || "Land Parcel"}
+                            {item.landDetails || item.leadTitle || "Not found"}
                           </td>
                         )}
 
@@ -421,7 +421,7 @@ export function FollowUpView({
                         {/* Notes */}
                         {isColVisible("notes") && (
                           <td className="py-3 px-3.5 text-slate-500 dark:text-slate-400 truncate max-w-[160px]">
-                            {item.note || item.notes || "N/A"}
+                            {item.note || item.notes || "Not found"}
                           </td>
                         )}
 
@@ -429,13 +429,9 @@ export function FollowUpView({
                         {isColVisible("status") && (
                           <td className="py-3 px-3.5 text-center">
                             <button
-                              onClick={() => onToggleComplete(itemId)}
-                              className={`p-1.5 rounded-lg transition-all ${
-                                item.status === "Completed"
-                                  ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40"
-                                  : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
-                              }`}
-                              title={item.status === "Completed" ? "Mark Pending" : "Mark Completed"}
+                              onClick={() => onToggleComplete?.(itemId)}
+                              title="Click to toggle Complete/Pending"
+                              className="inline-block"
                             >
                               <span
                                 className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all ${
@@ -470,9 +466,13 @@ export function FollowUpView({
                             </button>
 
                             <button
-                              onClick={() => onDeleteFollowUp(itemId)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
-                              title="Delete Item"
+                              onClick={() => {
+                                if (confirm("Delete this follow-up appointment?")) {
+                                  onDeleteFollowUp?.(itemId);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 transition-all"
+                              title="Delete Appointment"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -494,7 +494,7 @@ export function FollowUpView({
                           </td>
                         </tr>
                       )}
-                    </Fragment>
+                    </React.Fragment>
                   );
                 })}
               </tbody>

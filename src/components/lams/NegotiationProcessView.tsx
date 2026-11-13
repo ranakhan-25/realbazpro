@@ -31,6 +31,7 @@ interface NegotiationProcessViewProps {
   onAddNegotiation: (record: NegotiationRecord) => void;
   onDeleteNegotiation: (uuid: string) => void;
   acquisitionLeads: AcquisitionLead[];
+  initialOpenCreate?: boolean;
 }
 
 const STATUS_CONFIG: Record<
@@ -76,6 +77,7 @@ export function NegotiationProcessView({
   onEditNegotiation,
   onDeleteNegotiation,
   acquisitionLeads = [],
+  initialOpenCreate = false,
 }: NegotiationProcessViewProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [leadFilter, setLeadFilter] = useState("ALL");
@@ -88,8 +90,14 @@ export function NegotiationProcessView({
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Modals
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(Boolean(initialOpenCreate));
   const [editingNegotiation, setEditingNegotiation] = useState<any>(null);
+
+  React.useEffect(() => {
+    if (initialOpenCreate) {
+      setIsAddModalOpen(true);
+    }
+  }, [initialOpenCreate]);
 
   const safeNegotiations = Array.isArray(negotiations) ? negotiations : [];
 
@@ -306,7 +314,7 @@ export function NegotiationProcessView({
               <option value="ALL">All Acquisition Leads</option>
               {acquisitionLeads.map((l) => (
                 <option key={l.id || l.uuid} value={l.id || l.uuid}>
-                  {l.lead_code || l.title}
+                  {l.leadCode || l.code || l.title}
                 </option>
               ))}
             </select>
@@ -401,10 +409,10 @@ export function NegotiationProcessView({
           setSelectedIds([]);
         }}
         statusOptions={[
-          { label: "In Progress", value: "In Progress" },
-          { label: "Agreed", value: "Agreed" },
-          { label: "Revision Needed", value: "Revision Needed" },
-          { label: "Declined", value: "Declined" },
+          "In Progress",
+          "Agreed",
+          "Revision Needed",
+          "Declined",
         ]}
       />
 
@@ -413,8 +421,8 @@ export function NegotiationProcessView({
         {displayedNegotiations.length === 0 ? (
           <LamsEmptyState
             title="No negotiation records found"
-            subtitle="Start a negotiation process or adjust filters to view historical offer rounds."
-            buttonText="Add Negotiation Round"
+            description="Start a negotiation process or adjust filters to view historical offer rounds."
+            actionLabel="Add Negotiation Round"
             onAction={() => {
               setEditingNegotiation(null);
               setIsAddModalOpen(true);
@@ -450,17 +458,17 @@ export function NegotiationProcessView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {displayedNegotiations.map((item, idx) => {
+                {displayedNegotiations.map((item: any, idx: number) => {
                   const itemId = item.uuid || item.id || `neg-${idx}`;
                   const isExpanded = expandedId === itemId;
                   const isSelected = selectedIds.includes(itemId);
                   const statusInfo = STATUS_CONFIG[item.negotiationStatus as NegotiationStatus] || { bg: "bg-slate-100 text-slate-800", text: "text-slate-700", icon: AlertTriangle };
                   const StatusIcon = statusInfo.icon;
-                  const roundNo = item.roundNo || (item as any).round_no || idx + 1;
-                  const offered = item.offeredTotalPrice || (item as any).offer_amount || 0;
-                  const counter = item.counterOfferByOwner || (item as any).counter_amount || 0;
-                  const gap = (item as any).gap !== undefined ? (item as any).gap : (counter - offered);
-                  const statusKey = item.negotiationStatus || (item as any).status || "In Progress";
+                  const roundNo = item.roundNo || item.round_no || idx + 1;
+                  const offered = item.offeredTotalPrice || item.offer_amount || 0;
+                  const counter = item.counterOfferByOwner || item.counter_amount || 0;
+                  const gap = item.gap !== undefined ? item.gap : (counter - offered);
+                  const statusKey = item.negotiationStatus || item.status || "In Progress";
 
                   return (
                     <React.Fragment key={itemId}>
@@ -481,8 +489,8 @@ export function NegotiationProcessView({
                         <td className="py-3 px-2 text-center">
                           <button
                             onClick={() => toggleExpand(itemId)}
-                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 transition-all font-bold"
-                            title={isExpanded ? "Collapse" : "Expand"}
+                            className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-amber-100 hover:text-amber-700 transition-all"
+                            title={isExpanded ? "Collapse notes" : "Expand notes"}
                           >
                             {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                           </button>
@@ -577,9 +585,13 @@ export function NegotiationProcessView({
                         <td className="py-3 px-3.5 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
-                              onClick={() => onEditNegotiation?.(itemId, item)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 transition-all"
-                              title="Edit Negotiation"
+                              onClick={() => {
+                                onEditNegotiation?.(itemId, item);
+                                setEditingNegotiation(item);
+                                setIsAddModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-all"
+                              title="Edit Negotiation Round"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>

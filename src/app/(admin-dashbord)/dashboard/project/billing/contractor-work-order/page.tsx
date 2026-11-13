@@ -16,6 +16,7 @@ const API_PATH = `${API_BASE}/realbizpro/api/v1`;
 interface WorkOrder {
   id: string;
   uuid: string;
+  createdBy?: string;
   code: string;
   title: string;
   recordDate: string;
@@ -33,6 +34,16 @@ interface WorkOrder {
     itemName?: string;
     vat?: number;
     ait?: number;
+    supplierId?: string;
+    attachment?: string;
+    unit?: string;
+    image?: string;
+    contentBody?: string;
+    contentFooter?: string;
+    subtotal?: number;
+    vatAmount?: number;
+    aitAmount?: number;
+    grandTotal?: number;
   };
   deletedAt?: string;
 }
@@ -53,6 +64,7 @@ export default function ContractorWorkOrderPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [unders, setUnders] = useState<any[]>([]);
+  const [itemsList, setItemsList] = useState<any[]>([]);
 
   // ফর্ম ডাটা
   const [formData, setFormData] = useState({
@@ -72,6 +84,9 @@ export default function ContractorWorkOrderPage() {
     description: "",
     attachment: "",
     contentBody: "",
+    contentFooter: "",
+    unit: "",
+    image: "",
     vat: 0,
     ait: 0,
   });
@@ -80,7 +95,7 @@ export default function ContractorWorkOrderPage() {
   const fetchWorkOrders = async () => {
     try {
       setLoading(true);
-      const res = await projectFetch(`${API_PATH}/project-billing/contractor-work-orders`);
+      const res = await projectFetch(`${API_PATH}/project-billing/contractor-work-orders?page=1&limit=100`);
       const json = await res.json();
       if (json.success) {
         setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
@@ -136,6 +151,10 @@ export default function ContractorWorkOrderPage() {
       const jsonUnder = await resUnder.json();
       if (jsonUnder.success) setUnders(jsonUnder.data.data || jsonUnder.data || []);
 
+      const resItems = await projectFetch(`${API_PATH}/item?page=1&limit=100`);
+      const jsonItems = await resItems.json();
+      if (jsonItems.success) setItemsList(jsonItems.data.data || jsonItems.data || []);
+
     } catch (err) {
       console.error("Error fetching dropdowns:", err);
     }
@@ -149,6 +168,10 @@ export default function ContractorWorkOrderPage() {
   // ====================== SUBMIT (POST / PATCH) ======================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.supplierId || !formData.projectId) {
+      toast.error("Supplier and project are required");
+      return;
+    }
     setSubmitting(true);
 
     const payload = {
@@ -156,11 +179,12 @@ export default function ContractorWorkOrderPage() {
       title: formData.contentBody || "Work Order Title",
       code: formData.code,
       recordDate: formData.date,
-      amount: Number(formData.quantity) * Number(formData.rate),
+      amount: grandTotal,
       status: "active",
       description: formData.description,
       details: {
         supplierName: formData.supplierName,
+        supplierId: formData.supplierId,
         projectType: formData.projectType,
         site: formData.site,
         categoryId: formData.categoryId,
@@ -169,6 +193,17 @@ export default function ContractorWorkOrderPage() {
         itemName: formData.itemName,
         vat: formData.vat,
         ait: formData.ait,
+        subtotal: subTotal,
+        vatAmount,
+        aitAmount,
+        grandTotal,
+        unit: formData.unit,
+        image: formData.image,
+        attachment: formData.attachment,
+        contentBody: formData.contentBody,
+        contentFooter: formData.contentFooter,
+        quantity: formData.quantity,
+        rate: formData.rate,
       },
     };
 
@@ -238,6 +273,9 @@ export default function ContractorWorkOrderPage() {
       description: "",
       attachment: "",
       contentBody: "",
+      contentFooter: "",
+      unit: "",
+      image: "",
       vat: 0,
       ait: 0,
     });
@@ -249,7 +287,7 @@ export default function ContractorWorkOrderPage() {
     setEditingItem(item);
     setFormData({
       date: item.recordDate,
-      supplierId: "",
+      supplierId: item.details?.supplierId || "",
       supplierName: item.details?.supplierName || "",
       code: item.code,
       projectType: item.details?.projectType || "",
@@ -259,11 +297,14 @@ export default function ContractorWorkOrderPage() {
       brand: item.details?.brand || "",
       under: item.details?.under || "",
       itemName: item.details?.itemName || "",
-      quantity: 1,
-      rate: Number(item.amount),
+      quantity: Number((item.details as any)?.quantity) || 1,
+      rate: Number((item.details as any)?.rate) || Number(item.amount),
       description: item.description,
-      attachment: "",
-      contentBody: item.title,
+      attachment: item.details?.attachment || "",
+      contentBody: item.details?.contentBody || item.title,
+      contentFooter: item.details?.contentFooter || "",
+      unit: item.details?.unit || "",
+      image: item.details?.image || "",
       vat: item.details?.vat || 0,
       ait: item.details?.ait || 0,
     });
@@ -278,8 +319,16 @@ export default function ContractorWorkOrderPage() {
 
   const filteredData = dataList.filter((item) =>
     item.title?.toLowerCase().includes(search.toLowerCase()) ||
-    item.code?.toLowerCase().includes(search.toLowerCase())
+    item.code?.toLowerCase().includes(search.toLowerCase()) ||
+    item.details?.supplierName?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const filteredSites = formData.projectId
+    ? sites.filter((site) => String(site.projectId || "").toLowerCase() === formData.projectId.toLowerCase())
+    : [];
+  const filteredItems = formData.categoryId
+    ? itemsList.filter((item) => String(item.categoryId || "").toLowerCase() === formData.categoryId.toLowerCase())
+    : itemsList;
 
   // ====================== RENDER ======================
   return (
@@ -312,7 +361,7 @@ export default function ContractorWorkOrderPage() {
           <table className="w-full text-sm text-left whitespace-nowrap">
             <thead className="bg-indigo-600 text-white">
               <tr>
-                {["ID", "CONTRACTOR NAME", "WO NO", "REF INVOICE NO", "DATE", "SUB TOTAL", "VAT", "DISCOUNT", "GRAND TOTAL", "ADDED BY", "APPROVE", "ATTACHMENT", "ACTION"].map(h => (
+                {["ID", "SUPPLIER", "WO NO", "REF INVOICE NO", "DATE", "SUB TOTAL", "VAT", "AIT", "GRAND TOTAL", "ADDED BY", "APPROVE", "ATTACHMENT", "ACTION"].map(h => (
                   <th key={h} className="px-3 py-2 font-medium">{h}</th>
                 ))}
               </tr>
@@ -324,17 +373,17 @@ export default function ContractorWorkOrderPage() {
                 filteredData.map((item) => (
                   <tr key={item.uuid} className="hover:bg-gray-50">
                     <td className="px-3 py-2">{item.id}</td>
-                    <td className="px-3 py-2 font-medium">{item.project?.name || "Unknown"}</td>
+                    <td className="px-3 py-2 font-medium">{item.details?.supplierName || "—"}</td>
                     <td className="px-3 py-2">{item.code}</td>
                     <td className="px-3 py-2">-</td>
                     <td className="px-3 py-2">{item.recordDate}</td>
-                    <td className="px-3 py-2">{item.amount}</td>
-                    <td className="px-3 py-2">0</td>
-                    <td className="px-3 py-2">0</td>
-                    <td className="px-3 py-2 font-bold">{item.amount}</td>
-                    <td className="px-3 py-2">Admin</td>
-                    <td className="px-3 py-2 text-center"><input type="checkbox" /></td>
-                    <td className="px-3 py-2">-</td>
+                    <td className="px-3 py-2">{Number(item.details?.subtotal ?? item.amount).toFixed(2)}</td>
+                    <td className="px-3 py-2">{Number(item.details?.vatAmount ?? 0).toFixed(2)}</td>
+                    <td className="px-3 py-2">{Number(item.details?.aitAmount ?? 0).toFixed(2)}</td>
+                    <td className="px-3 py-2 font-bold">{Number(item.details?.grandTotal ?? item.amount).toFixed(2)}</td>
+                    <td className="px-3 py-2">{item.createdBy || "—"}</td>
+                    <td className="px-3 py-2 text-center"><input type="checkbox" checked={item.status === "approved"} readOnly aria-label="Approved" /></td>
+                    <td className="px-3 py-2">{item.details?.attachment ? <a href={item.details.attachment} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">View</a> : "—"}</td>
                     <td className="px-3 py-2 flex gap-1">
                       <button onClick={() => handleEdit(item)} className="bg-teal-500 text-white p-1.5 rounded hover:bg-teal-600"><Edit3 className="w-3.5 h-3.5" /></button>
                       <button onClick={() => handleDelete(item)} className="bg-red-500 text-white p-1.5 rounded hover:bg-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -393,16 +442,16 @@ export default function ContractorWorkOrderPage() {
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Project</label>
-                  <select value={formData.projectId} onChange={(e) => setFormData({ ...formData, projectId: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
+                  <select required value={formData.projectId} onChange={(e) => setFormData({ ...formData, projectId: e.target.value, site: "" })} className="w-full border rounded px-3 py-1.5 text-sm">
                     <option value="">Select Project</option>
                     {projects.map(p => <option key={p.uuid} value={p.uuid}>{p.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Site</label>
-                  <select value={formData.site} onChange={(e) => setFormData({ ...formData, site: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
+                  <select value={formData.site} disabled={!formData.projectId} onChange={(e) => setFormData({ ...formData, site: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
                     <option value="">Select Site</option>
-                    {sites.map(s => <option key={s.uuid} value={s.name}>{s.name}</option>)}
+                    {filteredSites.map(s => <option key={s.uuid} value={s.name}>{s.name}</option>)}
                   </select>
                 </div>
               </div>
@@ -425,7 +474,13 @@ export default function ContractorWorkOrderPage() {
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Select Item</label>
-                  <input type="text" value={formData.itemName} onChange={(e) => setFormData({ ...formData, itemName: e.target.value })} placeholder="Search Item..." className="w-full border rounded px-3 py-1.5 text-sm" />
+                  <select value={formData.itemName} onChange={(e) => {
+                    const selectedItem = itemsList.find(item => item.itemName === e.target.value);
+                    setFormData({ ...formData, itemName: e.target.value, rate: selectedItem ? Number(selectedItem.salePrice || selectedItem.rate || 0) : formData.rate, unit: selectedItem?.unit || formData.unit });
+                  }} className="w-full border rounded px-3 py-1.5 text-sm">
+                    <option value="">Select Item</option>
+                    {filteredItems.map(item => <option key={item.uuid} value={item.itemName}>{item.itemName}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Under</label>
@@ -463,10 +518,10 @@ export default function ContractorWorkOrderPage() {
                     <tr className="border-b">
                       <td className="px-2 py-2"><input type="text" value={formData.itemName} onChange={(e) => setFormData({ ...formData, itemName: e.target.value })} className="w-full border rounded px-2 py-1 text-sm" /></td>
                       <td className="px-2 py-2"><input type="text" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full border rounded px-2 py-1 text-sm" /></td>
-                      <td className="px-2 py-2"><input type="text" placeholder="Unit" className="w-16 border rounded px-2 py-1 text-sm" /></td>
+                      <td className="px-2 py-2"><input type="text" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} placeholder="Unit" className="w-16 border rounded px-2 py-1 text-sm" /></td>
                       <td className="px-2 py-2"><input type="number" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })} className="w-20 border rounded px-2 py-1 text-sm" /></td>
                       <td className="px-2 py-2"><input type="number" value={formData.rate} onChange={(e) => setFormData({ ...formData, rate: Number(e.target.value) })} className="w-24 border rounded px-2 py-1 text-sm" /></td>
-                      <td className="px-2 py-2"><input type="text" placeholder="Image URL" className="w-20 border rounded px-2 py-1 text-sm" /></td>
+                      <td className="px-2 py-2"><input type="text" value={formData.image} onChange={e => setFormData({ ...formData, image: e.target.value })} placeholder="Image URL" className="w-20 border rounded px-2 py-1 text-sm" /></td>
                       <td className="px-2 py-2 font-medium">{subTotal.toFixed(2)}</td>
                       <td className="px-2 py-2 text-center">
                         <button type="button" className="bg-green-500 text-white w-6 h-6 rounded text-xs">+</button>
@@ -480,7 +535,7 @@ export default function ContractorWorkOrderPage() {
               <div className="flex flex-col md:flex-row gap-6 border-t pt-4">
                 <div className="flex-1 border rounded">
                   <div className="p-2 border-b bg-gray-50 text-xs font-medium">Content Footer</div>
-                  <textarea className="w-full h-20 p-2 text-sm focus:outline-none resize-none" placeholder="Notes..."></textarea>
+                  <textarea value={formData.contentFooter} onChange={e => setFormData({ ...formData, contentFooter: e.target.value })} className="w-full h-20 p-2 text-sm focus:outline-none resize-none" placeholder="Notes..."></textarea>
                 </div>
                 <div className="flex-1 space-y-1 text-sm">
                   <div className="flex justify-between items-center border rounded overflow-hidden">

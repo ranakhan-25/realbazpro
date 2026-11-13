@@ -12,7 +12,7 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 import { toast } from "sonner";
-import { materialRequisitionsApi, fallbackMaterialRequisitions } from "@/lib/inventoryApi";
+import { materialRequisitionsApi } from "@/lib/inventoryApi";
 
 interface MaterialRequisitionTableProps {
   refreshTrigger?: number;
@@ -39,45 +39,26 @@ export default function MaterialRequisitionTable({
     const fetchRequisitions = async () => {
       try {
         setLoading(true);
-        let raw = await materialRequisitionsApi.getAll().catch(() => null);
-        if (!Array.isArray(raw) || raw.length === 0) {
-          raw = fallbackMaterialRequisitions;
-        }
-        const list = raw.map((r: any, idx: number) => ({
-          id: r.id || idx + 1,
+        const raw = await materialRequisitionsApi.getAll();
+        const list = raw.map((r: any) => ({
+          id: r?.id ?? "",
           select: false,
-          projectType: r.project_type || r.projectType || "Real Estate",
-          project: r.project?.name || r.project_name || r.project || "Sheba Eyecon Tower",
-          titleOfWork: r.title_of_work || r.titleOfWork || "Column Casting 5th Floor",
-          code: r.req_no || r.code || `MR-2026-00${idx + 1}`,
-          ref: r.ref || `REF-MR-10${idx + 1}`,
-          date: r.date ? new Date(r.date).toLocaleDateString() : "-",
-          demandDate: r.demand_date || r.demandDate ? new Date(r.demand_date || r.demandDate).toLocaleDateString() : "-",
-          addedBy: r.added_by || r.addedBy || "Admin",
-          approvalStatus: r.approvalStatus || "All Approvals Completed",
-          approver: r.approver || "Project Manager",
-          attachment: "-",
+          projectType: r?.project_type || r?.projectType || "Not found",
+          project: r?.project?.name || r?.project_name || r?.project || "Not found",
+          titleOfWork: r?.title_of_work || r?.titleOfWork || "Not found",
+          code: r?.req_no || r?.code || "Not found",
+          ref: r?.ref || "Not found",
+          date: r?.date ? new Date(r.date).toLocaleDateString() : "Not found",
+          demandDate: r?.demand_date || r?.demandDate ? new Date(r.demand_date || r.demandDate).toLocaleDateString() : "Not found",
+          addedBy: r?.added_by || r?.addedBy || "Not found",
+          approvalStatus: r?.approval_status || r?.approvalStatus || "Not found",
+          approver: r?.approver || "Not found",
+          attachment: r?.attachment || "Not found",
         }));
         setRequisitions(list);
       } catch (error) {
         console.error("Error fetching requisitions:", error);
-        setRequisitions(
-          fallbackMaterialRequisitions.map((r: any, idx: number) => ({
-            id: r.id || idx + 1,
-            select: false,
-            projectType: r.projectType,
-            project: r.project,
-            titleOfWork: r.titleOfWork,
-            code: r.code,
-            ref: r.ref,
-            date: r.date,
-            demandDate: r.demandDate,
-            addedBy: r.addedBy,
-            approvalStatus: r.approvalStatus,
-            approver: r.approver,
-            attachment: "-",
-          }))
-        );
+        setRequisitions([]);
       } finally {
         setLoading(false);
       }

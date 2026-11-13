@@ -10,7 +10,7 @@ import {
   Clock,
   UserCheck,
 } from "lucide-react";
-import { AcquisitionApproval } from "@/types/lams";
+import { AcquisitionApproval, AcquisitionLead } from "@/types/lams";
 import { LamsTableToolbar, ColumnDefinition } from "./common/LamsTableToolbar";
 import { LamsBulkActionBar } from "./common/LamsBulkActionBar";
 import { LamsEmptyState } from "./common/LamsEmptyState";
@@ -19,7 +19,9 @@ import { ApprovalActionModal } from "./modals/ApprovalActionModal";
 
 interface AcquisitionApprovalsViewProps {
   approvals: AcquisitionApproval[];
+  acquisitionLeads?: AcquisitionLead[];
   onActionApproval?: (uuid: string, decision: "approved" | "rejected", comment?: string) => void;
+  onAddApproval?: (approval: any) => void;
 }
 
 const DEFAULT_COLUMNS: ColumnDefinition[] = [

@@ -20,11 +20,11 @@ export function AddFollowUpModal({
   acquisitionLeads,
 }: AddFollowUpModalProps) {
   const [acquisitionLeadId, setAcquisitionLeadId] = useState(acquisitionLeads[0]?.uuid || "");
-  const [date, setDate] = useState("2026-09-18");
+  const [date, setDate] = useState("");
   const [followUpType, setFollowUpType] = useState<FollowUpItem["followUpType"]>("Office Meeting");
   const [status, setStatus] = useState<FollowUpStatus>("Pending");
   const [note, setNote] = useState("");
-  const [assignedTo, setAssignedTo] = useState("Sakib Al Hasan");
+  const [assignedTo, setAssignedTo] = useState("");
 
   useEffect(() => {
     if (isOpen && editData) {
@@ -33,7 +33,11 @@ export function AddFollowUpModal({
       setFollowUpType(editData.followUpType || editData.follow_up_type || "Call");
       setStatus(editData.status || (editData.outcome === "Interested" ? "Completed" : "Pending"));
       setNote(editData.note || editData.remarks || "");
+      setAssignedTo(editData.assignedTo || editData.assigned_to || "");
     } else if (isOpen && !editData) {
+      setDate("");
+      setNote("");
+      setAssignedTo("");
       const defaultId = acquisitionLeads[0]?.uuid || acquisitionLeads[0]?.id || "";
       if (!acquisitionLeadId || !acquisitionLeads.some((l) => (l.uuid || l.id) === acquisitionLeadId)) {
         setAcquisitionLeadId(defaultId);
@@ -46,21 +50,21 @@ export function AddFollowUpModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const effectiveLeadId = acquisitionLeadId || acquisitionLeads[0]?.uuid || acquisitionLeads[0]?.id || "";
-    const lead = acquisitionLeads.find((l) => (l.uuid || l.id) === effectiveLeadId) || acquisitionLeads[0];
+    const lead = acquisitionLeads.find((l) => (l.uuid || l.id) === effectiveLeadId);
+    if (!effectiveLeadId || !lead || !date) return;
 
     const newItem: FollowUpItem = {
-      id: `FLW-${Date.now()}`,
-      uuid: `FLW-${Date.now()}`,
-      sl: Date.now(),
-      date: date || new Date().toISOString().split("T")[0],
+      id: "",
+      sl: 0,
+      date,
       acquisitionLeadId: effectiveLeadId,
-      landDetails: lead ? `${lead.title} (${lead.mouza}), ${lead.landArea} Dec` : "Land Parcel",
-      ownerDetails: lead ? `${lead.ownerName} (Owner)` : "Land Owner",
-      contact: lead ? lead.ownerPhone : "+880 1711-000000",
+      landDetails: [lead.title, lead.mouza, lead.landArea].filter(Boolean).join(" "),
+      ownerDetails: lead.ownerName || "",
+      contact: lead.ownerPhone || "",
       followUpType,
       status,
-      note: note || "Routine follow up with landowner.",
-      assignedTo: assignedTo || "Acquisition Officer",
+      note,
+      assignedTo,
     };
 
     onAddFollowUp(newItem);
@@ -212,6 +216,7 @@ export function AddFollowUpModal({
             </button>
             <button
               type="submit"
+              disabled={!acquisitionLeads.length}
               className="px-5 py-2 font-bold rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-md shadow-cyan-600/20"
             >
               Add Follow Up

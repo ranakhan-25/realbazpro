@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable prettier/prettier */
 "use client";
 
 import React, { useState, useEffect, useTransition } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { LamsHeaderNav, LamsTab } from "@/components/lams/LamsHeaderNav";
+import { useRouter } from "next/navigation";
+import type { LamsTab } from "@/components/lams/LamsHeaderNav";
 import { LamsMetrics } from "@/components/lams/LamsMetrics";
 import { LandOwnersView } from "@/components/lams/LandOwnersView";
 import { AcquisitionLeadsView } from "@/components/lams/AcquisitionLeadsView";
@@ -61,45 +63,11 @@ import {
   LegalDocument,
   FollowUpItem,
 } from "@/types/lams";
-
-const PATH_TO_TAB: Record<string, LamsTab> = {
-  "": "leads",
-  dashboard: "leads",
-  leads: "leads",
-  "acquisition-leads": "leads",
-  owners: "owners",
-  "land-owners": "owners",
-  valuations: "valuations",
-  "land-valuations": "valuations",
-  legal: "legal",
-  "legal-verification": "legal",
-  "due-diligence": "duediligence",
-  duediligence: "duediligence",
-  negotiation: "negotiation",
-  "negotiation-process": "negotiation",
-  approvals: "approvals",
-  "acquisition-approvals": "approvals",
-  settlements: "settlements",
-  documents: "documents",
-  "legal-documents": "documents",
-  reports: "reports",
-  "follow-up": "followup",
-  followup: "followup",
-};
-
-const TAB_TO_PATH: Record<LamsTab, string> = {
-  leads: "acquisition-leads",
-  owners: "land-owners",
-  valuations: "valuations",
-  legal: "legal-verification",
-  duediligence: "due-diligence",
-  negotiation: "negotiation-process",
-  approvals: "approvals",
-  settlements: "settlements",
-  documents: "legal-documents",
-  reports: "reports",
-  followup: "follow-up",
-};
+import {
+  resolveLamsTab,
+  parseLamsRoute,
+  TAB_TO_PATH,
+} from "@/lib/lamsRoutes";
 
 interface LamsDashboardProps {
   path?: string;
@@ -129,31 +97,37 @@ export default function LamsDashboard({
   initialFollowUps = [],
 }: LamsDashboardProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
   // Resolve initial tab from route path
-  const normalizedPath = path.toLowerCase().replace(/^\/+|\/+$/g, "");
-  const initialTab = PATH_TO_TAB[normalizedPath] ?? "leads";
+  const initialTab = resolveLamsTab(path);
   const [activeTab, setActiveTab] = useState<LamsTab>(initialTab);
   const [showInsights, setShowInsights] = useState(true);
 
   // Sync state if path prop changes from route navigation
   useEffect(() => {
-    if (normalizedPath && PATH_TO_TAB[normalizedPath]) {
-      setActiveTab(PATH_TO_TAB[normalizedPath]);
-    }
-  }, [normalizedPath]);
+    setActiveTab(resolveLamsTab(path));
+  }, [path]);
 
-  // When tab is clicked in header, sync URL if inside /dashboard/lams or /land
+  // Sub-route deep linking params
+  const parsedRoute = parseLamsRoute(path);
+  const isLeadsTab = activeTab === "leads";
+  const isLeadsCreateOpen = isLeadsTab && parsedRoute.isOpenCreate;
+  const selectedLeadId = isLeadsTab ? parsedRoute.selectedLeadId : undefined;
+  const initialDetailTab = isLeadsTab ? parsedRoute.initialDetailTab : undefined;
+
+  const isOwnersCreateOpen = activeTab === "owners" && parsedRoute.isOpenCreate;
+  const isValuationsCreateOpen = activeTab === "valuations" && parsedRoute.isOpenCreate;
+  const isLegalCreateOpen = activeTab === "legal" && parsedRoute.isOpenCreate;
+  const isDdCreateOpen = activeTab === "duediligence" && parsedRoute.isOpenCreate;
+  const isNegotiationsCreateOpen = activeTab === "negotiation" && parsedRoute.isOpenCreate;
+  const isSettlementsCreateOpen = activeTab === "settlements" && parsedRoute.isOpenCreate;
+
+  // When tab changes, always push to /dashboard/lams sub-route
   const handleTabChange = (newTab: LamsTab) => {
     setActiveTab(newTab);
     const subPath = TAB_TO_PATH[newTab];
-    if (pathname?.startsWith("/dashboard")) {
-      router.push(`/dashboard/lams/${subPath}`);
-    } else if (pathname?.startsWith("/land")) {
-      router.push(`/land/${subPath}`);
-    }
+    router.push(`/dashboard/lams/${subPath}`);
   };
 
   // Handlers for Land Owners
@@ -279,7 +253,7 @@ export default function LamsDashboard({
       await createAcquisitionApproval(rec);
     });
   };
-  const handleActionApproval = (id: string, action: "Approved" | "Rejected", comment?: string) => {
+  const handleActionApproval = (id: string, action: "approved" | "rejected", comment?: string) => {
     startTransition(async () => {
       await actionApproval(id, action, comment);
     });
@@ -304,7 +278,7 @@ export default function LamsDashboard({
   };
   const handleRecordPayment = (payment: any) => {
     startTransition(async () => {
-      await recordSettlementPayment(payment);
+      await recordSettlementPayment(payment.settlement_id, payment);
     });
   };
 
@@ -352,28 +326,31 @@ export default function LamsDashboard({
 
   return (
     <div className="space-y-6 pb-12">
-      {/* 1. Header Navigation Tabs with Module Counts */}
-      <LamsHeaderNav
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        showInsights={showInsights}
-        onToggleInsights={() => setShowInsights((prev) => !prev)}
-        counts={{
-          leads: initialLeads.length,
-          owners: initialOwners.length,
-          valuations: initialValuations.length,
-          legal: initialLegalRecords.length,
-          duediligence: initialDueDiligence.length,
-          negotiation: initialNegotiations.length,
-          approvals: initialApprovals.length,
-          settlements: initialSettlements.length,
-          documents: initialDocuments.length,
-          reports: initialLeads.length,
-          followup: initialFollowUps.length,
-        }}
-      />
+      {/* Module Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/80 dark:border-slate-800">
+        <div>
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">
+            <span>Dashboard</span>
+            <span>/</span>
+            <span className="text-cyan-600 dark:text-cyan-400 font-semibold">Module 02 — LAMS</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Land Acquisition &amp; Management System
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            End-to-end land acquisition pipeline — leads, owners, valuations, legal, negotiations, settlements &amp; analytics.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowInsights((prev) => !prev)}
+          className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+        >
+          {showInsights ? "Hide" : "Show"} Insights
+        </button>
+      </div>
 
-      {/* 2. Executive Metric Strip */}
+      {/* Executive Metric Strip */}
       <LamsMetrics
         showInsights={showInsights}
         leads={initialLeads}
@@ -397,6 +374,9 @@ export default function LamsDashboard({
             approvals={initialApprovals}
             settlements={initialSettlements}
             documents={initialDocuments}
+            initialOpenCreate={isLeadsCreateOpen}
+            selectedLeadId={selectedLeadId}
+            initialDetailTab={initialDetailTab}
             onAddLead={handleAddLead}
             onEditLead={handleEditLead}
             onDeleteLead={handleDeleteLead}
@@ -412,6 +392,7 @@ export default function LamsDashboard({
           <LandOwnersView
             owners={initialOwners}
             acquisitionLeads={initialLeads}
+            initialOpenCreate={isOwnersCreateOpen}
             onAddOwner={handleAddOwner}
             onEditOwner={handleEditOwner}
             onDeleteOwner={handleDeleteOwner}
@@ -423,6 +404,7 @@ export default function LamsDashboard({
           <LandValuationsView
             valuations={initialValuations}
             acquisitionLeads={initialLeads}
+            initialOpenCreate={isValuationsCreateOpen}
             onAddValuation={handleAddValuation}
             onEditValuation={handleEditValuation}
             onDeleteValuation={handleDeleteValuation}
@@ -432,11 +414,12 @@ export default function LamsDashboard({
         {/* Feature 02.05: Legal Title Verification */}
         {activeTab === "legal" && (
           <LegalVerificationView
-            records={initialLegalRecords}
+            verifications={initialLegalRecords || []}
             acquisitionLeads={initialLeads}
-            onAddRecord={handleAddLegal}
-            onEditRecord={handleEditLegal}
-            onDeleteRecord={handleDeleteLegal}
+            initialOpenCreate={isLegalCreateOpen}
+            onAddVerification={handleAddLegal}
+            onEditVerification={handleEditLegal}
+            onDeleteVerification={handleDeleteLegal}
           />
         )}
 
@@ -445,6 +428,7 @@ export default function LamsDashboard({
           <DueDiligenceView
             records={initialDueDiligence}
             acquisitionLeads={initialLeads}
+            initialOpenCreate={isDdCreateOpen}
             onAddRecord={handleAddDD}
             onEditRecord={handleEditDD}
             onDeleteRecord={handleDeleteDD}
@@ -456,6 +440,7 @@ export default function LamsDashboard({
           <NegotiationProcessView
             negotiations={initialNegotiations}
             acquisitionLeads={initialLeads}
+            initialOpenCreate={isNegotiationsCreateOpen}
             onAddNegotiation={handleAddNegotiation}
             onEditNegotiation={handleEditNegotiation}
             onDeleteNegotiation={handleDeleteNegotiation}
@@ -478,6 +463,7 @@ export default function LamsDashboard({
             settlements={initialSettlements}
             acquisitionLeads={initialLeads}
             landOwners={initialOwners}
+            initialOpenCreate={isSettlementsCreateOpen}
             onAddSettlement={handleAddSettlement}
             onEditSettlement={handleEditSettlement}
             onDeleteSettlement={handleDeleteSettlement}

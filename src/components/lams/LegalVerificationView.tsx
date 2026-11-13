@@ -22,6 +22,7 @@ import { AddLegalVerificationModal } from "./modals/AddLegalVerificationModal";
 interface LegalVerificationViewProps {
   verifications: LegalVerification[];
   acquisitionLeads: AcquisitionLead[];
+  initialOpenCreate?: boolean;
   onAddVerification?: (ver: any) => void;
   onEditVerification?: (uuid: string, ver: any) => void;
   onDeleteVerification?: (uuid: string) => void;
@@ -40,6 +41,7 @@ const DEFAULT_COLUMNS: ColumnDefinition[] = [
 export function LegalVerificationView({
   verifications = [],
   acquisitionLeads = [],
+  initialOpenCreate = false,
   onAddVerification,
   onEditVerification,
   onDeleteVerification,
@@ -51,8 +53,14 @@ export function LegalVerificationView({
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [columns, setColumns] = useState<ColumnDefinition[]>(DEFAULT_COLUMNS);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(Boolean(initialOpenCreate));
   const [editingVerification, setEditingVerification] = useState<LegalVerification | null>(null);
+
+  React.useEffect(() => {
+    if (initialOpenCreate) {
+      setIsModalOpen(true);
+    }
+  }, [initialOpenCreate]);
 
   const safeVerifications = Array.isArray(verifications) ? verifications : [];
 

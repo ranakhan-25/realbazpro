@@ -4,7 +4,8 @@ import type { ItemHistory } from "@/components/inventory/ItemHistoryTable";
 import ItemHistoryTable from "@/components/inventory/ItemHistoryTable";
 import React, { useState, useEffect, useMemo } from "react";
 import { FiSearch } from "react-icons/fi";
-import { reportsApi, fallbackItemHistory, fallbackCategories, fallbackItems } from "@/lib/inventoryApi";
+import { reportsApi } from "@/lib/inventoryApi";
+import { toast } from "sonner";
 
 
 export default function ItemHistoryContainer() {
@@ -14,7 +15,7 @@ export default function ItemHistoryContainer() {
   const [currentPage, setCurrentPage] = useState(1);
 
   // Filter states
-  const [selectedDateRange, setSelectedDateRange] = useState("15 August, 2026 - 13 September, 2026");
+  const [selectedDateRange, setSelectedDateRange] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedItem, setSelectedItem] = useState("");
   const [selectedProject, setSelectedProject] = useState("");
@@ -24,13 +25,12 @@ export default function ItemHistoryContainer() {
   useEffect(() => {
     async function loadItemHistory() {
       try {
-        let raw = await reportsApi.getItemHistory().catch(() => null);
-        if (!Array.isArray(raw) || raw.length === 0) {
-          raw = fallbackItemHistory;
-        }
-        setItems(raw);
+        const raw = await reportsApi.getItemHistory();
+        setItems(Array.isArray(raw) ? raw : []);
       } catch (err) {
-        setItems(fallbackItemHistory);
+        console.error("Could not load item history report.", err);
+        toast.error("Item history could not be loaded.");
+        setItems([]);
       }
     }
     loadItemHistory();
@@ -38,20 +38,17 @@ export default function ItemHistoryContainer() {
 
   const categories = useMemo(() => {
     const fromData = items.map((i) => i.category).filter(Boolean) as string[];
-    const defaults = fallbackCategories.map((c) => c.name);
-    return Array.from(new Set([...fromData, ...defaults]));
+    return Array.from(new Set(fromData));
   }, [items]);
 
   const itemList = useMemo(() => {
     const fromData = items.map((i) => i.itemName).filter(Boolean) as string[];
-    const defaults = fallbackItems.map((it) => it.name);
-    return Array.from(new Set([...fromData, ...defaults]));
+    return Array.from(new Set(fromData));
   }, [items]);
 
   const projects = useMemo(() => {
     const fromData = items.map((i) => i.project).filter(Boolean) as string[];
-    const defaults = ["Sheba Eyecon Tower", "Lake Garden Commercial", "Hena Heights", "Rifat Eyecon City"];
-    return Array.from(new Set([...fromData, ...defaults]));
+    return Array.from(new Set(fromData));
   }, [items]);
 
   // Filtering Logic

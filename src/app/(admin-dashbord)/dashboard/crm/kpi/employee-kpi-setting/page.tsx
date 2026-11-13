@@ -54,12 +54,14 @@ interface KpiFormData {
 // ==========================================
 // 2. ENV & ENDPOINT SETUP
 // ==========================================
-const API_BASE_URL = `${API_BASE}/crm/kpi/employee-kpi`;
+const DEFAULT_API_BASE_URL = `${API_BASE}/crm/kpi/employee-kpi`;
 
 // ==========================================
 // 3. MAIN PAGE COMPONENT
 // ==========================================
-export default function EmployeeKpiPage() {
+export default function EmployeeKpiPage({
+  apiBaseUrl = DEFAULT_API_BASE_URL,
+}: { apiBaseUrl?: string } = {}) {
   const [kpiData, setKpiData] = useState<KpiRecord[]>([]);
   const [dropdowns, setDropdowns] = useState<DropdownData>({
     types: [],
@@ -136,7 +138,7 @@ export default function EmployeeKpiPage() {
 
   const fetchDropdowns = async () => {
     try {
-      const json = await safeFetch(`${API_BASE_URL}/dropdowns`);
+      const json = await safeFetch(`${apiBaseUrl}/dropdowns`);
       if (json.success) setDropdowns(json.data);
     } catch (error: any) {
       console.error("Dropdown Error:", error.message);
@@ -147,7 +149,7 @@ export default function EmployeeKpiPage() {
     setIsFetching(true);
     try {
       const json = await safeFetch(
-        `${API_BASE_URL}?page=1&limit=10&withDeleted=false`,
+        `${apiBaseUrl}?page=1&limit=10&withDeleted=false`,
       );
       if (json.success) setKpiData(json.data.data);
     } catch (error: any) {
@@ -167,7 +169,7 @@ export default function EmployeeKpiPage() {
     setIsLoading(true);
 
     const isEditing = editingKpi !== null;
-    const url = isEditing ? `${API_BASE_URL}/${editingKpi.uuid}` : API_BASE_URL;
+    const url = isEditing ? `${apiBaseUrl}/${editingKpi.uuid}` : apiBaseUrl;
     const method = isEditing ? "PATCH" : "POST";
 
     const payload = {
@@ -211,7 +213,7 @@ export default function EmployeeKpiPage() {
   const handleDelete = async (uuid: string) => {
     if (!confirm("Are you sure you want to delete this KPI?")) return;
     try {
-      await safeFetch(`${API_BASE_URL}/${uuid}`, { method: "DELETE" });
+      await safeFetch(`${apiBaseUrl}/${uuid}`, { method: "DELETE" });
       await fetchKpiList();
     } catch (error: any) {
       console.error("Delete Error:", error.message);

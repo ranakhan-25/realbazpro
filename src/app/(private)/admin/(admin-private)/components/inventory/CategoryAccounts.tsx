@@ -7,7 +7,7 @@ import { FiPlus, FiX, FiArrowLeft } from "react-icons/fi";
 
 // Category type definition
 export interface Category {
-  id: number;
+  id: string | number;
   type: string;
   code: string;
   name: string;

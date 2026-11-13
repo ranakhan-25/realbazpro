@@ -68,17 +68,21 @@ export default function RecoveryLedgerPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [logs, agrs] = await Promise.all([
-        crApi.getRecoveryLogs(),
-        crApi.getAgreements(),
+      const [logsResult, agrsResult] = await Promise.allSettled([
+        crApi.getRecoveryLogs?.() ?? Promise.resolve([]),
+        crApi.getAgreements?.() ?? Promise.resolve([]),
       ]);
-      setRecoveryLogs(logs || []);
-      setAgreements(agrs || []);
+      const logs = logsResult.status === "fulfilled" && Array.isArray(logsResult.value) ? logsResult.value : [];
+      const agrs = agrsResult.status === "fulfilled" && Array.isArray(agrsResult.value) ? agrsResult.value : [];
+      setRecoveryLogs(logs);
+      setAgreements(agrs);
       if (!saleAgreementId && agrs?.length) {
-        setSaleAgreementId(agrs[0].id);
+        setSaleAgreementId(agrs[0]?.id);
       }
     } catch (err) {
       console.error("Failed to load recovery logs:", err);
+      setRecoveryLogs([]);
+      setAgreements([]);
     } finally {
       setLoading(false);
     }

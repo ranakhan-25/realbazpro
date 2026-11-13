@@ -5,6 +5,7 @@ import { RouteBreadcrumb } from "@/components/ui/RouteBreadcrumb";
 import React, { useState } from "react";
 import { FiPlus, FiX } from "react-icons/fi";
 import { toast } from "sonner";
+import { salesApi } from "@/lib/inventoryApi";
 
 export interface SaleListItem {
   id: number;
@@ -33,10 +34,7 @@ const SaleListAccounts = () => {
   const handleCreateNewSale = () => {
     setModalMode("create");
     setSelectedSale({
-      code: `SALE-${Math.floor(100000 + Math.random() * 900000)}`,
       date: new Date().toISOString().split("T")[0],
-      projectType: "Real Estate",
-      project: "Sheba Eyecon Tower",
       customerName: "",
       grandTotal: 0,
     });
@@ -53,15 +51,10 @@ const SaleListAccounts = () => {
   const handleSaveSale = async () => {
     try {
       setIsSubmitting(true);
-      const res = await fetch("/api/sales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(selectedSale),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error(err?.message || "Failed to save sale");
+      if (modalMode === "update" && selectedSale.id != null) {
+        await salesApi.update(selectedSale.id, selectedSale);
+      } else {
+        await salesApi.create(selectedSale);
       }
 
       toast.success(
@@ -97,7 +90,7 @@ const SaleListAccounts = () => {
         </div>
       </div>
 
-      {/* Child Component for Table, API fetching & Default Data fallback */}
+      {/* Sale records are loaded from the backend API. */}
       <SaleListTable
         refreshTrigger={refreshTrigger}
         onEdit={(item) => handleOpenModal(item, "update")}

@@ -16,9 +16,9 @@ interface PurchaseItem {
   unit: string;
   quantity: number;
   rate: number;
-  budgetQty: number;
+  budgetQty?: number;
   purchaseQty: number;
-  stockQty: number;
+  stockQty?: number;
 }
 
 // Payment transaction type definition
@@ -38,12 +38,7 @@ export default function PurchaseForm() {
   const [isMaterialUsages, setIsMaterialUsages] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [supplier, setSupplier] = useState("");
-  const [code, setCode] = useState(`PUR${Math.floor(1000000 + Math.random() * 9000000)}`);
-  const [projectType, setProjectType] = useState("Commercial");
-  const [project, setProject] = useState("PRJ-1001");
-  const [titleOfWork, setTitleOfWork] = useState("Structural RCC & Foundation");
-  const [itTask, setItTask] = useState("Material Requisition");
-  const [site, setSite] = useState("Site A (Block-A)");
+  const [project, setProject] = useState("");
   const [category, setCategory] = useState("");
   const [selectedItem, setSelectedItem] = useState("");
 
@@ -57,9 +52,9 @@ export default function PurchaseForm() {
     async function loadData() {
       try {
         const [sups, itms, cats] = await Promise.all([
-          suppliersApi.getAll().catch(() => []),
-          itemsApi.getAll().catch(() => []),
-          categoriesApi.getAll().catch(() => []),
+          suppliersApi.getAll(),
+          itemsApi.getAll(),
+          categoriesApi.getAll(),
         ]);
         if (Array.isArray(sups)) {
           setSuppliersList(sups);
@@ -95,7 +90,7 @@ export default function PurchaseForm() {
   // Payment states
   const [isCheque, setIsCheque] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
-  const [paymentDate, setPaymentDate] = useState("10/09/2026");
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [chequeReceiptNo, setChequeReceiptNo] = useState("");
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
   const [payments, setPayments] = useState<PaymentTransaction[]>([]);
@@ -115,15 +110,15 @@ export default function PurchaseForm() {
     const newItem: PurchaseItem = {
       id: Date.now(),
       itemId: found ? found.id : undefined,
-      itemCode: found ? (found.item_code || found.code || "ITM") : `ITM${Math.floor(100 + Math.random() * 900)}`,
-      itemName: found ? found.name : selectedItem,
-      details: "Item Details",
-      unit: found?.unit?.name || "Pcs",
+      itemCode: found ? (found.item_code || found.code || "") : "",
+      itemName: found?.name || "",
+      details: "",
+      unit: found?.unit?.name || found?.unit || "",
       quantity: 1,
-      rate: found?.purchase_price ? Number(found.purchase_price) : 100,
-      budgetQty: 10,
+      rate: found?.purchase_price == null ? 0 : Number(found.purchase_price),
+      budgetQty: found?.budget_qty == null ? undefined : Number(found.budget_qty),
       purchaseQty: 1,
-      stockQty: 5,
+      stockQty: found?.stock_qty == null ? undefined : Number(found.stock_qty),
     };
     setItems([...items, newItem]);
     setSelectedItem("");
@@ -142,7 +137,7 @@ export default function PurchaseForm() {
     }
     const newPayment: PaymentTransaction = {
       id: Date.now(),
-      transactionId: `TRX${Math.floor(100000 + Math.random() * 900000)}`,
+      transactionId: "",
       paymentMethod: isCheque ? "Cheque" : paymentMethod,
       chequeReceiptNo: isCheque ? chequeReceiptNo : "-",
       amount: paymentAmount,
@@ -176,15 +171,15 @@ export default function PurchaseForm() {
         const autoItem: PurchaseItem = {
           id: Date.now(),
           itemId: found.id,
-          itemCode: found.item_code || found.code || "ITM",
+          itemCode: found.item_code || found.code || "",
           itemName: found.name,
-          details: "Item Details",
-          unit: found.unit?.name || "Pcs",
+          details: "",
+          unit: found.unit?.name || found.unit || "",
           quantity: 1,
-          rate: found.purchase_price ? Number(found.purchase_price) : 100,
-          budgetQty: 10,
+          rate: found.purchase_price == null ? 0 : Number(found.purchase_price),
+          budgetQty: found.budget_qty == null ? undefined : Number(found.budget_qty),
           purchaseQty: 1,
-          stockQty: 5,
+          stockQty: found.stock_qty == null ? undefined : Number(found.stock_qty),
         };
         currentItems = [autoItem];
         setItems(currentItems);
@@ -214,7 +209,7 @@ export default function PurchaseForm() {
         grand_total: Number(computedGrandTotal || 0),
         paid_amount: Number(computedPaid || 0),
         due_amount: Number(computedDue || 0),
-        projectId: project || "PRJ-1001",
+        projectId: project || undefined,
         items: currentItems.map((it) => ({
           item_id: it.itemId || it.id.toString(),
           quantity: Number(it.quantity || 1),
@@ -280,7 +275,7 @@ export default function PurchaseForm() {
                 <option value="">Select Supplier</option>
                 {suppliersList.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.name} ({s.code || "SUP"})
+                    {s.code ? `${s.name} (${s.code})` : s.name}
                   </option>
                 ))}
               </select>
@@ -294,30 +289,6 @@ export default function PurchaseForm() {
               </button>
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Code</label>
-            <input
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">
-              Project Type
-            </label>
-            <select
-              value={projectType}
-              onChange={(e) => setProjectType(e.target.value)}
-              className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="Commercial">Commercial</option>
-              <option value="Residential">Residential</option>
-              <option value="Mixed-Use">Mixed-Use</option>
-              <option value="Industrial">Industrial</option>
-            </select>
-          </div>
         </div>
 
         {/* Row 2: Project, Title/Name of Work, It Task, Site */}
@@ -326,57 +297,13 @@ export default function PurchaseForm() {
             <label className="block text-xs font-medium text-muted-foreground mb-1">
               Project <span className="text-red-500">*</span>
             </label>
-            <select
+            <input
+              type="text"
               value={project}
               onChange={(e) => setProject(e.target.value)}
+              placeholder="Enter project ID"
               className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="PRJ-1001">PRJ-1001 - Dhaka Commercial Center</option>
-              <option value="PRJ-1002">PRJ-1002 - Bashundhara Tower</option>
-              <option value="PRJ-1003">PRJ-1003 - Uttara Lakeview Residency</option>
-              <option value="PRJ-1004">PRJ-1004 - Mirpur Shopping Complex</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">
-              Title/Name of Work
-            </label>
-            <select
-              value={titleOfWork}
-              onChange={(e) => setTitleOfWork(e.target.value)}
-              className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="Structural RCC & Foundation">Structural RCC & Foundation</option>
-              <option value="Masonry & Brick Work">Masonry & Brick Work</option>
-              <option value="Plumbing & Sanitary Lines">Plumbing & Sanitary Lines</option>
-              <option value="Electrical Conduit & Cabling">Electrical Conduit & Cabling</option>
-              <option value="Finishing & Interior Fit-out">Finishing & Interior Fit-out</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">It Task</label>
-            <select
-              value={itTask}
-              onChange={(e) => setItTask(e.target.value)}
-              className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="Material Requisition">Material Requisition</option>
-              <option value="Procurement & Gate In">Procurement & Gate In</option>
-              <option value="Quality Inspection">Quality Inspection</option>
-              <option value="Site Stock Transfer">Site Stock Transfer</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Site</label>
-            <select
-              value={site}
-              onChange={(e) => setSite(e.target.value)}
-              className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="Site A (Block-A)">Site A (Block-A)</option>
-              <option value="Site B (Tower-1)">Site B (Tower-1)</option>
-              <option value="Site C (Central Warehouse)">Site C (Central Warehouse)</option>
-            </select>
+            />
           </div>
         </div>
 
@@ -414,7 +341,7 @@ export default function PurchaseForm() {
                 {availableItems.length > 0 ? (
                   availableItems.map((i) => (
                     <option key={i.id} value={i.id}>
-                      {i.name} ({i.code || i.item_code || "ITM"})
+                      {i.name}{i.code || i.item_code ? ` (${i.code || i.item_code})` : ""}
                     </option>
                   ))
                 ) : (
@@ -456,7 +383,7 @@ export default function PurchaseForm() {
               {items.length > 0 ? (
                 items.map((item) => (
                   <tr key={item.id} className="hover:bg-muted/50 transition-colors">
-                    <td className="py-2 px-3 font-mono">{item.itemCode}</td>
+                    <td className="py-2 px-3 font-mono">{item.itemCode || "Not found"}</td>
                     <td className="py-2 px-3 font-medium">{item.itemName}</td>
                     <td className="py-2 px-3">
                       <input
@@ -471,7 +398,7 @@ export default function PurchaseForm() {
                         className="bg-background border border-input rounded px-2 py-1 w-28 text-xs"
                       />
                     </td>
-                    <td className="py-2 px-3">{item.unit}</td>
+                    <td className="py-2 px-3">{item.unit || "Not found"}</td>
                     <td className="py-2 px-3">
                       <input
                         type="number"
@@ -496,9 +423,9 @@ export default function PurchaseForm() {
                         className="bg-background border border-input rounded px-2 py-1 w-16 text-xs"
                       />
                     </td>
-                    <td className="py-2 px-3">{item.budgetQty}</td>
+                    <td className="py-2 px-3">{item.budgetQty ?? "Not found"}</td>
                     <td className="py-2 px-3">{item.purchaseQty}</td>
-                    <td className="py-2 px-3">{item.stockQty}</td>
+                    <td className="py-2 px-3">{item.stockQty ?? "Not found"}</td>
                     <td className="py-2 px-3 font-medium">{item.quantity * item.rate}</td>
                     <td className="py-2 px-3 text-center">
                       <button

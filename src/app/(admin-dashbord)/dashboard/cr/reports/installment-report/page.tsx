@@ -8,19 +8,6 @@ import { crApi } from "@/lib/crApi";
 
 const flatLandMenu = ["Flat/Land", "Flat/Land Sale", "Flat/Land Sale Payment"];
 
-const salesByOptions = ["Tazmul Reza", "Rifat Hosain", "Mohin Uddin"];
-
-const teamOptions = ["Gladiators", "Team Warriors", "Go", "Diponkar Team"];
-
-const projectOptions = [
-  "Head Office",
-  "Lake Garden",
-  "Estern 19",
-  "Sheba Eyecon Tower",
-  "Hena Heights",
-  "Rifat Eyecon City",
-];
-
 const datePresets = [
   "Today",
   "Yesterday",
@@ -291,10 +278,11 @@ export default function InstallmentReportPage() {
     async function loadData() {
       try {
         setLoading(true);
-        const agreements = await crApi.getAgreements();
+        const rawAgreements = await crApi.getAgreements?.() ?? [];
+        const agreements = Array.isArray(rawAgreements) ? rawAgreements : [];
         if (!mounted) return;
         const transformed: any[] = [];
-        agreements.forEach((ag: any, idx: number) => {
+        agreements.forEach((ag: any) => {
           const plans = ag.installment_plans || ag.schedule || [];
           const totalVal = Number(ag.total_price || ag.agreed_price || 0);
           const totalPaid = plans.reduce((acc: number, p: any) => acc + Number(p.paid_amount || 0), Number(ag.booking_money || 0) + Number(ag.down_payment || 0));
@@ -308,33 +296,35 @@ export default function InstallmentReportPage() {
 
               transformed.push({
                 id: `${ag.agreement_number || ag.agreement_no || ag.id}-${inst.installment_no}`,
-                project: ag.project_id || ag.project_name || "Purbachal Project",
-                flatLand: ag.unit_identifier || ag.unit_no || "Plot / Flat",
-                customer: ag.customer_name || "Customer",
+                project: ag.project_id || ag.project_name || "Not found",
+                flatLand: ag.unit_identifier || ag.unit_no || "Not found",
+                customer: ag.customer_name || "Not found",
                 totalValue: totalVal.toLocaleString(),
                 paid: totalPaid.toLocaleString(),
                 due: totalDue.toLocaleString(),
-                installmentDate: inst.due_date ? String(inst.due_date).slice(0, 10) : "N/A",
+                installmentDate: inst.due_date ? String(inst.due_date).slice(0, 10) : "Not found",
                 installmentAmount: instPayable.toLocaleString(),
                 recovered: instPaid.toLocaleString(),
                 installmentDue: instDue.toLocaleString(),
-                salesBy: ag.created_by || ag.sales_person_name || "Account Manager",
+                salesBy: ag.created_by || ag.sales_person_name || "Not found",
+                team: ag.team_name || ag.team || "Not found",
               });
             });
           } else {
             transformed.push({
-              id: ag.agreement_number || ag.agreement_no || `#${ag.id || idx + 1}`,
-              project: ag.project_id || ag.project_name || "Purbachal Project",
-              flatLand: ag.unit_identifier || ag.unit_no || "Plot / Flat",
-              customer: ag.customer_name || "Customer",
+              id: ag.agreement_number || ag.agreement_no || ag.id || "Not found",
+              project: ag.project_id || ag.project_name || "Not found",
+              flatLand: ag.unit_identifier || ag.unit_no || "Not found",
+              customer: ag.customer_name || "Not found",
               totalValue: totalVal.toLocaleString(),
               paid: totalPaid.toLocaleString(),
               due: totalDue.toLocaleString(),
-              installmentDate: ag.agreement_date || (ag.createdAt ? String(ag.createdAt).slice(0, 10) : "N/A"),
+              installmentDate: ag.agreement_date || (ag.createdAt ? String(ag.createdAt).slice(0, 10) : "Not found"),
               installmentAmount: totalVal.toLocaleString(),
               recovered: totalPaid.toLocaleString(),
               installmentDue: totalDue.toLocaleString(),
-              salesBy: ag.created_by || ag.sales_person_name || "Account Manager",
+              salesBy: ag.created_by || ag.sales_person_name || "Not found",
+              team: ag.team_name || ag.team || "Not found",
             });
           }
         });
@@ -361,7 +351,9 @@ export default function InstallmentReportPage() {
         r.flatLand.toLowerCase().includes(q) ||
         String(r.id).includes(q);
       const matchProject = !project || r.project === project;
-      return matchSearch && matchProject;
+      const matchSalesBy = !salesBy || r.salesBy === salesBy;
+      const matchTeam = !team || r.team === team;
+      return matchSearch && matchProject && matchSalesBy && matchTeam;
     });
   }, [rows, search, project]);
 
@@ -425,7 +417,7 @@ export default function InstallmentReportPage() {
               setSalesBy(v);
               setPage(1);
             }}
-            options={salesByOptions}
+            options={Array.from(new Set(rows.map((row) => row.salesBy).filter((value) => value !== "Not found")))}
           />
 
           <SearchableSelect
@@ -435,7 +427,7 @@ export default function InstallmentReportPage() {
               setTeam(v);
               setPage(1);
             }}
-            options={teamOptions}
+            options={Array.from(new Set(rows.map((row) => row.team).filter((value) => value !== "Not found")))}
           />
 
           <SearchableSelect
@@ -445,7 +437,7 @@ export default function InstallmentReportPage() {
               setProject(v);
               setPage(1);
             }}
-            options={projectOptions}
+            options={Array.from(new Set(rows.map((row) => row.project).filter((value) => value !== "Not found")))}
           />
         </div>
 
