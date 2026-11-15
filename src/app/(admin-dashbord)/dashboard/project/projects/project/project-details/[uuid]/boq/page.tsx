@@ -2,8 +2,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectApiList, projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+import { adminAuthStorage } from "@/lib/admin-auth/adminAuthStorage";
+
+
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
 
 // ====================== TYPES ======================
 interface BoqItem {
@@ -62,31 +68,14 @@ interface BoqLineItem {
 interface TaskItem {
   uuid: string;
   taskName: string;
+  projectId?: string;
 }
 
 // ====================== STATIC OPTIONS ======================
 const TYPE_OPTIONS = ["Material", "Work", "Cost"];
-const UNIT_OPTIONS = [
-  "Kg", "Bag", "Cft", "Litre", "Pcs", "Sft", "Feet", "Lit.", "Tk.", "Goj",
-  "Drum", "Gallon", "Job", "Nos", "Rft", "RMT",
-];
-
 const TITLE_OPTIONS = [
   "Bricks Works", "cement", "Design Cost", "Direct Common Cost",
   "Door Works", "Electric Works", "Indirect Common Cost", "Foundation Work",
-];
-
-const ITEM_OPTIONS = [
-  "Soil Test Boring", "Land Survey", "Rebar Test", "Cylinder Set",
-  "Scrap", "Maskin Tape", "Plastic Belcha",
-];
-
-const ACCOUNT_HEAD_OPTIONS = [
-  "500-022-015-Others Consumption-(0)",
-  "500-022-014-Sanitary Work Consumption-(0)",
-  "500-022-013-Thai Consumption-(0)",
-  "500-022-012-Marble Consumption-(0)",
-  "500-022-011-Tiles Consumption-(70)",
 ];
 
 // ====================== MAIN COMPONENT ======================
@@ -98,6 +87,9 @@ export default function BoqPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectTypes, setProjectTypes] = useState<ProjectType[]>([]);
   const [projectSites, setProjectSites] = useState<ProjectSite[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   
   // ✅ Task ড্রপডাউনের জন্য স্টেট
   const [tasks, setTasks] = useState<TaskItem[]>([]); 
@@ -137,12 +129,12 @@ export default function BoqPage() {
   const fetchBoqList = async () => {
     try {
       setLoading(true);
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/boq?sortBy=createdAt&sortOrder=DESC&withDeleted=false`
+      const res = await projectFetch(
+        `${API_BASE}/realbizpro/api/v1/boq?projectId=${encodeURIComponent(projectUuid)}&sortBy=createdAt&sortOrder=DESC&withDeleted=false`
       );
       const json = await res.json();
-      if (json.success) {
-        const activeBoqs = (json.data.data || []).filter((item: BoqItem) => !item.deletedAt);
+      if (res.ok) {
+        const activeBoqs = projectApiList<BoqItem>(json).filter((item) => !item.deletedAt);
         setBoqList(activeBoqs);
       }
     } catch (err) {
@@ -154,9 +146,12 @@ export default function BoqPage() {
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/project/${encodeURIComponent(projectUuid)}`);
       const json = await res.json();
-      if (json.success) setProjects(json.data.data || []);
+      if (res.ok) {
+        const project = json?.data?.data ?? json?.data ?? json;
+        setProjects(project ? [project] : []);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -164,9 +159,9 @@ export default function BoqPage() {
 
   const fetchProjectTypes = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project-type`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/project-type?page=1&limit=100`);
       const json = await res.json();
-      if (json.success) setProjectTypes(json.data.data || []);
+      if (res.ok) setProjectTypes(projectApiList<ProjectType>(json));
     } catch (err) {
       console.error(err);
     }
@@ -174,9 +169,9 @@ export default function BoqPage() {
 
   const fetchProjectSites = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project-sites`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/project-sites?page=1&limit=100&projectId=${encodeURIComponent(projectUuid)}`);
       const json = await res.json();
-      if (json.success) setProjectSites(json.data.data || []);
+      if (res.ok) setProjectSites(projectApiList<ProjectSite>(json).filter((site: any) => site.projectId === projectUuid || site.project?.uuid === projectUuid));
     } catch (err) {
       console.error(err);
     }
@@ -185,11 +180,25 @@ export default function BoqPage() {
   // ✅ Task লিস্ট ফেচ
   const fetchTasks = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/task?page=1&limit=100`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/task?page=1&limit=100&projectId=${encodeURIComponent(projectUuid)}`);
       const json = await res.json();
-      if (json.success) {
-        setTasks(json.data.data || []);
-      }
+      if (res.ok) setTasks(projectApiList<TaskItem>(json).filter((task: any) => !task.deletedAt && task.projectId === projectUuid));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchInventoryOptions = async () => {
+    try {
+      const [itemsResponse, unitsResponse, accountsResponse] = await Promise.all([
+        projectFetch(`${API_BASE}/realbizpro/api/v1/inventory/items`),
+        projectFetch(`${API_BASE}/realbizpro/api/v1/inventory/units`),
+        projectFetch(`${API_BASE}/realbizpro/api/v1/chart-of-accounts?page=1&limit=100`),
+      ]);
+      const [itemsPayload, unitsPayload, accountsPayload] = await Promise.all([itemsResponse.json(), unitsResponse.json(), accountsResponse.json()]);
+      if (itemsResponse.ok) setInventoryItems(projectApiList(itemsPayload));
+      if (unitsResponse.ok) setUnits(projectApiList(unitsPayload));
+      if (accountsResponse.ok) setAccounts(projectApiList(accountsPayload));
     } catch (err) {
       console.error(err);
     }
@@ -200,8 +209,9 @@ export default function BoqPage() {
     fetchProjects();
     fetchProjectTypes();
     fetchProjectSites();
+    fetchInventoryOptions();
     fetchTasks(); // ✅ কল করা হলো
-  }, []);
+  }, [projectUuid]);
 
   // ====================== CREATE ======================
   const handleCreate = () => {
@@ -273,8 +283,8 @@ export default function BoqPage() {
     try {
       setDeletingId(uuid);
       setBoqList((prev) => prev.filter((item) => item.uuid !== uuid));
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/boq/${uuid}`,
+      const res = await projectFetch(
+        `${API_BASE}/realbizpro/api/v1/boq/${uuid}`,
         { method: "DELETE", headers: { "Content-Type": "application/json" } }
       );
       const json = await res.json().catch(() => ({}));
@@ -353,7 +363,7 @@ export default function BoqPage() {
     setSubmitting(true);
 
     const payload = {
-      projectId: form.projectId,
+      projectId: projectUuid,
       uid: form.uid,
       date: form.date,
       titleOfWork: form.titleOfWork,
@@ -363,19 +373,19 @@ export default function BoqPage() {
       perSftBudget: 0,
       cost: 0,
       available: grandTotal,
-      addedBy: "Admin",
-      addedById: "admin-user",
+      addedBy: (() => { const user = adminAuthStorage.getUserProfile(); return user?.name || user?.username || user?.email || "Unknown user"; })(),
+      addedById: (() => { const user = adminAuthStorage.getUserProfile(); return user?.id != null ? String(user.id) : user?.uuid || ""; })(),
     };
 
     try {
       const isEdit = !!editingBoq;
       const url = isEdit
-        ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/boq/${editingBoq!.uuid}`
-        : `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/boq`;
+        ? `${API_BASE}/realbizpro/api/v1/boq/${editingBoq!.uuid}`
+        : `${API_BASE}/realbizpro/api/v1/boq`;
 
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await projectFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -479,7 +489,7 @@ export default function BoqPage() {
                   className="w-full border rounded px-3 py-2 text-sm"
                 >
                   <option value="">Select Project</option>
-                  {projects.map((p) => (
+                  {projects.filter((p) => p.uuid === projectUuid).map((p) => (
                     <option key={p.uuid} value={p.uuid}>{p.name}</option>
                   ))}
                 </select>
@@ -552,13 +562,13 @@ export default function BoqPage() {
                     <td className="px-2 py-2">
                       <select value={item.itemName} onChange={(e) => updateLineItem(item.id, "itemName", e.target.value)} className="w-full border rounded px-2 py-1.5 text-sm">
                         <option value="">Select Item</option>
-                        {ITEM_OPTIONS.map((i) => <option key={i} value={i}>{i}</option>)}
+                        {inventoryItems.map((i) => <option key={i.id ?? i.uuid} value={i.name}>{i.name}</option>)}
                       </select>
                     </td>
                     <td className="px-2 py-2">
                       <select value={item.accountsHead} onChange={(e) => updateLineItem(item.id, "accountsHead", e.target.value)} className="w-full border rounded px-2 py-1.5 text-sm">
                         <option value="">Select Item</option>
-                        {ACCOUNT_HEAD_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
+                        {accounts.map((account) => <option key={account.uuid} value={account.name}>{account.code ? `${account.code} - ` : ""}{account.name}</option>)}
                       </select>
                     </td>
                     <td className="px-2 py-2">
@@ -566,7 +576,7 @@ export default function BoqPage() {
                     </td>
                     <td className="px-2 py-2">
                       <select value={item.unit} onChange={(e) => updateLineItem(item.id, "unit", e.target.value)} className="w-full border rounded px-2 py-1.5 text-sm">
-                        {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
+                        {units.map((u) => <option key={u.uuid ?? u.id} value={u.name ?? u.unit_name}>{u.name ?? u.unit_name}</option>)}
                       </select>
                     </td>
                     <td className="px-2 py-2">

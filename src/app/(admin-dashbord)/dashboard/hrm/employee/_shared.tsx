@@ -1,6 +1,8 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
 import React, { useState, useEffect, useMemo } from "react";
 import { X, Loader2, ChevronDown } from "lucide-react";
 
@@ -24,7 +26,7 @@ export async function loadDropdown(apiPath: string) {
     const token = typeof window !== "undefined" ? (localStorage.getItem("admin_access_token") || localStorage.getItem("access_token") || localStorage.getItem("token")) : null;
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${API_BASE}/realbizpro/api/v1/${apiPath}?page=1&limit=100&status=active&withDeleted=false`, {
+    const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/${apiPath}?page=1&limit=100&status=active&withDeleted=false`, {
       cache: "no-store",
       headers,
     });
@@ -200,7 +202,7 @@ export function EmployeeFormModal({ isOpen, onClose, onSuccess, initialData }: {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const res = await fetch(url, { 
+      const res = await hrmFetch(url, { 
         method, 
         headers, 
         body: JSON.stringify(payload) 

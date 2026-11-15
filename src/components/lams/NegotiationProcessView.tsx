@@ -31,7 +31,34 @@ interface NegotiationProcessViewProps {
   onAddNegotiation: (record: NegotiationRecord) => void;
   onDeleteNegotiation: (uuid: string) => void;
   acquisitionLeads: AcquisitionLead[];
+  initialOpenCreate?: boolean;
 }
+
+const STATUS_CONFIG: Record<
+  NegotiationStatus,
+  { bg: string; text: string; icon: React.ElementType }
+> = {
+  "In Progress": {
+    bg: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+    text: "text-blue-700",
+    icon: Clock,
+  },
+  Agreed: {
+    bg: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+    text: "text-emerald-700",
+    icon: CheckCircle2,
+  },
+  "Revision Needed": {
+    bg: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+    text: "text-amber-700",
+    icon: AlertTriangle,
+  },
+  Declined: {
+    bg: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
+    text: "text-rose-700",
+    icon: XCircle,
+  },
+};
 
 const DEFAULT_COLUMNS: ColumnDefinition[] = [
   { key: "lead", label: "Lead / Parcel", visible: true },
@@ -50,6 +77,7 @@ export function NegotiationProcessView({
   onEditNegotiation,
   onDeleteNegotiation,
   acquisitionLeads = [],
+  initialOpenCreate = false,
 }: NegotiationProcessViewProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [leadFilter, setLeadFilter] = useState("ALL");
@@ -62,8 +90,14 @@ export function NegotiationProcessView({
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Modals
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(Boolean(initialOpenCreate));
   const [editingNegotiation, setEditingNegotiation] = useState<any>(null);
+
+  React.useEffect(() => {
+    if (initialOpenCreate) {
+      setIsAddModalOpen(true);
+    }
+  }, [initialOpenCreate]);
 
   const safeNegotiations = Array.isArray(negotiations) ? negotiations : [];
 
@@ -280,7 +314,7 @@ export function NegotiationProcessView({
               <option value="ALL">All Acquisition Leads</option>
               {acquisitionLeads.map((l) => (
                 <option key={l.id || l.uuid} value={l.id || l.uuid}>
-                  {l.lead_code || l.title}
+                  {l.leadCode || l.code || l.title}
                 </option>
               ))}
             </select>
@@ -375,10 +409,10 @@ export function NegotiationProcessView({
           setSelectedIds([]);
         }}
         statusOptions={[
-          { label: "In Progress", value: "In Progress" },
-          { label: "Agreed", value: "Agreed" },
-          { label: "Revision Needed", value: "Revision Needed" },
-          { label: "Declined", value: "Declined" },
+          "In Progress",
+          "Agreed",
+          "Revision Needed",
+          "Declined",
         ]}
       />
 
@@ -387,8 +421,8 @@ export function NegotiationProcessView({
         {displayedNegotiations.length === 0 ? (
           <LamsEmptyState
             title="No negotiation records found"
-            subtitle="Start a negotiation process or adjust filters to view historical offer rounds."
-            buttonText="Add Negotiation Round"
+            description="Start a negotiation process or adjust filters to view historical offer rounds."
+            actionLabel="Add Negotiation Round"
             onAction={() => {
               setEditingNegotiation(null);
               setIsAddModalOpen(true);
@@ -424,15 +458,17 @@ export function NegotiationProcessView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {displayedNegotiations.map((item: any) => {
-                  const itemId = item.uuid || item.id;
-                  const isSelected = selectedIds.includes(itemId);
+                {displayedNegotiations.map((item: any, idx: number) => {
+                  const itemId = item.uuid || item.id || `neg-${idx}`;
                   const isExpanded = expandedId === itemId;
+                  const isSelected = selectedIds.includes(itemId);
+                  const statusInfo = STATUS_CONFIG[item.negotiationStatus as NegotiationStatus] || { bg: "bg-slate-100 text-slate-800", text: "text-slate-700", icon: AlertTriangle };
+                  const StatusIcon = statusInfo.icon;
+                  const roundNo = item.roundNo || item.round_no || idx + 1;
                   const offered = item.offeredTotalPrice || item.offer_amount || 0;
                   const counter = item.counterOfferByOwner || item.counter_amount || 0;
-                  const gap = counter - offered;
+                  const gap = item.gap !== undefined ? item.gap : (counter - offered);
                   const statusKey = item.negotiationStatus || item.status || "In Progress";
-                  const roundNo = item.round_no || 1;
 
                   return (
                     <React.Fragment key={itemId}>
@@ -550,6 +586,7 @@ export function NegotiationProcessView({
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               onClick={() => {
+                                onEditNegotiation?.(itemId, item);
                                 setEditingNegotiation(item);
                                 setIsAddModalOpen(true);
                               }}

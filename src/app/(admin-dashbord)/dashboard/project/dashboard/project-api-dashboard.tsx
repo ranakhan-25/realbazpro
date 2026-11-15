@@ -1,5 +1,8 @@
 "use client";
 
+import { normalizeProjectText, projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -36,11 +39,24 @@ function extractProjects(response: unknown): ProjectRecord[] {
   return [];
 }
 
+function extractProject(response: unknown): ProjectRecord | null {
+  let value = response;
+  for (let depth = 0; depth < 6; depth += 1) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const record = value as Record<string, unknown>;
+    if (typeof record.uuid === "string") return record as unknown as ProjectRecord;
+    value = record.data ?? record.project;
+  }
+  return null;
+}
+
 export default function ProjectApiDashboard({
   projectName,
+  projectUuid,
   detailsHref,
 }: {
   projectName: string;
+  projectUuid?: string;
   detailsHref?: string;
 }) {
   const [project, setProject] = useState<ProjectRecord | null>(null);
@@ -63,8 +79,10 @@ export default function ProjectApiDashboard({
         const headers: Record<string, string> = {};
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
-        const response = await fetch(
-          `${API_BASE}/realbizpro/api/v1/project?page=1&limit=100`,
+        const response = await projectFetch(
+          projectUuid
+            ? `${API_BASE}/realbizpro/api/v1/project/${encodeURIComponent(projectUuid)}`
+            : `${API_BASE}/realbizpro/api/v1/project`,
           { cache: "no-store", headers },
         );
         const payload: unknown = await response.json().catch(() => null);
@@ -76,11 +94,23 @@ export default function ProjectApiDashboard({
           throw new Error(message);
         }
 
-        const match = extractProjects(payload).find(
-          (item) => item.name.trim().toLowerCase() === projectName.toLowerCase(),
-        );
+        const match = projectUuid
+          ? extractProject(payload)
+          : extractProjects(payload).find(
+              (item) => normalizeProjectText(item.name).trim().toLowerCase() === projectName.toLowerCase(),
+            );
         if (!match) throw new Error(`Project "${projectName}" was not found.`);
-        if (active) setProject(match);
+        if (active) {
+          setProject({
+            ...match,
+            name: normalizeProjectText(match.name),
+            projectType: normalizeProjectText(match.projectType),
+            location: normalizeProjectText(match.location),
+            description: normalizeProjectText(match.description),
+            contactPersonName: normalizeProjectText(match.contactPersonName),
+            projectManager: normalizeProjectText(match.projectManager),
+          });
+        }
       } catch (cause) {
         if (active) {
           setError(
@@ -98,7 +128,7 @@ export default function ProjectApiDashboard({
     return () => {
       active = false;
     };
-  }, [projectName]);
+  }, [projectName, projectUuid]);
 
   if (loading) {
     return <main className="p-6 text-sm text-slate-500">Loading project…</main>;

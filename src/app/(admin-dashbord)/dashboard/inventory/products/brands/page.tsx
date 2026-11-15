@@ -25,7 +25,7 @@ const BrandAccounts = () => {
   const handleAddClick = () => {
     setModalMode("add");
     setSelectedBrand({
-      code: `BR${Math.floor(100000000 + Math.random() * 900000000)}`,
+      code: "",
       name: "",
     });
     setIsModalOpen(true);
@@ -47,7 +47,7 @@ const BrandAccounts = () => {
       setIsSubmitting(true);
       if (modalMode === "add") {
         await brandsApi.create({
-          code: selectedBrand.code || `BR${Date.now().toString().slice(-6)}`,
+          code: selectedBrand.code || "",
           name: selectedBrand.name,
         });
       } else if (modalMode === "update" && selectedBrand.id) {

@@ -127,7 +127,11 @@ export async function getShareUsers(params = {}) {
 }
 
 export async function createShareUser(data: Record<string, unknown>) {
-  await api.post("/share-user/register", data);
+  await api.post("/share-user/admin/create", data);
+}
+
+export async function updateShareUser(uuid: string, data: { name?: string; phone?: string; password?: string }) {
+  await api.patch(`/share-user/${encodeURIComponent(uuid)}/admin-update`, data);
 }
 
 export async function deleteShareUser(uuid: string) {

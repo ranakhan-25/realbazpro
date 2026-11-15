@@ -20,7 +20,7 @@ const SupplierAccounts = () => {
   const handleAddClick = () => {
     setModalMode("add");
     setSelectedSupplier({
-      code: `SUP${Math.floor(1000000 + Math.random() * 9000000)}`,
+      code: "",
       under: "Sundry Creditors",
       name: "",
       phone: "",
@@ -41,15 +41,20 @@ const SupplierAccounts = () => {
   // Form submit handler for Add/Update
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedSupplier.name) return;
+    if (!selectedSupplier.name || !selectedSupplier.code) return;
+    const mobile = selectedSupplier.phone || (selectedSupplier as any).mobile;
+    if (!mobile) {
+      toast.error("Supplier phone number is required.");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
       const payload = {
-        code: selectedSupplier.code || `SUP${Date.now().toString().slice(-6)}`,
+        code: selectedSupplier.code,
         name: selectedSupplier.name,
         company: selectedSupplier.company || undefined,
-        mobile: selectedSupplier.phone || (selectedSupplier as any).mobile || "01700000000",
+        mobile,
         email: selectedSupplier.email || undefined,
         address: selectedSupplier.address || undefined,
         credit_limit: Number((selectedSupplier as any).credit_limit || 0),

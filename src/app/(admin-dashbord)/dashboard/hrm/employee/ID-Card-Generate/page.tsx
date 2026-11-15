@@ -1,6 +1,8 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Loader2,
@@ -49,7 +51,7 @@ async function handleRes(res: Response, action: string) {
 async function fetchDepartments(): Promise<OptionItem[]> {
   try {
     const url = `${API_BASE}/realbizpro/api/v1/department?page=1&limit=100&status=active&sortOrder=DESC&withDeleted=false`;
-    const res = await fetch(url, {
+    const res = await hrmFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -71,7 +73,7 @@ async function fetchDepartments(): Promise<OptionItem[]> {
 async function fetchDesignations(): Promise<OptionItem[]> {
   try {
     const url = `${API_BASE}/realbizpro/api/v1/designation?page=1&limit=100&status=active&sortOrder=DESC&withDeleted=false`;
-    const res = await fetch(url, {
+    const res = await hrmFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -102,7 +104,7 @@ async function fetchEmployeeCards(
 
   const url = `${API_BASE}/realbizpro/api/v1/employee-card?${params.toString()}`;
   console.log("GET employee-card →", url);
-  const res = await fetch(url, {
+  const res = await hrmFetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",

@@ -31,16 +31,24 @@ interface ReportData {
 // ==========================================
 // 2. ENV SETUP
 // ==========================================
-const API_REPORT_URL = `${API_BASE}/crm/kpi/team-kpi-report`;
-const API_DROPDOWN_URL = `${API_REPORT_URL}/dropdowns`;
+const DEFAULT_API_REPORT_URL = `${API_BASE}/crm/kpi/team-kpi-report`;
+const localDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 // ==========================================
 // 3. MAIN COMPONENT
 // ==========================================
-export default function TeamKpiReportPage() {
+export default function TeamKpiReportPage({
+  apiReportUrl = DEFAULT_API_REPORT_URL,
+}: { apiReportUrl?: string } = {}) {
+  const apiDropdownUrl = `${apiReportUrl}/dropdowns`;
   // Filters
-  const [dateFrom, setDateFrom] = useState("2026-10-01");
-  const [dateTo, setDateTo] = useState("2026-10-31");
+  const [dateFrom, setDateFrom] = useState(() => localDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
+  const [dateTo, setDateTo] = useState(() => localDate(new Date()));
   const [selectedTeam, setSelectedTeam] = useState("");
 
   // Data States
@@ -81,7 +89,7 @@ export default function TeamKpiReportPage() {
     const fetchDropdowns = async () => {
       setIsDropdownLoading(true);
       try {
-        const json = await safeFetch(API_DROPDOWN_URL);
+        const json = await safeFetch(apiDropdownUrl);
         if (json.success) {
           setTeams(json.data.teams || []);
         }
@@ -106,7 +114,7 @@ export default function TeamKpiReportPage() {
       if (dateTo) params.append("dateTo", dateTo);
       if (selectedTeam) params.append("teamId", selectedTeam);
 
-      const url = `${API_REPORT_URL}?${params.toString()}`;
+      const url = `${apiReportUrl}?${params.toString()}`;
       const json = await safeFetch(url);
 
       if (json.success) {

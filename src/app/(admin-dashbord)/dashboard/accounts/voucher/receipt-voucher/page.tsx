@@ -1,5 +1,9 @@
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+import { useVoucherOptions } from "../voucher-options";
+import { VoucherDateRange } from "../voucher-date-range";
+
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import {
@@ -36,6 +40,9 @@ interface VoucherRow {
   approval: string[];
   attachment: number;
   status: string;
+  titleOfWork?: string;
+  site?: string;
+  task?: string;
 }
 
 type ActionKey = "mail" | "view" | "print" | "edit" | "delete" | "duplicate";
@@ -50,6 +57,7 @@ const actionMenuItems: { key: ActionKey; label: string; icon: React.ElementType;
 ];
 
 export default function ReceiptVoucherPage() {
+  const voucherOptions = useVoucherOptions();
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewVoucher, setViewVoucher] = useState<Record<string, unknown> | null>(null);
@@ -60,7 +68,7 @@ export default function ReceiptVoucherPage() {
   const [projectType, setProjectType] = useState("");
   const [project, setProject] = useState("");
   const [titleOfWork, setTitleOfWork] = useState("");
-  const [date, setDate] = useState("13/09/2026");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [voucherNo, setVoucherNo] = useState("R00015");
 
   const [selectedAccount, setSelectedAccount] = useState("");
@@ -87,7 +95,8 @@ export default function ReceiptVoucherPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   const [filters, setFilters] = useState({
-    dateRange: "1 Sept, 2026 - 30 Sept, 2026",
+    fromDate: "",
+    toDate: "",
     creditAccount: "",
     debitAccount: "",
     project: "",
@@ -123,7 +132,7 @@ export default function ReceiptVoucherPage() {
   const fetchVouchers = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/backend/vouchers", { headers: { accept: "application/json" } });
+      const response = await accountsFetch("/api/backend/vouchers", { headers: { accept: "application/json" } });
       const result = await response.json();
       const rows = normalizeArray(result.data);
       setVouchers(rows.map((voucher, index) => ({
@@ -132,6 +141,9 @@ export default function ReceiptVoucherPage() {
         sl: index + 1,
         date: String(voucher.date ?? "").slice(0, 10),
         project: String(voucher.projectId ?? ""),
+        titleOfWork: String(voucher.workId ?? ""),
+        site: String(voucher.siteId ?? voucher.site ?? ""),
+        task: String(voucher.taskId ?? voucher.task ?? ""),
         code: String(voucher.voucherNo ?? ""),
         credit: String(voucher.accountId ?? ""),
         debit: String(voucher.paymentMethod ?? ""),
@@ -157,7 +169,7 @@ export default function ReceiptVoucherPage() {
     fetchVouchers();
     const fetchAccounts = async () => {
       try {
-        const response = await fetch("/api/backend/chart-of-accounts", { headers: { accept: "application/json" } });
+        const response = await accountsFetch("/api/backend/chart-of-accounts", { headers: { accept: "application/json" } });
         const result = await response.json();
         setAccounts(normalizeArray(result.data) as Array<{ id?: string | number; uuid?: string; name?: string }>);
       } catch (error) {
@@ -229,7 +241,7 @@ export default function ReceiptVoucherPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/backend/vouchers${editUuid ? `/${encodeURIComponent(editUuid)}` : ""}`, {
+      const response = await accountsFetch(`/api/backend/vouchers${editUuid ? `/${encodeURIComponent(editUuid)}` : ""}`, {
         method: editUuid ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json", accept: "application/json" },
         body: JSON.stringify(payload),
@@ -275,7 +287,7 @@ export default function ReceiptVoucherPage() {
                 toast.dismiss(notification.id);
                 const loadingToast = toast.loading("Deleting voucher...");
                 try {
-                  const response = await fetch(`/api/backend/vouchers/${encodeURIComponent(row.uuid)}`, {
+                  const response = await accountsFetch(`/api/backend/vouchers/${encodeURIComponent(row.uuid)}`, {
                     method: "DELETE",
                   });
                   if (!response.ok) throw new Error("Voucher could not be deleted.");
@@ -304,7 +316,7 @@ export default function ReceiptVoucherPage() {
       );
     } else if (key === "view" && row.uuid) {
       try {
-        const response = await fetch(`/api/backend/vouchers/${encodeURIComponent(row.uuid)}`);
+        const response = await accountsFetch(`/api/backend/vouchers/${encodeURIComponent(row.uuid)}`);
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || "Voucher could not be loaded.");
         const detail = result.data?.data ?? result.data ?? result;
@@ -314,7 +326,7 @@ export default function ReceiptVoucherPage() {
       }
     } else if (key === "edit" && row.uuid) {
       try {
-        const response = await fetch(`/api/backend/vouchers/${encodeURIComponent(row.uuid)}`);
+        const response = await accountsFetch(`/api/backend/vouchers/${encodeURIComponent(row.uuid)}`);
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || "Voucher could not be loaded.");
         const detail = result.data?.data ?? result.data ?? result;
@@ -340,13 +352,10 @@ export default function ReceiptVoucherPage() {
     }
   };
 
-  const filteredRows = vouchers.filter((r) =>
-    search.trim()
-      ? [r.project, r.code, r.credit, r.debit, r.comment, r.ref].some((field) =>
-          field.toLowerCase().includes(search.trim().toLowerCase())
-        )
-      : true
-  );
+  const filteredRows = vouchers.filter((r) => {
+    const matchesSearch = !search.trim() || [r.project, r.code, r.credit, r.debit, r.comment, r.ref].some((field) => field.toLowerCase().includes(search.trim().toLowerCase()));
+    return matchesSearch && (!filters.fromDate || r.date >= filters.fromDate) && (!filters.toDate || r.date <= filters.toDate) && (!filters.creditAccount || r.credit === filters.creditAccount) && (!filters.debitAccount || r.debit === filters.debitAccount) && (!filters.project || r.project === filters.project) && (!filters.titleOfWork || r.titleOfWork === filters.titleOfWork) && (!filters.site || r.site === filters.site) && (!filters.task || r.task === filters.task);
+  });
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / entriesPerPage));
   const safePage = Math.min(currentPage, totalPages);
@@ -401,8 +410,7 @@ export default function ReceiptVoucherPage() {
                     className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-2 py-1 text-xs"
                   >
                     <option value="">Select Project Type</option>
-                    <option value="Residential">Residential</option>
-                    <option value="Commercial">Commercial</option>
+                    {voucherOptions.projectTypes.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                   </select>
                 </div>
                 <div>
@@ -413,8 +421,7 @@ export default function ReceiptVoucherPage() {
                     className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-2 py-1 text-xs"
                   >
                     <option value="">Select Project</option>
-                    <option value="Sheba Eyecon Tower">Sheba Eyecon Tower</option>
-                    <option value="Lake Garden">Lake Garden</option>
+                    {voucherOptions.projects.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                   </select>
                 </div>
                 <div>
@@ -425,15 +432,14 @@ export default function ReceiptVoucherPage() {
                     className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-2 py-1 text-xs"
                   >
                     <option value="">Select Title/Name of Work</option>
-                    <option value="Booking Money">Booking Money</option>
-                    <option value="Installment">Installment</option>
+                    {voucherOptions.workNames.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   <div>
                     <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Date</label>
                     <input
-                      type="text"
+                      type="date"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
                       className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-2 py-1 text-xs"
@@ -581,12 +587,7 @@ export default function ReceiptVoucherPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1 shrink-0 mb-1 min-w-0">
             <div>
               <label className="block text-[9px] text-slate-400">Select Date</label>
-              <input
-                type="text"
-                readOnly
-                value={filters.dateRange}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded px-1 py-0.5 text-[10px] truncate"
-              />
+              <VoucherDateRange fromDate={filters.fromDate} toDate={filters.toDate} onFromDateChange={(value) => setFilters({ ...filters, fromDate: value })} onToDateChange={(value) => setFilters({ ...filters, toDate: value })} />
             </div>
             <div>
               <label className="block text-[9px] text-slate-400">Credit Accounts</label>
@@ -596,6 +597,7 @@ export default function ReceiptVoucherPage() {
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded px-1 py-0.5 text-[10px]"
               >
                 <option value="">Chart Of Account</option>
+                {voucherOptions.accounts.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
             <div>
@@ -605,7 +607,9 @@ export default function ReceiptVoucherPage() {
                 onChange={(e) => setFilters({ ...filters, debitAccount: e.target.value })}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded px-1 py-0.5 text-[10px]"
               >
-                <option value="">Chart Of Account</option>
+                <option value="">Select Payment Method</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank Check">Bank Check</option>
               </select>
             </div>
             <div>
@@ -616,6 +620,7 @@ export default function ReceiptVoucherPage() {
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded px-1 py-0.5 text-[10px]"
               >
                 <option value="">Select Project</option>
+                {voucherOptions.projects.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
             <div>
@@ -626,6 +631,7 @@ export default function ReceiptVoucherPage() {
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded px-1 py-0.5 text-[10px]"
               >
                 <option value="">Select Work</option>
+                {voucherOptions.workNames.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
             <div>
@@ -636,6 +642,7 @@ export default function ReceiptVoucherPage() {
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded px-1 py-0.5 text-[10px]"
               >
                 <option value="">Select Site</option>
+                {voucherOptions.sites.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </div>
             <div>
@@ -647,6 +654,7 @@ export default function ReceiptVoucherPage() {
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded px-1 py-0.5 text-[10px]"
                 >
                   <option value="">Task</option>
+                  {voucherOptions.tasks.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                 </select>
                 <button
                   type="button"
@@ -955,8 +963,7 @@ export default function ReceiptVoucherPage() {
                       className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-1.5 py-0.5 text-[11px]"
                     >
                       <option value="">Select value</option>
-                      <option value="Assets">Assets</option>
-                      <option value="Expenses">Expenses</option>
+                      {voucherOptions.chartGroups.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                     </select>
                   </div>
                   <div>

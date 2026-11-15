@@ -2,8 +2,11 @@
 /* eslint-disable prettier/prettier */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import api from "@/lib/api";
 
 // ====================== TYPES ======================
 interface Project {
@@ -123,12 +126,10 @@ export default function ProjectPage() {
   // ====================== FETCH PROJECT TYPES ======================
   const fetchProjectTypes = async () => {
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project-type`
-      );
-      const json = await res.json();
-      if (json.success) {
-        setProjectTypes(json.data.data || []);
+      const response = await api.get("/project-type");
+      const result = response.data;
+      if (result?.success) {
+        setProjectTypes(result.data?.data || result.data || []);
       }
     } catch (err) {
       console.error("Failed to fetch project types:", err);
@@ -139,12 +140,11 @@ export default function ProjectPage() {
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project`
-      );
-      const json = await res.json();
-      if (json.success) {
-        const mapped = json.data.data.map((p: any) => ({
+      const response = await api.get("/project");
+      const result = response.data;
+      if (result?.success) {
+        const rows = result.data?.data || result.data || [];
+        const mapped = rows.map((p: any) => ({
           ...p,
           duration:
             p.startDate || p.endDate
@@ -234,20 +234,17 @@ export default function ProjectPage() {
     try {
       setDeletingId(project.uuid);
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project/${project.uuid}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await api.delete(`/project/${project.uuid}`);
+      const result = response.data;
 
-      const json = await res.json();
-
-      if (json.success || res.ok) {
-        // list থেকে সরিয়ে দাও
+      if (
+        result?.success ||
+        (response.status >= 200 && response.status < 300)
+      ) {
+        // list à¦¥à§‡à¦•à§‡ à¦¸à¦°à¦¿à§Ÿà§‡ à¦¦à¦¾à¦“
         setProjects((prev) => prev.filter((p) => p.uuid !== project.uuid));
       } else {
-        alert(json.message || "Failed to delete project");
+        alert(result?.message || "Failed to delete project");
       }
     } catch (err) {
       console.error(err);
@@ -288,24 +285,19 @@ export default function ProjectPage() {
     };
 
     try {
-      const url = editingProject
-        ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project/${editingProject.uuid}`
-        : `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project`;
+      const response = editingProject
+        ? await api.put(`/project/${editingProject.uuid}`, payload)
+        : await api.post("/project", payload);
+      const result = response.data;
 
-      const method = editingProject ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const json = await res.json();
-      if (json.success || res.ok) {
+      if (
+        result?.success ||
+        (response.status >= 200 && response.status < 300)
+      ) {
         setIsModalOpen(false);
         fetchProjects();
       } else {
-        alert(json.message || "Something went wrong");
+        alert(result?.message || "Something went wrong");
       }
     } catch (err) {
       console.error(err);
@@ -460,7 +452,7 @@ export default function ProjectPage() {
 
         <div className="flex items-center gap-3">
           <button className="border px-3 py-1.5 rounded text-sm">
-            Select Columns ▾
+            Select Columns â–¾
           </button>
           <div className="flex items-center gap-2">
             <span className="text-sm">Search:</span>
@@ -510,7 +502,7 @@ export default function ProjectPage() {
                     <td className="px-4 py-3">{p.code}</td>
                  <td className="px-4 py-3 text-blue-600 font-medium">
   <Link
-    href={`/dashboard/project/projects/project/project-details/${p.uuid}`}
+    href={`/dashboard/project/dashboard/${encodeURIComponent(p.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `project-${p.uuid.slice(0, 8)}`)}?uuid=${encodeURIComponent(p.uuid)}`}
     className="hover:underline"
   >
     {p.name}
@@ -528,7 +520,7 @@ export default function ProjectPage() {
                           className="bg-blue-500 hover:bg-blue-600 text-white p-1.5 rounded"
                           title="Edit"
                         >
-                          ✎
+                          âœŽ
                         </button>
 
                         {/* Delete Button */}
@@ -538,7 +530,7 @@ export default function ProjectPage() {
                           className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded disabled:opacity-50"
                           title="Delete"
                         >
-                          {deletingId === p.uuid ? "..." : "🗑"}
+                          {deletingId === p.uuid ? "..." : "ðŸ—‘"}
                         </button>
                       </div>
                     </td>
@@ -586,7 +578,7 @@ export default function ProjectPage() {
                 onClick={() => setIsModalOpen(false)}
                 className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
               >
-                ×
+                Ã—
               </button>
             </div>
 

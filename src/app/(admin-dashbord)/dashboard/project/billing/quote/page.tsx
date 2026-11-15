@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect, useRef } from "react";
 import { Plus, X, Loader2, Eye, Printer, Edit3, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
@@ -30,6 +33,7 @@ interface QuoteItem {
 interface Quote {
   id: string;
   uuid: string;
+  createdBy?: string;
   code: string;
   title: string;
   recordDate: string;
@@ -205,6 +209,8 @@ export default function QuotePage() {
   // Filter States
   const [filterProject, setFilterProject] = useState("");
   const [filterProjectType, setFilterProjectType] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
 
   // Form Data
   const [formData, setFormData] = useState({
@@ -258,7 +264,7 @@ export default function QuotePage() {
   const fetchQuotes = async (page = 1) => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_PATH}/project-billing/quotes?page=${page}&limit=${limit}`);
+      const res = await projectFetch(`${API_PATH}/project-billing/quotes?page=${page}&limit=${limit}`);
       const json = await res.json();
       if (json.success) {
         setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
@@ -277,39 +283,39 @@ export default function QuotePage() {
   // ====================== FETCH DROPDOWNS ======================
   const fetchDropdowns = async () => {
     try {
-      const resCus = await fetch(`${API_PATH}/customer-account?status=active`);
+      const resCus = await projectFetch(`${API_PATH}/customer-account?status=active`);
       const jsonCus = await resCus.json();
       if (jsonCus.success) setCustomers(jsonCus.data.data || jsonCus.data || []);
 
-      const resProj = await fetch(`${API_PATH}/project`);
+      const resProj = await projectFetch(`${API_PATH}/project`);
       const jsonProj = await resProj.json();
       if (jsonProj.success) setProjects(jsonProj.data.data || jsonProj.data || []);
 
-      const resSite = await fetch(`${API_PATH}/project-sites`);
+      const resSite = await projectFetch(`${API_PATH}/project-sites`);
       const jsonSite = await resSite.json();
       if (jsonSite.success) setSites(jsonSite.data.data || jsonSite.data || []);
 
-      const resType = await fetch(`${API_PATH}/project-type`);
+      const resType = await projectFetch(`${API_PATH}/project-type`);
       const jsonType = await resType.json();
       if (jsonType.success) setProjectTypes(jsonType.data.data || jsonType.data || []);
 
-      const resCat = await fetch(`${API_PATH}/category`);
+      const resCat = await projectFetch(`${API_PATH}/category`);
       const jsonCat = await resCat.json();
       if (jsonCat.success) setCategories(jsonCat.data.data || jsonCat.data || []);
 
-      const resSubCat = await fetch(`${API_PATH}/billing-sub-category`);
+      const resSubCat = await projectFetch(`${API_PATH}/billing-sub-category`);
       const jsonSubCat = await resSubCat.json();
       if (jsonSubCat.success) setSubCategories(jsonSubCat.data.data || jsonSubCat.data || []);
 
-      const resItem = await fetch(`${API_PATH}/item`);
+      const resItem = await projectFetch(`${API_PATH}/item`);
       const jsonItem = await resItem.json();
       if (jsonItem.success) setItemsList(jsonItem.data.data || jsonItem.data || []);
 
-      const resBrand = await fetch(`${API_PATH}/procurement/brand`); 
+      const resBrand = await projectFetch(`${API_PATH}/procurement/brand`);
       const jsonBrand = await resBrand.json();
       if (jsonBrand.success) setBrands(jsonBrand.data.data || jsonBrand.data || []);
 
-      const resUnit = await fetch(`${API_PATH}/unit`);
+      const resUnit = await projectFetch(`${API_PATH}/unit`);
       const jsonUnit = await resUnit.json();
       if (jsonUnit.success) setUnitsList(jsonUnit.data.data || jsonUnit.data || []);
 
@@ -425,7 +431,7 @@ export default function QuotePage() {
         : `${API_PATH}/project-billing/quotes`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await projectFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -468,7 +474,7 @@ export default function QuotePage() {
     };
 
     try {
-      const res = await fetch(`${API_PATH}/item`, {
+      const res = await projectFetch(`${API_PATH}/item`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -496,7 +502,7 @@ export default function QuotePage() {
     setIsBrandSubmitting(true);
 
     try {
-      const res = await fetch(`${API_PATH}/procurement/brand`, {
+      const res = await projectFetch(`${API_PATH}/procurement/brand`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newBrandName }),
@@ -524,7 +530,7 @@ export default function QuotePage() {
     setIsUnitSubmitting(true);
 
     try {
-      const res = await fetch(`${API_PATH}/unit`, {
+      const res = await projectFetch(`${API_PATH}/unit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newUnitName, status: "active" }),
@@ -564,7 +570,7 @@ export default function QuotePage() {
     };
 
     try {
-      const res = await fetch(`${API_PATH}/customer-account`, {
+      const res = await projectFetch(`${API_PATH}/customer-account`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -599,7 +605,7 @@ export default function QuotePage() {
   const handleDelete = async (item: Quote) => {
     if (!window.confirm(`Delete "${item.code}"?`)) return;
     try {
-      const res = await fetch(`${API_PATH}/project-billing/quotes/${item.uuid}`, { method: "DELETE" });
+      const res = await projectFetch(`${API_PATH}/project-billing/quotes/${item.uuid}`, { method: "DELETE" });
       if (res.ok) {
         toast.success("Deleted successfully!");
         fetchQuotes(currentPage); 
@@ -669,11 +675,15 @@ export default function QuotePage() {
   };
 
   const filteredData = dataList.filter((item) => {
-    const matchSearch = item.code?.toLowerCase().includes(search.toLowerCase()) || 
-                        item.project?.name?.toLowerCase().includes(search.toLowerCase());
+    const normalizedSearch = search.trim().toLowerCase();
+    const matchSearch = !normalizedSearch || [item.code, item.project?.name, item.details?.customerName, item.title]
+      .some(value => String(value || "").toLowerCase().includes(normalizedSearch));
     const matchProject = filterProject ? item.project?.uuid === filterProject : true;
     const matchType = filterProjectType ? item.details?.projectType === filterProjectType : true;
-    return matchSearch && matchProject && matchType;
+    const recordDate = String(item.recordDate || "").slice(0, 10);
+    const matchDateFrom = filterDateFrom ? recordDate >= filterDateFrom : true;
+    const matchDateTo = filterDateTo ? recordDate <= filterDateTo : true;
+    return matchSearch && matchProject && matchType && matchDateFrom && matchDateTo;
   });
 
   // ====================== RENDER ======================
@@ -696,7 +706,10 @@ export default function QuotePage() {
       <div className="bg-white p-4 border rounded shadow-sm mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label className="block text-xs text-gray-600 mb-1">Select Date</label>
-          <input type="text" placeholder="1 October, 2026 - 31 October, 2026" className="w-full border rounded px-3 py-2 text-sm" />
+          <div className="flex gap-2">
+            <input aria-label="From date" type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="w-full border rounded px-3 py-2 text-sm" />
+            <input aria-label="To date" type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="w-full border rounded px-3 py-2 text-sm" />
+          </div>
         </div>
         <div>
           <label className="block text-xs text-gray-600 mb-1">Project</label>
@@ -752,7 +765,7 @@ export default function QuotePage() {
                       <td className="px-3 py-2 font-medium">{item.project?.name || "Unknown"}</td>
                       <td className="px-3 py-2">{item.details?.customerName || "N/A"}</td>
                       <td className="px-3 py-2 font-bold text-green-700">{item.amount}</td>
-                      <td className="px-3 py-2">Admin</td>
+                      <td className="px-3 py-2">{item.createdBy || "—"}</td>
                       
                       <td className="px-3 py-2 text-center">
                         <div className="flex justify-center">

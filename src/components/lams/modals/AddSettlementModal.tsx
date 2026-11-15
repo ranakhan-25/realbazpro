@@ -13,12 +13,6 @@ interface AddSettlementModalProps {
   initialData?: SettlementRecord | null;
 }
 
-const DEFAULT_SCHEDULE: SettlementPaymentSchedule[] = [
-  { installment_no: 1, due_date: "2026-09-20", amount: 10000000, status: "Pending" },
-  { installment_no: 2, due_date: "2026-10-20", amount: 15000000, status: "Pending" },
-  { installment_no: 3, due_date: "2026-11-20", amount: 14500000, status: "Pending" },
-];
-
 export function AddSettlementModal({
   isOpen,
   onClose,
@@ -33,27 +27,27 @@ export function AddSettlementModal({
   const [advance, setAdvance] = useState<number | "">("");
   const [paymentMode, setPaymentMode] = useState<"cash" | "bank" | "cheque">("bank");
   const [scheduledAt, setScheduledAt] = useState(new Date().toISOString().split("T")[0]);
-  const [schedules, setSchedules] = useState<SettlementPaymentSchedule[]>(DEFAULT_SCHEDULE);
+  const [schedules, setSchedules] = useState<SettlementPaymentSchedule[]>([]);
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
     if (initialData) {
       setSelectedLeadId(initialData.lead_id || initialData.lead_code || initialData.lead || "");
       setSelectedOwner(initialData.owner || "");
-      setAgreedAmount(initialData.agreed_amount || "");
-      setAdvance(initialData.advance || "");
+      setAgreedAmount(initialData.agreed_amount ?? "");
+      setAdvance(initialData.advance ?? "");
       setPaymentMode(initialData.payment_mode || "bank");
       setScheduledAt(initialData.scheduled_at || new Date().toISOString().split("T")[0]);
-      setSchedules(initialData.payment_schedule && initialData.payment_schedule.length > 0 ? initialData.payment_schedule : DEFAULT_SCHEDULE);
+      setSchedules(initialData.payment_schedule ?? []);
       setNotes(initialData.notes || "");
     } else {
       setSelectedLeadId(acquisitionLeads[0]?.id || acquisitionLeads[0]?.leadCode || "");
-      setSelectedOwner(landOwners[0]?.name || landOwners[0]?.ownerName || "Primary Owner");
-      setAgreedAmount(40000000);
-      setAdvance(10000000);
+      setSelectedOwner(landOwners[0]?.name || landOwners[0]?.ownerName || "");
+      setAgreedAmount("");
+      setAdvance("");
       setPaymentMode("bank");
       setScheduledAt(new Date().toISOString().split("T")[0]);
-      setSchedules(DEFAULT_SCHEDULE);
+      setSchedules([]);
       setNotes("");
     }
   }, [initialData, acquisitionLeads, landOwners, isOpen]);
@@ -65,8 +59,8 @@ export function AddSettlementModal({
     if (lead?.owner_name || lead?.ownerName) {
       setSelectedOwner(lead.owner_name || lead.ownerName || "");
     }
-    if (lead?.expectedPrice || lead?.asking_price) {
-      setAgreedAmount(lead.offeredPrice || lead.asking_price || 0);
+    if (lead?.expectedPrice != null || lead?.asking_price != null) {
+      setAgreedAmount(lead.expectedPrice ?? lead.asking_price ?? "");
     }
   };
 
@@ -102,8 +96,8 @@ export function AddSettlementModal({
     const dueAmount = totalAgreed - adv;
 
     onSave({
-      id: initialData?.id || `SET-${Date.now()}`,
-      uuid: initialData?.uuid || `SET-${Date.now()}`,
+      id: initialData?.id ?? "",
+      uuid: initialData?.uuid,
       lead: leadCode,
       lead_code: leadCode,
       lead_id: lead?.id || selectedLeadId,

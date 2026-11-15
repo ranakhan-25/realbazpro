@@ -18,7 +18,13 @@ import {
   Workflow,
   CreditCard,
   BarChart3,
-  Settings,
+  CalendarDays,
+  AlertCircle,
+  Receipt,
+  Percent,
+  AlertTriangle,
+  TrendingUp,
+  ShieldAlert,
   Headset,
   Wrench,
   Building2,
@@ -28,11 +34,9 @@ import {
   Layers,
   KeyRound,
   LifeBuoy,
-  Receipt,
   MessageSquare,
   BookOpen,
   RefreshCw,
-  AlertCircle,
   ArrowLeftRight,
   FileText,
   FileSpreadsheet,
@@ -43,6 +47,7 @@ import {
   Clock,
   FolderArchive,
   Sliders,
+  Settings,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MENUS, MODULES, type MenuNode, type ModuleKey } from "@/lib/menus";
@@ -126,6 +131,21 @@ const LAMS_ICONS: Record<string, React.ElementType> = {
   "follow-up": CalendarCheck2,
 };
 
+const COLLECTION_ICONS: Record<string, React.ElementType> = {
+  dashboard: LayoutDashboard,
+  schedule: CalendarDays,
+  due: AlertCircle,
+  entries: Receipt,
+  waivers: Percent,
+  outstanding: BarChart3,
+  aging: BarChart3,
+  overdue: AlertTriangle,
+  recovery: ShieldAlert,
+  followups: CalendarCheck2,
+  visits: Compass,
+  perf: TrendingUp,
+};
+
 const FALLBACK_PRIMARY = "#2ed573";
 
 type Props = {
@@ -182,6 +202,22 @@ function cloneTree(nodes: MenuNode[] | undefined): MenuNode[] {
     ...node,
     children: node.children ? cloneTree(node.children) : undefined,
   }));
+}
+
+function getMenuHref(node: MenuNode, module: ModuleKey) {
+  if (node.path.startsWith("/")) return node.path;
+  if (node.path.startsWith("http")) return node.path;
+
+  const modulePrefix = new RegExp(`^dashboard/${module}/?`, "i");
+  const routePath = node.path.replace(/^\/+/, "").replace(modulePrefix, "");
+
+  // A module's dashboard is its root route. This also handles legacy
+  // menu data such as `dashboard/dashboard` without creating a bad URL.
+  if (node.slug === "dashboard" || /^dashboard(?:\/dashboard)*$/i.test(routePath)) {
+    return `/dashboard/${module}`;
+  }
+
+  return `/dashboard/${module}/${routePath}`;
 }
 
 function normalizeMenuNodes(
@@ -477,9 +513,9 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         const Icon =
           module === "lams"
             ? LAMS_ICONS[n.slug]
-            : module === "customer-service"
-              ? CUSTOMER_SERVICE_ICONS[n.slug]
-              : null;
+            : module === "collection"
+            ? COLLECTION_ICONS[n.slug]
+            : null;
 
         if (n.children?.length) {
           return (
@@ -535,13 +571,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           );
         }
 
-        const href = n.path.startsWith("http")
-          ? n.path
-          : n.path.startsWith("/")
-            ? n.path
-            : n.slug === "dashboard" || cleanNodePath === "dashboard" || !cleanNodePath
-              ? `/dashboard/${module}`
-              : `/dashboard/${module}/${cleanNodePath}`;
+        const href = getMenuHref(n, module);
 
         return (
           <li key={n.path}>
@@ -604,9 +634,9 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         const Icon =
           module === "lams"
             ? LAMS_ICONS[n.slug]
-            : module === "customer-service"
-              ? CUSTOMER_SERVICE_ICONS[n.slug]
-              : null;
+            : module === "collection"
+            ? COLLECTION_ICONS[n.slug]
+            : null;
 
         if (n.children?.length) {
           return (
@@ -647,13 +677,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           );
         }
 
-        const href = n.path.startsWith("http")
-          ? n.path
-          : n.path.startsWith("/")
-            ? n.path
-            : n.slug === "dashboard" || cleanNodePath === "dashboard" || !cleanNodePath
-              ? `/dashboard/${module}`
-              : `/dashboard/${module}/${cleanNodePath}`;
+        const href = getMenuHref(n, module);
 
         return (
           <li key={n.path} className="relative group">

@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect, useMemo } from "react";
 import { Plus, X, Loader2, Edit3, Trash2, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
@@ -41,8 +44,10 @@ interface Booking {
   paymentMethod?: string;
   chequeNo?: string;
   termsAndConditions?: string;
+  details?: Record<string, any>;
   project?: { name: string; uuid: string };
-  flatLand?: { flatLandNo: string; uuid: string };
+  flatLandNo?: string;
+  flatLand?: { flatLandNo: string; uuid: string; projectId?: string; status?: string; [key: string]: any };
 }
 
 export default function FlatLandShareBookingPage() {
@@ -72,6 +77,9 @@ export default function FlatLandShareBookingPage() {
   const [salesPersons, setSalesPersons] = useState<any[]>([]);
   const [collectionOfficers, setCollectionOfficers] = useState<any[]>([]);
   const [flatsOrLands, setFlatsOrLands] = useState<any[]>([]);
+  const [installmentCount, setInstallmentCount] = useState(3);
+  const [installmentStartDate, setInstallmentStartDate] = useState("");
+  const [manualInstallments, setManualInstallments] = useState(false);
   
   // ✅ API Dropdowns
   const [teams, setTeams] = useState<any[]>([]);
@@ -133,7 +141,7 @@ export default function FlatLandShareBookingPage() {
       const token = localStorage.getItem("accessToken");
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       
-      const res = await fetch(`${API_PATH}/flat-land-bookings?page=1&limit=100`, { headers });
+      const res = await projectFetch(`${API_PATH}/flat-land-bookings?page=1&limit=100`, { headers });
       const json = await res.json();
       if (json.success) {
         setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
@@ -150,50 +158,36 @@ export default function FlatLandShareBookingPage() {
       const token = localStorage.getItem("accessToken");
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const resCus = await fetch(`${API_PATH}/customer-account?status=active`, { headers });
+      const resCus = await projectFetch(`${API_PATH}/customer-account?status=active`, { headers });
       const jsonCus = await resCus.json();
       if (jsonCus.success) setCustomers(jsonCus.data?.data || jsonCus.data || []);
 
-      const resProj = await fetch(`${API_PATH}/project`, { headers });
+      const resProj = await projectFetch(`${API_PATH}/project`, { headers });
       const jsonProj = await resProj.json();
       if (jsonProj.success) setProjects(jsonProj.data?.data || jsonProj.data || []);
 
-      const resSite = await fetch(`${API_PATH}/project-sites`, { headers });
+      const resSite = await projectFetch(`${API_PATH}/project-sites`, { headers });
       const jsonSite = await resSite.json();
       if (jsonSite.success) setSites(jsonSite.data?.data || jsonSite.data || []);
 
-      const resType = await fetch(`${API_PATH}/project-type`, { headers });
+      const resType = await projectFetch(`${API_PATH}/project-type`, { headers });
       const jsonType = await resType.json();
       if (jsonType.success) setProjectTypes(jsonType.data?.data || jsonType.data || []);
 
-      const resUsers = await fetch(`${API_PATH}/crm/configuration/teams/dropdown/users`, { headers });
-      const jsonUsers = await resUsers.json();
-      if (jsonUsers.success) {
-        const userData = jsonUsers.data?.users || jsonUsers.data?.data || jsonUsers.data || [];
-        setSalesPersons(Array.isArray(userData) ? userData : []);
-      }
+      const resBookingDropdowns = await projectFetch(`${API_PATH}/flat-land-bookings/dropdowns`, { headers });
+      const jsonBookingDropdowns = await resBookingDropdowns.json();
+      if (!resBookingDropdowns.ok) throw new Error(jsonBookingDropdowns.message || "Failed to load booking dropdowns");
+      const bookingDropdowns = jsonBookingDropdowns.data || jsonBookingDropdowns;
+      const availableProperties = Array.isArray(bookingDropdowns.properties) ? bookingDropdowns.properties : [];
+      setFlatsOrLands(availableProperties);
+      setTeams(Array.isArray(bookingDropdowns.teams) ? bookingDropdowns.teams : []);
+      const activeUsers = Array.isArray(bookingDropdowns.salesPeople) ? bookingDropdowns.salesPeople : [];
+      setSalesPersons(activeUsers);
+      setCollectionOfficers(activeUsers);
 
-      const resTeams = await fetch(`${API_PATH}/crm/configuration/teams/dropdown`, { headers });
-      const jsonTeams = await resTeams.json();
-      if (jsonTeams.success) setTeams(jsonTeams.data || []);
-
-      const resItems = await fetch(`${API_PATH}/item`, { headers });
+      const resItems = await projectFetch(`${API_PATH}/item`, { headers });
       const jsonItems = await resItems.json();
       if (jsonItems.success) setItems(jsonItems.data?.data || jsonItems.data || []);
-
-      const resFlats = await fetch(`${API_PATH}/flat-land/flats?page=1&limit=100`, { headers });
-      const jsonFlats = await resFlats.json();
-      if (jsonFlats.success) {
-        setFlatsOrLands(jsonFlats.data?.data || jsonFlats.data || []);
-      }
-
-      setCollectionOfficers([
-        { uuid: "c1", name: "Ujjal Howlader" },
-        { uuid: "c2", name: "Md.Nayon" },
-        { uuid: "c3", name: "Md.Yeamin Sarder" },
-        { uuid: "c4", name: "Sheikh Moseddek Ahmed" },
-        { uuid: "c5", name: "Md.Arizul" }
-      ]);
 
     } catch (err) {
       console.error("Error fetching dropdowns:", err);
@@ -222,9 +216,36 @@ export default function FlatLandShareBookingPage() {
     setViewMode(3); 
   };
 
+  const openNewBooking = () => {
+    const bookingDate = new Date().toISOString().slice(0, 10);
+    setEditingItem(null);
+    setFormData({
+      date: bookingDate,
+      bookingNo: `Booking-${Math.floor(10000000 + Math.random() * 90000000)}`,
+      projectId: "", customerId: "", customerName: "", flatLandId: "", flatLandNo: "",
+      itemId: "", itemName: "", projectType: "", siteName: "", salesBy: "",
+      collectionOfficer: "", attachment: "", rate: 0, parkingCost: 0, otherCost: 0,
+      utilityCharge: 0, discount: 0, subtotal: 0, grandTotal: 0, dueAmount: 0,
+      bookingMoney: 0, paymentMethod: "", chequeNo: "", termsAndConditions: "",
+      installments: [],
+    });
+    setInstallmentStartDate(bookingDate);
+    setInstallmentCount(3);
+    setManualInstallments(false);
+    setViewMode(2);
+  };
+
   // ====================== FINAL SUBMIT (POST / PUT) ======================
   const handleFinalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (Number(formData.grandTotal) < 0) {
+      toast.error("Discount cannot be greater than the booking subtotal");
+      return;
+    }
+    if (Number(formData.bookingMoney) > Number(formData.grandTotal)) {
+      toast.error("Booking money cannot be greater than the grand total");
+      return;
+    }
     
     const payload = {
       projectId: formData.projectId,
@@ -244,6 +265,34 @@ export default function FlatLandShareBookingPage() {
       due: Number(formData.dueAmount),     
       attachment: formData.attachment || null,
       status: "Pending",
+      details: {
+        customerId: formData.customerId,
+        itemId: formData.itemId,
+        itemName: formData.itemName,
+        projectType: formData.projectType,
+        siteName: formData.siteName,
+        collectionOfficer: formData.collectionOfficer,
+        paymentMethod: formData.paymentMethod,
+        chequeNo: formData.chequeNo,
+        termsAndConditions: formData.termsAndConditions,
+        installments: formData.installments,
+        propertySnapshot: selectedProperty ? {
+          flatLandNo: selectedProperty.flatLandNo,
+          propertyType: selectedProperty.propertyType,
+          unit: selectedProperty.unit,
+          size: selectedProperty.size,
+          bedroom: selectedProperty.bedroom,
+          bathroom: selectedProperty.bathroom,
+          drawing: selectedProperty.drawing,
+          dining: selectedProperty.dining,
+          kitchen: selectedProperty.kitchen,
+          balcony: selectedProperty.balcony,
+          parking: selectedProperty.parking,
+          basement: selectedProperty.basement,
+          facing: selectedProperty.facing,
+          amenities: selectedProperty.amenities,
+        } : null,
+      },
     };
 
     try {
@@ -256,7 +305,7 @@ export default function FlatLandShareBookingPage() {
         : `${API_PATH}/flat-land-bookings`;
       const method = isEdit ? "PUT" : "POST";
       
-      const res = await fetch(url, {
+      const res = await projectFetch(url, {
         method,
         headers: { 
           "Content-Type": "application/json",
@@ -288,7 +337,7 @@ export default function FlatLandShareBookingPage() {
 
     try {
       const token = localStorage.getItem("accessToken");
-      const res = await fetch(`${API_PATH}/flat-land-bookings/${uuid}`, {
+      const res = await projectFetch(`${API_PATH}/flat-land-bookings/${uuid}`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -311,7 +360,18 @@ export default function FlatLandShareBookingPage() {
     setEditingItem(item);
     
     // কাস্টমার আইডি বের করা (যদি API থেকে না আসে)
-    const matchedCustomer = customers.find(c => c.customerName === item.customerName);
+    const matchedCustomer = customers.find(c => c.uuid === item.details?.customerId) ||
+      customers.find(c => c.customerName === item.customerName);
+    const savedProperty = {
+      ...(item.flatLand || {}),
+      uuid: item.flatLandId,
+      flatLandNo: item.flatLand?.flatLandNo || item.flatLandNo || "Booked property",
+      projectId: item.projectId,
+      status: item.flatLand?.status || "Booked",
+    };
+    setFlatsOrLands((current) => current.some((flat) => flat.uuid === savedProperty.uuid)
+      ? current
+      : [...current, savedProperty]);
 
     setFormData({
       date: item.bookingDate || new Date().toISOString().split("T")[0],
@@ -321,12 +381,12 @@ export default function FlatLandShareBookingPage() {
       customerName: item.customerName || "",
       flatLandId: item.flatLandId || "",
       flatLandNo: item.flatLand?.flatLandNo || "",
-      itemId: "", // API রেসপন্সে না থাকলে ফাঁকা থাকবে
-      itemName: "", 
-      projectType: "", 
-      siteName: "", 
+      itemId: item.details?.itemId || "",
+      itemName: item.details?.itemName || "",
+      projectType: item.details?.projectType || "",
+      siteName: item.details?.siteName || "",
       salesBy: item.salesBy || "",
-      collectionOfficer: "", 
+      collectionOfficer: item.details?.collectionOfficer || "",
       attachment: item.attachment || "",
       rate: Number(item.rate) || 0,
       parkingCost: Number(item.parking) || 0,
@@ -337,11 +397,13 @@ export default function FlatLandShareBookingPage() {
       grandTotal: Number(item.grandTotal) || 0,
       dueAmount: Number(item.due) || 0,
       bookingMoney: Number(item.paid) || 0,
-      paymentMethod: item.paymentMethod || "",
-      chequeNo: item.chequeNo || "",
-      termsAndConditions: item.termsAndConditions || "",
-      installments: item.installments || [],
+      paymentMethod: item.details?.paymentMethod || "",
+      chequeNo: item.details?.chequeNo || "",
+      termsAndConditions: item.details?.termsAndConditions || "",
+      installments: item.details?.installments || [],
     });
+    setInstallmentCount(Math.max(item.details?.installments?.length || 3, 1));
+    setInstallmentStartDate(item.details?.installments?.[0]?.date || item.bookingDate || "");
     setViewMode(2); 
   };
 
@@ -351,6 +413,28 @@ export default function FlatLandShareBookingPage() {
       ...prev,
       installments: [...prev.installments, { id: Date.now().toString(), date: "", type: "Installment", amount: 0 }]
     }));
+  };
+
+  const generateInstallments = () => {
+    const count = Math.min(Math.max(Number(installmentCount) || 1, 1), 120);
+    const startDate = installmentStartDate || formData.date;
+    const totalDue = Math.max(Number(formData.dueAmount) || 0, 0);
+    const baseAmount = Math.floor((totalDue / count) * 100) / 100;
+    const rows = Array.from({ length: count }, (_, index) => {
+      const [year, month, day] = startDate.split("-").map(Number);
+      const date = new Date(year, month - 1 + index, 1);
+      const targetDay = Math.min(day, new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate());
+      date.setDate(targetDay);
+      return {
+        id: `${Date.now()}-${index}`,
+        date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
+        type: "Installment",
+        amount: index === count - 1
+          ? Math.round((totalDue - baseAmount * (count - 1)) * 100) / 100
+          : baseAmount,
+      };
+    });
+    setFormData((current) => ({ ...current, installments: rows }));
   };
 
   const updateInstallment = (id: string, field: keyof Installment, value: any) => {
@@ -402,7 +486,7 @@ export default function FlatLandShareBookingPage() {
         status: "active",
         nominees: newCustomer.nominees
       };
-      const res = await fetch(`${API_PATH}/customer-account`, {
+      const res = await projectFetch(`${API_PATH}/customer-account`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -450,11 +534,41 @@ export default function FlatLandShareBookingPage() {
         }
       }
 
-      const matchesTeam = !filters.team || item.team === filters.team;
+      const selectedTeam = teams.find(team => team.uuid === filters.team);
+      const matchesTeam = !filters.team || (selectedTeam && item.projectId === selectedTeam.projectId);
 
       return matchesSearch && matchesSalesBy && matchesProject && matchesDate && matchesTeam;
     });
-  }, [dataList, search, filters]);
+  }, [dataList, search, filters, teams]);
+
+  const selectedProperty = flatsOrLands.find((flat) => flat.uuid === formData.flatLandId);
+
+  const exportBookingsCsv = () => {
+    const columns = ["Date", "Booking Code", "Project", "Property", "Customer", "Rate", "Parking", "Utility", "Grand Total", "Paid", "Due", "Sales By"];
+    const rows = filteredData.map((booking) => [
+      booking.bookingDate,
+      booking.code,
+      booking.project?.name || projects.find((project) => project.uuid === booking.projectId)?.name || "",
+      booking.flatLand?.flatLandNo || booking.flatLandNo || "",
+      booking.customerName,
+      booking.rate,
+      booking.parking,
+      booking.utilityCharge,
+      booking.grandTotal,
+      booking.paid,
+      booking.due,
+      booking.salesBy,
+    ]);
+    const csv = [columns, ...rows]
+      .map((row) => row.map((value) => `"${String(value ?? "").replaceAll('"', '""')}"`).join(","))
+      .join("\r\n");
+    const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "flat-land-bookings.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   // ====================== RENDER VIEWS ======================
   
@@ -464,7 +578,7 @@ export default function FlatLandShareBookingPage() {
       <div className="min-h-screen bg-gray-50 p-6 font-sans text-gray-800">
         <div className="flex justify-between items-center mb-4">
           <div className="text-sm text-gray-500">Home &gt; Flat/Land/Share &gt; Booking List</div>
-          <button onClick={() => { setViewMode(2); setEditingItem(null); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm flex items-center gap-1">
+          <button onClick={openNewBooking} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm flex items-center gap-1">
             <Plus className="w-4 h-4" /> New Booking
           </button>
         </div>
@@ -489,7 +603,7 @@ export default function FlatLandShareBookingPage() {
             <label className="block text-xs text-gray-600 mb-1">Team</label>
             <select value={filters.team} onChange={(e) => setFilters({ ...filters, team: e.target.value })} className="w-full border rounded px-3 py-2 text-sm">
               <option value="">Select value</option>
-              {teams.map(t => <option key={t.uuid} value={t.name}>{t.name}</option>)}
+              {teams.map(t => <option key={t.uuid} value={t.uuid}>{t.name}</option>)}
             </select>
           </div>
           <div>
@@ -504,8 +618,8 @@ export default function FlatLandShareBookingPage() {
         <div className="bg-white p-4 border rounded shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <div className="flex gap-2">
-              <button className="bg-green-600 text-white px-3 py-1 rounded text-xs">Excel</button>
-              <button className="bg-red-600 text-white px-3 py-1 rounded text-xs">PDF</button>
+              <button onClick={exportBookingsCsv} className="bg-green-600 text-white px-3 py-1 rounded text-xs">Excel</button>
+              <button onClick={() => window.print()} className="bg-red-600 text-white px-3 py-1 rounded text-xs">PDF / Print</button>
             </div>
             <div className="flex gap-2 items-center text-sm">
               <span>Search:</span>
@@ -591,7 +705,7 @@ export default function FlatLandShareBookingPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <label className="w-1/3 text-right text-sm">Project</label>
-                    <select required value={formData.projectId} onChange={e => setFormData({ ...formData, projectId: e.target.value })} className="w-2/3 border rounded px-3 py-1.5 text-sm">
+                    <select required value={formData.projectId} onChange={e => setFormData({ ...formData, projectId: e.target.value, flatLandId: "", flatLandNo: "", siteName: "" })} className="w-2/3 border rounded px-3 py-1.5 text-sm">
                       <option value="">Select Project</option>
                       {projects.map(p => <option key={p.uuid} value={p.uuid}>{p.name}</option>)}
                     </select>
@@ -601,10 +715,17 @@ export default function FlatLandShareBookingPage() {
                     <label className="w-1/3 text-right text-sm">Flat/Land/Share No</label>
                     <select required value={formData.flatLandId} onChange={e => {
                       const selectedFlat = flatsOrLands.find(f => f.uuid === e.target.value);
-                      setFormData({ ...formData, flatLandId: e.target.value, flatLandNo: selectedFlat?.flatLandNo || "" });
+                      setFormData({
+                        ...formData,
+                        flatLandId: e.target.value,
+                        flatLandNo: selectedFlat?.flatLandNo || "",
+                        rate: Number(selectedFlat?.pricePerUnit || 0),
+                        parkingCost: Number(selectedFlat?.parkingCost || 0),
+                        utilityCharge: Number(selectedFlat?.utilityCharge || 0),
+                      });
                     }} className="w-2/3 border rounded px-3 py-1.5 text-sm">
                       <option value="">Select Flat/Land</option>
-                      {flatsOrLands.map(f => (
+                      {flatsOrLands.filter(f => f.projectId === formData.projectId && (f.status === "Available" || f.uuid === formData.flatLandId)).map(f => (
                         <option key={f.uuid} value={f.uuid}>{f.flatLandNo}</option>
                       ))}
                     </select>
@@ -623,7 +744,13 @@ export default function FlatLandShareBookingPage() {
 
                   <div className="flex items-center gap-4">
                     <label className="w-1/3 text-right text-sm">Attachment</label>
-                    <input type="file" className="w-2/3 border rounded px-3 py-1 text-sm" onChange={e => setFormData({ ...formData, attachment: e.target.files?.[0]?.name || "" })} />
+                    <input type="file" className="w-2/3 border rounded px-3 py-1 text-sm" onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = () => setFormData(current => ({ ...current, attachment: String(reader.result || "") }));
+                      reader.readAsDataURL(file);
+                    }} />
                   </div>
                 </div>
 
@@ -650,9 +777,9 @@ export default function FlatLandShareBookingPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <label className="w-1/3 text-right text-sm">Site</label>
-                    <select value={formData.siteName} onChange={e => setFormData({ ...formData, siteName: e.target.value })} className="w-2/3 border rounded px-3 py-1.5 text-sm">
+                    <select value={formData.siteName} onChange={e => setFormData({ ...formData, siteName: e.target.value })} disabled={!formData.projectId} className="w-2/3 border rounded px-3 py-1.5 text-sm">
                       <option value="">Select Site</option>
-                      {sites.map(s => <option key={s.uuid} value={s.name}>{s.name}</option>)}
+                      {sites.filter(s => s.projectId === formData.projectId).map(s => <option key={s.uuid} value={s.name}>{s.name}</option>)}
                     </select>
                   </div>
                   <div className="flex items-center gap-4">
@@ -796,22 +923,23 @@ export default function FlatLandShareBookingPage() {
           <h2 className="text-center text-xl font-bold mb-6">Booking & Property Info</h2>
           <div className="grid grid-cols-4 gap-4 text-sm">
             <div>
-              <p className="font-bold">Customer:</p><p className="text-gray-600">{formData.customerName}</p>
-              <p className="font-bold mt-2">Kitchen:</p><p className="text-gray-600">N/A</p>
-              <p className="font-bold mt-2">Drawing:</p><p className="text-gray-600">N/A</p>
+              <p className="font-bold">Customer:</p><p className="text-gray-600">{formData.customerName || "—"}</p>
+              <p className="font-bold mt-2">Kitchen:</p><p className="text-gray-600">{selectedProperty?.kitchen || "—"}</p>
+              <p className="font-bold mt-2">Drawing:</p><p className="text-gray-600">{selectedProperty?.drawing || "—"}</p>
+              <p className="font-bold mt-2">Bedrooms / Bathrooms:</p><p className="text-gray-600">{selectedProperty?.bedroom ?? "—"} / {selectedProperty?.bathroom ?? "—"}</p>
             </div>
             <div>
               <p className="font-bold">Project Name:</p><p className="text-gray-600">{projects.find(p => p.uuid === formData.projectId)?.name}</p>
-              <p className="font-bold mt-2">Balcony:</p><p className="text-gray-600">N/A</p>
-              <p className="font-bold mt-2">Dining:</p><p className="text-gray-600">N/A</p>
+              <p className="font-bold mt-2">Balcony:</p><p className="text-gray-600">{selectedProperty?.balcony || "—"}</p>
+              <p className="font-bold mt-2">Dining:</p><p className="text-gray-600">{selectedProperty?.dining || "—"}</p>
             </div>
             <div>
               <p className="font-bold">Flat No:</p><p className="text-gray-600">{formData.flatLandNo}</p>
-              <p className="font-bold mt-2">Parking:</p><p className="text-gray-600">N/A</p>
+              <p className="font-bold mt-2">Parking:</p><p className="text-gray-600">{selectedProperty?.parking || "—"}</p>
             </div>
             <div>
-              <p className="font-bold">Flat Size:</p><p className="text-gray-600">2100 sq.ft</p>
-              <p className="font-bold mt-2">Basement:</p><p className="text-gray-600">N/A</p>
+              <p className="font-bold">Flat/Plot Size:</p><p className="text-gray-600">{selectedProperty?.size || "—"} {selectedProperty?.unit || ""}</p>
+              <p className="font-bold mt-2">Basement:</p><p className="text-gray-600">{selectedProperty?.basement || "—"}</p>
             </div>
           </div>
         </div>
@@ -820,13 +948,13 @@ export default function FlatLandShareBookingPage() {
           <div className="flex-1 bg-white p-4 rounded shadow-sm border">
             <div className="flex gap-4 items-center mb-4">
               <label className="text-sm">Payment Schedule</label>
-              <input type="number" defaultValue={3} className="border rounded px-2 py-1 w-20 text-sm" />
-              <button className="bg-indigo-600 text-white px-2 py-1 rounded">+</button>
-              <div className="flex items-center gap-1 ml-4"><input type="checkbox" /> <span className="text-sm">Manual</span></div>
+              <input type="number" min={1} max={120} value={installmentCount} onChange={e => setInstallmentCount(Number(e.target.value))} className="border rounded px-2 py-1 w-20 text-sm" />
+              <button type="button" onClick={manualInstallments ? addInstallment : generateInstallments} className="bg-indigo-600 text-white px-2 py-1 rounded">+</button>
+              <div className="flex items-center gap-1 ml-4"><input type="checkbox" checked={manualInstallments} onChange={e => setManualInstallments(e.target.checked)} /> <span className="text-sm">Manual</span></div>
             </div>
             <div className="flex gap-4 items-center mb-6">
               <label className="text-sm">Start Date</label>
-              <input type="date" className="border rounded px-2 py-1 text-sm" />
+              <input type="date" value={installmentStartDate} onChange={e => setInstallmentStartDate(e.target.value)} className="border rounded px-2 py-1 text-sm" />
               <span className="text-sm ml-4">Set Installment Schedule</span>
               <input type="text" value="Monthly" readOnly className="border rounded px-2 py-1 w-32 text-sm bg-gray-50" />
             </div>

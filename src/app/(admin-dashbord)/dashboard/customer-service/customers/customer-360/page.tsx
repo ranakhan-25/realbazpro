@@ -606,11 +606,11 @@ export default function Customer360Page() {
                 {deletedCount}
               </span>
             )}
-          </button >
-        </div >
+          </button>
+        </div>
 
         {/* 400ms Debounced Server Search Control */}
-        < div className="relative w-full sm:w-80" >
+        <div className="relative w-full sm:w-80">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
           <input
             type="text"
@@ -619,48 +619,46 @@ export default function Customer360Page() {
             placeholder="Search name, phone, NID, code..."
             className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white pl-9 pr-3 text-xs text-[#111827] placeholder-[#9CA3AF] shadow-xs outline-none transition focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20"
           />
-        </div >
-      </div >
+        </div>
+      </div>
 
       {/* Active Sub-filter Tabs (Shown only on Active Records) */}
-      {
-        recordsTab === "active" && (
-          <CSFilterTabs
-            tabs={[
-              { key: "all", label: "All Customers", count: stats.total_clients },
-              {
-                key: "vip",
-                label: "VIP Clients",
-                count: stats.vip_clients,
-              },
-              {
-                key: "active",
-                label: "Active Regular",
-                count:
-                  stats.active_clients ??
-                  Math.max(0, stats.total_clients - stats.vip_clients),
-              },
-              {
-                key: "disputed",
-                label: "Flagged / Disputed",
-                count: stats.disputed_clients ?? 0,
-                badgeVariant: "danger",
-              },
-            ]}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-          />
-        )
-      }
+      {recordsTab === "active" && (
+        <CSFilterTabs
+          tabs={[
+            { key: "all", label: "All Customers", count: stats.total_clients },
+            {
+              key: "vip",
+              label: "VIP Clients",
+              count: stats.vip_clients,
+            },
+            {
+              key: "active",
+              label: "Active Regular",
+              count:
+                stats.active_clients ??
+                Math.max(0, stats.total_clients - stats.vip_clients),
+            },
+            {
+              key: "disputed",
+              label: "Flagged / Disputed",
+              count: stats.disputed_clients ?? 0,
+              badgeVariant: "danger",
+            },
+          ]}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+      )}
 
       {/* Table Section with Loading Skeleton, Error State, & CSTable */}
-      {
-        isLoading ? (
-          <div className="w-full h-72 rounded-[12px] border border-[#E5E7EB] bg-white p-8 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-[#6D4AFF]" />
-            <p className="text-xs text-[#6B7280]">
-              Loading Customer 360° Profiles...
-            </p>
+      {isLoading ? (
+        <div className="w-full h-72 rounded-[12px] border border-[#E5E7EB] bg-white p-8 flex flex-col items-center justify-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-[#6D4AFF]" />
+          <p className="text-xs text-[#6B7280]">
+            Loading Customer 360° Profiles...
+          </p>
+        </div>
           </div>
         ) : loadError && customers.length === 0 ? (
           <div className="w-full rounded-[12px] border border-[#FECACA] bg-[#FEF2F2] p-8 flex flex-col items-center justify-center gap-3 text-center">

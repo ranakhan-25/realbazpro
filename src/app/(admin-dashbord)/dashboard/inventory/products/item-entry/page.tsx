@@ -56,7 +56,7 @@ const ItemAccounts = () => {
   const handleAddClick = () => {
     setModalMode("add");
     setSelectedItem({
-      code: `ITEM-${Math.floor(1000 + Math.random() * 9000)}`,
+      code: "",
       name: "",
       category_id: categories[0]?.id || "",
       unit_id: units[0]?.id || "",
@@ -90,7 +90,7 @@ const ItemAccounts = () => {
     try {
       setIsSubmitting(true);
       const payload = {
-        item_code: selectedItem.code || `ITEM-${Date.now().toString().slice(-4)}`,
+        item_code: selectedItem.code || "",
         name: selectedItem.name,
         type: "Material",
         purchase_price: Number(selectedItem.purchasePrice || 0),

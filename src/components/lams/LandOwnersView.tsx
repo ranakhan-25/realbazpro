@@ -28,6 +28,7 @@ import { LamsEmptyState } from "./common/LamsEmptyState";
 interface LandOwnersViewProps {
   owners: LandOwner[];
   acquisitionLeads?: AcquisitionLead[];
+  initialOpenCreate?: boolean;
   onAddOwner?: (owner: any) => void;
   onEditOwner?: (uuid: string, data: any) => void;
   onDeleteOwner?: (uuid: string) => void;
@@ -45,6 +46,7 @@ const DEFAULT_COLUMNS: ColumnDefinition[] = [
 export function LandOwnersView({
   owners = [],
   acquisitionLeads = [],
+  initialOpenCreate = false,
   onAddOwner,
   onEditOwner,
   onDeleteOwner,
@@ -56,9 +58,16 @@ export function LandOwnersView({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Modals
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(Boolean(initialOpenCreate));
+
+  React.useEffect(() => {
+    if (initialOpenCreate) {
+      setIsFormModalOpen(true);
+    }
+  }, [initialOpenCreate]);
   const [editingOwner, setEditingOwner] = useState<any>(null);
   const [selectedOwner, setSelectedOwner] = useState<any>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [nidError, setNidError] = useState("");
 
   // Form State
@@ -317,8 +326,8 @@ export function LandOwnersView({
         {displayedOwners.length === 0 ? (
           <LamsEmptyState
             title="No landowners found"
-            subtitle="Add a landowner profile or clear filters to view registered landowners."
-            buttonText="Add Landowner Profile"
+            description="Add a landowner profile or clear filters to view registered landowners."
+            actionLabel="Add Landowner Profile"
             onAction={() => openForm()}
             icon={Users}
           />
@@ -350,48 +359,51 @@ export function LandOwnersView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {displayedOwners.map((owner: any) => {
-                  const ownerId = owner.uuid || owner.id;
+                {displayedOwners.map((owner: any, idx: number) => {
+                  const ownerId = owner.uuid || owner.id || `owner-${idx}`;
+                  const isExpanded = expandedId === ownerId;
                   const isSelected = selectedIds.includes(ownerId);
-                  const landsCount = acquisitionLeads.filter(
-                    (lead: any) =>
-                      lead.owner_id === ownerId ||
-                      lead.owner_name === owner.name ||
-                      lead.owner === owner.name
-                  ).length;
-
+                  const landsCount = Array.isArray(owner.lands)
+                    ? owner.lands.length
+                    : (owner.lands_count || acquisitionLeads.filter(
+                        (lead: any) =>
+                          lead.owner_id === ownerId ||
+                          lead.owner_name === owner.name ||
+                          lead.owner === owner.name
+                      ).length);
                   return (
-                    <tr
-                      key={ownerId}
-                      className={`transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${
-                        isSelected ? "bg-cyan-50/40 dark:bg-cyan-950/20" : ""
-                      }`}
-                    >
-                      <td className="py-3 px-3.5 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleSelectOne(ownerId)}
-                          className="rounded border-slate-300 dark:border-slate-600 text-cyan-600 focus:ring-cyan-500"
-                        />
-                      </td>
-
-                      {/* Name */}
-                      {isColVisible("name") && (
-                        <td className="py-3 px-3.5 font-bold text-slate-900 dark:text-white">
-                          <button
-                            onClick={() => setSelectedOwner(owner)}
-                            className="hover:underline text-cyan-700 dark:text-cyan-400"
-                          >
-                            {owner.name}
-                          </button>
-                          {owner.father_name && (
-                            <span className="text-[10px] text-slate-400 block font-normal">
-                              C/O {owner.father_name}
-                            </span>
-                          )}
+                    <React.Fragment key={ownerId}>
+                      <tr
+                        className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
+                          isExpanded ? "bg-cyan-50/40 dark:bg-cyan-950/20" : ""
+                        }`}
+                      >
+                        {/* Selection Checkbox */}
+                        <td className="py-3 px-3.5 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleSelectOne(ownerId)}
+                            className="rounded border-slate-300 dark:border-slate-600 text-cyan-600 focus:ring-cyan-500"
+                          />
                         </td>
-                      )}
+
+                        {/* Landowner Name */}
+                        {isColVisible("name") && (
+                          <td className="py-3 px-3.5">
+                            <button
+                              onClick={() => setSelectedOwner(owner)}
+                              className="font-semibold text-slate-800 dark:text-slate-100 hover:underline text-left block"
+                            >
+                              {owner.name}
+                            </button>
+                            {owner.father_name && (
+                              <span className="text-[10px] text-slate-400 block font-normal">
+                                C/O {owner.father_name}
+                              </span>
+                            )}
+                          </td>
+                        )}
 
                       {/* NID */}
                       {isColVisible("nid") && (
@@ -417,14 +429,14 @@ export function LandOwnersView({
                       {/* Email */}
                       {isColVisible("email") && (
                         <td className="py-3 px-3.5 text-slate-500 dark:text-slate-400">
-                          {owner.email || "N/A"}
+                          {owner.email || "Not found"}
                         </td>
                       )}
 
                       {/* Address */}
                       {isColVisible("address") && (
                         <td className="py-3 px-3.5 text-slate-500 dark:text-slate-400 truncate max-w-[160px]">
-                          {owner.address || "N/A"}
+                          {owner.address || "Not found"}
                         </td>
                       )}
 
@@ -470,7 +482,8 @@ export function LandOwnersView({
                         </div>
                       </td>
                     </tr>
-                  );
+                  </React.Fragment>
+                );
                 })}
               </tbody>
             </table>
@@ -681,9 +694,10 @@ export function LandOwnersView({
                           <button
                             type="button"
                             onClick={() => removeNomineeField(index)}
-                            className="text-rose-500 hover:text-rose-700 p-1"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
+                            title="Remove Nominee"
                           >
-                            <X className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>
@@ -738,7 +752,7 @@ export function LandOwnersView({
                 </div>
                 <div>
                   <p className="text-slate-400 font-bold uppercase text-[10px]">Father's / Spouse</p>
-                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.father_name || "N/A"}</p>
+                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.father_name || "Not found"}</p>
                 </div>
                 <div>
                   <p className="text-slate-400 font-bold uppercase text-[10px]">NID Number</p>
@@ -750,11 +764,11 @@ export function LandOwnersView({
                 </div>
                 <div className="col-span-2">
                   <p className="text-slate-400 font-bold uppercase text-[10px]">Email</p>
-                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.email || "N/A"}</p>
+                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.email || "Not found"}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-slate-400 font-bold uppercase text-[10px]">Address</p>
-                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.address || "N/A"}</p>
+                  <p className="font-medium text-slate-800 dark:text-slate-200">{selectedOwner.address || "Not found"}</p>
                 </div>
               </div>
 

@@ -1,6 +1,8 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
 import React, { useState, useEffect } from "react";
 import {
   Search,
@@ -50,7 +52,7 @@ const formatDate = (dateStr?: string) => {
 
 async function fetchMonthYears(): Promise<{ data: MonthYear[]; meta: any }> {
   const url = `${API_BASE}/realbizpro/api/v1/month-year?page=1&limit=100&skip=0&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
-  const res = await fetch(url, {
+  const res = await hrmFetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -72,7 +74,7 @@ async function fetchMonthYears(): Promise<{ data: MonthYear[]; meta: any }> {
 }
 
 async function createMonthYear(payload: Record<string, any>) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/month-year`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/month-year`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -81,7 +83,7 @@ async function createMonthYear(payload: Record<string, any>) {
 }
 
 async function updateMonthYear(uuid: string, payload: Record<string, any>) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/month-year/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/month-year/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -90,7 +92,7 @@ async function updateMonthYear(uuid: string, payload: Record<string, any>) {
 }
 
 async function softDeleteMonthYear(uuid: string) {
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/month-year/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/month-year/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

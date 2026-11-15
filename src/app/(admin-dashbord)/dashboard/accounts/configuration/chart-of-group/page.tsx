@@ -1,5 +1,7 @@
 'use client';
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   ChevronDown,
@@ -58,7 +60,7 @@ export default function AssetItemList() {
   const fetchChartOfGroups = async () => {
     setIsGroupsLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/chart-of-groups`, {
+      const response = await accountsFetch(`${API_BASE}/chart-of-groups`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json', 'accept': 'application/json' }
       });

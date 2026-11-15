@@ -43,8 +43,8 @@ export interface MaterialRequisitionItem {
 
 export default function MaterialRequisitionAccounts() {
   // Filter states
-  const [dateRange, setDateRange] = useState("1 September, 2026 - 30 September, 2026");
-  const [company, setCompany] = useState("Somikoron IT Ltd");
+  const [dateRange, setDateRange] = useState("");
+  const [company, setCompany] = useState("");
   const [supplier, setSupplier] = useState("");
   const [project, setProject] = useState("");
   const [titleOfWork, setTitleOfWork] = useState("");
@@ -61,15 +61,7 @@ export default function MaterialRequisitionAccounts() {
   // Handler to open Create Module
   const handleCreateNew = () => {
     setModalMode("create");
-    setSelectedRequisition({
-      code: `MR-${Math.floor(10000 + Math.random() * 90000)}`,
-      date: new Date().toISOString().split("T")[0],
-      demandDate: new Date().toISOString().split("T")[0],
-      projectType: "Real Estate",
-      project: "Head Office",
-      titleOfWork: "General Works",
-      ref: "REF-001",
-    });
+    setSelectedRequisition({});
     setIsModalOpen(true);
   };
 
@@ -83,17 +75,16 @@ export default function MaterialRequisitionAccounts() {
   const handleSaveRequisition = async () => {
     try {
       setIsSubmitting(true);
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5002/realbizpro/api/v1";
       const payload = {
-        projectType: selectedRequisition.projectType || "Real Estate",
-        projectName: selectedRequisition.project || "Head Office",
-        titleOrNameOfWork: selectedRequisition.titleOfWork || "General Construction",
-        code: selectedRequisition.code || `REQ-${Date.now().toString().slice(-6)}`,
-        referenceNumber: selectedRequisition.ref || `REF-${Date.now().toString().slice(-4)}`,
+        projectType: selectedRequisition.projectType,
+        projectName: selectedRequisition.projectName || selectedRequisition.project,
+        titleOrNameOfWork: selectedRequisition.titleOfWork,
+        code: selectedRequisition.code,
+        referenceNumber: selectedRequisition.ref || selectedRequisition.referenceNumber,
         demandDate: selectedRequisition.demandDate && !isNaN(Date.parse(selectedRequisition.demandDate))
           ? new Date(selectedRequisition.demandDate).toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0],
-        company: company || "Somikoron IT Ltd",
+          : undefined,
+        company: company || undefined,
       };
 
       await materialRequisitionsApi.create(payload);
@@ -104,10 +95,8 @@ export default function MaterialRequisitionAccounts() {
       setRefreshTrigger((prev) => prev + 1);
       setIsModalOpen(false);
     } catch (err: any) {
-      console.warn("Failed to reach requisition API, recording locally:", err);
-      toast.success("Requisition saved successfully!");
-      setRefreshTrigger((prev) => prev + 1);
-      setIsModalOpen(false);
+      console.error("Failed to save material requisition:", err);
+      toast.error(err.message || "Failed to save material requisition");
     } finally {
       setIsSubmitting(false);
     }
@@ -182,30 +171,23 @@ export default function MaterialRequisitionAccounts() {
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Supplier</label>
-            <select
+            <input
+              type="text"
               value={supplier}
               onChange={(e) => setSupplier(e.target.value)}
               className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="">All Suppliers</option>
-              <option value="BSRM Steels Ltd">BSRM Steels Ltd</option>
-              <option value="Seven Rings Cement Corp">Seven Rings Cement Corp</option>
-              <option value="Bashundhara Multi Trading">Bashundhara Multi Trading</option>
-              <option value="BRB Cables Ltd">BRB Cables Ltd</option>
-            </select>
+              placeholder="Supplier"
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Project</label>
-            <select
+            <input
+              type="text"
               value={project}
               onChange={(e) => setProject(e.target.value)}
               className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="">All Projects</option>
-              <option value="Hena Heights (PRJ-1001)">Hena Heights (PRJ-1001)</option>
-              <option value="Rifat Eyecon City (PRJ-1002)">Rifat Eyecon City (PRJ-1002)</option>
-              <option value="Green Valley Residency (PRJ-1003)">Green Valley Residency (PRJ-1003)</option>
-            </select>
+              placeholder="Project"
+            />
           </div>
         </div>
 
@@ -214,17 +196,13 @@ export default function MaterialRequisitionAccounts() {
             <label className="block text-xs font-medium text-muted-foreground mb-1">
               Title/Name of Work
             </label>
-            <select
+            <input
+              type="text"
               value={titleOfWork}
               onChange={(e) => setTitleOfWork(e.target.value)}
               className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="">All Works</option>
-              <option value="Substructure & Foundation">Substructure & Foundation</option>
-              <option value="RCC Casting (Beam & Column)">RCC Casting (Beam & Column)</option>
-              <option value="Brickwork & Masonry">Brickwork & Masonry</option>
-              <option value="Sanitary & Electrical Fitting">Sanitary & Electrical Fitting</option>
-            </select>
+              placeholder="Title/name of work"
+            />
           </div>
         </div>
       </div>

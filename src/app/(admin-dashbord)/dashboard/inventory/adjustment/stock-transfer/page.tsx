@@ -2,9 +2,9 @@
 
 import StockTransferTable from "@/components/inventory/StockTransferTable";
 import { RouteBreadcrumb } from "@/components/ui/RouteBreadcrumb";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FiPlus, FiX } from "react-icons/fi";
-import { stockTransfersApi, itemsApi, fallbackItems } from "@/lib/inventoryApi";
+import { stockTransfersApi, itemsApi } from "@/lib/inventoryApi";
 import { toast } from "sonner";
 
 export interface StockTransferItem {
@@ -47,7 +47,7 @@ export interface StockTransferItem {
 export default function StockTransferAccounts() {
   // Filter states
   const [date, setDate] = useState("");
-  const [company, setCompany] = useState("Somikoron IT Ltd");
+  const [company, setCompany] = useState("");
   const [supplier, setSupplier] = useState("");
   const [project, setProject] = useState("");
   const [titleOfWork, setTitleOfWork] = useState("");
@@ -56,16 +56,28 @@ export default function StockTransferAccounts() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "update" | "view">("create");
   const [selectedTransfer, setSelectedTransfer] = useState<Partial<StockTransferItem>>({});
+  const [itemsList, setItemsList] = useState<any[]>([]);
+  const [selectedItemId, setSelectedItemId] = useState("");
+  const [transferQuantity, setTransferQuantity] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    itemsApi.getAll()
+      .then(setItemsList)
+      .catch((error) => {
+        console.error("Could not load inventory items for stock transfer.", error);
+        toast.error("Inventory items could not be loaded.");
+        setItemsList([]);
+      });
+  }, []);
 
   // Handler to open Transfer Module
   const handleOpenTransferModal = () => {
     setModalMode("create");
-    setSelectedTransfer({
-      code: `ST${Math.floor(100000 + Math.random() * 900000)}`,
-      date: new Date().toISOString().split("T")[0],
-    });
+    setSelectedTransfer({});
+    setSelectedItemId("");
+    setTransferQuantity("");
     setIsModalOpen(true);
   };
 
@@ -79,25 +91,24 @@ export default function StockTransferAccounts() {
   const handleSaveTransfer = async () => {
     try {
       setIsSubmitting(true);
-      const rawItems = await itemsApi.getAll().catch(() => fallbackItems);
-      const firstItemId = Array.isArray(rawItems) && rawItems.length > 0 ? rawItems[0].id : "item-01";
-
-      if (!firstItemId) {
-        toast.info("Stock transfer recorded.");
-        setRefreshTrigger((prev) => prev + 1);
-        setIsModalOpen(false);
+      if (modalMode !== "create") {
+        toast.error("Updating stock transfers is not supported by the backend API.");
+        return;
+      }
+      const quantity = Number(transferQuantity);
+      if (!selectedItemId || !Number.isFinite(quantity) || quantity <= 0) {
+        toast.error("Select an existing item and enter a quantity greater than zero.");
         return;
       }
 
       await stockTransfersApi.create({
         date: selectedTransfer.date && !isNaN(Date.parse(selectedTransfer.date))
           ? new Date(selectedTransfer.date).toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0],
-        item_id: firstItemId,
-        quantity: 1,
-        note: `Transfer from ${selectedTransfer.fromProject || "Hena Heights (PRJ-1001)"} to ${selectedTransfer.toProject || "Rifat Eyecon City (PRJ-1002)"}`,
-        status: "Completed",
-        projectId: selectedTransfer.fromProject || "PRJ-1001",
+          : undefined,
+        item_id: selectedItemId,
+        quantity,
+        note: selectedTransfer.note || undefined,
+        projectId: selectedTransfer.projectId || undefined,
       });
 
       toast.success(
@@ -171,31 +182,23 @@ export default function StockTransferAccounts() {
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Supplier</label>
-            <select
+            <input
+              type="text"
               value={supplier}
               onChange={(e) => setSupplier(e.target.value)}
               className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="">All Suppliers</option>
-              <option value="BSRM Steels Ltd">BSRM Steels Ltd</option>
-              <option value="Seven Rings Cement Corp">Seven Rings Cement Corp</option>
-              <option value="Bashundhara Multi Trading">Bashundhara Multi Trading</option>
-              <option value="BRB Cables Ltd">BRB Cables Ltd</option>
-            </select>
+              placeholder="Supplier"
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Project</label>
-            <select
+            <input
+              type="text"
               value={project}
               onChange={(e) => setProject(e.target.value)}
               className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="">All Projects</option>
-              <option value="Hena Heights (PRJ-1001)">Hena Heights (PRJ-1001)</option>
-              <option value="Rifat Eyecon City (PRJ-1002)">Rifat Eyecon City (PRJ-1002)</option>
-              <option value="Green Valley Residency (PRJ-1003)">Green Valley Residency (PRJ-1003)</option>
-              <option value="Metro Sky Tower (PRJ-1004)">Metro Sky Tower (PRJ-1004)</option>
-            </select>
+              placeholder="Project"
+            />
           </div>
         </div>
 
@@ -204,17 +207,13 @@ export default function StockTransferAccounts() {
             <label className="block text-xs font-medium text-muted-foreground mb-1">
               Title/Name of Work
             </label>
-            <select
+            <input
+              type="text"
               value={titleOfWork}
               onChange={(e) => setTitleOfWork(e.target.value)}
               className="w-full bg-background border border-input rounded px-3 py-1.5 text-xs text-foreground"
-            >
-              <option value="">All Works</option>
-              <option value="Substructure & Foundation">Substructure & Foundation</option>
-              <option value="RCC Casting (Beam & Column)">RCC Casting (Beam & Column)</option>
-              <option value="Brickwork & Masonry">Brickwork & Masonry</option>
-              <option value="Sanitary & Electrical Fitting">Sanitary & Electrical Fitting</option>
-            </select>
+              placeholder="Title/name of work"
+            />
           </div>
         </div>
       </div>
@@ -249,24 +248,28 @@ export default function StockTransferAccounts() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Code
+                    Item
                   </label>
-                  <input
-                    type="text"
+                  <select
                     disabled={modalMode === "view"}
-                    value={selectedTransfer.code || ""}
-                    onChange={(e) =>
-                      setSelectedTransfer({ ...selectedTransfer, code: e.target.value })
-                    }
+                    value={selectedItemId}
+                    onChange={(e) => setSelectedItemId(e.target.value)}
                     className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground disabled:opacity-60"
-                  />
+                  >
+                    <option value="">Not found</option>
+                    {itemsList.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {[item.code, item.name].filter(Boolean).join(" - ")}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">
                     Date
                   </label>
                   <input
-                    type="text"
+                    type="date"
                     disabled={modalMode === "view"}
                     value={selectedTransfer.date || ""}
                     onChange={(e) =>
@@ -280,42 +283,45 @@ export default function StockTransferAccounts() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    From Project
+                    Quantity
                   </label>
                   <input
-                    type="text"
-                    list="project-options"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
                     disabled={modalMode === "view"}
-                    placeholder="e.g. Hena Heights (PRJ-1001)"
-                    value={selectedTransfer.fromProject || ""}
-                    onChange={(e) =>
-                      setSelectedTransfer({ ...selectedTransfer, fromProject: e.target.value })
-                    }
+                    value={transferQuantity}
+                    onChange={(e) => setTransferQuantity(e.target.value)}
                     className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground disabled:opacity-60"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    To Project
+                    Project ID (optional)
                   </label>
                   <input
                     type="text"
-                    list="project-options"
                     disabled={modalMode === "view"}
-                    placeholder="e.g. Rifat Eyecon City (PRJ-1002)"
-                    value={selectedTransfer.toProject || ""}
+                    value={selectedTransfer.projectId || ""}
                     onChange={(e) =>
-                      setSelectedTransfer({ ...selectedTransfer, toProject: e.target.value })
+                      setSelectedTransfer({ ...selectedTransfer, projectId: e.target.value })
                     }
                     className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground disabled:opacity-60"
                   />
                 </div>
-                <datalist id="project-options">
-                  <option value="Hena Heights (PRJ-1001)" />
-                  <option value="Rifat Eyecon City (PRJ-1002)" />
-                  <option value="Green Valley Residency (PRJ-1003)" />
-                  <option value="Metro Sky Tower (PRJ-1004)" />
-                </datalist>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                  Note
+                </label>
+                <textarea
+                  disabled={modalMode === "view"}
+                  value={selectedTransfer.note || ""}
+                  onChange={(e) =>
+                    setSelectedTransfer({ ...selectedTransfer, note: e.target.value })
+                  }
+                  className="min-h-20 w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground disabled:opacity-60"
+                />
               </div>
             </div>
 

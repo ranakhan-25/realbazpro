@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { Plus, X, Loader2, Edit3, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -75,10 +78,7 @@ export default function InvoiceBillPage() {
   const [projectTypes, setProjectTypes] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
-  const [ledgers] = useState<any[]>([
-    { uuid: "1", name: "Interest Income" },
-    { uuid: "2", name: "Sales" }
-  ]);
+  const [ledgers, setLedgers] = useState<any[]>([]);
 
   // Invoice Form Data
   const [formData, setFormData] = useState({
@@ -126,7 +126,7 @@ export default function InvoiceBillPage() {
   const fetchInvoices = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_PATH}/project-billing/period-billings`);
+      const res = await projectFetch(`${API_PATH}/project-billing/adjustment-billings?page=1&limit=100`);
       const json = await res.json();
       if (json.success) {
         setDataList((json.data.data || []).filter((item: any) => !item.deletedAt));
@@ -141,29 +141,33 @@ export default function InvoiceBillPage() {
   // ====================== FETCH DROPDOWNS ======================
   const fetchDropdowns = async () => {
     try {
-      const resCus = await fetch(`${API_PATH}/customer-account`);
+      const resCus = await projectFetch(`${API_PATH}/customer-account`);
       const jsonCus = await resCus.json();
       if (jsonCus.success) setCustomers(jsonCus.data.data || jsonCus.data || []);
 
-      const resProj = await fetch(`${API_PATH}/project`);
+      const resProj = await projectFetch(`${API_PATH}/project`);
       const jsonProj = await resProj.json();
       if (jsonProj.success) setProjects(jsonProj.data.data || jsonProj.data || []);
 
-      const resSite = await fetch(`${API_PATH}/project-sites`);
+      const resSite = await projectFetch(`${API_PATH}/project-sites`);
       const jsonSite = await resSite.json();
       if (jsonSite.success) setSites(jsonSite.data.data || jsonSite.data || []);
 
-      const resType = await fetch(`${API_PATH}/project-type`);
+      const resType = await projectFetch(`${API_PATH}/project-type`);
       const jsonType = await resType.json();
       if (jsonType.success) setProjectTypes(jsonType.data.data || jsonType.data || []);
 
-      const resCat = await fetch(`${API_PATH}/category`);
+      const resCat = await projectFetch(`${API_PATH}/category`);
       const jsonCat = await resCat.json();
       if (jsonCat.success) setCategories(jsonCat.data.data || jsonCat.data || []);
 
-      const resBrand = await fetch(`${API_PATH}/procurement/brand`);
+      const resBrand = await projectFetch(`${API_PATH}/procurement/brand`);
       const jsonBrand = await resBrand.json();
       if (jsonBrand.success) setBrands(jsonBrand.data.data || jsonBrand.data || []);
+
+      const resLedger = await projectFetch(`${API_PATH}/chart-of-accounts?page=1&limit=100`);
+      const jsonLedger = await resLedger.json();
+      if (resLedger.ok && jsonLedger.success) setLedgers(jsonLedger.data.data || jsonLedger.data || []);
       
     } catch (err) {
       console.error("Error fetching dropdowns:", err);
@@ -266,11 +270,11 @@ export default function InvoiceBillPage() {
     try {
       const isEdit = !!editingItem;
       const url = isEdit
-        ? `${API_PATH}/project-billing/period-billings/${editingItem!.uuid}`
-        : `${API_PATH}/project-billing/period-billings`;
+        ? `${API_PATH}/project-billing/adjustment-billings/${editingItem!.uuid}`
+        : `${API_PATH}/project-billing/adjustment-billings`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      const res = await projectFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -296,7 +300,7 @@ export default function InvoiceBillPage() {
   const handleDelete = async (item: InvoiceBill) => {
     if (!window.confirm(`Delete "${item.code}"?`)) return;
     try {
-      const res = await fetch(`${API_PATH}/project-billing/period-billings/${item.uuid}`, { method: "DELETE" });
+      const res = await projectFetch(`${API_PATH}/project-billing/adjustment-billings/${item.uuid}`, { method: "DELETE" });
       if (res.ok) {
         toast.success("Deleted successfully!");
         setDataList((prev) => prev.filter((row) => row.uuid !== item.uuid));
@@ -312,7 +316,7 @@ export default function InvoiceBillPage() {
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_PATH}/customer-account`, {
+      const res = await projectFetch(`${API_PATH}/customer-account`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...newCustomer, status: "active" }),
@@ -343,12 +347,11 @@ export default function InvoiceBillPage() {
     // ✅ Sending actual UUIDs now as requested by backend
     const payload = {
       ...newItem,
-      // Fallback subCategoryId if empty (must be a valid UUID)
-      subCategoryId: newItem.subCategoryId || "855450dc-27ae-477f-9cf5-6ce3323946d8"
+      subCategoryId: newItem.subCategoryId || undefined,
     };
 
     try {
-      const res = await fetch(`${API_PATH}/item`, {
+      const res = await projectFetch(`${API_PATH}/item`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -427,9 +430,9 @@ export default function InvoiceBillPage() {
 
   // ====================== SITE DROPDOWN FIX ======================
   // Filtering sites based on selected projectId
-  const filteredSites = formData.projectId 
-    ? sites.filter(s => String(s.projectId).toLowerCase() === String(formData.projectId).toLowerCase()) 
-    : sites;
+  const filteredSites = formData.projectId
+    ? sites.filter((site) => String(site.projectId ?? site.project?.uuid ?? "").toLowerCase() === String(formData.projectId).toLowerCase())
+    : [];
 
   // ====================== RENDER ======================
   return (
@@ -437,9 +440,9 @@ export default function InvoiceBillPage() {
       
       {/* Top Header */}
       <div className="flex justify-between items-center mb-4">
-        <div className="text-sm text-gray-500">Home &gt; Billing &gt; Invoice/Bill List</div>
+        <div className="text-sm text-gray-500">Home &gt; Billing &gt; Adjustment Billing</div>
         <button onClick={handleCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm flex items-center gap-1">
-          <Plus className="w-4 h-4" /> New Invoice Bill
+          <Plus className="w-4 h-4" /> New Adjustment Bill
         </button>
       </div>
 
@@ -504,7 +507,7 @@ export default function InvoiceBillPage() {
             
             {/* Modal Header */}
             <div className="flex justify-between items-center p-4 border-b bg-gray-50">
-              <h2 className="text-lg font-bold">{editingItem ? "Edit Invoice Bill" : "Invoice/Bill List"}</h2>
+              <h2 className="text-lg font-bold">{editingItem ? "Edit Adjustment Bill" : "Adjustment Bill Add"}</h2>
               <div className="flex gap-2">
                 <button type="button" onClick={() => setIsItemModalOpen(true)} className="bg-green-600 text-white px-3 py-1.5 rounded text-sm">Item Add</button>
                 <button type="button" onClick={() => setIsCustomerModalOpen(true)} className="bg-green-600 text-white px-3 py-1.5 rounded text-sm">Contacts Add</button>
@@ -536,7 +539,7 @@ export default function InvoiceBillPage() {
                   <label className="block text-xs text-gray-600 mb-1">Ledger</label>
                   <select value={formData.ledger} onChange={(e) => setFormData({ ...formData, ledger: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
                     <option value="">Select Ledger</option>
-                    {ledgers.map(l => <option key={l.uuid} value={l.name}>{l.name}</option>)}
+                    {ledgers.map(l => <option key={l.uuid} value={l.name}>{l.code ? `${l.code} - ` : ""}{l.name}</option>)}
                   </select>
                 </div>
                 <div>
@@ -563,8 +566,8 @@ export default function InvoiceBillPage() {
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Site</label>
-                  <select value={formData.site} onChange={(e) => setFormData({ ...formData, site: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm">
-                    <option value="">Select Site</option>
+                  <select disabled={!formData.projectId} value={formData.site} onChange={(e) => setFormData({ ...formData, site: e.target.value })} className="w-full border rounded px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:bg-gray-100">
+                    <option value="">{!formData.projectId ? "Select Project First" : filteredSites.length ? "Select Site" : "No sites for this project"}</option>
                     {filteredSites.map(s => <option key={s.uuid} value={s.name}>{s.name}</option>)}
                   </select>
                 </div>
@@ -588,7 +591,10 @@ export default function InvoiceBillPage() {
 
               {/* PROPOSED BUDGET */}
               <div className="mt-6">
-                <div className="bg-orange-400 text-white text-center py-1 font-bold rounded-t">PROPOSED BUDGET</div>
+                <div className="flex items-center justify-between bg-orange-400 text-white px-3 py-1 font-bold rounded-t">
+                  <span>PROPOSED BUDGET</span>
+                  <button type="button" onClick={() => addBudgetRow("proposed")} className="rounded bg-white/20 px-2 py-0.5 text-sm hover:bg-white/30">+ Add Row</button>
+                </div>
                 <div className="border-x border-b rounded-b overflow-x-auto bg-white">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-indigo-500 text-white">
@@ -605,7 +611,7 @@ export default function InvoiceBillPage() {
                           <td className="px-2 py-1"><input type="number" value={row.quantity} onChange={e => updateBudgetRow("proposed", row.id, "quantity", e.target.value)} className="w-20 border rounded px-2 py-1" /></td>
                           <td className="px-2 py-1"><input type="number" value={row.rate} onChange={e => updateBudgetRow("proposed", row.id, "rate", e.target.value)} className="w-24 border rounded px-2 py-1" /></td>
                           <td className="px-2 py-1"><input type="text" value={row.image} onChange={e => updateBudgetRow("proposed", row.id, "image", e.target.value)} className="w-20 border rounded px-2 py-1" /></td>
-                          <td className="px-2 py-1 font-medium">{row.amount.toFixed(2)}</td>
+                          <td className="px-2 py-1 font-medium">{(Number(row.amount) || 0).toFixed(2)}</td>
                           <td className="px-2 py-1 text-center">
                             <button type="button" onClick={() => addBudgetRow("proposed")} className="bg-green-500 text-white w-6 h-6 rounded text-xs mx-1">+</button>
                             <button type="button" onClick={() => removeBudgetRow("proposed", row.id)} className="bg-red-500 text-white w-6 h-6 rounded text-xs">x</button>
@@ -613,7 +619,7 @@ export default function InvoiceBillPage() {
                         </tr>
                       ))}
                       {formData.proposedBudget.length === 0 && (
-                        <tr><td colSpan={8} className="text-center py-2 text-gray-500">Click + to add item</td></tr>
+                        <tr><td colSpan={8} className="text-center py-2 text-gray-500">Click “+ Add Row” to add an item</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -622,7 +628,10 @@ export default function InvoiceBillPage() {
 
               {/* ADJUSTMENT BUDGET */}
               <div className="mt-4">
-                <div className="bg-orange-400 text-white text-center py-1 font-bold rounded-t">ADJUSTMENT BUDGET</div>
+                <div className="flex items-center justify-between bg-orange-400 text-white px-3 py-1 font-bold rounded-t">
+                  <span>ADJUSTMENT BUDGET</span>
+                  <button type="button" onClick={() => addBudgetRow("adjustment")} className="rounded bg-white/20 px-2 py-0.5 text-sm hover:bg-white/30">+ Add Row</button>
+                </div>
                 <div className="border-x border-b rounded-b overflow-x-auto bg-white">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-indigo-500 text-white">
@@ -639,7 +648,7 @@ export default function InvoiceBillPage() {
                           <td className="px-2 py-1"><input type="number" value={row.quantity} onChange={e => updateBudgetRow("adjustment", row.id, "quantity", e.target.value)} className="w-20 border rounded px-2 py-1" /></td>
                           <td className="px-2 py-1"><input type="number" value={row.rate} onChange={e => updateBudgetRow("adjustment", row.id, "rate", e.target.value)} className="w-24 border rounded px-2 py-1" /></td>
                           <td className="px-2 py-1"><input type="text" value={row.image} onChange={e => updateBudgetRow("adjustment", row.id, "image", e.target.value)} className="w-20 border rounded px-2 py-1" /></td>
-                          <td className="px-2 py-1 font-medium">{row.amount.toFixed(2)}</td>
+                          <td className="px-2 py-1 font-medium">{(Number(row.amount) || 0).toFixed(2)}</td>
                           <td className="px-2 py-1 text-center">
                             <button type="button" onClick={() => addBudgetRow("adjustment")} className="bg-green-500 text-white w-6 h-6 rounded text-xs mx-1">+</button>
                             <button type="button" onClick={() => removeBudgetRow("adjustment", row.id)} className="bg-red-500 text-white w-6 h-6 rounded text-xs">x</button>
@@ -647,7 +656,7 @@ export default function InvoiceBillPage() {
                         </tr>
                       ))}
                       {formData.adjustmentBudget.length === 0 && (
-                        <tr><td colSpan={8} className="text-center py-2 text-gray-500">Click + to add item</td></tr>
+                        <tr><td colSpan={8} className="text-center py-2 text-gray-500">Click “+ Add Row” to add an item</td></tr>
                       )}
                     </tbody>
                   </table>

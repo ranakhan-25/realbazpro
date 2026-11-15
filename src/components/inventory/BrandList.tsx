@@ -3,7 +3,8 @@
 import type { Brand } from "@/app/(admin-dashbord)/dashboard/inventory/products/brands/page";
 import React, { useState, useEffect, useMemo } from "react";
 import { FiEdit, FiTrash2, FiSearch } from "react-icons/fi";
-import { API_BASE, brandsApi, fallbackBrands } from "@/lib/inventoryApi";
+import { API_BASE, brandsApi } from "@/lib/inventoryApi";
+import { toast } from "sonner";
 
 interface BrandListProps {
   apiEndpoint?: string;
@@ -32,11 +33,8 @@ export default function BrandList({
     async function fetchBrands() {
       try {
         setLoading(true);
-        let raw = await brandsApi.getAll().catch(() => null);
-        if (!Array.isArray(raw) || raw.length === 0) {
-          raw = fallbackBrands;
-        }
-        const list = raw.map((item: any) => ({
+        const raw = await brandsApi.getAll();
+        const list = (Array.isArray(raw) ? raw : []).map((item: any) => ({
           id: item.id,
           code: item.code || "",
           name: item.name || "",
@@ -44,13 +42,8 @@ export default function BrandList({
         setBrands(list);
       } catch (error) {
         console.error("Error fetching brands:", error);
-        setBrands(
-          fallbackBrands.map((item: any) => ({
-            id: item.id,
-            code: item.code || "",
-            name: item.name || "",
-          }))
-        );
+        toast.error("Brands could not be loaded.");
+        setBrands([]);
       } finally {
         setLoading(false);
       }
@@ -143,7 +136,7 @@ export default function BrandList({
                     colSpan={4}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    Loading brands...
+                    Loading brands......
                   </td>
                 </tr>
               ) : paginatedBrands.length > 0 ? (
@@ -193,7 +186,7 @@ export default function BrandList({
                     colSpan={4}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    No matching brands found.
+                    No matching brands founded..........
                   </td>
                 </tr>
               )}
@@ -241,7 +234,7 @@ export default function BrandList({
               disabled={currentPage === totalPages || totalPages === 0}
               className="flex items-center gap-1 px-3 py-1.5 rounded border border-border bg-card hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Next
+              Next....
             </button>
           </div>
         </div>

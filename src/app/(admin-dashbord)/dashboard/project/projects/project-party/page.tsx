@@ -1,5 +1,8 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -67,7 +70,7 @@ async function apiRequest(endpoint: string, options: RequestInit = {}) {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  const response = await projectFetch(`${API_URL}${endpoint}`, {
     ...options,
     headers: {
       Accept: "application/json",

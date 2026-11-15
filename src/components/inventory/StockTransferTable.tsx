@@ -4,7 +4,7 @@ import type { StockTransferItem } from "@/app/(admin-dashbord)/dashboard/invento
 import React, { useState, useEffect, useMemo } from "react";
 import { FiEdit, FiTrash2, FiEye, FiSearch } from "react-icons/fi";
 
-import { stockTransfersApi, fallbackStockTransfers } from "@/lib/inventoryApi";
+import { stockTransfersApi } from "@/lib/inventoryApi";
 
 interface StockTransferTableProps {
   apiEndpoint?: string;
@@ -32,39 +32,23 @@ export default function StockTransferTable({
     const fetchStockTransfers = async () => {
       try {
         setLoading(true);
-        let raw = await stockTransfersApi.getAll().catch(() => null);
-        if (!Array.isArray(raw) || raw.length === 0) {
-          raw = fallbackStockTransfers;
-        }
-        const list = raw.map((t: any, idx: number) => ({
-          id: t.id,
-          code: t.transfer_no || t.code || `ST-2026-00${idx + 1}`,
-          date: t.date ? new Date(t.date).toLocaleDateString() : "-",
-          fromProject: t.from_project?.name || t.from_project_name || t.fromProject || "Sheba Eyecon Tower (PRJ-1001)",
-          fromSite: t.from_site?.name || t.from_site_name || t.fromSite || "Tower-A Foundation Site",
-          fromTask: t.from_task || t.fromTask || "Piling Work",
-          toProject: t.to_project?.name || t.to_project_name || t.toProject || "Lake Garden (PRJ-1002)",
-          toSite: t.to_site?.name || t.to_site_name || t.toSite || "Block-B Yard",
-          toTask: t.to_task || t.toTask || "Structure Casting",
-          contact: t.contact || "+880 1711-223344",
+        const raw = await stockTransfersApi.getAll();
+        const list = raw.map((t: any) => ({
+          id: t?.id ?? "",
+          code: t?.transfer_no || t?.code || "Not found",
+          date: t?.date ? new Date(t.date).toLocaleDateString() : "Not found",
+          fromProject: t?.from_project?.name || t?.from_project_name || t?.fromProject || "Not found",
+          fromSite: t?.from_site?.name || t?.from_site_name || t?.fromSite || "Not found",
+          fromTask: t?.from_task || t?.fromTask || "Not found",
+          toProject: t?.to_project?.name || t?.to_project_name || t?.toProject || "Not found",
+          toSite: t?.to_site?.name || t?.to_site_name || t?.toSite || "Not found",
+          toTask: t?.to_task || t?.toTask || "Not found",
+          contact: t?.contact || "Not found",
         }));
         setTransfers(list);
       } catch (error) {
         console.error("Error fetching stock transfers:", error);
-        setTransfers(
-          fallbackStockTransfers.map((t: any, idx: number) => ({
-            id: t.id,
-            code: t.code || `ST-2026-00${idx + 1}`,
-            date: t.date ? new Date(t.date).toLocaleDateString() : "-",
-            fromProject: t.fromProject,
-            fromSite: t.fromSite,
-            fromTask: t.fromTask,
-            toProject: t.toProject,
-            toSite: t.toSite,
-            toTask: t.toTask,
-            contact: t.contact,
-          }))
-        );
+        setTransfers([]);
       } finally {
         setLoading(false);
       }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   ChevronRight,
@@ -8,63 +8,45 @@ import {
   XCircle,
   Search,
   Building2,
-  LandPlot,
   MapPin,
-  User,
-  Mail,
-  Phone,
-  Calendar,
-  AlertCircle,
   FileText,
-  Save,
   X,
   DollarSign,
   TrendingDown,
-  Info,
   CheckCircle2,
   ShieldAlert,
-  Percent,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 
-// ============ STATIC DATA ============
-const activeBookings = [
-  {
-    id: "BK-2024-7845",
-    property: "Gulshan Plot 12/A",
-    propertyCode: "GUL-PLT-012",
-    buyer: "Ayesha Rahman",
-    buyerEmail: "ayesha.rahman@example.com",
-    buyerPhone: "+880 1712-345678",
-    totalPrice: 12000000,
-    paidAmount: 4980000,
-    bookingDate: "2024-01-15",
-    image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=200&h=200&fit=crop",
-    location: "Gulshan-2, Dhaka",
-  },
-  {
-    id: "BK-2024-7844",
-    property: "Bashundhara Apartment 7B",
-    propertyCode: "BSH-APT-007",
-    buyer: "Arif Hossain",
-    buyerEmail: "arif.h@example.com",
-    buyerPhone: "+880 1812-987654",
-    totalPrice: 6500000,
-    paidAmount: 1300000,
-    bookingDate: "2024-01-18",
-    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=200&h=200&fit=crop",
-    location: "Bashundhara R/A, Dhaka",
-  },
-];
+// ============ TYPES ============
+interface Booking {
+  id: string;
+  bookingCode: string;
+  property: string;
+  propertyCode: string;
+  buyer: string;
+  buyerEmail: string;
+  buyerPhone: string;
+  totalPrice: number;
+  paidAmount: number;
+  bookingDate: string;
+  image: string;
+  location: string;
+}
 
 const cancellationReasons = [
-  "Buyer Changed Mind",
-  "Failed to Secure Financing",
-  "Found Better Property",
-  "Legal / Title Issues",
-  "Delay in Handover",
-  "Mutual Agreement",
-  "Other",
+  { label: "Buyer Changed Mind", value: "Buyer Changed Mind" },
+  { label: "Failed to Secure Financing", value: "Failed to Secure Financing" },
+  { label: "Found Better Property", value: "Found Better Property" },
+  { label: "Legal / Title Issues", value: "Legal / Title Issues" },
+  { label: "Delay in Handover", value: "Delay in Handover" },
+  { label: "Mutual Agreement", value: "Mutual Agreement" },
+  { label: "Other", value: "Other" },
 ];
+
+// এখানে আপনার .env ফাইলের ভ্যারিয়েবলটি ব্যবহার করা হয়েছে
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002/realbizpro/api/v1";
 
 // ============ COMPONENTS ============
 
@@ -131,20 +113,26 @@ function FormSection({
 }
 
 const inputBase =
-  "w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all";
+  "w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all disabled:opacity-50";
 
 function formatMoney(n: number) {
+  if (!n && n !== 0) return "৳0";
   if (n >= 10_000_000) return `৳${(n / 10_000_000).toFixed(2)} Cr`;
   if (n >= 100_000) return `৳${(n / 100_000).toFixed(2)} L`;
-  return `৳${n.toLocaleString()}`;
+  return `৳${Number(n).toLocaleString()}`;
 }
 
 // ============ MAIN PAGE ============
 
 export default function CancellationsCreatePage() {
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [search, setSearch] = useState("");
+  const [isLoadingBookings, setIsLoadingBookings] = useState(true);
+  
   const [selectedBooking, setSelectedBooking] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
 
   const [form, setForm] = useState({
@@ -155,24 +143,53 @@ export default function CancellationsCreatePage() {
     notes: "",
   });
 
-  const filtered = activeBookings.filter(
-    (item) =>
-      item.property.toLowerCase().includes(search.toLowerCase()) ||
-      item.buyer.toLowerCase().includes(search.toLowerCase()) ||
-      item.id.toLowerCase().includes(search.toLowerCase())
-  );
+  // -- Fetch Active Bookings --
+  const fetchActiveBookings = useCallback(async (searchQuery: string = "") => {
+    setIsLoadingBookings(true);
+    try {
+      const url = new URL(`${API_BASE_URL}/cancellations/active-bookings`);
+      if (searchQuery) url.searchParams.append("search", searchQuery);
 
-  const activeItem = activeBookings.find((b) => b.id === selectedBooking);
+      const res = await fetch(url.toString());
+      const data = await res.json();
+      
+      const bookingList = Array.isArray(data) ? data : data.data || [];
+      setBookings(bookingList);
+    } catch (error) {
+      console.error("Failed to fetch bookings", error);
+    } finally {
+      setIsLoadingBookings(false);
+    }
+  }, []);
+
+  // -- Debounced Search --
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchActiveBookings(search);
+    }, 500);
+
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, [search, fetchActiveBookings]);
+
+  const activeItem = bookings.find((b) => b.id === selectedBooking);
 
   const handleSelect = (id: string) => {
-    const booking = activeBookings.find((b) => b.id === id);
+    const booking = bookings.find((b) => b.id === id);
     if (!booking) return;
+    
     setSelectedBooking(id);
-    // Suggest a default refund (e.g., 90% of paid amount) and penalty (10%)
-    const defaultPenalty = Math.round(booking.paidAmount * 0.1);
+    setErrorMsg("");
+    
+    const defaultPenalty = Math.round(Number(booking.paidAmount) * 0.1);
     setForm({
       reason: "",
-      refundAmount: booking.paidAmount - defaultPenalty,
+      refundAmount: Number(booking.paidAmount) - defaultPenalty,
       penaltyFee: defaultPenalty,
       cancellationDate: new Date().toISOString().split("T")[0],
       notes: "",
@@ -180,21 +197,60 @@ export default function CancellationsCreatePage() {
     setAcknowledged(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!acknowledged) return; // Prevent submit if not acknowledged
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setSelectedBooking(null);
-      setAcknowledged(false);
-    }, 3000);
+    if (!acknowledged || !selectedBooking) return;
+    
+    setIsSubmitting(true);
+    setErrorMsg("");
+
+    try {
+      const payload = {
+        bookingId: selectedBooking,
+        reason: form.reason,
+        cancellationDate: form.cancellationDate,
+        refundAmount: Number(form.refundAmount),
+        penaltyFee: Number(form.penaltyFee),
+        notes: form.notes,
+        isAcknowledged: acknowledged,
+      };
+
+      const res = await fetch(`${API_BASE_URL}/cancellations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to process cancellation");
+      }
+
+      setSubmitted(true);
+      fetchActiveBookings(search); // রিফ্রেশ লিস্ট
+      
+      setTimeout(() => {
+        setSubmitted(false);
+        setSelectedBooking(null);
+        setAcknowledged(false);
+        setForm({
+          reason: "",
+          refundAmount: 0,
+          penaltyFee: 0,
+          cancellationDate: "",
+          notes: "",
+        });
+      }, 3000);
+
+    } catch (error: any) {
+      setErrorMsg(error.message || "Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Math validation
-  const maxRefund = activeItem
-    ? activeItem.paidAmount - form.penaltyFee
-    : 0;
+  const maxRefund = activeItem ? Number(activeItem.paidAmount) - form.penaltyFee : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-8">
@@ -243,6 +299,14 @@ export default function CancellationsCreatePage() {
         </div>
       )}
 
+      {/* ERROR TOAST */}
+      {errorMsg && (
+        <div className="fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl bg-red-600 text-white shadow-xl shadow-red-600/30">
+          <AlertCircle size={18} />
+          <span className="text-sm font-medium">{errorMsg}</span>
+        </div>
+      )}
+
       {/* SEARCH BAR */}
       <div className="mb-6">
         <div className="relative">
@@ -267,53 +331,60 @@ export default function CancellationsCreatePage() {
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
               <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <Building2 size={18} className="text-indigo-600" />
-                Active Bookings ({filtered.length})
+                Active Bookings ({bookings.length})
               </h2>
             </div>
+            
             <div className="max-h-[600px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
-              {filtered.length === 0 && (
+              {isLoadingBookings ? (
+                <div className="p-8 flex flex-col items-center justify-center text-gray-400">
+                  <Loader2 size={24} className="animate-spin mb-2" />
+                  <p className="text-sm">Loading bookings...</p>
+                </div>
+              ) : bookings.length === 0 ? (
                 <div className="p-8 text-center">
                   <FileText size={36} className="mx-auto text-gray-300 dark:text-gray-700 mb-2" />
                   <p className="text-sm text-gray-500 dark:text-gray-400">No active bookings found</p>
                 </div>
+              ) : (
+                bookings.map((item) => {
+                  const active = item.id === selectedBooking;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleSelect(item.id)}
+                      className={`w-full flex items-start gap-3 p-4 text-left transition-colors ${
+                        active
+                          ? "bg-indigo-50 dark:bg-indigo-900/20 border-l-4 border-indigo-600"
+                          : "hover:bg-gray-50 dark:hover:bg-gray-800/30 border-l-4 border-transparent"
+                      }`}
+                    >
+                      <img
+                        src={item.image || "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=200&h=200&fit=crop"}
+                        alt={item.property}
+                        className="w-12 h-12 rounded-lg object-cover shrink-0 mt-1"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`text-sm font-semibold truncate ${
+                            active
+                              ? "text-indigo-700 dark:text-indigo-400"
+                              : "text-gray-900 dark:text-white"
+                          }`}
+                        >
+                          {item.property}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                          {item.bookingCode} • {item.buyer}
+                        </p>
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-1">
+                          Paid: {formatMoney(Number(item.paidAmount))}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })
               )}
-              {filtered.map((item) => {
-                const active = item.id === selectedBooking;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleSelect(item.id)}
-                    className={`w-full flex items-start gap-3 p-4 text-left transition-colors ${
-                      active
-                        ? "bg-indigo-50 dark:bg-indigo-900/20 border-l-4 border-indigo-600"
-                        : "hover:bg-gray-50 dark:hover:bg-gray-800/30 border-l-4 border-transparent"
-                    }`}
-                  >
-                    <img
-                      src={item.image}
-                      alt={item.property}
-                      className="w-12 h-12 rounded-lg object-cover shrink-0 mt-1"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`text-sm font-semibold truncate ${
-                          active
-                            ? "text-indigo-700 dark:text-indigo-400"
-                            : "text-gray-900 dark:text-white"
-                        }`}
-                      >
-                        {item.property}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                        {item.id} • {item.buyer}
-                      </p>
-                      <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-1">
-                        Paid: {formatMoney(item.paidAmount)}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
             </div>
           </div>
         </div>
@@ -337,7 +408,7 @@ export default function CancellationsCreatePage() {
               {/* BOOKING PREVIEW */}
               <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5 flex flex-col sm:flex-row gap-5">
                 <img
-                  src={activeItem.image}
+                  src={activeItem.image || "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=200&h=200&fit=crop"}
                   alt={activeItem.property}
                   className="w-full sm:w-24 h-24 rounded-xl object-cover"
                 />
@@ -348,10 +419,10 @@ export default function CancellationsCreatePage() {
                         {activeItem.property}
                       </h3>
                       <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-1">
-                        <span>{activeItem.id}</span>
+                        <span>{activeItem.bookingCode}</span>
                         <span className="w-1 h-1 rounded-full bg-gray-300" />
                         <span className="flex items-center gap-1">
-                          <MapPin size={10} /> {activeItem.location}
+                          <MapPin size={10} /> {activeItem.location || "N/A"}
                         </span>
                       </p>
                     </div>
@@ -366,7 +437,7 @@ export default function CancellationsCreatePage() {
                     <div className="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                       <p className="text-[10px] text-gray-500 dark:text-gray-400">Total Paid So Far</p>
                       <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                        {formatMoney(activeItem.paidAmount)}
+                        {formatMoney(Number(activeItem.paidAmount))}
                       </p>
                     </div>
                   </div>
@@ -405,7 +476,9 @@ export default function CancellationsCreatePage() {
                     >
                       <option value="">Select a reason…</option>
                       {cancellationReasons.map((r) => (
-                        <option key={r}>{r}</option>
+                        <option key={r.value} value={r.value}>
+                          {r.label}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -426,14 +499,14 @@ export default function CancellationsCreatePage() {
                         id="penalty"
                         type="number"
                         min={0}
-                        max={activeItem.paidAmount}
+                        max={Number(activeItem.paidAmount)}
                         value={form.penaltyFee || ""}
                         onChange={(e) => {
                           const penalty = Number(e.target.value) || 0;
                           setForm({
                             ...form,
                             penaltyFee: penalty,
-                            refundAmount: Math.max(activeItem.paidAmount - penalty, 0),
+                            refundAmount: Math.max(Number(activeItem.paidAmount) - penalty, 0),
                           });
                         }}
                         className={inputBase}
@@ -452,7 +525,7 @@ export default function CancellationsCreatePage() {
                           setForm({
                             ...form,
                             refundAmount: refund,
-                            penaltyFee: Math.max(activeItem.paidAmount - refund, 0),
+                            penaltyFee: Math.max(Number(activeItem.paidAmount) - refund, 0),
                           });
                         }}
                         className={inputBase}
@@ -465,7 +538,7 @@ export default function CancellationsCreatePage() {
                     <div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Paid</p>
                       <p className="text-sm font-bold text-gray-900 dark:text-white">
-                        {formatMoney(activeItem.paidAmount)}
+                        {formatMoney(Number(activeItem.paidAmount))}
                       </p>
                     </div>
                     <TrendingDown size={20} className="text-gray-400" />
@@ -525,22 +598,32 @@ export default function CancellationsCreatePage() {
                 <button
                   type="button"
                   onClick={() => setSelectedBooking(null)}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors"
+                  disabled={isSubmitting}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors disabled:opacity-50"
                 >
                   <X size={16} />
                   Cancel (Go Back)
                 </button>
                 <button
                   type="submit"
-                  disabled={!acknowledged}
+                  disabled={!acknowledged || isSubmitting}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all shadow-lg ${
-                    acknowledged
+                    acknowledged && !isSubmitting
                       ? "bg-red-600 hover:bg-red-700 text-white shadow-red-600/20"
                       : "bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed shadow-none"
                   }`}
                 >
-                  <XCircle size={16} />
-                  Confirm Cancellation
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <XCircle size={16} />
+                      Confirm Cancellation
+                    </>
+                  )}
                 </button>
               </div>
             </form>

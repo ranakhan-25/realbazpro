@@ -1,6 +1,8 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
+import { hrmFetch } from "@/app/(admin-dashbord)/dashboard/hrm/hrm-fetch";
 import React, { useState, useEffect } from "react";
 import {
   Search,
@@ -51,7 +53,7 @@ const formatDate = (dateStr?: string) => {
 async function fetchBonuses(): Promise<{ data: Bonus[]; meta: any }> {
   const url = `${API_BASE}/realbizpro/api/v1/bonus?page=1&limit=100&skip=0&status=active&sortBy=createdAt&sortOrder=DESC&withDeleted=false`;
   console.log("GET bonuses →", url);
-  const res = await fetch(url, {
+  const res = await hrmFetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -75,7 +77,7 @@ async function fetchBonuses(): Promise<{ data: Bonus[]; meta: any }> {
 
 async function createBonus(payload: Record<string, any>) {
   console.log("POST payload →", payload);
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/bonus`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/bonus`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -87,7 +89,7 @@ async function createBonus(payload: Record<string, any>) {
 
 async function updateBonus(uuid: string, payload: Record<string, any>) {
   console.log("PATCH", uuid, "payload →", payload);
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/bonus/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/bonus/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -99,7 +101,7 @@ async function updateBonus(uuid: string, payload: Record<string, any>) {
 
 async function softDeleteBonus(uuid: string) {
   console.log("DELETE →", uuid);
-  const res = await fetch(`${API_BASE}/realbizpro/api/v1/bonus/${uuid}`, {
+  const res = await hrmFetch(`${API_BASE}/realbizpro/api/v1/bonus/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });
@@ -110,7 +112,7 @@ async function softDeleteBonus(uuid: string) {
 
 async function restoreBonus(uuid: string) {
   console.log("PATCH restore →", uuid);
-  const res = await fetch(
+  const res = await hrmFetch(
     `${API_BASE}/realbizpro/api/v1/bonus/${uuid}/restore`,
     {
       method: "PATCH",

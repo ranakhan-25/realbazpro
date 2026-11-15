@@ -867,7 +867,7 @@ return (
             </div>
           </div>
         )}
-        <div className="[&_.w-64.sm\\:w-72]:hidden [&_.relative.w-64]:hidden">
+        <div className="[&_.relative.w-64]:hidden">
           <CSTable
             data={requests}
             columns={columns}

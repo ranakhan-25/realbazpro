@@ -1,6 +1,9 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
 import React, { useState, useEffect } from "react";
 import {
   Search,
@@ -97,7 +100,7 @@ async function fetchShareConfigs(params?: {
   if (search) query.set("search", search);
 
   const url = `${SHARE_CONFIG_API}?${query.toString()}`;
-  const res = await fetch(url, {
+  const res = await projectFetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -146,7 +149,7 @@ async function fetchShareConfigs(params?: {
 async function fetchProjects(): Promise<OptionItem[]> {
   try {
     const url = `${PROJECT_API}?page=1&limit=100`;
-    const res = await fetch(url, {
+    const res = await projectFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -169,7 +172,7 @@ async function fetchProjects(): Promise<OptionItem[]> {
 async function fetchProjectTypes(): Promise<OptionItem[]> {
   try {
     const url = `${PROJECT_TYPE_API}?page=1&limit=100`;
-    const res = await fetch(url, {
+    const res = await projectFetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -191,7 +194,7 @@ async function fetchProjectTypes(): Promise<OptionItem[]> {
 // ---------- CRUD ----------
 async function createShareConfig(payload: Record<string, any>) {
   console.log("📤 POST payload →", payload);
-  const res = await fetch(SHARE_CONFIG_API, {
+  const res = await projectFetch(SHARE_CONFIG_API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -203,7 +206,7 @@ async function createShareConfig(payload: Record<string, any>) {
 
 async function updateShareConfig(uuid: string, payload: Record<string, any>) {
   console.log("📤 PATCH", uuid, "→", payload);
-  const res = await fetch(`${SHARE_CONFIG_API}/${uuid}`, {
+  const res = await projectFetch(`${SHARE_CONFIG_API}/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -214,7 +217,7 @@ async function updateShareConfig(uuid: string, payload: Record<string, any>) {
 }
 
 async function softDeleteShareConfig(uuid: string) {
-  const res = await fetch(`${SHARE_CONFIG_API}/${uuid}`, {
+  const res = await projectFetch(`${SHARE_CONFIG_API}/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

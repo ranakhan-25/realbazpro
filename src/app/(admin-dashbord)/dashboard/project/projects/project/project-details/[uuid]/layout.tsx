@@ -1,6 +1,9 @@
 /* eslint-disable prettier/prettier */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import { useEffect, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
@@ -43,14 +46,15 @@ export default function ProjectDetailsLayout({
   const params = useParams();
   const pathname = usePathname();
   const uuid = params.uuid as string;
+  const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002").replace(/\/+$/, "");
 
   const [project, setProject] = useState<Project | null>(null);
 
   useEffect(() => {
     const fetchProject = async () => {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/realbizpro/api/v1/project/${uuid}`
+        const res = await projectFetch(
+          `${API_BASE}/realbizpro/api/v1/project/${encodeURIComponent(uuid)}`
         );
         const json = await res.json();
         if (json.success) {

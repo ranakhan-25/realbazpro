@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { accountsFetch } from "@/app/(admin-dashbord)/dashboard/accounts/accounts-fetch";
+
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Home,
@@ -55,7 +57,7 @@ async function fetchRelatedOptions(
 ): Promise<RelatedOption[]> {
   try {
     const query = new URLSearchParams({ page: "1", limit: "100" });
-    const res = await fetch(`${endpoint}?${query}`, {
+    const res = await accountsFetch(`${endpoint}?${query}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -94,7 +96,7 @@ async function fetchRelatedOptions(
 // ==================== API FUNCTIONS ====================
 async function fetchSubCategories(): Promise<SubCategoryItem[]> {
   const query = new URLSearchParams({ page: "1", limit: "100" });
-  const res = await fetch(`${SUB_CATEGORY_API}?${query}`, {
+  const res = await accountsFetch(`${SUB_CATEGORY_API}?${query}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -126,7 +128,7 @@ async function fetchSubCategories(): Promise<SubCategoryItem[]> {
 }
 
 async function createSubCategory(payload: Record<string, any>) {
-  const res = await fetch(SUB_CATEGORY_API, {
+  const res = await accountsFetch(SUB_CATEGORY_API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -139,7 +141,7 @@ async function createSubCategory(payload: Record<string, any>) {
 }
 
 async function updateSubCategory(uuid: string, payload: Record<string, any>) {
-  const res = await fetch(`${SUB_CATEGORY_API}/${uuid}`, {
+  const res = await accountsFetch(`${SUB_CATEGORY_API}/${uuid}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -152,7 +154,7 @@ async function updateSubCategory(uuid: string, payload: Record<string, any>) {
 }
 
 async function deleteSubCategory(uuid: string) {
-  const res = await fetch(`${SUB_CATEGORY_API}/${uuid}`, {
+  const res = await accountsFetch(`${SUB_CATEGORY_API}/${uuid}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

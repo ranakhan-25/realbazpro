@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Plus, ArrowLeft, X, Eye, Printer, Mail, Edit, Trash2, Search, Loader2, Save } from "lucide-react";
 
@@ -50,11 +53,14 @@ export default function LabourWorkerBillPage() {
   });
 
   const [billItems, setBillItems] = useState<any[]>([]);
+  const projectSites = sites.filter((site) =>
+    !site.projectId || String(site.projectId) === formData.projectId,
+  );
 
   // ==================== API CALLS ====================
   const fetchOptions = async (endpoint: string) => {
     try {
-      const res = await fetch(`${API_BASE}${API_PREFIX}${endpoint}?page=1&limit=100`);
+      const res = await projectFetch(`${API_BASE}${API_PREFIX}${endpoint}?page=1&limit=100`);
       if (!res.ok) return [];
       const json = await res.json();
       const rows = Array.isArray(json?.data?.data) ? json.data.data : Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
@@ -97,7 +103,7 @@ export default function LabourWorkerBillPage() {
       setLoading(true);
       setError(null);
       // ⚠️ API endpoint ta apnar backend onujayi change korun
-      const res = await fetch(`${API_BASE}${API_PREFIX}/project-billing/labour-work-bills?page=1&limit=100`);
+      const res = await projectFetch(`${API_BASE}${API_PREFIX}/project-billing/labour-work-bills?page=1&limit=100`);
       if (!res.ok) throw new Error("Failed to load labour work bills");
       const json = await res.json();
       const rows = json?.data?.data || json?.data || [];
@@ -135,7 +141,7 @@ export default function LabourWorkerBillPage() {
         description: formData.refWoNo || "",
         details,
       };
-      const res = await fetch(`${API_BASE}${API_PREFIX}/project-billing/labour-work-bills${editingBillUuid ? `/${editingBillUuid}` : ""}`, {
+      const res = await projectFetch(`${API_BASE}${API_PREFIX}/project-billing/labour-work-bills${editingBillUuid ? `/${editingBillUuid}` : ""}`, {
         method: editingBillUuid ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -170,7 +176,7 @@ export default function LabourWorkerBillPage() {
   const handleDelete = async (bill: any) => {
     if (!confirm("Are you sure?")) return;
     setActiveDropdown(null);
-    try { const res = await fetch(`${API_BASE}${API_PREFIX}/project-billing/labour-work-bills/${bill.uuid}`, { method: "DELETE" }); if (!res.ok) throw new Error("Failed to delete bill"); await loadBills(); } catch (err: any) { setError(err.message || "Failed to delete bill"); }
+    try { const res = await projectFetch(`${API_BASE}${API_PREFIX}/project-billing/labour-work-bills/${bill.uuid}`, { method: "DELETE" }); if (!res.ok) throw new Error("Failed to delete bill"); await loadBills(); } catch (err: any) { setError(err.message || "Failed to delete bill"); }
   };
 
   // ==================== RENDER ====================
@@ -283,7 +289,7 @@ export default function LabourWorkerBillPage() {
             </div>
             <div>
               <label className="block font-semibold text-slate-600 mb-1">Project</label>
-              <select value={formData.projectId} onChange={(e) => setFormData({...formData, projectId: e.target.value})} className="w-full border rounded-lg px-3 py-2">
+              <select value={formData.projectId} onChange={(e) => setFormData({...formData, projectId: e.target.value, site: ""})} className="w-full border rounded-lg px-3 py-2">
                 <option value="">Select Project</option>
                 {projects.map(p => <option key={p.uuid} value={p.uuid}>{p.name}</option>)}
               </select>
@@ -293,7 +299,7 @@ export default function LabourWorkerBillPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
             <label className="font-semibold text-slate-600">Project Type<select value={formData.projectTypeId} onChange={(e) => setFormData({...formData, projectTypeId: e.target.value})} className="mt-1 w-full border rounded-lg px-3 py-2 font-normal"><option value="">Select Project Type</option>{projectTypes.map((row) => <option key={row.uuid} value={row.uuid}>{row.name}</option>)}</select></label>
             <label className="font-semibold text-slate-600">Title/Name of Work<select value={formData.titleOfWork} onChange={(e) => setFormData({...formData, titleOfWork: e.target.value})} className="mt-1 w-full border rounded-lg px-3 py-2 font-normal"><option value="">Select Work</option>{workNames.filter((row) => !row.projectId || row.projectId === formData.projectId).map((row) => <option key={row.uuid} value={row.uuid}>{row.name}</option>)}</select></label>
-            <label className="font-semibold text-slate-600">Site<select value={formData.site} onChange={(e) => setFormData({...formData, site: e.target.value})} className="mt-1 w-full border rounded-lg px-3 py-2 font-normal"><option value="">Select Site</option>{sites.filter((row) => !row.projectId || row.projectId === formData.projectId).map((row) => <option key={row.uuid} value={row.uuid}>{row.name}</option>)}</select></label>
+            <label className="font-semibold text-slate-600">Site<select disabled={!formData.projectId} value={formData.site} onChange={(e) => setFormData({...formData, site: e.target.value})} className="mt-1 w-full border rounded-lg px-3 py-2 font-normal disabled:cursor-not-allowed disabled:bg-slate-100"><option value="">{!formData.projectId ? "Select Project First" : projectSites.length ? "Select Site" : "No sites for selected project"}</option>{projectSites.map((row) => <option key={row.uuid} value={row.uuid}>{row.name}</option>)}</select></label>
             <label className="font-semibold text-slate-600">Ref WO No.<input value={formData.refWoNo} onChange={(e) => setFormData({...formData, refWoNo: e.target.value})} className="mt-1 w-full border rounded-lg px-3 py-2 font-normal" /></label>
             <label className="font-semibold text-slate-600">If Task<select value={formData.taskId} onChange={(e) => setFormData({...formData, taskId: e.target.value})} className="mt-1 w-full border rounded-lg px-3 py-2 font-normal"><option value="">Select Task</option>{tasks.map((row) => <option key={row.uuid} value={row.uuid}>{row.name}</option>)}</select></label>
             <label className="font-semibold text-slate-600">Category<select value={formData.categoryId} onChange={(e) => setFormData({...formData, categoryId: e.target.value})} className="mt-1 w-full border rounded-lg px-3 py-2 font-normal"><option value="">Select Category</option>{categories.map((row) => <option key={row.uuid} value={row.uuid}>{row.name}</option>)}</select></label>

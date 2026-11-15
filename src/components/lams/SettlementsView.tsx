@@ -34,6 +34,7 @@ interface SettlementsViewProps {
   settlements: SettlementRecord[];
   acquisitionLeads: AcquisitionLead[];
   landOwners: LandOwner[];
+  initialOpenCreate?: boolean;
   onAddSettlement?: (settlement: any) => void;
   onEditSettlement?: (uuid: string, settlement: any) => void;
   onDeleteSettlement?: (uuid: string) => void;
@@ -62,6 +63,7 @@ export function SettlementsView({
   settlements = [],
   acquisitionLeads = [],
   landOwners = [],
+  initialOpenCreate = false,
   onAddSettlement,
   onEditSettlement,
   onDeleteSettlement,
@@ -78,10 +80,16 @@ export function SettlementsView({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Modals state
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(Boolean(initialOpenCreate));
   const [editingSettlement, setEditingSettlement] = useState<SettlementRecord | null>(null);
   const [payModalSettlement, setPayModalSettlement] = useState<SettlementRecord | null>(null);
   const [viewScheduleSettlement, setViewScheduleSettlement] = useState<SettlementRecord | null>(null);
+
+  React.useEffect(() => {
+    if (initialOpenCreate) {
+      setIsAddModalOpen(true);
+    }
+  }, [initialOpenCreate]);
 
   const safeSettlements = Array.isArray(settlements) ? settlements : [];
 
@@ -273,8 +281,8 @@ export function SettlementsView({
             >
               <option value="ALL">All Acquisition Leads</option>
               {acquisitionLeads.map((l) => (
-                <option key={l.id || l.uuid} value={l.lead_code || l.id}>
-                  {l.lead_code || l.title}
+                <option key={l.id || l.uuid} value={l.leadCode || l.code || l.id}>
+                  {l.leadCode || l.code || l.title}
                 </option>
               ))}
             </select>
@@ -388,10 +396,10 @@ export function SettlementsView({
           setSelectedIds([]);
         }}
         statusOptions={[
-          { label: "Pending", value: "Pending" },
-          { label: "Partially Paid", value: "Partially Paid" },
-          { label: "Settled", value: "Settled" },
-          { label: "Overdue", value: "Overdue" },
+          "Pending",
+          "Partially Paid",
+          "Settled",
+          "Overdue",
         ]}
       />
 
@@ -400,8 +408,8 @@ export function SettlementsView({
         {displayedSettlements.length === 0 ? (
           <LamsEmptyState
             title="No settlement agreements found"
-            subtitle="Create a settlement agreement or adjust filters to view purchase payment records."
-            buttonText="Create Settlement Agreement"
+            description="Create a settlement agreement or adjust filters to view purchase payment records."
+            actionLabel="Create Settlement Agreement"
             onAction={() => {
               setEditingSettlement(null);
               setIsAddModalOpen(true);

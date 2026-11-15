@@ -1,5 +1,8 @@
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { Plus, Search, Edit3, Trash2, X, RotateCcw } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
@@ -118,7 +121,7 @@ export default function FlatLandPage() {
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/flat-land`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/flat-land`);
       if (!res.ok) throw new Error("Failed to fetch flat/land data");
 
       const data = await res.json();
@@ -292,7 +295,7 @@ export default function FlatLandPage() {
     if (!confirm("Are you sure you want to soft-delete this item?")) return;
 
     try {
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/flat-land/${uuid}`, {
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/flat-land/${uuid}`, {
         method: "DELETE",
       });
 
@@ -311,7 +314,7 @@ export default function FlatLandPage() {
   // =====================================================
   const handleRestore = async (uuid: string) => {
     try {
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/flat-land/${uuid}/restore`, {
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/flat-land/${uuid}/restore`, {
         method: "POST",
       });
 
@@ -363,13 +366,13 @@ export default function FlatLandPage() {
       let res: Response;
 
       if (isEditMode && currentUuid) {
-        res = await fetch(`${API_BASE}/realbizpro/api/v1/flat-land/${currentUuid}`, {
+        res = await projectFetch(`${API_BASE}/realbizpro/api/v1/flat-land/${currentUuid}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
       } else {
-        res = await fetch(`${API_BASE}/realbizpro/api/v1/flat-land`, {
+        res = await projectFetch(`${API_BASE}/realbizpro/api/v1/flat-land`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),

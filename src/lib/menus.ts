@@ -18,6 +18,7 @@ export type ModuleKey =
   | "hrm"
   | "crm"
   | "cr"
+  | "collection"
   | "lams"
   | "procurement"
   | "customer-service"
@@ -33,6 +34,7 @@ export const MODULES: { key: ModuleKey; label: string }[] = [
   { key: "crm", label: "CRM" },
   { key: "sales-management", label: "Sales Management" },
   { key: "cr", label: "Credit Realisation (CR)" },
+  { key: "collection", label: "Credit Collection" },
   { key: "lams", label: "LAMS" },
   { key: "procurement", label: "Procurement" },
   { key: "customer-service", label: "Post-Sales & Customer Service" },
@@ -99,9 +101,9 @@ const CUSTOM_SLUG_LABELS: Record<string, string> = {
   center: "Document Centre",
   "registration-tracking": "Registration Tracking",
   "mutation-khatian-tracking": "Mutation & Khatian Tracking",
-  schedule: "Handover Schedule",
-  "inspection-snags": "Inspection",
-  "possession-records": "Possession & Handover Requests",
+  schedule: "Payment Schedules",
+  "inspection-snags": "Inspections & Snagging",
+  "possession-records": "Possession & Handover Records",
   "warranty-dlp": "Warranty & DLP Claims",
   "maintenance-requests": "Maintenance Requests",
   "work-orders-association": "Work Orders & Owners Association",
@@ -120,6 +122,57 @@ const CUSTOM_SLUG_LABELS: Record<string, string> = {
   "building-committee": "Building Committee",
   "approval-permissions": "Approval & Permission Matrix",
   "templates-integrations-audit": "Templates, Integrations & Audit Log",
+
+  // Inventory (Module 10 - Exact Doc Features)
+  items: "Items & Catalog",
+  categories: "Categories",
+  brands: "Brands",
+  uom: "Units of Measure (UOM)",
+  warehouses: "Warehouses & Sites",
+  opening: "Opening Stock",
+  balance: "Stock Balance",
+  ledger: "Stock Ledger",
+  valuation: "Stock Valuation",
+  issues: "Material Issues",
+  transfers: "Stock Transfers",
+  returns: "Material Returns",
+  adjustments: "Stock Adjustments",
+  consumption: "Material Consumption",
+  counts: "Physical Counts",
+  "slow-moving": "Slow-Moving Stock",
+
+  // LAMS (Module 02 - Land Acquisition Management System)
+  "acquisition-leads": "Acquisition Leads",
+  "land-owners": "Land Owners",
+  valuations: "Land Valuations",
+  "legal-verification": "Legal Verification",
+  "due-diligence": "Due Diligence",
+  "negotiation-process": "Price Negotiations",
+  approvals: "Acquisition Approvals",
+  settlements: "Settlements & Deeds",
+  "legal-documents": "Legal Documents",
+  "follow-up": "Follow-Up Schedule",
+
+  // Credit Collection & Realization (Module 08)
+  due: "Customer Dues",
+  entries: "Collection Entries",
+  waivers: "Waivers & Adjustments",
+  outstanding: "Outstanding Receivables",
+  aging: "Aging Analysis",
+  overdue: "Overdue Installments",
+  recovery: "Field Recovery Actions",
+  followups: "Field Follow-ups",
+  visits: "Field Visits",
+  assignments: "Officer Assignments",
+  perf: "Collection Performance",
+  agreements: "Sale Agreements",
+  setups: "CR Setups & Policies",
+  "receipt-voucher": "Receipt Vouchers",
+  "overdue-list": "Overdue Installments",
+  "realization-summary-report": "Realization Summary",
+  "sale-collection-report": "Sale Collection Report",
+  "aging-report": "Aging Matrix Report",
+  "installment-report": "Installment Schedule Report",
 };
 
 export function slugToLabel(slug: string) {
@@ -232,30 +285,36 @@ document
 `;
 
 const inventory = `
-contracts
-  supplier-accounts
-products
-  categories
-  sub-categories
-  brands
-  units
-  item-entry
-purchase
-  add-purchase
-  purchase-list
-sales
-adjustment
-  material-usage
-  stock-transfer
-material-requisition
+items
+categories
+brands
+uom
+warehouses
+opening
+balance
+ledger
+valuation
+issues
+transfers
+returns
+adjustments
+consumption
+counts
+slow-moving
 reports
-  purchase-details
-  purchase-order-receive-details
   stock-report
   item-history-report
   item-wise-supplier-ledger
   material-usage-report
   material-comparison-report
+  purchase-details
+  purchase-order-receive-details
+purchase
+  add-purchase
+  purchase-list
+contracts
+  supplier-accounts
+material-requisition
 `;
 
 const billingBlock = `
@@ -400,15 +459,34 @@ kpi
 const cr = `
 dashboard
 agreements
-setups
-recovery
+schedule
+due
 receipt-voucher
 overdue-list
+recovery
+followups
+visits
+setups
 reports
   realization-summary-report
   sale-collection-report
   aging-report
   installment-report
+`;
+
+const collection = `
+dashboard
+schedule
+due
+entries
+waivers
+outstanding
+aging
+overdue
+recovery
+followups
+visits
+perf
 `;
 
 const lams = `
@@ -929,6 +1007,7 @@ export const MENUS: Record<ModuleKey, MenuNode[]> = {
   hrm: parseTree(hrm),
   crm: parseTree(crm),
   cr: parseTree(cr),
+  collection: parseTree(collection),
   lams: parseTree(lams),
   "sales-management": parseTree(sales),
   procurement: parseTree(procurement),

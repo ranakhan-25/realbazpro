@@ -2,12 +2,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectApiList, projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, Plus, X } from "lucide-react";
 import toast from "react-hot-toast";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
 
 // ====================== TYPES ======================
 interface BoqComparison {
@@ -63,22 +66,22 @@ export default function BoqComparisonPage() {
     try {
       setLoading(true);
 
-      const resComp = await fetch(`${API_BASE}/realbizpro/api/v1/boq-comparison`);
+      const resComp = await projectFetch(`${API_BASE}/realbizpro/api/v1/boq-comparison?projectId=${encodeURIComponent(String(uuid))}`);
       const jsonComp = await resComp.json();
       if (jsonComp.success) {
-        setDataList((jsonComp.data.data || []).filter((item: any) => !item.deletedAt));
+        setDataList(projectApiList<BoqComparison>(jsonComp).filter((item: any) => !item.deletedAt && item.projectId === uuid));
       }
 
-      const resBoq = await fetch(`${API_BASE}/realbizpro/api/v1/boq?page=1&limit=100`);
+      const resBoq = await projectFetch(`${API_BASE}/realbizpro/api/v1/boq?page=1&limit=100&projectId=${encodeURIComponent(String(uuid))}`);
       const jsonBoq = await resBoq.json();
       if (jsonBoq.success) {
-        setBoqList((jsonBoq.data.data || []).filter((item: any) => !item.deletedAt));
+        setBoqList(projectApiList<BoqItem>(jsonBoq).filter((item: any) => !item.deletedAt && item.projectId === uuid));
       }
 
-      const resTask = await fetch(`${API_BASE}/realbizpro/api/v1/task?page=1&limit=100`);
+      const resTask = await projectFetch(`${API_BASE}/realbizpro/api/v1/task?page=1&limit=100&projectId=${encodeURIComponent(String(uuid))}`);
       const jsonTask = await resTask.json();
       if (jsonTask.success) {
-        setTaskList((jsonTask.data.data || []).filter((item: any) => !item.deletedAt));
+        setTaskList(projectApiList<Task>(jsonTask).filter((item: any) => !item.deletedAt && item.projectId === uuid));
       }
 
     } catch (err) {
@@ -90,7 +93,7 @@ export default function BoqComparisonPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [uuid]);
 
   // ====================== SUBMIT (CREATE) ======================
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -100,6 +103,7 @@ export default function BoqComparisonPage() {
     const formData = new FormData(e.currentTarget);
     
     const payload = {
+      projectId: String(uuid),
       uid: formData.get("uid"),
       titleOfWork: formData.get("titleOfWork"),
       task: formData.get("task"),
@@ -115,7 +119,7 @@ export default function BoqComparisonPage() {
     };
 
     try {
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/boq-comparison`, {
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/boq-comparison`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

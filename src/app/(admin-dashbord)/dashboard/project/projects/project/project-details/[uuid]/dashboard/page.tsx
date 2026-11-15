@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectApiList, projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -35,12 +38,12 @@ export default function DashboardPage() {
         setLoading(true);
 
         // ১. BOQ লিস্ট (বাজেট এবং খরচের জন্য)
-        const resBoq = await fetch(`${API_PATH}/boq?page=1&limit=100`);
+        const resBoq = await projectFetch(`${API_PATH}/boq?page=1&limit=100&projectId=${encodeURIComponent(String(uuid))}`);
         const jsonBoq = await resBoq.json();
         let totalBudget = 0;
         let totalCost = 0;
-        if (jsonBoq.success) {
-          const boqs = (jsonBoq.data.data || []).filter((item: any) => !item.deletedAt);
+        if (resBoq.ok) {
+          const boqs = projectApiList(jsonBoq).filter((item: any) => !item.deletedAt && item.projectId === uuid);
           setBoqData(boqs);
           boqs.forEach((b: any) => {
             totalBudget += Number(b.budget) || 0;
@@ -49,13 +52,13 @@ export default function DashboardPage() {
         }
 
         // ২. Flat/Land (Revenue এবং Unsold Property)
-        const resFlat = await fetch(`${API_PATH}/flat-land?page=1&limit=100`);
+        const resFlat = await projectFetch(`${API_PATH}/flat-land?page=1&limit=100&projectId=${encodeURIComponent(String(uuid))}`);
         const jsonFlat = await resFlat.json();
         let totalRevenue = 0;
         const unsold: any[] = []; 
 
-        if (jsonFlat.success) {
-          const flats = (jsonFlat.data.data || []).filter((item: any) => !item.deletedAt);
+        if (resFlat.ok) {
+          const flats = projectApiList(jsonFlat).filter((item: any) => !item.deletedAt && item.projectId === uuid);
           flats.forEach((f: any) => {
             if (f.status === "Sold" || f.status === "Booked") {
               totalRevenue += Number(f.grandTotal) || 0;
@@ -67,20 +70,19 @@ export default function DashboardPage() {
         setUnsoldProperties(unsold);
 
         // ৩. Task লিস্ট (Working Progress এবং Schedule-এর জন্য)
-        const resTask = await fetch(`${API_PATH}/task?page=1&limit=100`);
+        const resTask = await projectFetch(`${API_PATH}/task?page=1&limit=100&projectId=${encodeURIComponent(String(uuid))}`);
         const jsonTask = await resTask.json();
-        if (jsonTask.success) {
-          setTasks((jsonTask.data.data || []).filter((t: any) => !t.deletedAt));
+        if (resTask.ok) {
+          setTasks(projectApiList(jsonTask).filter((t: any) => !t.deletedAt && t.projectId === uuid));
         }
 
         // ৪. খরচের লিস্ট (Expense)
         // এখানে আমরা COGS এবং Total Expense মক হিসেবে রাখছি, তবে চাইলে API থেকে আনতে পারেন
-        const mockExpenses = [
+        const projectExpenses = [
           { name: "Cost of Goods Sold (COGS)", amount: totalCost },
-          { name: "Rod Consumption", amount: 410 },
-          { name: "Total Expense (-)", amount: totalCost + 410 },
+          { name: "Total Expense (-)", amount: totalCost },
         ];
-        setExpenses(mockExpenses);
+        setExpenses(projectExpenses);
 
         // স্ট্যাট সেট করা
         setStats({
@@ -114,11 +116,11 @@ export default function DashboardPage() {
       
       {/* ১. Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <SummaryCard title="Budget" value={stats.budget} icon="💵" color="text-green-600" bgColor="bg-green-50" />
-        <SummaryCard title="Cost" value={stats.cost} icon="💳" color="text-purple-600" bgColor="bg-purple-50" />
-        <SummaryCard title="Available" value={stats.available} icon="✅" color="text-teal-600" bgColor="bg-teal-50" />
-        <SummaryCard title="Sales/Revenue" value={stats.revenue} icon="🛒" color="text-cyan-600" bgColor="bg-cyan-50" />
-        <SummaryCard title="Profit/Loss" value={stats.profit} icon="📊" color="text-orange-500" bgColor="bg-orange-50" />
+        <SummaryCard title="Budget" value={stats.budget} icon={String.fromCodePoint(0x1F4B0)} color="text-green-600" bgColor="bg-green-50" />
+        <SummaryCard title="Cost" value={stats.cost} icon={String.fromCodePoint(0x1F9FE)} color="text-purple-600" bgColor="bg-purple-50" />
+        <SummaryCard title="Available" value={stats.available} icon={String.fromCodePoint(0x2705)} color="text-teal-600" bgColor="bg-teal-50" />
+        <SummaryCard title="Sales/Revenue" value={stats.revenue} icon={String.fromCodePoint(0x1F4C8)} color="text-cyan-600" bgColor="bg-cyan-50" />
+        <SummaryCard title="Profit/Loss" value={stats.profit} icon={String.fromCodePoint(0x1F4CA)} color="text-orange-500" bgColor="bg-orange-50" />
       </div>
 
       {/* ২. Charts Area */}

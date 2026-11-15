@@ -2,12 +2,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectApiList, projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+import { adminAuthStorage } from "@/lib/admin-auth/adminAuthStorage";
+
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Plus, X, Loader2, Download } from "lucide-react";
 import toast from "react-hot-toast";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
 
 // ====================== TYPES ======================
 interface QuotationItem {
@@ -64,6 +68,8 @@ export default function QuotationPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [catalogItems, setCatalogItems] = useState<any[]>([]);
+  const [dropdownErrors, setDropdownErrors] = useState<string[]>([]);
   
   // ✅ সব সাব-ক্যাটাগরি রাখার স্টেট
   const [allSubCategories, setAllSubCategories] = useState<SubCategory[]>([]);
@@ -89,10 +95,10 @@ export default function QuotationPage() {
   const fetchQuotations = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/quotation?sortOrder=DESC&withDeleted=false`);
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/quotation?projectId=${encodeURIComponent(String(uuid))}&sortOrder=DESC&withDeleted=false`);
       const json = await res.json();
       if (json.success) {
-        setQuotations((json.data.data || []).filter((item: any) => !item.deletedAt));
+        setQuotations(projectApiList<Quotation>(json).filter((item: any) => !item.deletedAt && item.projectId === uuid));
       }
     } catch (err) {
       toast.error("Failed to load quotations");
@@ -103,50 +109,64 @@ export default function QuotationPage() {
 
   // ====================== FETCH DROPDOWNS ======================
   const fetchDropdowns = async () => {
+    const failures: string[] = [];
+    setDropdownErrors([]);
     try {
       // ১. কাস্টমার (সাপ্লায়ার API)
-      const resCust = await fetch(`${API_BASE}/realbizpro/api/v1/inventory/suppliers?page=1&limit=100`);
+      const resCust = await projectFetch(`${API_BASE}/realbizpro/api/v1/inventory/suppliers?page=1&limit=100`);
       const jsonCust = await resCust.json();
-      if (jsonCust.success) {
-        setCustomers(jsonCust.data.data || []);
-      }
+      if (resCust.ok) setCustomers(projectApiList(jsonCust));
+      else failures.push(`Customer/Supplier API returned ${resCust.status}`);
 
       // ২. প্রজেক্ট টাইপ
-      const resType = await fetch(`${API_BASE}/realbizpro/api/v1/project-type`);
+      const resType = await projectFetch(`${API_BASE}/realbizpro/api/v1/project-type?page=1&limit=100`);
       const jsonType = await resType.json();
-      if (jsonType.success) setProjectTypes(jsonType.data.data || []);
+      if (resType.ok) setProjectTypes(projectApiList(jsonType));
+      else failures.push(`Project Type API returned ${resType.status}`);
 
       // ৩. প্রজেক্ট
-      const resProj = await fetch(`${API_BASE}/realbizpro/api/v1/project`);
+      const resProj = await projectFetch(`${API_BASE}/realbizpro/api/v1/project/${encodeURIComponent(String(uuid))}`);
       const jsonProj = await resProj.json();
-      if (jsonProj.success) setProjects(jsonProj.data.data || []);
+      if (resProj.ok) {
+        const project = jsonProj?.data?.data ?? jsonProj?.data ?? jsonProj;
+        setProjects(project ? [project] : []);
+      } else failures.push(`Project API returned ${resProj.status}`);
 
       // ৪. সাইট
-      const resSite = await fetch(`${API_BASE}/realbizpro/api/v1/project-sites`);
+      const resSite = await projectFetch(`${API_BASE}/realbizpro/api/v1/project-sites?page=1&limit=100&projectId=${encodeURIComponent(String(uuid))}`);
       const jsonSite = await resSite.json();
-      if (jsonSite.success) setSites(jsonSite.data.data || []);
+      if (resSite.ok) setSites(projectApiList(jsonSite).filter((site: any) => site.projectId === uuid || site.project?.uuid === uuid));
+      else failures.push(`Site API returned ${resSite.status}`);
 
       // ৫. ক্যাটাগরি
-      const resCat = await fetch(`${API_BASE}/realbizpro/api/v1/category`);
+      const resCat = await projectFetch(`${API_BASE}/realbizpro/api/v1/category?page=1&limit=100`);
       const jsonCat = await resCat.json();
-      if (jsonCat.success) setCategories(jsonCat.data.data || []);
+      if (resCat.ok) setCategories(projectApiList(jsonCat));
+      else failures.push(`Category API returned ${resCat.status}: ${jsonCat.message || "request failed"}`);
 
       // ✅ ৬. সব সাব-ক্যাটাগরি (limit=100 ফিক্স)
-      const resSubCat = await fetch(`${API_BASE}/realbizpro/api/v1/billing-sub-category?page=1&limit=100`);
+      const resSubCat = await projectFetch(`${API_BASE}/realbizpro/api/v1/billing-sub-category?page=1&limit=100`);
       const jsonSubCat = await resSubCat.json();
-      if (jsonSubCat.success) {
-        setAllSubCategories(jsonSubCat.data.data || []);
-      }
+      if (resSubCat.ok) setAllSubCategories(projectApiList<SubCategory>(jsonSubCat));
+      else failures.push(`Subcategory API returned ${resSubCat.status}: ${jsonSubCat.message || "request failed"}`);
+
+      const resItems = await projectFetch(`${API_BASE}/realbizpro/api/v1/inventory/items`);
+      const jsonItems = await resItems.json();
+      if (resItems.ok) setCatalogItems(projectApiList(jsonItems));
+      else failures.push(`Item API returned ${resItems.status}`);
 
     } catch (err) {
       console.error(err);
+      failures.push(err instanceof Error ? err.message : "A dropdown API request failed.");
+    } finally {
+      setDropdownErrors(failures);
     }
   };
 
   useEffect(() => {
     fetchQuotations();
     fetchDropdowns();
-  }, []);
+  }, [uuid]);
 
   // ====================== FORM LOGIC ======================
   const handleNewQuoteClick = () => {
@@ -156,7 +176,7 @@ export default function QuotationPage() {
       customerName: "",
       code: `QU${Math.floor(100000 + Math.random() * 900000)}`,
       projectType: "",
-      projectId: "",
+      projectId: String(uuid),
       site: "",
       attachment: "",
       contentBody: "",
@@ -205,14 +225,14 @@ export default function QuotationPage() {
       customerId: form.customerId,
       code: form.code,
       projectType: form.projectType,
-      project: projects.find(p => p.uuid === form.projectId)?.name || "",
-      projectId: form.projectId,
+      project: projects.find(p => p.uuid === String(uuid))?.name || "",
+      projectId: String(uuid),
       categoryId: form.categoryId,
       subCategoryId: form.subCategoryId,
       site: form.site,
       attachment: form.attachment,
       contentBody: form.contentBody,
-      employeeName: "Admin",
+      employeeName: (() => { const user = adminAuthStorage.getUserProfile(); return user?.name || user?.username || user?.email || "Unknown user"; })(),
       grandTotal: grandTotal,
       items: lineItems.map(item => ({
         itemName: item.itemName,
@@ -224,12 +244,12 @@ export default function QuotationPage() {
         amount: Number(item.amount)
       })),
       approveStatus: "Pending",
-      addedBy: "Admin",
-      addedById: "admin-uuid",
+      addedBy: (() => { const user = adminAuthStorage.getUserProfile(); return user?.name || user?.username || user?.email || "Unknown user"; })(),
+      addedById: (() => { const user = adminAuthStorage.getUserProfile(); return user?.id != null ? String(user.id) : user?.uuid || ""; })(),
     };
 
     try {
-      const res = await fetch(`${API_BASE}/realbizpro/api/v1/quotation`, {
+      const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/quotation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -282,7 +302,7 @@ export default function QuotationPage() {
                 const selectedCust = customers.find(c => c.uuid === selectedId || c.id === selectedId);
                 setForm({ ...form, customerId: selectedId, customerName: selectedCust?.name || selectedCust?.companyName || "" });
               }} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                <option value="">Select Customer</option>
+                <option value="">{customers.length ? "Select Customer" : "No suppliers found"}</option>
                 {customers.map(c => (
                   <option key={c.uuid || c.id} value={c.uuid || c.id}>{c.name || c.companyName || "Unknown"}</option>
                 ))}
@@ -295,7 +315,7 @@ export default function QuotationPage() {
             <div>
               <label className="block text-xs text-gray-600 mb-1">Project Type</label>
               <select value={form.projectType} onChange={(e) => setForm({ ...form, projectType: e.target.value })} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                <option value="">Select Project Type</option>
+                <option value="">{projectTypes.length ? "Select Project Type" : "No project types found"}</option>
                 {projectTypes.map(p => <option key={p.uuid} value={p.name}>{p.name}</option>)}
               </select>
             </div>
@@ -303,13 +323,13 @@ export default function QuotationPage() {
               <label className="block text-xs text-gray-600 mb-1">Project</label>
               <select value={form.projectId} onChange={(e) => setForm({ ...form, projectId: e.target.value })} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
                 <option value="">Select Project</option>
-                {projects.map(p => <option key={p.uuid} value={p.uuid}>{p.name}</option>)}
+                {projects.filter(p => p.uuid === uuid).map(p => <option key={p.uuid} value={p.uuid}>{p.name}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">Site</label>
               <select value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                <option value="">Select Site</option>
+                <option value="">{sites.length ? "Select Site" : "No sites for this project"}</option>
                 {sites.map(s => <option key={s.uuid} value={s.name}>{s.name}</option>)}
               </select>
             </div>
@@ -339,7 +359,7 @@ export default function QuotationPage() {
                 onChange={(e) => setForm({ ...form, categoryId: e.target.value, subCategoryId: "" })} 
                 className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
               >
-                <option value="">Select Category</option>
+                <option value="">{categories.length ? "Select Category" : "No categories found"}</option>
                 {categories.map(c => <option key={c.uuid || c.id} value={c.uuid || c.id}>{c.name}</option>)}
               </select>
             </div>
@@ -351,7 +371,7 @@ export default function QuotationPage() {
                 className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" 
                 disabled={!form.categoryId}
               >
-                <option value="">Select Sub Category</option>
+                <option value="">{!form.categoryId ? "Select Sub Category" : filteredSubCategories.length ? "Select Sub Category" : "No subcategories found"}</option>
                 {/* ✅ ফিল্টার করা সাব-ক্যাটাগরি লিস্ট */}
                 {filteredSubCategories.map(sc => (
                   <option key={sc.uuid || sc.id} value={sc.uuid || sc.id}>{sc.name}</option>
@@ -360,11 +380,19 @@ export default function QuotationPage() {
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">Select Item *</label>
-              <select className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                <option value="">Search Item...</option>
+              <select value="" onChange={(e) => {
+                const selected = catalogItems.find((item) => String(item.id ?? item.uuid) === e.target.value);
+                if (!selected) return;
+                const unit = selected.unit?.name || selected.unit?.unit_name || "";
+                const rate = Number(selected.sale_price ?? selected.purchase_price ?? 0);
+                setLineItems((prev) => [...prev, { id: Date.now(), itemName: selected.name, unit, quantity: 1, rate, details: "", image: "", amount: rate }]);
+              }} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                <option value="">{catalogItems.length ? "Search Item..." : "No inventory items found"}</option>
+                {catalogItems.map((item) => <option key={item.id ?? item.uuid} value={item.id ?? item.uuid}>{item.name} ({item.item_code})</option>)}
               </select>
             </div>
           </div>
+          {dropdownErrors.length > 0 && <p className="mb-4 text-xs text-red-600">Dropdown API error: {dropdownErrors.join("; ")}</p>}
 
           {/* Line Items Table */}
           <div className="border rounded overflow-hidden mb-6">
@@ -478,9 +506,9 @@ export default function QuotationPage() {
                     <td className="px-3 py-2">{item.date}</td>
                     <td className="px-3 py-2">{item.projectType}</td>
                     <td className="px-3 py-2">{item.project}</td>
-                    <td className="px-3 py-2">{item.employeeName}</td>
+                    <td className="px-3 py-2">{item.employeeName || "-"}</td>
                     <td className="px-3 py-2 font-bold">{Number(item.grandTotal).toLocaleString()}</td>
-                    <td className="px-3 py-2">{item.addedBy}</td>
+                    <td className="px-3 py-2">{item.addedBy || "-"}</td>
                     <td className="px-3 py-2"><span className="text-indigo-600">{item.approveStatus}</span></td>
                     <td className="px-3 py-2"><Download className="w-4 h-4 text-indigo-500 cursor-pointer" /></td>
                     <td className="px-3 py-2">
@@ -521,6 +549,18 @@ function ItemAddModal({ onClose, onAdd }: { onClose: () => void, onAdd: (item: a
 }
 
 function CustomerAddModal({ onClose }: { onClose: () => void }) {
+  const [chartGroups, setChartGroups] = useState<any[]>([]);
+  const [chartGroupId, setChartGroupId] = useState("");
+  useEffect(() => {
+    let active = true;
+    projectFetch(`${API_BASE}/realbizpro/api/v1/chart-of-groups?page=1&limit=100`)
+      .then((response) => response.json().then((payload) => ({ response, payload })))
+      .then(({ response, payload }) => {
+        if (active && response.ok) setChartGroups(projectApiList(payload));
+      })
+      .catch((error) => console.error(error));
+    return () => { active = false; };
+  }, []);
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg w-full max-w-2xl p-6">
@@ -534,7 +574,7 @@ function CustomerAddModal({ onClose }: { onClose: () => void }) {
           <div><label className="block text-xs mb-1">Credit Limit</label><input type="text" placeholder="Enter Credit Limit" className="w-full border rounded px-3 py-2 text-sm" /></div>
           <div><label className="block text-xs mb-1">Due Date</label><input type="date" className="w-full border rounded px-3 py-2 text-sm" /></div>
           <div><label className="block text-xs mb-1">Opening Balance</label><input type="text" placeholder="Opening Balance" className="w-full border rounded px-3 py-2 text-sm" /></div>
-          <div className="col-span-2"><label className="block text-xs mb-1">Chart Of Groups*</label><select className="w-full border rounded px-3 py-2 text-sm"><option>Select One Option</option><option>Current Assets</option><option>Fixed Assets</option></select></div>
+          <div className="col-span-2"><label className="block text-xs mb-1">Chart Of Groups*</label><select value={chartGroupId} onChange={(event) => setChartGroupId(event.target.value)} className="w-full border rounded px-3 py-2 text-sm"><option value="">Select One Option</option>{chartGroups.map((group) => <option key={group.uuid} value={group.uuid}>{group.code ? `${group.code} - ` : ""}{group.name}</option>)}</select></div>
         </div>
         <div className="flex justify-end gap-2 mt-6">
           <button onClick={onClose} className="bg-gray-400 text-white px-4 py-2 rounded text-sm">Close</button>

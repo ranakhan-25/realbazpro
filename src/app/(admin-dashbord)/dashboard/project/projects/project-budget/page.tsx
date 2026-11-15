@@ -1,5 +1,8 @@
 'use client';
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
@@ -103,7 +106,7 @@ export default function ProjectBudgetPage() {
       if (selectedCategory !== 'All') url += `&category=${selectedCategory}`;
       if (selectedStatus !== 'All') url += `&status=${selectedStatus}`;
 
-      const response = await fetch(url);
+      const response = await projectFetch(url);
       const result = await response.json();
       
       console.log("Fetched Budgets Response:", result); // Debugging purpose
@@ -161,7 +164,7 @@ export default function ProjectBudgetPage() {
   // 2. FETCH SUMMARY (Top Cards)
   const fetchSummary = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/project-budgets/summary?projectUuid=${DEFAULT_PROJECT_UUID}`);
+      const response = await projectFetch(`${API_BASE_URL}/project-budgets/summary?projectUuid=${DEFAULT_PROJECT_UUID}`);
       const result = await response.json();
       
       // ✅ Robust Summary Handling
@@ -211,7 +214,7 @@ export default function ProjectBudgetPage() {
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}/project-budgets`, {
+      const response = await projectFetch(`${API_BASE_URL}/project-budgets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

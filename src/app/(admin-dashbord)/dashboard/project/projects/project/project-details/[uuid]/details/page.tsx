@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { projectFetch } from "@/app/(admin-dashbord)/dashboard/project/project-fetch";
+
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -24,7 +27,7 @@ interface ProjectDetails {
   totalNoOfCarParking: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5002";
 
 export default function DetailsPage() {
   const { uuid } = useParams();
@@ -33,7 +36,7 @@ export default function DetailsPage() {
   const [detailsId, setDetailsId] = useState<string | null>(null);
 
   const [form, setForm] = useState<ProjectDetails>({
-    uid: "string",
+    uid: "",
     areaOfLand: "",
     nameOfLandOwner: "",
     landOwnerDeveloperRatio: "",
@@ -52,14 +55,14 @@ export default function DetailsPage() {
     const fetchDetails = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${API_BASE}/realbizpro/api/v1/details?projectId=${uuid}`);
+        const res = await projectFetch(`${API_BASE}/realbizpro/api/v1/details?projectId=${encodeURIComponent(String(uuid))}`);
         const json = await res.json();
 
         if (json.success && json.data.data && json.data.data.length > 0) {
           const existingData = json.data.data[0];
           setDetailsId(existingData.uuid);
           setForm({
-            uid: existingData.uid || "string",
+            uid: existingData.uid || "",
             areaOfLand: existingData.areaOfLand || "",
             nameOfLandOwner: existingData.nameOfLandOwner || "",
             landOwnerDeveloperRatio: existingData.landOwnerDeveloperRatio || "",
@@ -90,6 +93,7 @@ export default function DetailsPage() {
 
     // ✅ projectId বাদ দেওয়া হলো
     const payload = {
+      projectId: String(uuid),
       uid: form.uid,
       areaOfLand: form.areaOfLand,
       nameOfLandOwner: form.nameOfLandOwner,
@@ -112,7 +116,7 @@ export default function DetailsPage() {
 
       const method = isUpdate ? "PUT" : "POST";
 
-      const res = await fetch(url, {
+      const res = await projectFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
