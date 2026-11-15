@@ -504,17 +504,17 @@ export default function Customer360Page() {
               <Trash2 className="h-4 w-4" />
             </button>
           ) : (
-          <button
-            type="button"
-            onClick={() => setCustomerToRestore(c)}
-            title="Restore Customer Profile"
-            aria-label="Restore Customer Profile"
-            disabled={!canWrite}
-            className="h-8 px-2.5 rounded-lg inline-flex items-center gap-1 bg-[#ECFDF3] border border-[#A6F4C5] text-[#027A48] hover:bg-[#D1FADF] transition shadow-xs cursor-pointer text-xs font-semibold disabled:opacity-50"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            <span>Restore</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setCustomerToRestore(c)}
+              title="Restore Customer Profile"
+              aria-label="Restore Customer Profile"
+              disabled={!canWrite}
+              className="h-8 px-2.5 rounded-lg inline-flex items-center gap-1 bg-[#ECFDF3] border border-[#A6F4C5] text-[#027A48] hover:bg-[#D1FADF] transition shadow-xs cursor-pointer text-xs font-semibold disabled:opacity-50"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>Restore</span>
+            </button>
           )}
         </div>
       ),
@@ -595,72 +595,76 @@ export default function Customer360Page() {
               : "text-[#6B7280] hover:text-[#DC2626]"
               }`}
           >
-            <span>Deleted Records</span>
-            {deletedCount > 0 && (
-              <span
-                className={`text-[10px] px-2 py-0.5 rounded-full font-bold tabular-nums ${recordsTab === "deleted"
-                  ? "bg-[#FEF2F2] text-[#DC2626]"
-                  : "bg-[#E5E7EB] text-[#4B5563]"
-                  }`}
-              >
-                {deletedCount}
-              </span>
-            )}
-          </button>
-        </div>
+  <span>Deleted Records</span>
+  {
+    deletedCount > 0 && (
+      <span
+        className={`text-[10px] px-2 py-0.5 rounded-full font-bold tabular-nums ${recordsTab === "deleted"
+          ? "bg-[#FEF2F2] text-[#DC2626]"
+          : "bg-[#E5E7EB] text-[#4B5563]"
+          }`}
+      >
+        {deletedCount}
+      </span>
+    )
+  }
+          </button >
+        </div >
 
-        {/* 400ms Debounced Server Search Control */}
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search name, phone, NID, code..."
-            className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white pl-9 pr-3 text-xs text-[#111827] placeholder-[#9CA3AF] shadow-xs outline-none transition focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20"
-          />
-        </div>
-      </div>
-
-      {/* Active Sub-filter Tabs (Shown only on Active Records) */}
-      {recordsTab === "active" && (
-        <CSFilterTabs
-          tabs={[
-            { key: "all", label: "All Customers", count: stats.total_clients },
-            {
-              key: "vip",
-              label: "VIP Clients",
-              count: stats.vip_clients,
-            },
-            {
-              key: "active",
-              label: "Active Regular",
-              count:
-                stats.active_clients ??
-                Math.max(0, stats.total_clients - stats.vip_clients),
-            },
-            {
-              key: "disputed",
-              label: "Flagged / Disputed",
-              count: stats.disputed_clients ?? 0,
-              badgeVariant: "danger",
-            },
-          ]}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
+    {/* 400ms Debounced Server Search Control */ }
+      <div className="relative w-full sm:w-80">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search name, phone, NID, code..."
+          className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white pl-9 pr-3 text-xs text-[#111827] placeholder-[#9CA3AF] shadow-xs outline-none transition focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20"
         />
-      )}
+        </div >
+      </div >
 
-      {/* Table Section with Loading Skeleton, Error State, & CSTable */}
-      {isLoading ? (
+    {/* Active Sub-filter Tabs (Shown only on Active Records) */ }
+  {
+    recordsTab === "active" && (
+      <CSFilterTabs
+        tabs={[
+          { key: "all", label: "All Customers", count: stats.total_clients },
+          {
+            key: "vip",
+            label: "VIP Clients",
+            count: stats.vip_clients,
+          },
+          {
+            key: "active",
+            label: "Active Regular",
+            count:
+              stats.active_clients ??
+              Math.max(0, stats.total_clients - stats.vip_clients),
+          },
+          {
+            key: "disputed",
+            label: "Flagged / Disputed",
+            count: stats.disputed_clients ?? 0,
+            badgeVariant: "danger",
+          },
+        ]}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+    )
+  }
+
+  {/* Table Section with Loading Skeleton, Error State, & CSTable */ }
+      {
+      isLoading ? (
         <div className="w-full h-72 rounded-[12px] border border-[#E5E7EB] bg-white p-8 flex flex-col items-center justify-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-[#6D4AFF]" />
           <p className="text-xs text-[#6B7280]">
             Loading Customer 360° Profiles...
           </p>
         </div>
-          </div>
-        ) : loadError && customers.length === 0 ? (
+          ) : loadError && customers.length === 0 ? (
           <div className="w-full rounded-[12px] border border-[#FECACA] bg-[#FEF2F2] p-8 flex flex-col items-center justify-center gap-3 text-center">
             <AlertTriangle className="h-8 w-8 text-[#DC2626]" />
             <h3 className="text-sm font-semibold text-[#991B1B]">
@@ -675,7 +679,7 @@ export default function Customer360Page() {
               Retry Connection
             </button>
           </div>
-        ) : (
+          ) : (
           <div className="relative">
             {isTableLoading && (
               <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-20 flex items-center justify-center rounded-[12px]">
@@ -705,469 +709,469 @@ export default function Customer360Page() {
               />
             </div>
           </div>
-        )
+          )
       }
 
-      {/* Slide-over Customer 360° Profile Drawer */}
-      <CSDetailDrawer
-        isOpen={Boolean(selectedCustomer)}
-        onClose={() => {
-          setSelectedCustomer(null);
-          setCustomer360Data(null);
-        }}
-        title={selectedCustomer?.customer_name || "Customer 360° Profile"}
-        badge={selectedCustomer?.customer_status?.toUpperCase()}
-        subtitle={`Code: ${selectedCustomer?.customer_code || selectedCustomer?.id} | Enrolled: ${selectedCustomer?.joined_date}`}
-        width="lg"
-      >
-        {selectedCustomer && (
-          <div className="space-y-5 text-xs">
-            {isDrawerLoading && (
-              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-[#F4F1FF] text-[#6D4AFF] border border-[#DDD6FE]">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Synchronizing live property ledger and bookings...</span>
+          {/* Slide-over Customer 360° Profile Drawer */}
+          <CSDetailDrawer
+            isOpen={Boolean(selectedCustomer)}
+            onClose={() => {
+              setSelectedCustomer(null);
+              setCustomer360Data(null);
+            }}
+            title={selectedCustomer?.customer_name || "Customer 360° Profile"}
+            badge={selectedCustomer?.customer_status?.toUpperCase()}
+            subtitle={`Code: ${selectedCustomer?.customer_code || selectedCustomer?.id} | Enrolled: ${selectedCustomer?.joined_date}`}
+            width="lg"
+          >
+            {selectedCustomer && (
+              <div className="space-y-5 text-xs">
+                {isDrawerLoading && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-[#F4F1FF] text-[#6D4AFF] border border-[#DDD6FE]">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Synchronizing live property ledger and bookings...</span>
+                  </div>
+                )}
+
+                {/* Contact & KYC Details */}
+                <div className="rounded-[12px] border border-[#E5E7EB] p-4 space-y-3 bg-[#F9FAFB]">
+                  <h4 className="font-semibold text-[#111827] text-sm flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-[#6D4AFF]" /> Verified KYC &
+                    Contact Information
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 text-[#374151]">
+                    <div>
+                      <span className="text-[#6B7280] block text-[11px]">
+                        Primary Phone
+                      </span>
+                      <span className="font-semibold tabular-nums text-[#111827]">
+                        {customer360Data?.kyc.primary_phone ||
+                          selectedCustomer.phone_number}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[#6B7280] block text-[11px]">
+                        Email Address
+                      </span>
+                      <span className="font-semibold text-[#111827]">
+                        {customer360Data?.kyc.email ||
+                          selectedCustomer.email ||
+                          "N/A"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[#6B7280] block text-[11px]">
+                        National ID (NID)
+                      </span>
+                      <span className="font-semibold tabular-nums text-[#111827]">
+                        {customer360Data?.kyc.nid_number ||
+                          selectedCustomer.nid_number}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[#6B7280] block text-[11px]">
+                        e-TIN Number
+                      </span>
+                      <span className="font-semibold tabular-nums text-[#111827]">
+                        {customer360Data?.kyc.tin_number ||
+                          selectedCustomer.tin_number ||
+                          "Not Provided"}
+                      </span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-[#6B7280] block text-[11px]">
+                        Mailing Address
+                      </span>
+                      <span className="font-semibold text-[#111827]">
+                        {customer360Data?.kyc.mailing_address ||
+                          selectedCustomer.address}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Nominee Details */}
+                <div className="rounded-[12px] border border-[#E5E7EB] p-4 space-y-3 bg-[#F9FAFB]">
+                  <h4 className="font-semibold text-[#111827] text-sm flex items-center gap-2">
+                    <Users className="h-4 w-4 text-[#6D4AFF]" /> Registered Nominee
+                    Record
+                  </h4>
+                  <div className="grid grid-cols-3 gap-3 text-[#374151]">
+                    <div>
+                      <span className="text-[#6B7280] block text-[11px]">
+                        Nominee Name
+                      </span>
+                      <span className="font-semibold text-[#111827]">
+                        {customer360Data?.nominee.nominee_name ||
+                          selectedCustomer.nominee_name}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[#6B7280] block text-[11px]">
+                        Relation
+                      </span>
+                      <span className="font-semibold text-[#111827]">
+                        {customer360Data?.nominee.nominee_relation ||
+                          selectedCustomer.nominee_relation}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[#6B7280] block text-[11px]">
+                        Nominee NID
+                      </span>
+                      <span className="font-semibold tabular-nums text-[#111827]">
+                        {customer360Data?.nominee.nominee_nid ||
+                          selectedCustomer.nominee_nid}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Financial Summary KPIs */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3.5 rounded-[12px] bg-[#ECFDF3] border border-[#A6F4C5] text-center">
+                    <span className="text-[11px] font-medium text-[#027A48] block">
+                      Total Paid
+                    </span>
+                    <span className="text-sm font-bold text-[#027A48] tabular-nums mt-0.5 block">
+                      ৳{" "}
+                      {(
+                        Number(
+                          customer360Data?.financial_summary.total_paid_amount ||
+                          selectedCustomer.total_paid_amount,
+                        ) / 100000
+                      ).toFixed(2)}{" "}
+                      Lac
+                    </span>
+                  </div>
+                  <div className="p-3.5 rounded-[12px] bg-[#FEF3F2] border border-[#FECDCA] text-center">
+                    <span className="text-[11px] font-medium text-[#B42318] block">
+                      Total Due
+                    </span>
+                    <span className="text-sm font-bold text-[#B42318] tabular-nums mt-0.5 block">
+                      ৳{" "}
+                      {(
+                        Number(
+                          customer360Data?.financial_summary.total_due_amount ||
+                          selectedCustomer.total_due_amount,
+                        ) / 100000
+                      ).toFixed(2)}{" "}
+                      Lac
+                    </span>
+                  </div>
+                  <div className="p-3.5 rounded-[12px] bg-[#F4F1FF] border border-[#DDD6FE] text-center">
+                    <span className="text-[11px] font-medium text-[#6D4AFF] block">
+                      Property Holdings
+                    </span>
+                    <span className="text-sm font-bold text-[#6D4AFF] tabular-nums mt-0.5 block">
+                      {customer360Data?.financial_summary.total_bookings ??
+                        selectedCustomer.total_bookings}{" "}
+                      Units
+                    </span>
+                  </div>
+                </div>
+
+                {/* Associated Property Bookings List */}
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-[#111827] text-sm flex items-center gap-2">
+                    <Building className="h-4 w-4 text-[#6D4AFF]" /> Apartment & Plot
+                    Bookings
+                  </h4>
+                  {customer360Data?.bookings &&
+                    customer360Data.bookings.length > 0 ? (
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {customer360Data.bookings.map((b) => (
+                        <div
+                          key={b.uuid}
+                          className="p-3 rounded-lg border border-[#E5E7EB] bg-white flex items-center justify-between"
+                        >
+                          <div>
+                            <div className="font-semibold text-[#111827] text-xs">
+                              {b.project_name}
+                            </div>
+                            <div className="text-[11px] text-[#6B7280]">
+                              Booking Ref: {b.booking_id} | Date: {b.booking_date}
+                            </div>
+                          </div>
+                          <div className="text-right tabular-nums">
+                            <div className="font-semibold text-xs text-[#111827]">
+                              ৳ {(b.grand_total / 100000).toFixed(2)} Lac
+                            </div>
+                            <div className="text-[11px] text-[#039855]">
+                              Paid: ৳ {(b.paid_amount / 100000).toFixed(2)} Lac
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-lg border border-dashed border-[#D1D5DB] text-center text-[#6B7280] text-xs">
+                      No linked apartment or plot agreements found for this profile.
+                    </div>
+                  )}
+                </div>
               </div>
             )}
+          </CSDetailDrawer>
 
-            {/* Contact & KYC Details */}
-            <div className="rounded-[12px] border border-[#E5E7EB] p-4 space-y-3 bg-[#F9FAFB]">
-              <h4 className="font-semibold text-[#111827] text-sm flex items-center gap-2">
-                <Shield className="h-4 w-4 text-[#6D4AFF]" /> Verified KYC &
-                Contact Information
-              </h4>
-              <div className="grid grid-cols-2 gap-3 text-[#374151]">
+          {/* Add Customer Modal Form */}
+          <CSModal
+            isOpen={isCreateOpen}
+            onClose={() => setIsCreateOpen(false)}
+            title="Add Customer 360° Profile"
+            subtitle="Create an official customer master record with KYC and nominee data."
+            maxWidth="xl"
+          >
+            <form onSubmit={handleCreateCustomer} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">
-                    Primary Phone
-                  </span>
-                  <span className="font-semibold tabular-nums text-[#111827]">
-                    {customer360Data?.kyc.primary_phone ||
-                      selectedCustomer.phone_number}
-                  </span>
+                  <label className="block text-xs font-semibold text-[#374151] mb-1">
+                    Customer Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    placeholder="e.g. Mohammad Rafiqul Islam"
+                    className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-xs text-[#111827] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20 outline-none"
+                  />
                 </div>
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">
+                  <label className="block text-xs font-semibold text-[#374151] mb-1">
+                    Primary Phone Number *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formPhone}
+                    onChange={(e) => setFormPhone(e.target.value)}
+                    placeholder="+880 1711-234567"
+                    className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-xs text-[#111827] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#374151] mb-1">
+                    National ID (NID) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formNid}
+                    onChange={(e) => setFormNid(e.target.value)}
+                    placeholder="NID or Smart Card number"
+                    className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-xs text-[#111827] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#374151] mb-1">
                     Email Address
-                  </span>
-                  <span className="font-semibold text-[#111827]">
-                    {customer360Data?.kyc.email ||
-                      selectedCustomer.email ||
-                      "N/A"}
-                  </span>
+                  </label>
+                  <input
+                    type="email"
+                    value={formEmail}
+                    onChange={(e) => setFormEmail(e.target.value)}
+                    placeholder="client@example.com"
+                    className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-xs text-[#111827] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20 outline-none"
+                  />
                 </div>
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">
-                    National ID (NID)
-                  </span>
-                  <span className="font-semibold tabular-nums text-[#111827]">
-                    {customer360Data?.kyc.nid_number ||
-                      selectedCustomer.nid_number}
-                  </span>
+                  <label className="block text-xs font-semibold text-[#374151] mb-1">
+                    e-TIN Reference
+                  </label>
+                  <input
+                    type="text"
+                    value={formTin}
+                    onChange={(e) => setFormTin(e.target.value)}
+                    placeholder="Optional e-TIN"
+                    className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-xs text-[#111827] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20 outline-none"
+                  />
                 </div>
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">
-                    e-TIN Number
-                  </span>
-                  <span className="font-semibold tabular-nums text-[#111827]">
-                    {customer360Data?.kyc.tin_number ||
-                      selectedCustomer.tin_number ||
-                      "Not Provided"}
-                  </span>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-[#6B7280] block text-[11px]">
-                    Mailing Address
-                  </span>
-                  <span className="font-semibold text-[#111827]">
-                    {customer360Data?.kyc.mailing_address ||
-                      selectedCustomer.address}
-                  </span>
+                  <label className="block text-xs font-semibold text-[#374151] mb-1">
+                    Customer Status
+                  </label>
+                  <select
+                    value={formStatus}
+                    onChange={(e) =>
+                      setFormStatus(
+                        e.target.value as "active" | "vip" | "disputed" | "closed",
+                      )
+                    }
+                    className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-xs text-[#111827] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20 outline-none bg-white"
+                  >
+                    {dropdownMeta.customer_statuses.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
-            </div>
 
-            {/* Nominee Details */}
-            <div className="rounded-[12px] border border-[#E5E7EB] p-4 space-y-3 bg-[#F9FAFB]">
-              <h4 className="font-semibold text-[#111827] text-sm flex items-center gap-2">
-                <Users className="h-4 w-4 text-[#6D4AFF]" /> Registered Nominee
-                Record
-              </h4>
-              <div className="grid grid-cols-3 gap-3 text-[#374151]">
-                <div>
-                  <span className="text-[#6B7280] block text-[11px]">
-                    Nominee Name
-                  </span>
-                  <span className="font-semibold text-[#111827]">
-                    {customer360Data?.nominee.nominee_name ||
-                      selectedCustomer.nominee_name}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[#6B7280] block text-[11px]">
-                    Relation
-                  </span>
-                  <span className="font-semibold text-[#111827]">
-                    {customer360Data?.nominee.nominee_relation ||
-                      selectedCustomer.nominee_relation}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[#6B7280] block text-[11px]">
-                    Nominee NID
-                  </span>
-                  <span className="font-semibold tabular-nums text-[#111827]">
-                    {customer360Data?.nominee.nominee_nid ||
-                      selectedCustomer.nominee_nid}
-                  </span>
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#374151] mb-1">
+                  Mailing Address
+                </label>
+                <textarea
+                  rows={2}
+                  value={formAddress}
+                  onChange={(e) => setFormAddress(e.target.value)}
+                  placeholder="Full mailing or present address..."
+                  className="w-full rounded-lg border border-[#E5E7EB] p-2.5 text-xs text-[#111827] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20 outline-none"
+                />
               </div>
-            </div>
 
-            {/* Financial Summary KPIs */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-3.5 rounded-[12px] bg-[#ECFDF3] border border-[#A6F4C5] text-center">
-                <span className="text-[11px] font-medium text-[#027A48] block">
-                  Total Paid
-                </span>
-                <span className="text-sm font-bold text-[#027A48] tabular-nums mt-0.5 block">
-                  ৳{" "}
-                  {(
-                    Number(
-                      customer360Data?.financial_summary.total_paid_amount ||
-                      selectedCustomer.total_paid_amount,
-                    ) / 100000
-                  ).toFixed(2)}{" "}
-                  Lac
-                </span>
-              </div>
-              <div className="p-3.5 rounded-[12px] bg-[#FEF3F2] border border-[#FECDCA] text-center">
-                <span className="text-[11px] font-medium text-[#B42318] block">
-                  Total Due
-                </span>
-                <span className="text-sm font-bold text-[#B42318] tabular-nums mt-0.5 block">
-                  ৳{" "}
-                  {(
-                    Number(
-                      customer360Data?.financial_summary.total_due_amount ||
-                      selectedCustomer.total_due_amount,
-                    ) / 100000
-                  ).toFixed(2)}{" "}
-                  Lac
-                </span>
-              </div>
-              <div className="p-3.5 rounded-[12px] bg-[#F4F1FF] border border-[#DDD6FE] text-center">
-                <span className="text-[11px] font-medium text-[#6D4AFF] block">
-                  Property Holdings
-                </span>
-                <span className="text-sm font-bold text-[#6D4AFF] tabular-nums mt-0.5 block">
-                  {customer360Data?.financial_summary.total_bookings ??
-                    selectedCustomer.total_bookings}{" "}
-                  Units
-                </span>
-              </div>
-            </div>
-
-            {/* Associated Property Bookings List */}
-            <div className="space-y-2">
-              <h4 className="font-semibold text-[#111827] text-sm flex items-center gap-2">
-                <Building className="h-4 w-4 text-[#6D4AFF]" /> Apartment & Plot
-                Bookings
-              </h4>
-              {customer360Data?.bookings &&
-                customer360Data.bookings.length > 0 ? (
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {customer360Data.bookings.map((b) => (
-                    <div
-                      key={b.uuid}
-                      className="p-3 rounded-lg border border-[#E5E7EB] bg-white flex items-center justify-between"
+              <div className="p-3.5 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] space-y-3">
+                <h5 className="text-xs font-semibold text-[#111827] flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5 text-[#6D4AFF]" /> Nominee / Next of
+                  Kin Information
+                </h5>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-medium text-[#4B5563] mb-1">
+                      Nominee Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formNomineeName}
+                      onChange={(e) => setFormNomineeName(e.target.value)}
+                      placeholder="Nominee Name"
+                      className="h-9 w-full rounded-lg border border-[#E5E7EB] px-2.5 text-xs text-[#111827] bg-white outline-none focus:border-[#6D4AFF]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-[#4B5563] mb-1">
+                      Relationship
+                    </label>
+                    <select
+                      value={formNomineeRelation}
+                      onChange={(e) => setFormNomineeRelation(e.target.value)}
+                      className="h-9 w-full rounded-lg border border-[#E5E7EB] px-2 text-xs text-[#111827] bg-white outline-none focus:border-[#6D4AFF]"
                     >
-                      <div>
-                        <div className="font-semibold text-[#111827] text-xs">
-                          {b.project_name}
-                        </div>
-                        <div className="text-[11px] text-[#6B7280]">
-                          Booking Ref: {b.booking_id} | Date: {b.booking_date}
-                        </div>
-                      </div>
-                      <div className="text-right tabular-nums">
-                        <div className="font-semibold text-xs text-[#111827]">
-                          ৳ {(b.grand_total / 100000).toFixed(2)} Lac
-                        </div>
-                        <div className="text-[11px] text-[#039855]">
-                          Paid: ৳ {(b.paid_amount / 100000).toFixed(2)} Lac
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                      {dropdownMeta.nominee_relations.map((r) => (
+                        <option key={r.value} value={r.value}>
+                          {r.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-[#4B5563] mb-1">
+                      Nominee NID / Birth Cert
+                    </label>
+                    <input
+                      type="text"
+                      value={formNomineeNid}
+                      onChange={(e) => setFormNomineeNid(e.target.value)}
+                      placeholder="Nominee NID"
+                      className="h-9 w-full rounded-lg border border-[#E5E7EB] px-2.5 text-xs text-[#111827] bg-white outline-none focus:border-[#6D4AFF]"
+                    />
+                  </div>
                 </div>
-              ) : (
-                <div className="p-4 rounded-lg border border-dashed border-[#D1D5DB] text-center text-[#6B7280] text-xs">
-                  No linked apartment or plot agreements found for this profile.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </CSDetailDrawer>
-
-      {/* Add Customer Modal Form */}
-      <CSModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        title="Add Customer 360° Profile"
-        subtitle="Create an official customer master record with KYC and nominee data."
-        maxWidth="xl"
-      >
-        <form onSubmit={handleCreateCustomer} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1">
-                Customer Full Name *
-              </label>
-              <input
-                type="text"
-                required
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g. Mohammad Rafiqul Islam"
-                className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-xs text-[#111827] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1">
-                Primary Phone Number *
-              </label>
-              <input
-                type="text"
-                required
-                value={formPhone}
-                onChange={(e) => setFormPhone(e.target.value)}
-                placeholder="+880 1711-234567"
-                className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-xs text-[#111827] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1">
-                National ID (NID) *
-              </label>
-              <input
-                type="text"
-                required
-                value={formNid}
-                onChange={(e) => setFormNid(e.target.value)}
-                placeholder="NID or Smart Card number"
-                className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-xs text-[#111827] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1">
-                Email Address
-              </label>
-              <input
-                type="email"
-                value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
-                placeholder="client@example.com"
-                className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-xs text-[#111827] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1">
-                e-TIN Reference
-              </label>
-              <input
-                type="text"
-                value={formTin}
-                onChange={(e) => setFormTin(e.target.value)}
-                placeholder="Optional e-TIN"
-                className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-xs text-[#111827] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1">
-                Customer Status
-              </label>
-              <select
-                value={formStatus}
-                onChange={(e) =>
-                  setFormStatus(
-                    e.target.value as "active" | "vip" | "disputed" | "closed",
-                  )
-                }
-                className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-xs text-[#111827] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20 outline-none bg-white"
-              >
-                {dropdownMeta.customer_statuses.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-[#374151] mb-1">
-              Mailing Address
-            </label>
-            <textarea
-              rows={2}
-              value={formAddress}
-              onChange={(e) => setFormAddress(e.target.value)}
-              placeholder="Full mailing or present address..."
-              className="w-full rounded-lg border border-[#E5E7EB] p-2.5 text-xs text-[#111827] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20 outline-none"
-            />
-          </div>
-
-          <div className="p-3.5 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] space-y-3">
-            <h5 className="text-xs font-semibold text-[#111827] flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5 text-[#6D4AFF]" /> Nominee / Next of
-              Kin Information
-            </h5>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[11px] font-medium text-[#4B5563] mb-1">
-                  Nominee Full Name
-                </label>
-                <input
-                  type="text"
-                  value={formNomineeName}
-                  onChange={(e) => setFormNomineeName(e.target.value)}
-                  placeholder="Nominee Name"
-                  className="h-9 w-full rounded-lg border border-[#E5E7EB] px-2.5 text-xs text-[#111827] bg-white outline-none focus:border-[#6D4AFF]"
-                />
               </div>
-              <div>
-                <label className="block text-[11px] font-medium text-[#4B5563] mb-1">
-                  Relationship
-                </label>
-                <select
-                  value={formNomineeRelation}
-                  onChange={(e) => setFormNomineeRelation(e.target.value)}
-                  className="h-9 w-full rounded-lg border border-[#E5E7EB] px-2 text-xs text-[#111827] bg-white outline-none focus:border-[#6D4AFF]"
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateOpen(false)}
+                  className="h-9 px-4 rounded-lg border border-[#E5E7EB] text-xs font-semibold text-[#374151] hover:bg-[#F3F4F6] transition"
                 >
-                  {dropdownMeta.nominee_relations.map((r) => (
-                    <option key={r.value} value={r.value}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="h-9 px-5 rounded-lg bg-[#6D4AFF] text-white text-xs font-semibold hover:bg-[#5B3CE0] transition disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+                >
+                  {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Save Customer Record</span>
+                </button>
               </div>
-              <div>
-                <label className="block text-[11px] font-medium text-[#4B5563] mb-1">
-                  Nominee NID / Birth Cert
-                </label>
-                <input
-                  type="text"
-                  value={formNomineeNid}
-                  onChange={(e) => setFormNomineeNid(e.target.value)}
-                  placeholder="Nominee NID"
-                  className="h-9 w-full rounded-lg border border-[#E5E7EB] px-2.5 text-xs text-[#111827] bg-white outline-none focus:border-[#6D4AFF]"
-                />
+            </form>
+          </CSModal>
+
+          {/* Delete Confirmation Modal */}
+          <CSModal
+            isOpen={Boolean(customerToDelete)}
+            onClose={() => setCustomerToDelete(null)}
+            title="Delete Customer Profile"
+            subtitle="This action will soft-delete the profile. You can view it under Deleted Records."
+            maxWidth="md"
+          >
+            <div className="space-y-4 text-xs text-[#374151]">
+              <p>
+                Are you sure you want to delete the customer profile for{" "}
+                <span className="font-semibold text-[#111827]">
+                  {customerToDelete?.customer_name}
+                </span>{" "}
+                ({customerToDelete?.customer_code || customerToDelete?.id})?
+              </p>
+              <div className="p-3 rounded-lg bg-[#FEF3F2] border border-[#FECDCA] text-[#B42318] text-[11px]">
+                The customer will be removed from Active Records. In accordance with
+                audit compliance, records are preserved via soft delete. No hard
+                delete is performed.
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCustomerToDelete(null)}
+                  className="h-8 px-3.5 rounded-lg border border-[#E5E7EB] font-semibold text-[#374151] hover:bg-[#F3F4F6] transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleDeleteCustomer}
+                  className="h-8 px-4 rounded-lg bg-[#DC2626] text-white font-semibold hover:bg-[#B91C1C] transition disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {isDeleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Confirm Delete</span>
+                </button>
               </div>
             </div>
-          </div>
+          </CSModal>
 
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setIsCreateOpen(false)}
-              className="h-9 px-4 rounded-lg border border-[#E5E7EB] text-xs font-semibold text-[#374151] hover:bg-[#F3F4F6] transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="h-9 px-5 rounded-lg bg-[#6D4AFF] text-white text-xs font-semibold hover:bg-[#5B3CE0] transition disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
-            >
-              {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              <span>Save Customer Record</span>
-            </button>
-          </div>
-        </form>
-      </CSModal>
-
-      {/* Delete Confirmation Modal */}
-      <CSModal
-        isOpen={Boolean(customerToDelete)}
-        onClose={() => setCustomerToDelete(null)}
-        title="Delete Customer Profile"
-        subtitle="This action will soft-delete the profile. You can view it under Deleted Records."
-        maxWidth="md"
-      >
-        <div className="space-y-4 text-xs text-[#374151]">
-          <p>
-            Are you sure you want to delete the customer profile for{" "}
-            <span className="font-semibold text-[#111827]">
-              {customerToDelete?.customer_name}
-            </span>{" "}
-            ({customerToDelete?.customer_code || customerToDelete?.id})?
-          </p>
-          <div className="p-3 rounded-lg bg-[#FEF3F2] border border-[#FECDCA] text-[#B42318] text-[11px]">
-            The customer will be removed from Active Records. In accordance with
-            audit compliance, records are preserved via soft delete. No hard
-            delete is performed.
-          </div>
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setCustomerToDelete(null)}
-              className="h-8 px-3.5 rounded-lg border border-[#E5E7EB] font-semibold text-[#374151] hover:bg-[#F3F4F6] transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={isDeleting}
-              onClick={handleDeleteCustomer}
-              className="h-8 px-4 rounded-lg bg-[#DC2626] text-white font-semibold hover:bg-[#B91C1C] transition disabled:opacity-50 flex items-center gap-1.5"
-            >
-              {isDeleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              <span>Confirm Delete</span>
-            </button>
-          </div>
-        </div>
-      </CSModal>
-
-      {/* Restore Confirmation Modal */}
-      <CSModal
-        isOpen={Boolean(customerToRestore)}
-        onClose={() => setCustomerToRestore(null)}
-        title="Restore Customer Profile"
-        subtitle="This will reinstate the customer to Active Records."
-        maxWidth="md"
-      >
-        <div className="space-y-4 text-xs text-[#374151]">
-          <p>
-            Are you sure you want to restore the customer profile for{" "}
-            <span className="font-semibold text-[#111827]">
-              {customerToRestore?.customer_name}
-            </span>{" "}
-            ({customerToRestore?.customer_code || customerToRestore?.id})?
-          </p>
-          <div className="p-3 rounded-lg bg-[#ECFDF3] border border-[#A6F4C5] text-[#027A48] text-[11px]">
-            The customer record will be restored and will immediately appear in the Active Records tab and Customer 360 overview.
-          </div>
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setCustomerToRestore(null)}
-              className="h-8 px-3.5 rounded-lg border border-[#E5E7EB] font-semibold text-[#374151] hover:bg-[#F3F4F6] transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={isRestoring}
-              onClick={handleRestoreCustomer}
-              className="h-8 px-4 rounded-lg bg-[#027A48] text-white font-semibold hover:bg-[#05603A] transition disabled:opacity-50 flex items-center gap-1.5"
-            >
-              {isRestoring && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              <span>Confirm Restore</span>
-            </button>
-          </div>
-        </div>
-      </CSModal>
-    </div >
-  );
-}
+          {/* Restore Confirmation Modal */}
+          <CSModal
+            isOpen={Boolean(customerToRestore)}
+            onClose={() => setCustomerToRestore(null)}
+            title="Restore Customer Profile"
+            subtitle="This will reinstate the customer to Active Records."
+            maxWidth="md"
+          >
+            <div className="space-y-4 text-xs text-[#374151]">
+              <p>
+                Are you sure you want to restore the customer profile for{" "}
+                <span className="font-semibold text-[#111827]">
+                  {customerToRestore?.customer_name}
+                </span>{" "}
+                ({customerToRestore?.customer_code || customerToRestore?.id})?
+              </p>
+              <div className="p-3 rounded-lg bg-[#ECFDF3] border border-[#A6F4C5] text-[#027A48] text-[11px]">
+                The customer record will be restored and will immediately appear in the Active Records tab and Customer 360 overview.
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCustomerToRestore(null)}
+                  className="h-8 px-3.5 rounded-lg border border-[#E5E7EB] font-semibold text-[#374151] hover:bg-[#F3F4F6] transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isRestoring}
+                  onClick={handleRestoreCustomer}
+                  className="h-8 px-4 rounded-lg bg-[#027A48] text-white font-semibold hover:bg-[#05603A] transition disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {isRestoring && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Confirm Restore</span>
+                </button>
+              </div>
+            </div>
+          </CSModal>
+        </div >
+      );
+    }

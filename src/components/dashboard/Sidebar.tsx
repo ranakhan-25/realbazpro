@@ -514,8 +514,8 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           module === "lams"
             ? LAMS_ICONS[n.slug]
             : module === "collection"
-            ? COLLECTION_ICONS[n.slug]
-            : null;
+              ? COLLECTION_ICONS[n.slug]
+              : null;
 
         if (n.children?.length) {
           return (
@@ -635,8 +635,8 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
           module === "lams"
             ? LAMS_ICONS[n.slug]
             : module === "collection"
-            ? COLLECTION_ICONS[n.slug]
-            : null;
+              ? COLLECTION_ICONS[n.slug]
+              : null;
 
         if (n.children?.length) {
           return (
