@@ -502,13 +502,12 @@ export default function CustomerServiceDashboardPage() {
                     key={tab}
                     type="button"
                     onClick={() => setActiveTab(tab)}
-                    className={`px-2.5 py-1 rounded-md font-medium transition ${
-                      isActive
+                    className={`px-2.5 py-1 rounded-md font-medium transition ${isActive
                         ? isOverdueTab
                           ? "bg-[#E53935] text-white shadow-2xs"
                           : "bg-[#FFFFFF] text-[#111111] shadow-2xs font-semibold"
                         : "text-[#666666] hover:text-[#111111]"
-                    }`}
+                      }`}
                   >
                     {tab}
                     {isOverdueTab && overdueTicketsCount > 0 && (
@@ -610,13 +609,12 @@ export default function CustomerServiceDashboardPage() {
 
                           <td className="py-3 px-4">
                             <span
-                              className={`inline-block px-2 py-0.5 rounded-full text-[10.5px] font-semibold ${
-                                isUrgent
+                              className={`inline-block px-2 py-0.5 rounded-full text-[10.5px] font-semibold ${isUrgent
                                   ? "bg-[#FEF2F2] border border-[#FECACA] text-[#E53935]"
                                   : isHigh
-                                  ? "bg-[#FFF4ED] border border-[#FEDF89] text-[#B54708]"
-                                  : "bg-[#F8F8FA] border border-[#EAEAEA] text-[#666666]"
-                              }`}
+                                    ? "bg-[#FFF4ED] border border-[#FEDF89] text-[#B54708]"
+                                    : "bg-[#F8F8FA] border border-[#EAEAEA] text-[#666666]"
+                                }`}
                             >
                               {t.priority}
                             </span>
@@ -638,26 +636,24 @@ export default function CustomerServiceDashboardPage() {
 
                           <td className="py-3 px-4">
                             <span
-                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
-                                t.status === "Open"
+                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${t.status === "Open"
                                   ? "bg-[#EFF8FF] border-[#BFDBFE] text-[#175CD3]"
                                   : t.status === "In Progress"
-                                  ? "bg-[#F4F1FF] border-[#DDD6FE] text-[#6D4AFF]"
-                                  : t.status === "Escalated"
-                                  ? "bg-[#FEF2F2] border-[#FECACA] text-[#E53935]"
-                                  : "bg-[#ECFDF3] border-[#A6F4C5] text-[#027A48]"
-                              }`}
+                                    ? "bg-[#F4F1FF] border-[#DDD6FE] text-[#6D4AFF]"
+                                    : t.status === "Escalated"
+                                      ? "bg-[#FEF2F2] border-[#FECACA] text-[#E53935]"
+                                      : "bg-[#ECFDF3] border-[#A6F4C5] text-[#027A48]"
+                                }`}
                             >
                               <span
-                                className={`h-1.5 w-1.5 rounded-full ${
-                                  t.status === "Open"
+                                className={`h-1.5 w-1.5 rounded-full ${t.status === "Open"
                                     ? "bg-[#175CD3]"
                                     : t.status === "In Progress"
-                                    ? "bg-[#6D4AFF]"
-                                    : t.status === "Escalated"
-                                    ? "bg-[#E53935]"
-                                    : "bg-[#027A48]"
-                                }`}
+                                      ? "bg-[#6D4AFF]"
+                                      : t.status === "Escalated"
+                                        ? "bg-[#E53935]"
+                                        : "bg-[#027A48]"
+                                  }`}
                               />
                               {t.status}
                             </span>
@@ -745,22 +741,20 @@ export default function CustomerServiceDashboardPage() {
 
                   <div className="text-right">
                     <span
-                      className={`inline-flex items-center gap-1 text-[10.5px] font-semibold ${
-                        agent.status === "Available"
+                      className={`inline-flex items-center gap-1 text-[10.5px] font-semibold ${agent.status === "Available"
                           ? "text-[#027A48]"
                           : agent.status === "Busy"
-                          ? "text-[#B54708]"
-                          : "text-[#929292]"
-                      }`}
+                            ? "text-[#B54708]"
+                            : "text-[#929292]"
+                        }`}
                     >
                       <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          agent.status === "Available"
+                        className={`h-1.5 w-1.5 rounded-full ${agent.status === "Available"
                             ? "bg-[#027A48]"
                             : agent.status === "Busy"
-                            ? "bg-[#B54708]"
-                            : "bg-[#929292]"
-                        }`}
+                              ? "bg-[#B54708]"
+                              : "bg-[#929292]"
+                          }`}
                       />
                       {agent.status}
                     </span>
@@ -791,35 +785,32 @@ export default function CustomerServiceDashboardPage() {
               {tasks.map((task) => (
                 <div
                   key={task.id}
-                  className={`p-2.5 rounded-lg border transition ${
-                    task.completed
+                  className={`p-2.5 rounded-lg border transition ${task.completed
                       ? "bg-[#F8F8FA] border-[#EAEAEA] opacity-60"
                       : task.isOverdue
-                      ? "bg-[#FEF2F2] border-[#FECACA]"
-                      : "bg-[#FFFFFF] border-[#EAEAEA] hover:border-[#D0D5DD]"
-                  }`}
+                        ? "bg-[#FEF2F2] border-[#FECACA]"
+                        : "bg-[#FFFFFF] border-[#EAEAEA] hover:border-[#D0D5DD]"
+                    }`}
                 >
                   <div className="flex items-start gap-2.5">
                     <button
                       type="button"
                       onClick={() => handleToggleTask(task.id)}
-                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
-                        task.completed
+                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${task.completed
                           ? "bg-[#6D4AFF] border-[#6D4AFF] text-white"
                           : "border-[#D0D5DD] hover:border-[#6D4AFF]"
-                      }`}
+                        }`}
                     >
                       {task.completed && <Check className="h-3 w-3 stroke-[3]" />}
                     </button>
                     <div className="flex-1">
                       <div
-                        className={`text-xs font-semibold ${
-                          task.completed
+                        className={`text-xs font-semibold ${task.completed
                             ? "line-through text-[#666666]"
                             : task.isOverdue
-                            ? "text-[#E53935]"
-                            : "text-[#111111]"
-                        }`}
+                              ? "text-[#E53935]"
+                              : "text-[#111111]"
+                          }`}
                       >
                         {task.title}
                       </div>
@@ -828,11 +819,10 @@ export default function CustomerServiceDashboardPage() {
                       </div>
                       <div className="flex items-center justify-between mt-1 text-[10.5px]">
                         <span
-                          className={`font-semibold ${
-                            task.isOverdue
+                          className={`font-semibold ${task.isOverdue
                               ? "text-[#E53935]"
                               : "text-[#666666]"
-                          }`}
+                            }`}
                         >
                           {task.dueDate} • {task.dueTime}
                         </span>
@@ -857,12 +847,12 @@ export default function CustomerServiceDashboardPage() {
 
             <div className="space-y-1.5">
               <Link
-                href="/dashboard/customer-service/payments/collections-ledger-receipts"
+                href="/dashboard/customer-service/customers"
                 className="flex items-center justify-between p-2 rounded-lg hover:bg-[#F8F8FA] border border-transparent hover:border-[#EAEAEA] text-xs font-medium text-[#111111] transition group"
               >
                 <div className="flex items-center gap-2">
-                  <Receipt className="h-3.5 w-3.5 text-[#6D4AFF]" />
-                  <span>Collections & Ledger</span>
+                  <Users className="h-3.5 w-3.5 text-[#6D4AFF]" />
+                  <span>Customer 360° Directory</span>
                 </div>
                 <ArrowRight className="h-3 w-3 text-[#929292] group-hover:text-[#6D4AFF] transition" />
               </Link>
@@ -1073,27 +1063,25 @@ export default function CustomerServiceDashboardPage() {
               {/* Status & Priority Badge */}
               <div className="flex items-center gap-2">
                 <span
-                  className={`px-2.5 py-0.5 rounded-full font-semibold ${
-                    selectedTicket.priority === "Urgent"
+                  className={`px-2.5 py-0.5 rounded-full font-semibold ${selectedTicket.priority === "Urgent"
                       ? "bg-[#FEF2F2] text-[#E53935] border border-[#FECACA]"
                       : selectedTicket.priority === "High"
-                      ? "bg-[#FFF4ED] text-[#B54708] border border-[#FEDF89]"
-                      : "bg-[#F8F8FA] text-[#666666] border border-[#EAEAEA]"
-                  }`}
+                        ? "bg-[#FFF4ED] text-[#B54708] border border-[#FEDF89]"
+                        : "bg-[#F8F8FA] text-[#666666] border border-[#EAEAEA]"
+                    }`}
                 >
                   Priority: {selectedTicket.priority}
                 </span>
 
                 <span
-                  className={`px-2.5 py-0.5 rounded-full font-semibold ${
-                    selectedTicket.status === "Open"
+                  className={`px-2.5 py-0.5 rounded-full font-semibold ${selectedTicket.status === "Open"
                       ? "bg-[#EFF8FF] text-[#175CD3] border border-[#BFDBFE]"
                       : selectedTicket.status === "In Progress"
-                      ? "bg-[#F4F1FF] text-[#6D4AFF] border border-[#DDD6FE]"
-                      : selectedTicket.status === "Escalated"
-                      ? "bg-[#FEF2F2] text-[#E53935] border border-[#FECACA]"
-                      : "bg-[#ECFDF3] text-[#027A48] border border-[#A6F4C5]"
-                  }`}
+                        ? "bg-[#F4F1FF] text-[#6D4AFF] border border-[#DDD6FE]"
+                        : selectedTicket.status === "Escalated"
+                          ? "bg-[#FEF2F2] text-[#E53935] border border-[#FECACA]"
+                          : "bg-[#ECFDF3] text-[#027A48] border border-[#A6F4C5]"
+                    }`}
                 >
                   {selectedTicket.status}
                 </span>

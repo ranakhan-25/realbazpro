@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Sliders,
   Clock,
@@ -20,158 +20,182 @@ import { CSModal } from "@/components/customer-service/CSModal";
 import { CSDetailDrawer } from "@/components/customer-service/CSDetailDrawer";
 import { toast } from "sonner";
 import { useTheme } from "@/lib/theme";
-
-interface ServiceRule {
-  id: string;
-  ruleCode: string;
-  ruleName: string;
-  ruleType: "SLA Policy" | "Auto-Routing" | "Escalation Matrix" | "Statutory Rule";
-  categoryOrTrigger: string;
-  firstResponseTarget: string;
-  resolutionTarget: string;
-  escalationTarget: string;
-  assignedDepartment: string;
-  operatingHours: "24/7 Priority" | "Office Hours (Sat-Thu 9am-6pm)";
-  status: "Active" | "Disabled";
-}
-
-const INITIAL_RULES: ServiceRule[] = [
-  {
-    id: "RUL-01",
-    ruleCode: "SLA-URG-01",
-    ruleName: "Critical Structural & MEP Incident",
-    ruleType: "SLA Policy",
-    categoryOrTrigger: "Water Seepage, Elevator Fault, Sub-station Earthing",
-    firstResponseTarget: "1 Hour",
-    resolutionTarget: "24 Hours",
-    escalationTarget: "Chief Project Engineer after 4 Hours",
-    assignedDepartment: "Site Engineering & QA",
-    operatingHours: "24/7 Priority",
-    status: "Active",
-  },
-  {
-    id: "RUL-02",
-    ruleCode: "SLA-STD-02",
-    ruleName: "Finishing & Cosmetic Snagging",
-    ruleType: "SLA Policy",
-    categoryOrTrigger: "Tiles, Paint Touchup, Window Sealant, Door Lock",
-    firstResponseTarget: "4 Hours",
-    resolutionTarget: "48 Hours",
-    escalationTarget: "QA Supervisor after 24 Hours",
-    assignedDepartment: "Finishing Sub-contractor Care",
-    operatingHours: "Office Hours (Sat-Thu 9am-6pm)",
-    status: "Active",
-  },
-  {
-    id: "RUL-03",
-    ruleCode: "RTG-ACC-01",
-    ruleName: "Payment & Surcharge Inquiries Auto-Routing",
-    ruleType: "Auto-Routing",
-    categoryOrTrigger: "Installment clarification, Money receipt delay",
-    firstResponseTarget: "2 Hours",
-    resolutionTarget: "24 Hours",
-    escalationTarget: "Head of Accounts after 12 Hours",
-    assignedDepartment: "Post-Sales Accounts Team",
-    operatingHours: "Office Hours (Sat-Thu 9am-6pm)",
-    status: "Active",
-  },
-  {
-    id: "RUL-04",
-    ruleCode: "STAT-DLP-01",
-    ruleName: "Statutory 2-Year DLP Governance Rule",
-    ruleType: "Statutory Rule",
-    categoryOrTrigger: "Real Estate Act 2010 Section 13 (Workmanship & Structural Defect)",
-    firstResponseTarget: "2 Hours",
-    resolutionTarget: "72 Hours",
-    escalationTarget: "Managing Director / Project Director",
-    assignedDepartment: "Executive Quality Assurance",
-    operatingHours: "24/7 Priority",
-    status: "Active",
-  },
-  {
-    id: "RUL-05",
-    ruleCode: "ESC-TIER-03",
-    ruleName: "Customer Detractor Auto-Escalation",
-    ruleType: "Escalation Matrix",
-    categoryOrTrigger: "NPS Rating <= 6 or Unresolved Complaint > 48 Hours",
-    firstResponseTarget: "30 Minutes",
-    resolutionTarget: "12 Hours",
-    escalationTarget: "Chief Customer Experience Officer",
-    assignedDepartment: "CX Leadership",
-    operatingHours: "Office Hours (Sat-Thu 9am-6pm)",
-    status: "Active",
-  },
-];
+import { useSelectedProject } from "@/hooks/useSelectedProject";
+import {
+  WorkflowRuleItem,
+  WorkflowRuleStats,
+  getWorkflowRules,
+  getWorkflowRuleStats,
+  createWorkflowRule,
+  toggleWorkflowRuleStatus,
+  reloadWorkflowEngine,
+} from "@/services/customerWorkflowRulesService";
 
 export default function ServiceWorkflowRulesPage() {
   const { primaryColor } = useTheme();
-  const [rules, setRules] = useState<ServiceRule[]>(INITIAL_RULES);
+  const { selectedProjectId } = useSelectedProject();
+  const [rules, setRules] = useState<WorkflowRuleItem[]>([]);
+  const [stats, setStats] = useState<WorkflowRuleStats>({
+    total_rules: 0,
+    sla_policies: 0,
+    auto_routing: 0,
+    escalation_matrix: 0,
+    statutory_rules: 0,
+    active_rules: 0,
+    disabled_rules: 0,
+    all: 0,
+    sla: 0,
+    routing: 0,
+    escalation: 0,
+    statutory: 0,
+    active: 0,
+    disabled: 0,
+  });
   const [activeTab, setActiveTab] = useState("all");
-  const [selectedRule, setSelectedRule] = useState<ServiceRule | null>(null);
+  const [selectedRule, setSelectedRule] = useState<WorkflowRuleItem | null>(
+    null,
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
 
   // Form State
   const [ruleName, setRuleName] = useState("");
-  const [ruleType, setRuleType] = useState<ServiceRule["ruleType"]>("SLA Policy");
+  const [ruleType, setRuleType] =
+    useState<WorkflowRuleItem["ruleType"]>("SLA Policy");
   const [categoryOrTrigger, setCategoryOrTrigger] = useState("");
   const [firstResponseTarget, setFirstResponseTarget] = useState("2 Hours");
   const [resolutionTarget, setResolutionTarget] = useState("24 Hours");
-  const [assignedDepartment, setAssignedDepartment] = useState("Site Engineering & QA");
+  const [escalationTarget, setEscalationTarget] = useState(
+    "QA Lead after 12 Hours",
+  );
+  const [assignedDepartment, setAssignedDepartment] = useState(
+    "Site Engineering & QA",
+  );
+  const [operatingHours, setOperatingHours] = useState(
+    "Office Hours (Sat-Thu 9am-6pm)",
+  );
 
-  const filteredRules = rules.filter((r) => {
-    if (activeTab === "sla") return r.ruleType === "SLA Policy";
-    if (activeTab === "routing") return r.ruleType === "Auto-Routing";
-    if (activeTab === "escalation") return r.ruleType === "Escalation Matrix";
-    if (activeTab === "statutory") return r.ruleType === "Statutory Rule";
-    return true;
-  });
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [statsData, rulesData] = await Promise.all([
+        getWorkflowRuleStats(selectedProjectId || undefined),
+        getWorkflowRules({
+          project_id: selectedProjectId || undefined,
+          tab: activeTab !== "all" ? activeTab : undefined,
+          limit: 100,
+        }),
+      ]);
+      setStats(statsData);
+      setRules(rulesData.items);
+    } catch (err: unknown) {
+      console.error("Error loading workflow rules:", err);
+      const errorMsg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ||
+        (err as Error)?.message ||
+        "Failed to load workflow rules";
+      toast.error(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedProjectId, activeTab]);
 
-  const counts = {
-    all: rules.length,
-    sla: rules.filter((r) => r.ruleType === "SLA Policy").length,
-    routing: rules.filter((r) => r.ruleType === "Auto-Routing").length,
-    escalation: rules.filter((r) => r.ruleType === "Escalation Matrix").length,
-    statutory: rules.filter((r) => r.ruleType === "Statutory Rule").length,
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleToggle = async (rule: WorkflowRuleItem) => {
+    try {
+      const updated = await toggleWorkflowRuleStatus(rule.uuid);
+      setRules((prev) =>
+        prev.map((r) =>
+          r.uuid === rule.uuid ? { ...r, status: updated.status } : r,
+        ),
+      );
+      if (selectedRule && selectedRule.uuid === rule.uuid) {
+        setSelectedRule((prev) =>
+          prev ? { ...prev, status: updated.status } : null,
+        );
+      }
+      toast.success(
+        `Rule ${rule.ruleCode} status changed to ${updated.status}.`,
+      );
+      getWorkflowRuleStats(selectedProjectId || undefined)
+        .then(setStats)
+        .catch(() => { });
+    } catch (err: unknown) {
+      const errorMsg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ||
+        (err as Error)?.message ||
+        "Failed to toggle rule status";
+      toast.error(errorMsg);
+    }
   };
 
-  const handleToggle = (id: string) => {
-    setRules((prev) =>
-      prev.map((r) =>
-        r.id === id ? { ...r, status: r.status === "Active" ? "Disabled" : "Active" } : r
-      )
-    );
-    toast.success("Rule status updated.");
+  const handleReloadEngine = async () => {
+    setIsReloading(true);
+    try {
+      const res = await reloadWorkflowEngine();
+      toast.success(
+        res.message || "Workflow routing engine rules refreshed successfully.",
+      );
+      await loadData();
+    } catch (err: unknown) {
+      const errorMsg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ||
+        (err as Error)?.message ||
+        "Failed to reload engine";
+      toast.error(errorMsg);
+    } finally {
+      setIsReloading(false);
+    }
   };
 
-  const handleAddRule = (e: React.FormEvent) => {
+  const handleAddRule = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ruleName || !categoryOrTrigger) {
+    if (!ruleName.trim() || !categoryOrTrigger.trim()) {
       toast.error("Please fill in rule name and trigger condition.");
       return;
     }
 
-    const newRule: ServiceRule = {
-      id: `RUL-${Date.now().toString().slice(-4)}`,
-      ruleCode: `RUL-${Math.floor(100 + Math.random() * 900)}`,
-      ruleName,
-      ruleType,
-      categoryOrTrigger,
-      firstResponseTarget,
-      resolutionTarget,
-      escalationTarget: "Escalated to QA Lead after 12h",
-      assignedDepartment,
-      operatingHours: "Office Hours (Sat-Thu 9am-6pm)",
-      status: "Active",
-    };
+    setIsSubmitting(true);
+    try {
+      await createWorkflowRule({
+        project_id: selectedProjectId || undefined,
+        rule_name: ruleName.trim(),
+        rule_type: ruleType,
+        category_or_trigger: categoryOrTrigger.trim(),
+        first_response_target: firstResponseTarget,
+        resolution_target: resolutionTarget,
+        escalation_target: escalationTarget.trim() || undefined,
+        assigned_department: assignedDepartment,
+        operating_hours: operatingHours,
+        status: "Active",
+      });
 
-    setRules([newRule, ...rules]);
-    toast.success(`Workflow rule "${ruleName}" successfully created.`);
-    setIsModalOpen(false);
-    setRuleName("");
-    setCategoryOrTrigger("");
+      toast.success(`Workflow rule "${ruleName}" successfully created.`);
+      setIsModalOpen(false);
+      setRuleName("");
+      setCategoryOrTrigger("");
+      await loadData();
+    } catch (err: unknown) {
+      const errorMsg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ||
+        (err as Error)?.message ||
+        "Failed to create workflow rule";
+      toast.error(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const columns: Column<ServiceRule>[] = [
+  const columns: Column<WorkflowRuleItem>[] = [
     {
       header: "RULE NAME & CODE",
       accessorKey: "ruleName",
@@ -179,7 +203,10 @@ export default function ServiceWorkflowRulesPage() {
         <div>
           <div className="font-semibold text-[#111827]">{row.ruleName}</div>
           <div className="text-xs text-[#6B7280]">
-            <span className="font-semibold text-[#4B5563] tabular-nums">{row.ruleCode}</span> • {row.ruleType}
+            <span className="font-semibold text-[#4B5563] tabular-nums">
+              {row.ruleCode}
+            </span>{" "}
+            • {row.ruleType}
           </div>
         </div>
       ),
@@ -199,7 +226,10 @@ export default function ServiceWorkflowRulesPage() {
       cell: (row) => (
         <div className="text-xs space-y-0.5">
           <div className="text-[#111827]">
-            Resolution: <span className="font-semibold text-[#027A48] tabular-nums">{row.resolutionTarget}</span>
+            Resolution:{" "}
+            <span className="font-semibold text-[#027A48] tabular-nums">
+              {row.resolutionTarget}
+            </span>
           </div>
           <div className="text-[#6B7280] text-[11px] tabular-nums">
             1st Response: {row.firstResponseTarget}
@@ -220,9 +250,7 @@ export default function ServiceWorkflowRulesPage() {
       header: "OPERATING SCHEDULE",
       accessorKey: "operatingHours",
       cell: (row) => (
-        <span className="text-xs text-[#6B7280]">
-          {row.operatingHours}
-        </span>
+        <span className="text-xs text-[#6B7280]">{row.operatingHours}</span>
       ),
     },
     {
@@ -230,12 +258,11 @@ export default function ServiceWorkflowRulesPage() {
       accessorKey: "status",
       cell: (row) => (
         <button
-          onClick={() => handleToggle(row.id)}
-          className={`h-8 px-2.5 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold transition shadow-2xs ${
-            row.status === "Active"
+          onClick={() => handleToggle(row)}
+          className={`h-8 px-2.5 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold transition shadow-2xs ${row.status === "Active"
               ? "bg-[#ECFDF3] border border-[#A6F4C5] text-[#027A48] hover:bg-[#D1FADF]"
               : "bg-[#F3F4F6] border border-[#E5E7EB] text-[#4B5563] hover:bg-[#E5E7EB]"
-          }`}
+            }`}
           title="Click to toggle status"
           aria-label="Toggle rule status"
         >
@@ -281,9 +308,9 @@ export default function ServiceWorkflowRulesPage() {
         }}
         secondaryActions={[
           {
-            label: "Reload Engine",
+            label: isReloading ? "Reloading..." : "Reload Engine",
             icon: RefreshCw,
-            onClick: () => toast.success("Workflow routing engine rules refreshed."),
+            onClick: handleReloadEngine,
           },
         ]}
       />
@@ -291,28 +318,28 @@ export default function ServiceWorkflowRulesPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <CSStatCard
           title="Active SLA Policies"
-          value="5 Policies"
-          subtitle="Governing 6 project sites"
+          value={`${stats.sla || 0} Policies`}
+          subtitle="Governing service resolution targets"
           icon={Clock}
           color="blue"
         />
         <CSStatCard
           title="Intelligent Routing Rules"
-          value="8 Rules"
+          value={`${stats.routing || 0} Rules`}
           subtitle="Auto-dispatch to site engineers"
           icon={Sliders}
           color="purple"
         />
         <CSStatCard
           title="Escalation Tiers"
-          value="3 Levels"
+          value={`${stats.escalation || 0} Rules`}
           subtitle="Lead Engr -> QA -> Director"
           icon={ArrowRight}
           color="amber"
         />
         <CSStatCard
           title="Statutory Act 2010 Policy"
-          value="Enforced"
+          value={`${stats.statutory || 0} Enforced`}
           subtitle="Mandatory 2-yr warranty active"
           icon={ShieldCheck}
           color="emerald"
@@ -321,11 +348,19 @@ export default function ServiceWorkflowRulesPage() {
 
       <CSFilterTabs
         tabs={[
-          { key: "all", label: "All Rules", count: counts.all },
-          { key: "sla", label: "SLA Policies", count: counts.sla },
-          { key: "routing", label: "Auto-Routing", count: counts.routing },
-          { key: "escalation", label: "Escalation Matrix", count: counts.escalation },
-          { key: "statutory", label: "Statutory Policies", count: counts.statutory },
+          { key: "all", label: "All Rules", count: stats.all || 0 },
+          { key: "sla", label: "SLA Policies", count: stats.sla || 0 },
+          { key: "routing", label: "Auto-Routing", count: stats.routing || 0 },
+          {
+            key: "escalation",
+            label: "Escalation Matrix",
+            count: stats.escalation || 0,
+          },
+          {
+            key: "statutory",
+            label: "Statutory Policies",
+            count: stats.statutory || 0,
+          },
         ]}
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -333,7 +368,8 @@ export default function ServiceWorkflowRulesPage() {
 
       <CSTable
         columns={columns}
-        data={filteredRules}
+        data={rules}
+        isLoading={isLoading}
         searchPlaceholder="Search by rule name, trigger, department, or rule code..."
         exportFileName="RealBiz_Workflow_Rules"
       />
@@ -347,7 +383,9 @@ export default function ServiceWorkflowRulesPage() {
       >
         <form onSubmit={handleAddRule} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[#374151] mb-1.5">Rule Name *</label>
+            <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+              Rule Name *
+            </label>
             <input
               type="text"
               required
@@ -360,36 +398,54 @@ export default function ServiceWorkflowRulesPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1.5">Rule Type *</label>
+              <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                Rule Type *
+              </label>
               <select
                 value={ruleType}
-                onChange={(e) => setRuleType(e.target.value as any)}
+                onChange={(e) =>
+                  setRuleType(e.target.value as WorkflowRuleItem["ruleType"])
+                }
                 className="w-full h-9 px-3 text-xs font-medium rounded-lg border border-[#E5E7EB] bg-white focus:outline-none focus:ring-2 focus:ring-[#6D4AFF]/20 focus:border-[#6D4AFF] transition"
               >
                 <option value="SLA Policy">SLA Policy</option>
                 <option value="Auto-Routing">Auto-Routing Rule</option>
                 <option value="Escalation Matrix">Escalation Matrix</option>
-                <option value="Statutory Rule">Statutory Real Estate Act Rule</option>
+                <option value="Statutory Rule">
+                  Statutory Real Estate Act Rule
+                </option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1.5">Assigned Department *</label>
+              <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                Assigned Department *
+              </label>
               <select
                 value={assignedDepartment}
                 onChange={(e) => setAssignedDepartment(e.target.value)}
                 className="w-full h-9 px-3 text-xs font-medium rounded-lg border border-[#E5E7EB] bg-white focus:outline-none focus:ring-2 focus:ring-[#6D4AFF]/20 focus:border-[#6D4AFF] transition"
               >
-                <option value="Site Engineering & QA">Site Engineering & QA</option>
-                <option value="Finishing Sub-contractor Care">Finishing Sub-contractor Care</option>
-                <option value="Post-Sales Accounts Team">Post-Sales Accounts Team</option>
-                <option value="Legal & Land Affairs">Legal & Land Affairs</option>
+                <option value="Site Engineering & QA">
+                  Site Engineering & QA
+                </option>
+                <option value="Finishing Sub-contractor Care">
+                  Finishing Sub-contractor Care
+                </option>
+                <option value="Post-Sales Accounts Team">
+                  Post-Sales Accounts Team
+                </option>
+                <option value="Legal & Land Affairs">
+                  Legal & Land Affairs
+                </option>
                 <option value="CX Leadership">CX Leadership</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#374151] mb-1.5">Category or Trigger Condition *</label>
+            <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+              Category or Trigger Condition *
+            </label>
             <input
               type="text"
               required
@@ -402,7 +458,9 @@ export default function ServiceWorkflowRulesPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1.5">1st Response Target</label>
+              <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                1st Response Target
+              </label>
               <select
                 value={firstResponseTarget}
                 onChange={(e) => setFirstResponseTarget(e.target.value)}
@@ -415,7 +473,9 @@ export default function ServiceWorkflowRulesPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1.5">Target Resolution Time</label>
+              <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                Target Resolution Time
+              </label>
               <select
                 value={resolutionTarget}
                 onChange={(e) => setResolutionTarget(e.target.value)}
@@ -429,20 +489,52 @@ export default function ServiceWorkflowRulesPage() {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                Escalation Protocol
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. QA Lead after 12 Hours"
+                value={escalationTarget}
+                onChange={(e) => setEscalationTarget(e.target.value)}
+                className="w-full h-9 px-3 text-xs font-medium rounded-lg border border-[#E5E7EB] bg-white focus:outline-none focus:ring-2 focus:ring-[#6D4AFF]/20 focus:border-[#6D4AFF] transition"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                Operating Schedule
+              </label>
+              <select
+                value={operatingHours}
+                onChange={(e) => setOperatingHours(e.target.value)}
+                className="w-full h-9 px-3 text-xs font-medium rounded-lg border border-[#E5E7EB] bg-white focus:outline-none focus:ring-2 focus:ring-[#6D4AFF]/20 focus:border-[#6D4AFF] transition"
+              >
+                <option value="Office Hours (Sat-Thu 9am-6pm)">
+                  Office Hours (Sat-Thu 9am-6pm)
+                </option>
+                <option value="24/7 Priority">24/7 Priority</option>
+              </select>
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2 pt-3 border-t border-[#E5E7EB]">
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={() => setIsModalOpen(false)}
-              className="h-9 px-4 text-xs font-medium rounded-lg border border-[#D0D5DD] hover:bg-[#F9FAFB] transition"
+              className="h-9 px-4 text-xs font-medium rounded-lg border border-[#D0D5DD] hover:bg-[#F9FAFB] transition disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="h-9 px-4 text-xs font-medium text-white rounded-lg transition shadow-xs hover:opacity-95"
+              disabled={isSubmitting}
+              className="h-9 px-4 text-xs font-medium text-white rounded-lg transition shadow-xs hover:opacity-95 disabled:opacity-50"
               style={{ backgroundColor: primaryColor || "#6D4AFF" }}
             >
-              Save Rule
+              {isSubmitting ? "Saving..." : "Save Rule"}
             </button>
           </div>
         </form>
@@ -458,58 +550,77 @@ export default function ServiceWorkflowRulesPage() {
         {selectedRule && (
           <div className="space-y-5">
             <div className="p-4 rounded-xl border border-[#E5E7EB] bg-[#F7F8FA] space-y-2">
-              <div className="text-xs font-semibold text-[#6B7280]">Rule Classification</div>
+              <div className="text-xs font-semibold text-[#6B7280]">
+                Rule Classification
+              </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-[#111827]">{selectedRule.ruleType}</span>
-                <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
-                  selectedRule.status === "Active"
-                    ? "bg-[#ECFDF3] border border-[#A6F4C5] text-[#027A48]"
-                    : "bg-[#F3F4F6] border border-[#E5E7EB] text-[#4B5563]"
-                }`}>
+                <span className="text-sm font-bold text-[#111827]">
+                  {selectedRule.ruleType}
+                </span>
+                <span
+                  className={`text-xs px-2.5 py-1 rounded-full font-semibold ${selectedRule.status === "Active"
+                      ? "bg-[#ECFDF3] border border-[#A6F4C5] text-[#027A48]"
+                      : "bg-[#F3F4F6] border border-[#E5E7EB] text-[#4B5563]"
+                    }`}
+                >
                   {selectedRule.status}
                 </span>
               </div>
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B7280]">Scope & Thresholds</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B7280]">
+                Scope & Thresholds
+              </h4>
               <div className="grid grid-cols-2 gap-3 text-xs bg-white p-4 rounded-xl border border-[#E5E7EB]">
                 <div>
                   <span className="text-[#6B7280]">First Response:</span>
-                  <div className="font-semibold text-[#111827] tabular-nums">{selectedRule.firstResponseTarget}</div>
+                  <div className="font-semibold text-[#111827] tabular-nums">
+                    {selectedRule.firstResponseTarget}
+                  </div>
                 </div>
                 <div>
                   <span className="text-[#6B7280]">Resolution Target:</span>
-                  <div className="font-semibold text-[#111827] tabular-nums">{selectedRule.resolutionTarget}</div>
+                  <div className="font-semibold text-[#111827] tabular-nums">
+                    {selectedRule.resolutionTarget}
+                  </div>
                 </div>
                 <div>
                   <span className="text-[#6B7280]">Operating Schedule:</span>
-                  <div className="font-semibold text-[#111827]">{selectedRule.operatingHours}</div>
+                  <div className="font-semibold text-[#111827]">
+                    {selectedRule.operatingHours}
+                  </div>
                 </div>
                 <div>
                   <span className="text-[#6B7280]">Assigned Team:</span>
-                  <div className="font-semibold text-[#111827]">{selectedRule.assignedDepartment}</div>
+                  <div className="font-semibold text-[#111827]">
+                    {selectedRule.assignedDepartment}
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="space-y-2 pt-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B7280]">Escalation Protocol</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#6B7280]">
+                Escalation Protocol
+              </h4>
               <div className="p-3 rounded-lg border border-[#E5E7EB] bg-white text-xs text-[#111827] font-medium leading-relaxed">
-                {selectedRule.escalationTarget}
+                {selectedRule.escalationTarget ||
+                  "Standard tiered escalation applies"}
               </div>
             </div>
 
             <div className="pt-4 flex gap-2">
               <button
                 onClick={() => {
-                  handleToggle(selectedRule.id);
-                  setSelectedRule(null);
+                  handleToggle(selectedRule);
                 }}
                 className="flex-1 h-9 text-xs font-medium text-white rounded-lg transition shadow-xs hover:opacity-95"
                 style={{ backgroundColor: primaryColor || "#6D4AFF" }}
               >
-                {selectedRule.status === "Active" ? "Disable Rule" : "Activate Rule"}
+                {selectedRule.status === "Active"
+                  ? "Disable Rule"
+                  : "Activate Rule"}
               </button>
             </div>
           </div>

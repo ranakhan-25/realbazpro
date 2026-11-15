@@ -296,9 +296,9 @@ export default function BuildingCommitteePage() {
         <CSPageHeader
           title="Building Committee & Society"
           subtitle="Developer & Flat Owner Governance, Executive Portfolios & Meeting Resolutions"
-          badge="Building Services"
+          badge="Building Management"
           breadcrumbs={[
-            { label: "Building Services" },
+            { label: "Building Management" },
             { label: "Building Committee" },
           ]}
         />
@@ -539,10 +539,10 @@ export default function BuildingCommitteePage() {
       {/* 1. Page Header */}
       <CSPageHeader
         title="Building Committee & Society"
-        subtitle={`Building Services • Developer & Flat Owner Executive Committee (${project?.name || "Selected Project"})`}
-        badge="Building Services"
+        subtitle={`Building Management • Developer & Flat Owner Executive Committee (${project?.name || "Selected Project"})`}
+        badge="Building Management"
         breadcrumbs={[
-          { label: "Building Services" },
+          { label: "Building Management" },
           { label: "Building Committee" },
         ]}
       >

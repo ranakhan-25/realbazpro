@@ -249,125 +249,131 @@ export interface QueryPropertiesBookingsParams {
 /**
  * 1. Fetch KPI Overview Metrics for Bookings & Property Portfolio
  */
-  export async function getPropertiesBookingStats(projectId?: string): Promise<BookingStatsData> {
-    const params: Record<string, string> = {};
-    if (projectId && projectId !== "all") {
-      params.project_id = projectId;
-    }
-    const res = await api.get("/customer-service/properties-bookings/stats", { params });
-    const raw = res.data?.data !== undefined ? res.data.data : res.data;
-    return {
-      total_booked_units: Number(raw?.total_booked_units || 0),
-      ready_for_snagging: Number(raw?.ready_for_snagging || 0),
-      dlp_active: Number(raw?.dlp_active || 0),
-      handed_over: Number(raw?.handed_over || 0),
-      under_construction: Number(raw?.under_construction || 0),
-      total_portfolio_valuation: Number(raw?.total_portfolio_valuation || 0),
-      total_portfolio_valuation_formatted:
-        raw?.total_portfolio_valuation_formatted || "৳ 0.00",
-      total_collected_amount: Number(raw?.total_collected_amount || 0),
-      total_collected_amount_formatted:
-        raw?.total_collected_amount_formatted || "৳ 0.00",
-      total_outstanding_due: Number(raw?.total_outstanding_due || 0),
-      total_outstanding_due_formatted:
-        raw?.total_outstanding_due_formatted || "৳ 0.00",
-    };
+export async function getPropertiesBookingStats(
+  projectId?: string,
+): Promise<BookingStatsData> {
+  const params: Record<string, string> = {};
+  if (projectId && projectId !== "all") {
+    params.project_id = projectId;
   }
+  const res = await api.get("/customer-service/properties-bookings/stats", {
+    params,
+  });
+  const raw = res.data?.data !== undefined ? res.data.data : res.data;
+  return {
+    total_booked_units: Number(raw?.total_booked_units || 0),
+    ready_for_snagging: Number(raw?.ready_for_snagging || 0),
+    dlp_active: Number(raw?.dlp_active || 0),
+    handed_over: Number(raw?.handed_over || 0),
+    under_construction: Number(raw?.under_construction || 0),
+    total_portfolio_valuation: Number(raw?.total_portfolio_valuation || 0),
+    total_portfolio_valuation_formatted:
+      raw?.total_portfolio_valuation_formatted || "৳ 0.00",
+    total_collected_amount: Number(raw?.total_collected_amount || 0),
+    total_collected_amount_formatted:
+      raw?.total_collected_amount_formatted || "৳ 0.00",
+    total_outstanding_due: Number(raw?.total_outstanding_due || 0),
+    total_outstanding_due_formatted:
+      raw?.total_outstanding_due_formatted || "৳ 0.00",
+  };
+}
 
-  /**
-   * 2. Fetch dropdown metadata (projects, handover statuses, unit types)
-   */
-  export async function getPropertiesBookingDropdownMeta(): Promise<BookingDropdownMeta> {
-    const res = await api.get(
-      "/customer-service/properties-bookings/dropdown/meta",
-    );
-    const raw = res.data?.data !== undefined ? res.data.data : res.data;
-    return {
-      projects: Array.isArray(raw?.projects) ? raw.projects : [],
-      handover_statuses: Array.isArray(raw?.handover_statuses)
-        ? raw.handover_statuses
-        : [],
-      unit_types: Array.isArray(raw?.unit_types) ? raw.unit_types : [],
-    };
+/**
+ * 2. Fetch dropdown metadata (projects, handover statuses, unit types)
+ */
+export async function getPropertiesBookingDropdownMeta(): Promise<BookingDropdownMeta> {
+  const res = await api.get(
+    "/customer-service/properties-bookings/dropdown/meta",
+  );
+  const raw = res.data?.data !== undefined ? res.data.data : res.data;
+  return {
+    projects: Array.isArray(raw?.projects) ? raw.projects : [],
+    handover_statuses: Array.isArray(raw?.handover_statuses)
+      ? raw.handover_statuses
+      : [],
+    unit_types: Array.isArray(raw?.unit_types) ? raw.unit_types : [],
+  };
+}
+
+/**
+ * 3. List customer property bookings with search, tab counts, and pagination
+ */
+export async function getPropertiesBookings(
+  params?: QueryPropertiesBookingsParams,
+): Promise<BookingListResponse> {
+  const queryParams: Record<string, unknown> = {};
+  if (params?.page) queryParams.page = params.page;
+  if (params?.limit) queryParams.limit = params.limit;
+  if (params?.search) queryParams.search = params.search;
+  if (params?.tab && params.tab !== "all") queryParams.tab = params.tab;
+  const targetProjectId = params?.projectId || params?.project_id;
+  if (targetProjectId && targetProjectId !== "all") {
+    queryParams.project_id = targetProjectId;
   }
+  delete queryParams.projectId;
+  delete queryParams.organization_id;
+  delete queryParams.organizationId;
+  if (params?.customer_id) queryParams.customer_id = params.customer_id;
+  if (params?.sort_by) queryParams.sort_by = params.sort_by;
+  if (params?.sort_order) queryParams.sort_order = params.sort_order;
 
-  /**
-   * 3. List customer property bookings with search, tab counts, and pagination
-   */
-  export async function getPropertiesBookings(
-    params?: QueryPropertiesBookingsParams,
-  ): Promise<BookingListResponse> {
-    const queryParams: Record<string, unknown> = {};
-    if (params?.page) queryParams.page = params.page;
-    if (params?.limit) queryParams.limit = params.limit;
-    if (params?.search) queryParams.search = params.search;
-    if (params?.tab && params.tab !== "all") queryParams.tab = params.tab;
-    const targetProjectId = params?.projectId || params?.project_id;
-    if (targetProjectId && targetProjectId !== "all") {
-      queryParams.project_id = targetProjectId;
-      queryParams.projectId = targetProjectId;
-    }
-    if (params?.customer_id) queryParams.customer_id = params.customer_id;
-    if (params?.sort_by) queryParams.sort_by = params.sort_by;
-    if (params?.sort_order) queryParams.sort_order = params.sort_order;
+  const res = await api.get("/customer-service/properties-bookings", {
+    params: queryParams,
+  });
+  const raw = res.data?.data !== undefined ? res.data.data : res.data;
 
-    const res = await api.get("/customer-service/properties-bookings", {
-      params: queryParams,
-    });
-    const raw = res.data?.data !== undefined ? res.data.data : res.data;
+  return {
+    items: Array.isArray(raw?.items) ? raw.items : [],
+    tab_counts: raw?.tab_counts || {
+      all: 0,
+      snagging: 0,
+      dlp: 0,
+      handedover: 0,
+      under_construction: 0,
+    },
+    meta: raw?.meta || {
+      total: 0,
+      page: params?.page || 1,
+      limit: params?.limit || 10,
+      total_pages: 1,
+      has_next_page: false,
+      has_previous_page: false,
+    },
+  };
+}
 
-    return {
-      items: Array.isArray(raw?.items) ? raw.items : [],
-      tab_counts: raw?.tab_counts || {
-        all: 0,
-        snagging: 0,
-        dlp: 0,
-        handedover: 0,
-        under_construction: 0,
-      },
-      meta: raw?.meta || {
-        total: 0,
-        page: params?.page || 1,
-        limit: params?.limit || 10,
-        total_pages: 1,
-        has_next_page: false,
-        has_previous_page: false,
-      },
-    };
-  }
+/**
+ * 4. Get complete Booking 360 view by UUID
+ */
+export async function getPropertiesBooking360(
+  uuid: string,
+): Promise<Booking360Detail> {
+  const res = await api.get(`/customer-service/properties-bookings/${uuid}`);
+  return res.data?.data !== undefined ? res.data.data : res.data;
+}
 
-  /**
-   * 4. Get complete Booking 360 view by UUID
-   */
-  export async function getPropertiesBooking360(
-    uuid: string,
-  ): Promise<Booking360Detail> {
-    const res = await api.get(`/customer-service/properties-bookings/${uuid}`);
-    return res.data?.data !== undefined ? res.data.data : res.data;
-  }
+/**
+ * 5. Transition property handover lifecycle status
+ */
+export async function updatePropertiesBookingHandoverStatus(
+  uuid: string,
+  payload: UpdateHandoverStatusPayload,
+): Promise<{ message?: string; data?: BookingListItem; success?: boolean }> {
+  const res = await api.patch(
+    `/customer-service/properties-bookings/${uuid}/handover-status`,
+    payload,
+  );
+  return res.data?.data !== undefined ? res.data.data : res.data;
+}
 
-  /**
-   * 5. Transition property handover lifecycle status
-   */
-  export async function updatePropertiesBookingHandoverStatus(
-    uuid: string,
-    payload: UpdateHandoverStatusPayload,
-  ): Promise<{ message?: string; data?: BookingListItem; success?: boolean }> {
-    const res = await api.patch(
-      `/customer-service/properties-bookings/${uuid}/handover-status`,
-      payload,
-    );
-    return res.data?.data !== undefined ? res.data.data : res.data;
-  }
-
-  /**
-   * 6. Preview milestone demand letter details, bank instructions, and reference
-   */
-  export async function getPropertiesBookingDemandLetterPreview(
-    uuid: string,
-  ): Promise<DemandLetterPreview> {
-    const res = await api.get(
-      `/customer-service/properties-bookings/${uuid}/demand-letter-preview`,
-    );
-    return res.data?.data !== undefined ? res.data.data : res.data;
-  }
+/**
+ * 6. Preview milestone demand letter details, bank instructions, and reference
+ */
+export async function getPropertiesBookingDemandLetterPreview(
+  uuid: string,
+): Promise<DemandLetterPreview> {
+  const res = await api.get(
+    `/customer-service/properties-bookings/${uuid}/demand-letter-preview`,
+  );
+  return res.data?.data !== undefined ? res.data.data : res.data;
+}

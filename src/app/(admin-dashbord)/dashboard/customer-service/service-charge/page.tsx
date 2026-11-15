@@ -525,9 +525,9 @@ export default function ServiceChargePage() {
         <CSPageHeader
           title="Service Charge & Costing"
           subtitle="Monthly Flat Billing, Extra Facility Revenues, Common Maintenance & Net Financial Balance"
-          badge="Building Services"
+          badge="Building Management"
           breadcrumbs={[
-            { label: "Building Services" },
+            { label: "Building Management" },
             { label: "Service Charge & Costing" },
           ]}
         />
@@ -845,10 +845,10 @@ export default function ServiceChargePage() {
       {/* 1. Header */}
       <CSPageHeader
         title="Service Charge & Costing"
-        subtitle={`Building Services • Monthly Flat Billings, Hall & Facility Incomes, Common Expenses (${project?.name || "Selected Project"})`}
-        badge="Building Services"
+        subtitle={`Building Management • Monthly Flat Billings, Hall & Facility Incomes, Common Expenses (${project?.name || "Selected Project"})`}
+        badge="Building Management"
         breadcrumbs={[
-          { label: "Building Services" },
+          { label: "Building Management" },
           { label: "Service Charge & Costing" },
         ]}
       >

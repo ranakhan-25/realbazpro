@@ -20,7 +20,7 @@ export type ModuleKey =
   | "cr"
   | "lams"
   | "procurement"
-  | "customer-service" 
+  | "customer-service"
   | "sales-management"
   | "all"
   | (string & {});
@@ -692,44 +692,12 @@ const customerServiceNodes: MenuNode[] = [
       {
         label: "Customer 360°",
         slug: "customer-360",
-        path: "customers/customer-360",
-      },
-      {
-        label: "Bookings & Property Portfolio",
-        slug: "properties-bookings",
-        path: "customers/properties-bookings",
+        path: "customers",
       },
       {
         label: "Transfer, Resale & Change Requests",
         slug: "change-requests",
         path: "customers/change-requests",
-      },
-    ],
-  },
-  {
-    label: "Payments & Collections",
-    slug: "payments-collections",
-    path: "payments-collections",
-    children: [
-      {
-        label: "Payment Schedules & Demand Letters",
-        slug: "payment-schedules",
-        path: "payments/collections-ledger-receipts",
-      },
-      {
-        label: "Collections, Receipts & Customer Ledger",
-        slug: "collections-ledger-receipts",
-        path: "payments/collections-ledger-receipts",
-      },
-      {
-        label: "Dues, Ageing & Recovery",
-        slug: "dues-ageing-recovery",
-        path: "payments/dues-ageing-recovery",
-      },
-      {
-        label: "Refunds & Adjustments",
-        slug: "refunds-adjustments",
-        path: "payments/refunds-adjustments",
       },
     ],
   },
@@ -808,6 +776,50 @@ const customerServiceNodes: MenuNode[] = [
         label: "Work Orders & Owners Association",
         slug: "work-orders-association",
         path: "property-care/work-orders-association",
+      },
+    ],
+  },
+  {
+    label: "Building Services",
+    slug: "building-services",
+    path: "building-services",
+    children: [
+      {
+        label: "Utility Service",
+        slug: "utility-service",
+        path: "utility-service",
+      },
+      {
+        label: "Security Service",
+        slug: "security-service",
+        path: "security-service",
+      },
+      {
+        label: "Parking Service",
+        slug: "parking-service",
+        path: "parking-service",
+      },
+      {
+        label: "Other Services",
+        slug: "other-services",
+        path: "other-services",
+      },
+    ],
+  },
+  {
+    label: "Building Management",
+    slug: "building-management",
+    path: "building-management",
+    children: [
+      {
+        label: "Service Charge & Costing",
+        slug: "service-charge",
+        path: "service-charge",
+      },
+      {
+        label: "Building Committee",
+        slug: "building-committee",
+        path: "building-committee",
       },
     ],
   },
@@ -927,11 +939,11 @@ export const MENUS: Record<ModuleKey, MenuNode[]> = {
 export function isModuleKey(v: string): v is ModuleKey {
   return Boolean(
     v &&
-      typeof v === "string" &&
-      v.trim().length > 0 &&
-      v !== "admin" &&
-      v !== "api" &&
-      v !== "_next"
+    typeof v === "string" &&
+    v.trim().length > 0 &&
+    v !== "admin" &&
+    v !== "api" &&
+    v !== "_next"
   );
 }
 

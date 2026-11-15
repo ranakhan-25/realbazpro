@@ -13,12 +13,7 @@ export type BuildingIncomeType =
   | "OTHER";
 
 export type BuildingExpenseType =
-  | "SECURITY"
-  | "LIFT"
-  | "UTILITIES"
-  | "CLEANING"
-  | "MAINTENANCE"
-  | "OTHER";
+  "SECURITY" | "LIFT" | "UTILITIES" | "CLEANING" | "MAINTENANCE" | "OTHER";
 
 // =========================================================================
 // 1. DOMAIN INTERFACES
@@ -242,25 +237,37 @@ export interface UpdateExpensePayload {
 // 3. API FUNCTIONS
 // =========================================================================
 
-export async function getServiceChargeRate(projectId: string): Promise<ServiceChargeRate> {
+export async function getServiceChargeRate(
+  projectId: string,
+): Promise<ServiceChargeRate> {
   const res = await api.get("/customer-service/service-charge/rate", {
     params: { project_id: projectId },
   });
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
-export async function upsertServiceChargeRate(payload: UpsertRatePayload): Promise<ServiceChargeRate> {
+export async function upsertServiceChargeRate(
+  payload: UpsertRatePayload,
+): Promise<ServiceChargeRate> {
   const res = await api.put("/customer-service/service-charge/rate", payload);
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
 export async function generateMonthlyCharges(payload: GenerateChargesPayload) {
-  const res = await api.post("/customer-service/service-charge/generate", payload);
+  const res = await api.post(
+    "/customer-service/service-charge/generate",
+    payload,
+  );
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
-export async function createFlatCharge(payload: CreateFlatChargePayload): Promise<FlatServiceChargeItem> {
-  const res = await api.post("/customer-service/service-charge/charges", payload);
+export async function createFlatCharge(
+  payload: CreateFlatChargePayload,
+): Promise<FlatServiceChargeItem> {
+  const res = await api.post(
+    "/customer-service/service-charge/charges",
+    payload,
+  );
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
@@ -284,9 +291,11 @@ export async function getFlatServiceCharges(params: {
     due_count: number;
   };
 }> {
-  const q: any = { ...params };
+  const q: Record<string, unknown> = { ...params };
   if (q.payment_status === "all") delete q.payment_status;
-  const res = await api.get("/customer-service/service-charge/charges", { params: q });
+  const res = await api.get("/customer-service/service-charge/charges", {
+    params: q,
+  });
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
@@ -301,8 +310,13 @@ export async function collectChargePayment(
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
-export async function createBuildingIncome(payload: CreateIncomePayload): Promise<BuildingIncomeItem> {
-  const res = await api.post("/customer-service/service-charge/incomes", payload);
+export async function createBuildingIncome(
+  payload: CreateIncomePayload,
+): Promise<BuildingIncomeItem> {
+  const res = await api.post(
+    "/customer-service/service-charge/incomes",
+    payload,
+  );
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
@@ -320,9 +334,11 @@ export async function getBuildingIncomes(params: {
   meta: { total: number; page: number; limit: number; total_pages: number };
   stats: { total_income: number; by_category: Record<string, number> };
 }> {
-  const q: any = { ...params };
+  const q: Record<string, unknown> = { ...params };
   if (q.income_type === "all") delete q.income_type;
-  const res = await api.get("/customer-service/service-charge/incomes", { params: q });
+  const res = await api.get("/customer-service/service-charge/incomes", {
+    params: q,
+  });
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
@@ -330,7 +346,10 @@ export async function updateBuildingIncome(
   uuid: string,
   payload: UpdateIncomePayload,
 ): Promise<BuildingIncomeItem> {
-  const res = await api.patch(`/customer-service/service-charge/incomes/${uuid}`, payload);
+  const res = await api.patch(
+    `/customer-service/service-charge/incomes/${uuid}`,
+    payload,
+  );
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
@@ -338,8 +357,13 @@ export async function deleteBuildingIncome(uuid: string): Promise<void> {
   await api.delete(`/customer-service/service-charge/incomes/${uuid}`);
 }
 
-export async function createBuildingExpense(payload: CreateExpensePayload): Promise<BuildingExpenseItem> {
-  const res = await api.post("/customer-service/service-charge/expenses", payload);
+export async function createBuildingExpense(
+  payload: CreateExpensePayload,
+): Promise<BuildingExpenseItem> {
+  const res = await api.post(
+    "/customer-service/service-charge/expenses",
+    payload,
+  );
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
@@ -358,10 +382,12 @@ export async function getBuildingExpenses(params: {
   meta: { total: number; page: number; limit: number; total_pages: number };
   stats: { total_expense: number; by_category: Record<string, number> };
 }> {
-  const q: any = { ...params };
+  const q: Record<string, unknown> = { ...params };
   if (q.expense_type === "all") delete q.expense_type;
   if (q.payment_status === "all") delete q.payment_status;
-  const res = await api.get("/customer-service/service-charge/expenses", { params: q });
+  const res = await api.get("/customer-service/service-charge/expenses", {
+    params: q,
+  });
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
@@ -369,7 +395,10 @@ export async function updateBuildingExpense(
   uuid: string,
   payload: UpdateExpensePayload,
 ): Promise<BuildingExpenseItem> {
-  const res = await api.patch(`/customer-service/service-charge/expenses/${uuid}`, payload);
+  const res = await api.patch(
+    `/customer-service/service-charge/expenses/${uuid}`,
+    payload,
+  );
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
@@ -386,4 +415,3 @@ export async function getMonthlySummary(
   });
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
-

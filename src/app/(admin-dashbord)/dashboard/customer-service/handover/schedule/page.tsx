@@ -1,187 +1,333 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   KeyRound,
   Calendar,
   CheckCircle2,
   Clock,
   Building,
-  AlertCircle,
   Plus,
   ArrowRight,
-  Eye,
+  Trash2,
+  Edit,
 } from "lucide-react";
 import { CSPageHeader } from "@/components/customer-service/CSPageHeader";
 import { CSStatCard } from "@/components/customer-service/CSStatCard";
 import { CSTable, Column } from "@/components/customer-service/CSTable";
 import { CSFilterTabs } from "@/components/customer-service/CSFilterTabs";
-import { HandoverItem } from "@/services/customerServiceData";
+import { CSModal } from "@/components/customer-service/CSModal";
+import { useSelectedProject } from "@/hooks/useSelectedProject";
+import {
+  HandoverScheduleItem,
+  HandoverScheduleStats,
+  getHandoverScheduleList,
+  getHandoverScheduleStats,
+  createHandoverSchedule,
+  updateHandoverSchedule,
+  deleteHandoverSchedule,
+} from "@/services/customerHandoverService";
 import { toast } from "sonner";
 import { useTheme } from "@/lib/theme";
 
-const INITIAL_HANDOVERS: HandoverItem[] = [
-  {
-    id: "HO-301",
-    customerName: "Mohammad Rafiqul Islam",
-    unit: "A-7, Hena Heights",
-    project: "Hena Heights, Gulshan",
-    targetHandoverDate: "2026-11-20",
-    readinessPercentage: 98,
-    jointInspectionDone: true,
-    snagsIdentified: 4,
-    snagsResolved: 4,
-    possessionCertIssued: true,
-    handoverStatus: "Ready for Key Delivery",
-  },
-  {
-    id: "HO-302",
-    customerName: "Barrister Shahed Chowdhury",
-    unit: "C-9, Sheba Green",
-    project: "Sheba Green Valley",
-    targetHandoverDate: "2026-12-05",
-    readinessPercentage: 92,
-    jointInspectionDone: true,
-    snagsIdentified: 7,
-    snagsResolved: 5,
-    possessionCertIssued: false,
-    handoverStatus: "Snag Rectification",
-  },
-  {
-    id: "HO-303",
-    customerName: "Dr. Nazmul Huda",
-    unit: "B-4, Eastern Lakeview",
-    project: "Eastern Lakeview",
-    targetHandoverDate: "2026-10-15",
-    readinessPercentage: 100,
-    jointInspectionDone: true,
-    snagsIdentified: 3,
-    snagsResolved: 3,
-    keyRegisterNo: "KEY-2026-00412",
-    possessionCertIssued: true,
-    handoverStatus: "Possession Taken",
-  },
-];
-
 export default function HandoverSchedulePage() {
+  const { primaryColor } = useTheme();
+  const brand = primaryColor || "#6D4AFF";
+  const { projectId, project } = useSelectedProject();
+
   const [activeTab, setActiveTab] = useState("all");
-  const [handovers, setHandovers] = useState<HandoverItem[]>(INITIAL_HANDOVERS);
-
-  const filtered = handovers.filter((h) => {
-    if (activeTab === "ready") return h.handoverStatus === "Ready for Key Delivery";
-    if (activeTab === "snags") return h.handoverStatus === "Snag Rectification";
-    if (activeTab === "completed") return h.handoverStatus === "Possession Taken";
-    return true;
+  const [handovers, setHandovers] = useState<HandoverScheduleItem[]>([]);
+  const [stats, setStats] = useState<HandoverScheduleStats>({
+    scheduled_count: 0,
+    ready_count: 0,
+    snags_count: 0,
+    completed_count: 0,
+    all_count: 0,
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const columns: Column<HandoverItem>[] = [
-    {
-      key: "id",
-      header: "HANDOVER ID & PROJECT",
-      sortable: true,
-      minWidth: "180px",
+  // Form states
+  const [editingItem, setEditingItem] = useState<HandoverScheduleItem | null>(null);
+  const [customer, setCustomer] = useState("");
+  const [unit, setUnit] = useState("");
+  const [targetDate, setTargetDate] = useState("");
+  const [readiness, setReadiness] = useState(90);
+  const [jointInspection, setJointInspection] = useState(false);
+  const [status, setStatus] = useState("Scheduled");
+  const [remarks, setRemarks] = useState("");
+
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [listRes, statsRes] = await Promise.all([
+        getHandoverScheduleList({
+          project_id: projectId || undefined,
+          tab: activeTab !== "all" ? activeTab : undefined,
+        }),
+        getHandoverScheduleStats(projectId || undefined),
+      ]);
+      setHandovers(listRes.items);
+      setStats(statsRes);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to load handover schedule");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectId, activeTab]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const resetForm = () => {
+    setEditingItem(null);
+    setCustomer("");
+    setUnit("");
+    setTargetDate("");
+    setReadiness(90);
+    setJointInspection(false);
+    setStatus("Scheduled");
+    setRemarks("");
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (item: HandoverScheduleItem) => {
+    setEditingItem(item);
+    setCustomer(item.customer_name);
+    setUnit(item.unit_name);
+    setTargetDate(item.target_handover_date || "");
+    setReadiness(item.readiness_percentage || 0);
+    setJointInspection(item.joint_inspection_done);
+    setStatus(item.handover_status);
+    setRemarks(item.remarks || "");
+    setIsModalOpen(true);
+  };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!customer.trim() || !unit.trim()) {
+        toast.error("Please provide both purchaser name and unit designation");
+        return;
+      }
+
+    setIsSubmitting(true);
+    try {
+      if (editingItem) {
+        await updateHandoverSchedule(editingItem.uuid, {
+          customer_name: customer.trim(),
+          unit_name: unit.trim(),
+          project_id: projectId || undefined,
+          target_handover_date: targetDate || undefined,
+          readiness_percentage: Number(readiness),
+          joint_inspection_done: jointInspection,
+          handover_status: status,
+          remarks: remarks.trim() || undefined,
+        });
+        toast.success(`Handover record for ${unit} updated successfully`);
+      } else {
+        await createHandoverSchedule({
+          customer_name: customer.trim(),
+          unit_name: unit.trim(),
+          project_name: project?.name || undefined,
+          project_id: projectId || undefined,
+          target_handover_date: targetDate || undefined,
+          readiness_percentage: Number(readiness),
+          joint_inspection_done: jointInspection,
+          handover_status: status,
+          remarks: remarks.trim() || undefined,
+        });
+        toast.success(`Handover schedule created for ${unit}`);
+      }
+      setIsModalOpen(false);
+      resetForm();
+      loadData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to save handover schedule");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (item: HandoverScheduleItem) => {
+    if (!confirm(`Are you sure you want to remove handover record ${item.handover_code} (${item.unit_name})?`)) return;
+    try {
+      await deleteHandoverSchedule(item.uuid);
+      toast.success(`Handover record ${item.handover_code} removed`);
+      loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to delete handover schedule");
+    }
+  };
+
+    const handleQuickAdvance = async (item: HandoverScheduleItem) => {
+      let nextSt = "Ready for Key Delivery";
+      if (item.handover_status === "Scheduled") nextSt = "Ready for Snagging";
+      else if (item.handover_status === "Ready for Snagging") nextSt = "Snag Rectification";
+      else if (item.handover_status === "Snag Rectification") nextSt = "Ready for Key Delivery";
+      else if (item.handover_status === "Ready for Key Delivery") nextSt = "Possession Taken";
+
+    try {
+      await updateHandoverSchedule(item.uuid, {
+        handover_status: nextSt,
+        readiness_percentage:
+          nextSt === "Ready for Key Delivery" || nextSt === "Possession Taken"
+            ? 100
+            : item.readiness_percentage,
+      });
+      toast.success(`Unit ${item.unit_name} status updated to "${nextSt}"`);
+      loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to advance handover status");
+    }
+  };
+
+            const columns: Column<HandoverScheduleItem>[] = [
+              {
+                key: "handover_code",
+              header: "HANDOVER ID & PROJECT",
+              sortable: true,
+              minWidth: "180px",
       render: (h) => (
-        <div>
-          <span className="font-semibold text-[#111827] tabular-nums text-xs">{h.id}</span>
-          <div className="text-[11px] text-[#6B7280] mt-0.5">{h.project}</div>
-        </div>
-      ),
+              <div>
+                <span className="font-semibold text-[#111827] tabular-nums text-xs">{h.handover_code}</span>
+                <div className="text-[11px] text-[#6B7280] mt-0.5">{h.project_name}</div>
+              </div>
+              ),
     },
-    {
-      key: "customerName",
-      header: "PURCHASER & ALLOTMENT",
-      minWidth: "200px",
+              {
+                key: "customer_name",
+              header: "PURCHASER & ALLOTMENT",
+              minWidth: "200px",
       render: (h) => (
-        <div>
-          <div className="font-semibold text-[#111827] text-xs">{h.customerName}</div>
-          <div className="text-[11px] text-[#6D4AFF] font-medium mt-0.5">{h.unit}</div>
-        </div>
-      ),
+              <div>
+                <div className="font-semibold text-[#111827] text-xs">{h.customer_name}</div>
+                <div className="text-[11px] text-[#6D4AFF] font-medium mt-0.5">{h.unit_name}</div>
+              </div>
+              ),
     },
-    {
-      key: "readinessPercentage",
-      header: "CIVIL & MEP READINESS",
-      sortable: true,
-      minWidth: "170px",
+              {
+                key: "readiness_percentage",
+              header: "CIVIL & MEP READINESS",
+              sortable: true,
+              minWidth: "170px",
       render: (h) => (
-        <div className="space-y-1.5 w-36">
-          <div className="flex justify-between text-[11px] font-semibold">
-            <span className="text-[#6B7280]">Readiness</span>
-            <span className={`tabular-nums ${h.readinessPercentage >= 95 ? "text-[#039855]" : "text-[#DC6803]"}`}>
-              {h.readinessPercentage}%
+              <div className="space-y-1.5 w-36">
+                <div className="flex justify-between text-[11px] font-semibold">
+                  <span className="text-[#6B7280]">Readiness</span>
+                  <span
+                    className={`tabular-nums ${h.readiness_percentage >= 95
+                        ? "text-[#039855]"
+                        : "text-[#DC6803]"
+                      }`}
+                  >
+                    {h.readiness_percentage}%
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-[#E5E7EB] rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${h.readiness_percentage >= 95
+                        ? "bg-[#039855]"
+                        : "bg-[#F79009]"
+                      }`}
+                    style={{
+                      width: `${Math.min(100, Math.max(0, h.readiness_percentage))}%`,
+                    }}
+                  />
+              </div>
+          </div>
+          ),
+    },
+          {
+            key: "target_handover_date",
+          header: "TARGET POSSESSION DATE",
+          minWidth: "180px",
+      render: (h) => (
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#111827] tabular-nums">
+            <Calendar className="h-3.5 w-3.5 text-[#9CA3AF]" />{" "}
+            {h.target_handover_date || "Pending Schedule"}
+          </div>
+          ),
+    },
+          {
+            key: "snags_identified",
+          header: "SNAGS RECTIFIED",
+          minWidth: "160px",
+      render: (h) => (
+          <div>
+            <span className="text-xs font-semibold text-[#111827] tabular-nums">
+              {h.snags_resolved} / {h.snags_identified} Snags
             </span>
-          </div>
-          <div className="h-1.5 w-full bg-[#E5E7EB] rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full ${
-                h.readinessPercentage >= 95 ? "bg-[#039855]" : "bg-[#F79009]"
-              }`}
-              style={{ width: `${h.readinessPercentage}%` }}
-            />
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "targetHandoverDate",
-      header: "TARGET POSSESSION DATE",
-      minWidth: "180px",
-      render: (h) => (
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-[#111827] tabular-nums">
-          <Calendar className="h-3.5 w-3.5 text-[#9CA3AF]" /> {h.targetHandoverDate}
-        </div>
-      ),
-    },
-    {
-      key: "snagsIdentified",
-      header: "SNAGS RECTIFIED",
-      minWidth: "160px",
-      render: (h) => (
-        <div>
-          <span className="text-xs font-semibold text-[#111827] tabular-nums">
-            {h.snagsResolved} / {h.snagsIdentified} Snags
-          </span>
-          {h.snagsIdentified > h.snagsResolved ? (
-            <div className="text-[10px] text-[#DC6803] font-medium mt-0.5">Rectification in progress</div>
-          ) : (
-            <div className="text-[10px] text-[#039855] font-semibold mt-0.5">100% Cleared</div>
+            {h.snags_identified > h.snags_resolved ? (
+              <div className="text-[10px] text-[#DC6803] font-medium mt-0.5">
+                Rectification in progress
+              </div>
+                ): (
+                    <div className = "text-[10px] text-[#039855] font-semibold mt-0.5">
+              {h.snags_identified === 0 ? "No snags recorded" : "100% Cleared"}
+            </div>
           )}
-        </div>
-      ),
+          </div>
+          ),
     },
-    {
-      key: "handoverStatus",
-      header: "STATUS",
-      minWidth: "180px",
+          {
+            key: "handover_status",
+          header: "STATUS",
+          minWidth: "180px",
       render: (h) => (
-        <span
-          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-            h.handoverStatus === "Possession Taken"
-              ? "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
-              : h.handoverStatus === "Ready for Key Delivery"
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${h.handover_status === "Possession Taken" ||
+                h.handover_status === "Handed Over"
+                ? "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]"
+                : h.handover_status === "Ready for Key Delivery"
                 ? "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]"
-                : "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
+          : "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]"
           }`}
         >
-          {h.handoverStatus}
+          {h.handover_status}
         </span>
       ),
     },
     {
       key: "actions",
-      header: "ACTION",
+      header: "ACTIONS",
       align: "right",
-      minWidth: "90px",
+      minWidth: "130px",
       render: (h) => (
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end gap-1.5">
+          {h.handover_status !== "Possession Taken" && (
+            <button
+              type="button"
+              onClick={() => handleQuickAdvance(h)}
+              title="Advance handover status"
+              aria-label="Advance Status"
+              className="h-7 px-2 rounded-md inline-flex items-center gap-1 bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] text-[11px] font-semibold transition"
+            >
+              Advance <ArrowRight className="h-3 w-3" />
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => toast.info(`Viewing handover schedule details for ${h.unit}`)}
-            title="View Handover Details"
-            aria-label="View Handover Details"
-            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+            onClick={() => openEditModal(h)}
+            title="Edit Handover Record"
+            aria-label="Edit Handover Record"
+            className="h-7 w-7 rounded-md inline-flex items-center justify-center bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 transition"
           >
-            <Eye className="h-4 w-4" />
+            <Edit className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDelete(h)}
+            title="Delete Handover Record"
+            aria-label="Delete Handover Record"
+            className="h-7 w-7 rounded-md inline-flex items-center justify-center bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] hover:bg-[#FEE2E2] transition"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
       ),
@@ -195,27 +341,40 @@ export default function HandoverSchedulePage() {
         subtitle="Manage project completion timelines, joint client inspections, snag clearances and formal possession dates."
         badge="Possession Management"
         breadcrumbs={[{ label: "Handover & Possession" }, { label: "Handover Schedule" }]}
+        primaryAction={{
+          label: "Schedule Handover",
+          onClick: openCreateModal,
+          icon: Plus,
+        }}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <CSStatCard
           title="Scheduled Handovers"
-          value={handovers.length.toString()}
+          value={stats.scheduled_count.toString()}
           subtext="Under active transition pipeline"
           icon={KeyRound}
         />
         <CSStatCard
           title="Ready for Key Delivery"
-          value={handovers.filter((h) => h.handoverStatus === "Ready for Key Delivery").length.toString()}
+          value={stats.ready_count.toString()}
           subtext="100% snag rectification cleared"
           icon={CheckCircle2}
           iconBg="bg-[#EFF6FF]"
           iconColor="text-[#2563EB]"
         />
         <CSStatCard
-          title="Handed Over This Quarter"
-          value="42 Flats"
-          subtext="Possession certificates signed"
+          title="Snagging Underway"
+          value={stats.snags_count.toString()}
+          subtext="Engineering fixes in progress"
+          icon={Clock}
+          iconBg="bg-[#FFFAEB]"
+          iconColor="text-[#DC6803]"
+        />
+        <CSStatCard
+          title="Possession Completed"
+          value={stats.completed_count.toString()}
+          subtext="Possession certificates executed"
           icon={Building}
           iconBg="bg-[#ECFDF3]"
           iconColor="text-[#039855]"
@@ -224,22 +383,22 @@ export default function HandoverSchedulePage() {
 
       <CSFilterTabs
         tabs={[
-          { key: "all", label: "All Scheduled Flats", count: handovers.length },
+          { key: "all", label: "All Scheduled Flats", count: stats.all_count },
           {
             key: "ready",
             label: "Ready for Key Delivery",
-            count: handovers.filter((h) => h.handoverStatus === "Ready for Key Delivery").length,
+            count: stats.ready_count,
           },
           {
             key: "snags",
             label: "Snag Rectification Active",
-            count: handovers.filter((h) => h.handoverStatus === "Snag Rectification").length,
+            count: stats.snags_count,
             badgeVariant: "warning",
           },
           {
             key: "completed",
             label: "Possession Completed",
-            count: handovers.filter((h) => h.handoverStatus === "Possession Taken").length,
+            count: stats.completed_count,
           },
         ]}
         activeTab={activeTab}
@@ -247,12 +406,139 @@ export default function HandoverSchedulePage() {
       />
 
       <CSTable
-        data={filtered}
+        data={handovers}
         columns={columns}
         searchPlaceholder="Search handover ID, customer name, project or unit..."
-        searchFields={["id", "customerName", "project", "unit"]}
-        emptyTitle="No handover schedules found"
+        searchFields={["handover_code", "customer_name", "project_name", "unit_name"]}
+        emptyTitle={isLoading ? "Loading handover schedules..." : "No handover schedules found"}
       />
+
+      <CSModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingItem ? `Edit Handover: ${editingItem.handover_code}` : "Schedule New Unit Handover"}
+        description="Register a sold allotment into the official Handover & Defect Inspection workflow."
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-[#111827] mb-1">
+                Purchaser Full Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={customer}
+                onChange={(e) => setCustomer(e.target.value)}
+                placeholder="e.g. Mohammad Rafiqul Islam"
+                className="w-full h-9 rounded-lg border border-[#E5E7EB] bg-white px-3 text-xs focus:ring-2 focus:ring-[#6D4AFF] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#111827] mb-1">
+                Unit Designation *
+              </label>
+              <input
+                type="text"
+                required
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder="e.g. A-7, Hena Heights"
+                className="w-full h-9 rounded-lg border border-[#E5E7EB] bg-white px-3 text-xs focus:ring-2 focus:ring-[#6D4AFF] focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-[#111827] mb-1">
+                Target Possession Date
+              </label>
+              <input
+                type="date"
+                value={targetDate}
+                onChange={(e) => setTargetDate(e.target.value)}
+                className="w-full h-9 rounded-lg border border-[#E5E7EB] bg-white px-3 text-xs focus:ring-2 focus:ring-[#6D4AFF] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#111827] mb-1">
+                Civil & Finishing Readiness ({readiness}%)
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={readiness}
+                onChange={(e) => setReadiness(Number(e.target.value))}
+                className="w-full mt-2 accent-[#6D4AFF]"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-[#111827] mb-1">
+                Handover Stage
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full h-9 rounded-lg border border-[#E5E7EB] bg-white px-3 text-xs focus:ring-2 focus:ring-[#6D4AFF] focus:outline-none"
+              >
+                <option value="Scheduled">Scheduled</option>
+                <option value="Ready for Snagging">Ready for Snagging</option>
+                <option value="Snag Rectification">Snag Rectification</option>
+                <option value="Ready for Key Delivery">Ready for Key Delivery</option>
+                <option value="Possession Taken">Possession Taken</option>
+                <option value="DLP Active">DLP Active</option>
+                <option value="Handed Over">Handed Over</option>
+              </select>
+            </div>
+            <div className="flex items-center pt-5">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[#111827]">
+                <input
+                  type="checkbox"
+                  checked={jointInspection}
+                  onChange={(e) => setJointInspection(e.target.checked)}
+                  className="rounded border-[#D1D5DB] text-[#6D4AFF] focus:ring-[#6D4AFF] h-4 w-4"
+                />
+                Joint Inspection / Walkthrough Complete
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#111827] mb-1">
+              Remarks & Coordination Notes
+            </label>
+            <textarea
+              rows={2}
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              placeholder="e.g. Client requested evening inspection; master bedroom key handover scheduled."
+              className="w-full rounded-lg border border-[#E5E7EB] bg-white p-2 text-xs focus:ring-2 focus:ring-[#6D4AFF] focus:outline-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-[#F2F4F7]">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-3.5 py-1.5 rounded-lg border border-[#D0D5DD] text-xs font-semibold text-[#344054] hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-1.5 rounded-lg bg-[#6D4AFF] text-white text-xs font-semibold hover:bg-[#5B3EE0] disabled:opacity-50"
+            >
+              {isSubmitting ? "Saving..." : editingItem ? "Update Schedule" : "Schedule Handover"}
+            </button>
+          </div>
+        </form>
+      </CSModal>
     </div>
   );
 }

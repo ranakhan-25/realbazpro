@@ -36,13 +36,15 @@ export interface PropertyBooking {
   paidAmount: number;
   dueAmount: number;
   nextInstallmentDate: string;
-  handoverStatus: "Under Construction" | "Ready for Snagging" | "Handed Over" | "DLP Active";
+  handoverStatus:
+    "Under Construction" | "Ready for Snagging" | "Handed Over" | "DLP Active";
   bookingDate: string;
 }
 
 export interface ChangeRequest {
   id: string;
-  requestType: "Ownership Transfer" | "Resale" | "Cancellation & Refund" | "Unit Swap";
+  requestType:
+    "Ownership Transfer" | "Resale" | "Cancellation & Refund" | "Unit Swap";
   customerId: string;
   customerName: string;
   unit: string;
@@ -51,7 +53,13 @@ export interface ChangeRequest {
   transferFee: number;
   newBuyerName?: string;
   newBuyerNid?: string;
-  status: "Draft" | "Legal Verification" | "HOD Approval" | "Accounts Clearance" | "Completed" | "Rejected";
+  status:
+    | "Draft"
+    | "Legal Verification"
+    | "HOD Approval"
+    | "Accounts Clearance"
+    | "Completed"
+    | "Rejected";
   appliedDate: string;
 }
 
@@ -109,7 +117,11 @@ export interface RefundRequestItem {
   deductionAmount: number;
   netRefundAmount: number;
   reason: string;
-  approvalStage: "Customer Service" | "Management Approval" | "Accounts Cheque Preparation" | "Disbursed";
+  approvalStage:
+    | "Customer Service"
+    | "Management Approval"
+    | "Accounts Cheque Preparation"
+    | "Disbursed";
   requestedDate: string;
 }
 
@@ -124,7 +136,11 @@ export interface RegistrationRecord {
   totalGovtFees: number;
   feeReceiptCollected: boolean;
   registeredDeedNo?: string;
-  status: "Documents Gathering" | "Appointment Booked" | "Deed Registered" | "Original Deed Delivered";
+  status:
+    | "Documents Gathering"
+    | "Appointment Booked"
+    | "Deed Registered"
+    | "Original Deed Delivered";
 }
 
 export interface MutationRecord {
@@ -134,7 +150,12 @@ export interface MutationRecord {
   project: string;
   mutationAppNo: string;
   acLandOffice: string;
-  currentStage: "Application Submitted" | "Kanungo/Surveyor Inquiry" | "Hearing Scheduled" | "DCR Paid" | "Khatian Approved";
+  currentStage:
+    | "Application Submitted"
+    | "Kanungo/Surveyor Inquiry"
+    | "Hearing Scheduled"
+    | "DCR Paid"
+    | "Khatian Approved";
   hearingDate?: string;
   dcrNumber?: string;
   dcrFeeAmount: number;
@@ -155,7 +176,11 @@ export interface HandoverItem {
   snagsResolved: number;
   keyRegisterNo?: string;
   possessionCertIssued: boolean;
-  handoverStatus: "Scheduled" | "Snag Rectification" | "Ready for Key Delivery" | "Possession Taken";
+  handoverStatus:
+    | "Scheduled"
+    | "Snag Rectification"
+    | "Ready for Key Delivery"
+    | "Possession Taken";
 }
 
 export interface ServiceTicket {
@@ -166,9 +191,22 @@ export interface ServiceTicket {
   phone: string;
   unit: string;
   project: string;
-  category: "Civil Work" | "Sanitary & Plumbing" | "Electrical" | "Finishing & Tiles" | "Accounts & Billing" | "Handover Delay";
+  category:
+    | "Civil Work"
+    | "Sanitary & Plumbing"
+    | "Electrical"
+    | "Finishing & Tiles"
+    | "Accounts & Billing"
+    | "Handover Delay";
   priority: "Low" | "Medium" | "High" | "Urgent";
-  status: "Open" | "In Progress" | "Pending Customer" | "Escalated" | "Resolved" | "Closed" | "Reopened";
+  status:
+    | "Open"
+    | "In Progress"
+    | "Pending Customer"
+    | "Escalated"
+    | "Resolved"
+    | "Closed"
+    | "Reopened";
   assignedAgent: string;
   slaRemainingHours: number;
   isOverdue: boolean;
@@ -184,10 +222,19 @@ export interface WarrantyDlpClaim {
   project: string;
   possessionDate: string;
   dlpExpiryDate: string;
-  defectCategory: "Wall Cracks" | "Water Seepage" | "Drainage Backflow" | "Electrical Sub-Line" | "Window Sealant";
+  defectCategory:
+    | "Wall Cracks"
+    | "Water Seepage"
+    | "Drainage Backflow"
+    | "Electrical Sub-Line"
+    | "Window Sealant";
   severity: "Major" | "Minor" | "Critical Structural";
   assignedEngineer: string;
-  status: "Claim Logged" | "Site Inspected" | "Rectification in Progress" | "Resolved & Signed Off";
+  status:
+    | "Claim Logged"
+    | "Site Inspected"
+    | "Rectification in Progress"
+    | "Resolved & Signed Off";
 }
 
 // -------------------------------------------------------------
@@ -341,7 +388,8 @@ export const MOCK_TICKETS: ServiceTicket[] = [
   {
     id: "TKT-302",
     ticketNo: "TKT-2026-0302",
-    subject: "Pre-possession snagging list rectification pending in dining tiles",
+    subject:
+      "Pre-possession snagging list rectification pending in dining tiles",
     customerName: "Barrister Shahed Chowdhury",
     phone: "+880 1914-556677",
     unit: "C-9 (Sheba Green)",
@@ -390,4 +438,3 @@ export const MOCK_TICKETS: ServiceTicket[] = [
     updatedAt: "2026-11-04 07:45 AM",
   },
 ];
-
