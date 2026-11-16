@@ -39,6 +39,7 @@ export default function ReceiptVoucherPage() {
   const [agreements, setAgreements] = useState<any[]>([]);
   const [overduePlans, setOverduePlans] = useState<any[]>([]);
   const [tableRows, setTableRows] = useState<any[]>([]);
+  const [activeVoucherPrint, setActiveVoucherPrint] = useState<any>(null);
 
   // Form states
   const [selectedPlanUuid, setSelectedPlanUuid] = useState("");
@@ -431,10 +432,11 @@ export default function ReceiptVoucherPage() {
                       <td className="px-3 py-2.5">
                         <button
                           type="button"
-                          onClick={() => showAlert.success("Voucher Verified", `Voucher ${row.code} verified.`)}
-                          className="px-2 py-1 rounded bg-[#0000F2] text-white text-[11px] font-medium hover:opacity-90 cursor-pointer"
+                          onClick={() => setActiveVoucherPrint(row)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#0000F2] text-white text-[11px] font-medium hover:bg-blue-700 cursor-pointer shadow-xs"
                         >
-                          Print
+                          <Printer size={12} />
+                          Receipt
                         </button>
                       </td>
                     </tr>
@@ -451,6 +453,130 @@ export default function ReceiptVoucherPage() {
           </div>
         </div>
       </div>
+
+      {/* Official Print Ready Money Receipt Modal */}
+      {activeVoucherPrint && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white text-gray-900 rounded-2xl max-w-2xl w-full p-8 shadow-2xl space-y-6 border border-gray-200">
+            {/* Modal Controls */}
+            <div className="flex items-center justify-between border-b pb-3 no-print">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Official Money Receipt Preview
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0000F2] text-white text-xs font-semibold hover:bg-blue-700 shadow-sm"
+                >
+                  <Printer size={13} />
+                  Print Receipt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveVoucherPrint(null)}
+                  className="px-3 py-1.5 rounded-lg border text-xs font-medium text-gray-600 hover:bg-gray-100"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            {/* Receipt Printable Card */}
+            <div className="border-2 border-gray-900 p-6 rounded-xl space-y-5 bg-white text-gray-900">
+              <div className="flex items-start justify-between border-b-2 border-gray-900 pb-4">
+                <div>
+                  <h2 className="text-xl font-black tracking-tight text-gray-900">
+                    REALBIZ PRO REAL ESTATE LTD.
+                  </h2>
+                  <p className="text-xs text-gray-600">
+                    Credit Realization & Collection Division
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Dhaka, Bangladesh | Phone: +880 9612-000000
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="inline-block px-3 py-1 bg-gray-900 text-white font-black text-xs uppercase tracking-widest rounded">
+                    MONEY RECEIPT
+                  </div>
+                  <div className="mt-2 text-xs font-mono font-bold text-gray-800">
+                    MR No: {activeVoucherPrint.code}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Date: {activeVoucherPrint.date}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <span className="font-semibold text-gray-500">Received With Thanks From:</span>
+                  <p className="font-bold text-sm text-gray-900 mt-0.5">
+                    {activeVoucherPrint.credit}
+                  </p>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-500">Project & Allotment:</span>
+                  <p className="font-semibold text-gray-900 mt-0.5">
+                    {activeVoucherPrint.project}
+                  </p>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-500">Payment Purpose / Ref:</span>
+                  <p className="font-semibold text-gray-900 mt-0.5">
+                    {activeVoucherPrint.ref}
+                  </p>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-500">Payment Mode & Instrument:</span>
+                  <p className="font-semibold text-gray-900 mt-0.5">
+                    {activeVoucherPrint.debit} | Cheque/Trx: {activeVoucherPrint.cheque}
+                  </p>
+                </div>
+              </div>
+
+              {/* Amount Box */}
+              <div className="p-4 bg-gray-50 border border-gray-300 rounded-lg flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    Amount Received
+                  </span>
+                  <div className="text-xl font-black font-mono text-gray-900">
+                    BDT {activeVoucherPrint.total}
+                  </div>
+                </div>
+                <div className="text-right text-xs max-w-xs">
+                  <span className="text-[11px] font-semibold text-gray-500 uppercase">
+                    Status
+                  </span>
+                  <p className="font-bold text-emerald-700 capitalize">
+                    ✓ Verified Receipt Voucher
+                  </p>
+                </div>
+              </div>
+
+              {/* Remarks */}
+              <div className="text-xs text-gray-600 italic">
+                Note: {activeVoucherPrint.comment || "Subject to realization of cheque / online fund transfer clearance."}
+              </div>
+
+              {/* Signatures */}
+              <div className="pt-10 grid grid-cols-3 gap-6 text-center text-xs text-gray-700">
+                <div className="border-t border-gray-400 pt-1 font-medium">
+                  Received / Posted By
+                </div>
+                <div className="border-t border-gray-400 pt-1 font-medium">
+                  Checked & Verified
+                </div>
+                <div className="border-t border-gray-400 pt-1 font-bold text-gray-900">
+                  Authorized Signatory
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
