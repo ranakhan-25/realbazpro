@@ -93,16 +93,23 @@ const LAMS_ICONS: Record<string, React.ElementType> = {
 
 const COLLECTION_ICONS: Record<string, React.ElementType> = {
   dashboard: LayoutDashboard,
+  agreements: Handshake,
   schedule: CalendarDays,
   due: AlertCircle,
   entries: Receipt,
+  "receipt-voucher": Receipt,
+  "overdue-list": AlertTriangle,
+  assignments: Users,
   waivers: Percent,
+  performance: TrendingUp,
   outstanding: BarChart3,
   aging: BarChart3,
   overdue: AlertTriangle,
   recovery: ShieldAlert,
   followups: CalendarCheck2,
   visits: Compass,
+  setups: Settings,
+  reports: BarChart3,
   perf: TrendingUp,
 };
 
@@ -333,10 +340,21 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
       currentAccessibleMod?.menuTree &&
       currentAccessibleMod.menuTree.length > 0
     ) {
-      base = currentAccessibleMod.menuTree;
+      base = cloneTree(currentAccessibleMod.menuTree);
     } else {
       const rawTree = MENUS[module] || [];
       base = pruneTreeByAccess(rawTree, module, hasAccessToRoute);
+    }
+
+    if (module === "cr") {
+      const rawCr = MENUS.cr || [];
+      const existingSlugs = new Set(base.map((n) => n.slug));
+      for (const item of rawCr) {
+        if (!existingSlugs.has(item.slug)) {
+          base.push(item);
+          existingSlugs.add(item.slug);
+        }
+      }
     }
     // let base = pruneTreeByAccess(MENUS[module], module, hasAccessToRoute);
     if (module === "procurement") {
@@ -467,7 +485,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         const Icon =
           module === "lams"
             ? LAMS_ICONS[n.slug]
-            : module === "collection"
+            : module === "collection" || module === "cr"
             ? COLLECTION_ICONS[n.slug]
             : null;
 
@@ -588,7 +606,7 @@ export function Sidebar({ module, activePath, open, onClose, filter }: Props) {
         const Icon =
           module === "lams"
             ? LAMS_ICONS[n.slug]
-            : module === "collection"
+            : module === "collection" || module === "cr"
             ? COLLECTION_ICONS[n.slug]
             : null;
 
