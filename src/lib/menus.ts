@@ -165,6 +165,7 @@ const CUSTOM_SLUG_LABELS: Record<string, string> = {
   visits: "Field Visits",
   assignments: "Officer Assignments",
   perf: "Collection Performance",
+  performance: "Officer Performance",
   agreements: "Sale Agreements",
   setups: "CR Setups & Policies",
   "receipt-voucher": "Receipt Vouchers",
@@ -463,6 +464,9 @@ schedule
 due
 receipt-voucher
 overdue-list
+assignments
+waivers
+performance
 recovery
 followups
 visits

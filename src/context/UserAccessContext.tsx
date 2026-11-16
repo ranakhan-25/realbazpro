@@ -13,6 +13,7 @@ import {
   UserAccessProfile,
   UserAccessResponse,
 } from "@/services/userAccessService";
+import { getStoredUserProfile } from "@/lib/admin-auth/adminAuthStorage";
 
 interface UserAccessContextType {
   user: UserAccessProfile | null;
@@ -92,7 +93,9 @@ export function UserAccessProvider({
   const hasAccessToModule = useCallback(
     (moduleKey: string): boolean => {
       if (!moduleKey) return false;
-      if (user?.isSuperUser) return true;
+      const isSuper = user?.isSuperUser ?? getStoredUserProfile()?.isSuperUser;
+      if (isSuper) return true;
+
       const normalized = moduleKey.toLowerCase().trim();
       if (normalized === "collection" && entitledModuleKeys.some((k) => k.toLowerCase() === "cr")) {
         return true;
@@ -105,8 +108,12 @@ export function UserAccessProvider({
   const hasAccessToRoute = useCallback(
     (moduleKey: string, routePath: string): boolean => {
       if (!moduleKey) return false;
-      if (user?.isSuperUser) return true;
+      const isSuper = user?.isSuperUser ?? getStoredUserProfile()?.isSuperUser;
+      if (isSuper) return true;
       if (!hasAccessToModule(moduleKey)) return false;
+
+      const isOrgAdmin = user?.isOrgAdmin ?? getStoredUserProfile()?.isOrgAdmin;
+      if (isOrgAdmin) return true;
 
       let mod = accessibleModules.find(
         (m) => m.key.toLowerCase() === moduleKey.toLowerCase(),
