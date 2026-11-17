@@ -45,6 +45,7 @@ export interface HandoverScheduleStats {
   snags_count: number;
   completed_count: number;
   all_count: number;
+  deleted_count?: number;
 }
 
 export interface QueryHandoverScheduleParams {
@@ -54,6 +55,7 @@ export interface QueryHandoverScheduleParams {
   tab?: string;
   status?: string;
   search?: string;
+  is_deleted?: boolean;
 }
 
 export interface PaginatedHandoverScheduleResult {
@@ -102,6 +104,7 @@ export async function getHandoverScheduleStats(
       snags_count: Number(raw?.snags_count || 0),
       completed_count: Number(raw?.completed_count || 0),
       all_count: Number(raw?.all_count || 0),
+      deleted_count: Number(raw?.deleted_count || 0),
     };
   } catch {
     return {
@@ -110,6 +113,7 @@ export async function getHandoverScheduleStats(
       snags_count: 0,
       completed_count: 0,
       all_count: 0,
+      deleted_count: 0,
     };
   }
 }
@@ -125,6 +129,7 @@ export async function getHandoverScheduleList(
     query.project_id = params.project_id;
   if (params?.tab) query.tab = params.tab;
   if (params?.status) query.status = params.status;
+  if (params?.is_deleted) query.is_deleted = true;
 
   const res = await api.get("/customer-service/handover/schedule", {
     params: query,
@@ -205,6 +210,7 @@ export interface SnagStats {
   quality_signed_off: number;
   critical_count: number;
   all_count: number;
+  deleted_count?: number;
 }
 
 export interface QuerySnagParams {
@@ -215,6 +221,7 @@ export interface QuerySnagParams {
   status?: string;
   severity?: string;
   search?: string;
+  is_deleted?: boolean;
 }
 
 export interface PaginatedSnagResult {
@@ -259,6 +266,7 @@ export async function getSnagStats(projectId?: string): Promise<SnagStats> {
       quality_signed_off: Number(raw?.quality_signed_off || 0),
       critical_count: Number(raw?.critical_count || 0),
       all_count: Number(raw?.all_count || 0),
+      deleted_count: Number(raw?.deleted_count || 0),
     };
   } catch {
     return {
@@ -267,6 +275,7 @@ export async function getSnagStats(projectId?: string): Promise<SnagStats> {
       quality_signed_off: 0,
       critical_count: 0,
       all_count: 0,
+      deleted_count: 0,
     };
   }
 }
@@ -283,6 +292,7 @@ export async function getSnagList(
   if (params?.tab) query.tab = params.tab;
   if (params?.status) query.status = params.status;
   if (params?.severity) query.severity = params.severity;
+  if (params?.is_deleted) query.is_deleted = true;
 
   const res = await api.get("/customer-service/handover/snags", {
     params: query,
@@ -362,6 +372,7 @@ export interface PossessionStats {
   active_dlp: number;
   keys_signed: number;
   all_count: number;
+  deleted_count?: number;
 }
 
 export interface QueryPossessionParams {
@@ -369,6 +380,7 @@ export interface QueryPossessionParams {
   limit?: number;
   project_id?: string;
   search?: string;
+  is_deleted?: boolean;
 }
 
 export interface PaginatedPossessionResult {
@@ -420,6 +432,7 @@ export async function getPossessionStats(
       active_dlp: Number(raw?.active_dlp || 0),
       keys_signed: Number(raw?.keys_signed || 0),
       all_count: Number(raw?.all_count || 0),
+      deleted_count: Number(raw?.deleted_count || 0),
     };
   } catch {
     return {
@@ -427,6 +440,7 @@ export async function getPossessionStats(
       active_dlp: 0,
       keys_signed: 0,
       all_count: 0,
+      deleted_count: 0,
     };
   }
 }
@@ -440,6 +454,7 @@ export async function getPossessionList(
   if (params?.search) query.search = params.search;
   if (params?.project_id && params.project_id !== "all")
     query.project_id = params.project_id;
+  if (params?.is_deleted) query.is_deleted = true;
 
   const res = await api.get("/customer-service/handover/possession-records", {
     params: query,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -32,6 +32,13 @@ import {
 } from "lucide-react";
 import InkOrbitFeatures from "@/components/ui/ink-orbit-features";
 import { MOCK_TICKETS, ServiceTicket } from "@/services/customerServiceData";
+import {
+  getCustomerTickets,
+  getCustomerTicketStats,
+  createCustomerTicket,
+  TicketStatsResult,
+} from "@/services/customerTicketsService";
+import { useSelectedProject } from "@/hooks/useSelectedProject";
 import { toast } from "sonner";
 
 interface Agent {
@@ -118,7 +125,8 @@ const INITIAL_TASKS: FollowUpTask[] = [
   },
   {
     id: "TSK-02",
-    title: "Issue final 7-day statutory reminder for pending overdue installment",
+    title:
+      "Issue final 7-day statutory reminder for pending overdue installment",
     customerName: "Dr. Nazmul Huda",
     unit: "Flat 4B (Eastern Lakeview)",
     dueDate: "Overdue",
@@ -152,7 +160,9 @@ const INITIAL_TASKS: FollowUpTask[] = [
 ];
 
 export default function CustomerServiceDashboardPage() {
+  const { projectId, project: currentProject } = useSelectedProject();
   const [tickets, setTickets] = useState<ServiceTicket[]>(MOCK_TICKETS);
+  const [stats, setStats] = useState<TicketStatsResult | null>(null);
   const [tasks, setTasks] = useState<FollowUpTask[]>(INITIAL_TASKS);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("All");
@@ -165,66 +175,103 @@ export default function CustomerServiceDashboardPage() {
   const [customerName, setCustomerName] = useState("");
   const [unit, setUnit] = useState("");
   const [project, setProject] = useState("Hena Heights");
-  const [category, setCategory] = useState<ServiceTicket["category"]>("Sanitary & Plumbing");
+  const [category, setCategory] = useState<ServiceTicket["category"]>(
+    "Sanitary & Plumbing",
+  );
   const [priority, setPriority] = useState<ServiceTicket["priority"]>("Medium");
   const [assignedAgent, setAssignedAgent] = useState("Engr. Tanvir Ahmed");
 
   // Ticket Quick View Drawer State
-  const [selectedTicket, setSelectedTicket] = useState<ServiceTicket | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<ServiceTicket | null>(
+    null,
+  );
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
+  const loadData = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+      const [ticketsRes, statsRes] = await Promise.allSettled([
+        getCustomerTickets({ project_id: projectId || undefined, limit: 50 }),
+        getCustomerTicketStats({ project_id: projectId || undefined }),
+      ]);
+      if (
+        ticketsRes.status === "fulfilled" &&
+        ticketsRes.value?.items?.length
+      ) {
+        setTickets(ticketsRes.value.items as unknown as ServiceTicket[]);
+      }
+      if (statsRes.status === "fulfilled" && statsRes.value) {
+        setStats(statsRes.value);
+      }
+    } catch (err) {
+      console.error("Failed to load dashboard service tickets:", err);
+    } finally {
       setIsRefreshing(false);
-      toast.success("Customer service metrics synchronized.");
-    }, 500);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleRefresh = async () => {
+    await loadData();
+    toast.success("Customer service metrics synchronized.");
   };
 
   const handleToggleTask = (id: string) => {
     setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)),
     );
   };
 
-  const handleCreateTicket = (e: React.FormEvent) => {
+  const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject.trim() || !customerName.trim() || !unit.trim()) {
       toast.error("Please fill in subject, customer name, and unit number.");
       return;
     }
 
-    const newTicket: ServiceTicket = {
-      id: `TCK-${Date.now().toString().slice(-4)}`,
-      ticketNo: `SR-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-      subject: subject.trim(),
-      customerName: customerName.trim(),
-      phone: "+880 1711-000000",
-      unit: unit.trim(),
-      project,
-      category,
-      priority,
-      status: "Open",
-      assignedAgent,
-      slaRemainingHours: priority === "Urgent" ? 4 : priority === "High" ? 12 : 24,
-      isOverdue: false,
-      createdAt: new Date().toISOString().slice(0, 10),
-      updatedAt: new Date().toISOString().slice(0, 10),
-    };
+    try {
+      const created = await createCustomerTicket({
+        subject: subject.trim(),
+        customer_name: customerName.trim(),
+        phone: "+880 1711-000000",
+        unit: unit.trim(),
+        project_id: projectId || undefined,
+        project_name: currentProject?.name || project,
+        category,
+        priority,
+        assigned_agent: assignedAgent,
+      });
 
-    setTickets([newTicket, ...tickets]);
-    toast.success(`Service ticket ${newTicket.ticketNo} logged successfully.`);
-    setIsModalOpen(false);
-    setSubject("");
-    setCustomerName("");
-    setUnit("");
+      toast.success(
+        `Service ticket ${created?.ticketNo || "created"} logged successfully.`,
+      );
+      setIsModalOpen(false);
+      setSubject("");
+      setCustomerName("");
+      setUnit("");
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to create service ticket.",
+      );
+    }
   };
 
   // KPI Calculations
-  const totalTicketsCount = tickets.length;
-  const openTicketsCount = tickets.filter((t) => t.status === "Open").length;
-  const inProgressCount = tickets.filter((t) => t.status === "In Progress").length;
-  const resolvedCount = tickets.filter((t) => t.status === "Resolved").length;
-  const overdueTicketsCount = tickets.filter((t) => t.isOverdue).length;
+  const totalTicketsCount = stats?.total_tickets ?? tickets.length;
+  const openTicketsCount =
+    stats?.open_tickets ?? tickets.filter((t) => t.status === "Open").length;
+  const inProgressCount =
+    stats?.in_progress ??
+    tickets.filter((t) => t.status === "In Progress").length;
+  const resolvedCount =
+    stats?.resolved_tickets ??
+    tickets.filter((t) => t.status === "Resolved").length;
+  const overdueTicketsCount =
+    stats?.overdue_tickets ?? tickets.filter((t) => t.isOverdue).length;
 
   // Filtered Tickets
   const filteredTickets = useMemo(() => {
@@ -262,7 +309,9 @@ export default function CustomerServiceDashboardPage() {
               Dashboard
             </Link>
             <span>/</span>
-            <span className="text-[#111111] font-semibold">Customer Service</span>
+            <span className="text-[#111111] font-semibold">
+              Customer Service
+            </span>
           </nav>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight text-[#0B0B0D]">
@@ -274,7 +323,8 @@ export default function CustomerServiceDashboardPage() {
             </span>
           </div>
           <p className="text-xs text-[#666666] mt-1 max-w-2xl">
-            Manage customer conversations, tickets, agents, milestone payments, and post-sales service quality.
+            Manage customer conversations, tickets, agents, milestone payments,
+            and post-sales service quality.
           </p>
         </div>
 
@@ -288,7 +338,9 @@ export default function CustomerServiceDashboardPage() {
             title="Refresh Metrics"
             aria-label="Refresh Metrics"
           >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin text-[#6D4AFF]" : ""}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? "animate-spin text-[#6D4AFF]" : ""}`}
+            />
           </button>
 
           <Link
@@ -314,7 +366,9 @@ export default function CustomerServiceDashboardPage() {
         {/* Total Tickets */}
         <div className="rounded-[12px] border border-[#EAEAEA] bg-[#FFFFFF] p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-[#D0D5DD] transition">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[#666666]">Total Tickets</span>
+            <span className="text-xs font-medium text-[#666666]">
+              Total Tickets
+            </span>
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#F4F1FF] text-[#6D4AFF]">
               <LifeBuoy className="h-4 w-4" />
             </div>
@@ -330,7 +384,9 @@ export default function CustomerServiceDashboardPage() {
         {/* Open Queue */}
         <div className="rounded-[12px] border border-[#EAEAEA] bg-[#FFFFFF] p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-[#D0D5DD] transition">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[#666666]">Open Queue</span>
+            <span className="text-xs font-medium text-[#666666]">
+              Open Queue
+            </span>
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#EFF8FF] text-[#175CD3]">
               <Activity className="h-4 w-4" />
             </div>
@@ -346,7 +402,9 @@ export default function CustomerServiceDashboardPage() {
         {/* Overdue / SLA Breached — RED ACCENT */}
         <div className="rounded-[12px] border border-[#FECACA] bg-[#FEF2F2] p-4 shadow-[0_1px_3px_rgba(229,57,53,0.06)] hover:border-[#F87171] transition">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#C62828]">Overdue Tickets</span>
+            <span className="text-xs font-semibold text-[#C62828]">
+              Overdue Tickets
+            </span>
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#FFFFFF] text-[#E53935] shadow-2xs">
               <AlertTriangle className="h-4 w-4" />
             </div>
@@ -362,7 +420,9 @@ export default function CustomerServiceDashboardPage() {
         {/* Avg 1st Response */}
         <div className="rounded-[12px] border border-[#EAEAEA] bg-[#FFFFFF] p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-[#D0D5DD] transition">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[#666666]">Avg 1st Response</span>
+            <span className="text-xs font-medium text-[#666666]">
+              Avg 1st Response
+            </span>
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#F8F8FA] text-[#111111]">
               <Clock className="h-4 w-4" />
             </div>
@@ -378,7 +438,9 @@ export default function CustomerServiceDashboardPage() {
         {/* SLA Adherence */}
         <div className="rounded-[12px] border border-[#EAEAEA] bg-[#FFFFFF] p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-[#D0D5DD] transition">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[#666666]">SLA Compliance</span>
+            <span className="text-xs font-medium text-[#666666]">
+              SLA Compliance
+            </span>
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#ECFDF3] text-[#027A48]">
               <CheckCircle2 className="h-4 w-4" />
             </div>
@@ -386,21 +448,22 @@ export default function CustomerServiceDashboardPage() {
           <div className="mt-2 text-xl font-bold tracking-tight text-[#0B0B0D] tabular-nums">
             96.4%
           </div>
-          <div className="mt-1 text-[11px] text-[#666666]">
-            Benchmark: 95%
-          </div>
+          <div className="mt-1 text-[11px] text-[#666666]">Benchmark: 95%</div>
         </div>
 
         {/* CSAT / NPS */}
         <div className="rounded-[12px] border border-[#EAEAEA] bg-[#FFFFFF] p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-[#D0D5DD] transition">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[#666666]">CSAT / NPS</span>
+            <span className="text-xs font-medium text-[#666666]">
+              CSAT / NPS
+            </span>
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#F4F1FF] text-[#6D4AFF]">
               <TrendingUp className="h-4 w-4" />
             </div>
           </div>
           <div className="mt-2 text-xl font-bold tracking-tight text-[#0B0B0D] tabular-nums">
-            4.8 <span className="text-xs font-normal text-[#666666]">/ 5.0</span>
+            4.8{" "}
+            <span className="text-xs font-normal text-[#666666]">/ 5.0</span>
           </div>
           <div className="mt-1 text-[11px] font-semibold text-[#6D4AFF]">
             +72 NPS Score
@@ -416,9 +479,13 @@ export default function CustomerServiceDashboardPage() {
               <AlertCircle className="h-3.5 w-3.5" />
             </div>
             <div>
-              <span className="font-bold text-[#E53935]">Critical SLA Notice: </span>
+              <span className="font-bold text-[#E53935]">
+                Critical SLA Notice:{" "}
+              </span>
               <span className="text-[#C62828]">
-                {overdueTicketsCount} active service ticket{overdueTicketsCount > 1 ? "s have" : " has"} breached standard turnaround thresholds and requires supervisor escalation.
+                {overdueTicketsCount} active service ticket
+                {overdueTicketsCount > 1 ? "s have" : " has"} breached standard
+                turnaround thresholds and requires supervisor escalation.
               </span>
             </div>
           </div>
@@ -440,7 +507,8 @@ export default function CustomerServiceDashboardPage() {
               Customer Service Operations Hub
             </h2>
             <p className="text-xs text-[#666666]">
-              Real-time collaboration topology, automated resolution reports, and SLA prediction scrubbing.
+              Real-time collaboration topology, automated resolution reports,
+              and SLA prediction scrubbing.
             </p>
           </div>
           <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#F8F8FA] border border-[#EAEAEA] text-[#666666]">
@@ -456,20 +524,24 @@ export default function CustomerServiceDashboardPage() {
             title="Smart *Customer Service* Operations"
             collaboration={{
               title: "Real-Time Team Collaboration",
-              description: "Coordinate customer conversations, share ticket updates, and keep your entire support team aligned.",
+              description:
+                "Coordinate customer conversations, share ticket updates, and keep your entire support team aligned.",
             }}
             reports={{
               title: "Automated Service Reports",
-              description: "Monitor ticket resolution, response performance, SLA compliance, and customer satisfaction.",
+              description:
+                "Monitor ticket resolution, response performance, SLA compliance, and customer satisfaction.",
             }}
             integrations={{
               title: "Connected Support Channels",
-              description: "Organize supported customer communication channels in one unified support workflow.",
+              description:
+                "Organize supported customer communication channels in one unified support workflow.",
               tools: ["Email", "Phone", "WhatsApp", "Web Chat"],
             }}
             insights={{
               title: "Customer Service Insights",
-              description: "Understand customer support trends, response performance, and service quality.",
+              description:
+                "Understand customer support trends, response performance, and service quality.",
               values: [24, 28, 25, 34, 30, 42, 38, 46, 44, 52, 58, 64],
               forecastFrom: 8,
             }}
@@ -488,36 +560,39 @@ export default function CustomerServiceDashboardPage() {
                 Priority Service Queue
               </h2>
               <p className="text-xs text-[#666666]">
-                Review incoming complaints, contractor defects, and MEP maintenance requests.
+                Review incoming complaints, contractor defects, and MEP
+                maintenance requests.
               </p>
             </div>
 
             {/* Status Tabs */}
             <div className="flex flex-wrap items-center gap-1 p-1 rounded-lg bg-[#F8F8FA] border border-[#EAEAEA] text-xs">
-              {["All", "Open", "In Progress", "Overdue", "Resolved"].map((tab) => {
-                const isActive = activeTab === tab;
-                const isOverdueTab = tab === "Overdue";
-                return (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-2.5 py-1 rounded-md font-medium transition ${isActive
-                        ? isOverdueTab
-                          ? "bg-[#E53935] text-white shadow-2xs"
-                          : "bg-[#FFFFFF] text-[#111111] shadow-2xs font-semibold"
-                        : "text-[#666666] hover:text-[#111111]"
-                      }`}
-                  >
-                    {tab}
-                    {isOverdueTab && overdueTicketsCount > 0 && (
-                      <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] bg-[#FFFFFF] text-[#E53935] font-bold">
-                        {overdueTicketsCount}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+              {["All", "Open", "In Progress", "Overdue", "Resolved"].map(
+                (tab) => {
+                  const isActive = activeTab === tab;
+                  const isOverdueTab = tab === "Overdue";
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setActiveTab(tab)}
+                      className={`px-2.5 py-1 rounded-md font-medium transition ${isActive
+                          ? isOverdueTab
+                            ? "bg-[#E53935] text-white shadow-2xs"
+                            : "bg-[#FFFFFF] text-[#111111] shadow-2xs font-semibold"
+                          : "text-[#666666] hover:text-[#111111]"
+                        }`}
+                    >
+                      {tab}
+                      {isOverdueTab && overdueTicketsCount > 0 && (
+                        <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] bg-[#FFFFFF] text-[#E53935] font-bold">
+                          {overdueTicketsCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                },
+              )}
             </div>
           </div>
 
@@ -629,7 +704,9 @@ export default function CustomerServiceDashboardPage() {
                             ) : (
                               <span className="inline-flex items-center gap-1 font-medium text-[#027A48]">
                                 <Clock className="h-3 w-3" />
-                                <span className="tabular-nums">{t.slaRemainingHours}h left</span>
+                                <span className="tabular-nums">
+                                  {t.slaRemainingHours}h left
+                                </span>
                               </span>
                             )}
                           </td>
@@ -674,7 +751,10 @@ export default function CustomerServiceDashboardPage() {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-[#666666]">
+                      <td
+                        colSpan={7}
+                        className="py-8 text-center text-[#666666]"
+                      >
                         No service tickets match your filter criteria.
                       </td>
                     </tr>
@@ -686,7 +766,11 @@ export default function CustomerServiceDashboardPage() {
             {/* Table Footer */}
             <div className="flex items-center justify-between p-3 border-t border-[#EAEAEA] bg-[#FAFAFC] text-xs">
               <span className="text-[#666666]">
-                Showing <strong className="text-[#111111]">{Math.min(6, filteredTickets.length)}</strong> of {filteredTickets.length} tickets
+                Showing{" "}
+                <strong className="text-[#111111]">
+                  {Math.min(6, filteredTickets.length)}
+                </strong>{" "}
+                of {filteredTickets.length} tickets
               </span>
               <Link
                 href="/dashboard/customer-service/tickets"
@@ -801,7 +885,9 @@ export default function CustomerServiceDashboardPage() {
                           : "border-[#D0D5DD] hover:border-[#6D4AFF]"
                         }`}
                     >
-                      {task.completed && <Check className="h-3 w-3 stroke-[3]" />}
+                      {task.completed && (
+                        <Check className="h-3 w-3 stroke-[3]" />
+                      )}
                     </button>
                     <div className="flex-1">
                       <div
@@ -819,9 +905,7 @@ export default function CustomerServiceDashboardPage() {
                       </div>
                       <div className="flex items-center justify-between mt-1 text-[10.5px]">
                         <span
-                          className={`font-semibold ${task.isOverdue
-                              ? "text-[#E53935]"
-                              : "text-[#666666]"
+                          className={`font-semibold ${task.isOverdue ? "text-[#E53935]" : "text-[#666666]"
                             }`}
                         >
                           {task.dueDate} • {task.dueTime}
@@ -852,7 +936,7 @@ export default function CustomerServiceDashboardPage() {
               >
                 <div className="flex items-center gap-2">
                   <Users className="h-3.5 w-3.5 text-[#6D4AFF]" />
-                  <span>Customer 360° Directory</span>
+                  <span>Customer Entry Directory</span>
                 </div>
                 <ArrowRight className="h-3 w-3 text-[#929292] group-hover:text-[#6D4AFF] transition" />
               </Link>
@@ -961,7 +1045,9 @@ export default function CustomerServiceDashboardPage() {
                   >
                     <option value="Hena Heights">Hena Heights (Gulshan)</option>
                     <option value="Sheba Valley">Sheba Valley (Mirpur)</option>
-                    <option value="Eastern Lakeview">Eastern Lakeview (Bashundhara)</option>
+                    <option value="Eastern Lakeview">
+                      Eastern Lakeview (Bashundhara)
+                    </option>
                     <option value="Uttara Park">Uttara Park (Uttara)</option>
                   </select>
                 </div>
@@ -971,14 +1057,20 @@ export default function CustomerServiceDashboardPage() {
                   </label>
                   <select
                     value={category}
-                    onChange={(e) => setCategory(e.target.value as any)}
+                    onChange={(e) =>
+                      setCategory(e.target.value as ServiceTicket["category"])
+                    }
                     className="w-full h-9 px-3 rounded-lg border border-[#EAEAEA] bg-[#FFFFFF] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#6D4AFF] transition"
                   >
-                    <option value="Sanitary & Plumbing">Sanitary & Plumbing</option>
+                    <option value="Sanitary & Plumbing">
+                      Sanitary & Plumbing
+                    </option>
                     <option value="Electrical">Electrical</option>
                     <option value="Civil Work">Civil Work</option>
                     <option value="Finishing & Tiles">Finishing & Tiles</option>
-                    <option value="Accounts & Billing">Accounts & Billing</option>
+                    <option value="Accounts & Billing">
+                      Accounts & Billing
+                    </option>
                     <option value="Handover Delay">Handover Delay</option>
                   </select>
                 </div>
@@ -991,7 +1083,9 @@ export default function CustomerServiceDashboardPage() {
                   </label>
                   <select
                     value={priority}
-                    onChange={(e) => setPriority(e.target.value as any)}
+                    onChange={(e) =>
+                      setPriority(e.target.value as ServiceTicket["priority"])
+                    }
                     className="w-full h-9 px-3 rounded-lg border border-[#EAEAEA] bg-[#FFFFFF] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#6D4AFF] transition"
                   >
                     <option value="Low">Low (72h SLA)</option>
@@ -1009,10 +1103,18 @@ export default function CustomerServiceDashboardPage() {
                     onChange={(e) => setAssignedAgent(e.target.value)}
                     className="w-full h-9 px-3 rounded-lg border border-[#EAEAEA] bg-[#FFFFFF] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#6D4AFF] transition"
                   >
-                    <option value="Engr. Tanvir Ahmed">Engr. Tanvir Ahmed (Site QA)</option>
-                    <option value="Sarah Rahman">Sarah Rahman (Relations)</option>
-                    <option value="Md. Rahim Ullah">Md. Rahim Ullah (Accounts)</option>
-                    <option value="Fatima Begum">Fatima Begum (DLP Officer)</option>
+                    <option value="Engr. Tanvir Ahmed">
+                      Engr. Tanvir Ahmed (Site QA)
+                    </option>
+                    <option value="Sarah Rahman">
+                      Sarah Rahman (Relations)
+                    </option>
+                    <option value="Md. Rahim Ullah">
+                      Md. Rahim Ullah (Accounts)
+                    </option>
+                    <option value="Fatima Begum">
+                      Fatima Begum (DLP Officer)
+                    </option>
                   </select>
                 </div>
               </div>
@@ -1091,11 +1193,15 @@ export default function CustomerServiceDashboardPage() {
               <div className="rounded-lg border border-[#EAEAEA] p-3.5 bg-[#F8F8FA] space-y-2">
                 <div className="flex justify-between">
                   <span className="text-[#666666]">Customer Name:</span>
-                  <span className="font-semibold text-[#111111]">{selectedTicket.customerName}</span>
+                  <span className="font-semibold text-[#111111]">
+                    {selectedTicket.customerName}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#666666]">Contact Phone:</span>
-                  <span className="font-semibold text-[#111111]">{selectedTicket.phone}</span>
+                  <span className="font-semibold text-[#111111]">
+                    {selectedTicket.phone}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#666666]">Unit / Site:</span>
@@ -1105,18 +1211,26 @@ export default function CustomerServiceDashboardPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#666666]">Category:</span>
-                  <span className="font-semibold text-[#111111]">{selectedTicket.category}</span>
+                  <span className="font-semibold text-[#111111]">
+                    {selectedTicket.category}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#666666]">Assigned Specialist:</span>
-                  <span className="font-semibold text-[#6D4AFF]">{selectedTicket.assignedAgent}</span>
+                  <span className="font-semibold text-[#6D4AFF]">
+                    {selectedTicket.assignedAgent}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#666666]">SLA Adherence:</span>
                   {selectedTicket.isOverdue ? (
-                    <span className="font-bold text-[#E53935]">Breached SLA</span>
+                    <span className="font-bold text-[#E53935]">
+                      Breached SLA
+                    </span>
                   ) : (
-                    <span className="font-semibold text-[#027A48]">{selectedTicket.slaRemainingHours}h Remaining</span>
+                    <span className="font-semibold text-[#027A48]">
+                      {selectedTicket.slaRemainingHours}h Remaining
+                    </span>
                   )}
                 </div>
               </div>
@@ -1128,7 +1242,10 @@ export default function CustomerServiceDashboardPage() {
                   <span>Post-Sales Warranty Coverage</span>
                 </div>
                 <p className="text-[11px] text-[#374151] leading-relaxed">
-                  Complaints logged under civil, finishing, or concealed MEP categories within 24 months of possession are governed under Real Estate Act 2010 Section 11(2)(c) rectification obligations.
+                  Complaints logged under civil, finishing, or concealed MEP
+                  categories within 24 months of possession are governed under
+                  Real Estate Act 2010 Section 11(2)(c) rectification
+                  obligations.
                 </p>
               </div>
             </div>

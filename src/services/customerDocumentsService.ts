@@ -47,6 +47,7 @@ export interface CustomerDocumentStats {
   all_count: number;
   pending_count: number;
   executed_count: number;
+  deleted_count?: number;
 }
 
 export interface QueryCustomerDocumentParams {
@@ -57,6 +58,7 @@ export interface QueryCustomerDocumentParams {
   category?: string;
   status?: string;
   tab?: string;
+  is_deleted?: boolean;
 }
 
 export interface PaginatedCustomerDocumentsResult {
@@ -211,6 +213,7 @@ export interface RegistrationTrackingStats {
   all_count: number;
   pending_count: number;
   delivered_count: number;
+  deleted_count?: number;
 }
 
 export interface QueryRegistrationTrackingParams {
@@ -220,6 +223,7 @@ export interface QueryRegistrationTrackingParams {
   project_id?: string;
   status?: string;
   tab?: string;
+  is_deleted?: boolean;
 }
 
 export interface PaginatedRegistrationTrackingResult {
@@ -390,6 +394,7 @@ export interface MutationTrackingStats {
   hearing_count: number;
   inquiry_count: number;
   approved_count: number;
+  deleted_count?: number;
 }
 
 export interface QueryMutationTrackingParams {
@@ -399,6 +404,7 @@ export interface QueryMutationTrackingParams {
   project_id?: string;
   current_stage?: string;
   tab?: string;
+  is_deleted?: boolean;
 }
 
 export interface PaginatedMutationTrackingResult {

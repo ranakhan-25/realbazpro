@@ -34,3 +34,9 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Scripts & temporary tools
+scripts/
+scripts
+scratch/
+scratch

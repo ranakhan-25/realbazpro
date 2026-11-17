@@ -33,7 +33,7 @@ import {
 
 export default function ServiceWorkflowRulesPage() {
   const { primaryColor } = useTheme();
-  const { selectedProjectId } = useSelectedProject();
+  const { projectId: selectedProjectId } = useSelectedProject();
   const [rules, setRules] = useState<WorkflowRuleItem[]>([]);
   const [stats, setStats] = useState<WorkflowRuleStats>({
     total_rules: 0,
@@ -125,7 +125,7 @@ export default function ServiceWorkflowRulesPage() {
       );
       getWorkflowRuleStats(selectedProjectId || undefined)
         .then(setStats)
-        .catch(() => { });
+        .catch(() => {});
     } catch (err: unknown) {
       const errorMsg =
         (err as { response?: { data?: { message?: string } } })?.response?.data
@@ -259,10 +259,11 @@ export default function ServiceWorkflowRulesPage() {
       cell: (row) => (
         <button
           onClick={() => handleToggle(row)}
-          className={`h-8 px-2.5 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold transition shadow-2xs ${row.status === "Active"
+          className={`h-8 px-2.5 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold transition shadow-2xs ${
+            row.status === "Active"
               ? "bg-[#ECFDF3] border border-[#A6F4C5] text-[#027A48] hover:bg-[#D1FADF]"
               : "bg-[#F3F4F6] border border-[#E5E7EB] text-[#4B5563] hover:bg-[#E5E7EB]"
-            }`}
+          }`}
           title="Click to toggle status"
           aria-label="Toggle rule status"
         >
@@ -558,10 +559,11 @@ export default function ServiceWorkflowRulesPage() {
                   {selectedRule.ruleType}
                 </span>
                 <span
-                  className={`text-xs px-2.5 py-1 rounded-full font-semibold ${selectedRule.status === "Active"
+                  className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+                    selectedRule.status === "Active"
                       ? "bg-[#ECFDF3] border border-[#A6F4C5] text-[#027A48]"
                       : "bg-[#F3F4F6] border border-[#E5E7EB] text-[#4B5563]"
-                    }`}
+                  }`}
                 >
                   {selectedRule.status}
                 </span>

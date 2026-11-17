@@ -163,22 +163,22 @@ export async function getChangeRequestDropdownMeta(): Promise<ChangeRequestDropd
     statuses: Array.isArray(raw?.statuses)
       ? raw.statuses
       : [
-        "Draft",
-        "Legal Verification",
-        "HOD Approval",
-        "Accounts Clearance",
-        "Completed",
-        "Rejected",
-      ],
+          "Draft",
+          "Legal Verification",
+          "HOD Approval",
+          "Accounts Clearance",
+          "Completed",
+          "Rejected",
+        ],
     workflow_pipeline: Array.isArray(raw?.workflow_pipeline)
       ? raw.workflow_pipeline
       : [
-        "Draft",
-        "Legal Verification",
-        "HOD Approval",
-        "Accounts Clearance",
-        "Completed",
-      ],
+          "Draft",
+          "Legal Verification",
+          "HOD Approval",
+          "Accounts Clearance",
+          "Completed",
+        ],
     tab_filters: Array.isArray(raw?.tab_filters)
       ? raw.tab_filters
       : ["all", "pending", "completed", "deleted"],
@@ -267,19 +267,19 @@ export async function getChangeRequestByUuid(
 export async function createChangeRequest(
   payload: CreateChangeRequestPayload,
 ): Promise<ChangeRequestListItem> {
-    const sanitizedPayload: Record<string, unknown> = {
-      ...payload,
-      project_id: payload.project_id || payload.projectId || payload.project,
+  const sanitizedPayload: Record<string, unknown> = {
+    ...payload,
+    project_id: payload.project_id || payload.projectId || payload.project,
   };
-delete sanitizedPayload.projectId;
-delete sanitizedPayload.project;
-delete sanitizedPayload.organization_id;
-delete sanitizedPayload.organizationId;
-const res = await api.post(
-  "/customer-service/change-requests",
-  sanitizedPayload,
-);
-return res.data?.data !== undefined ? res.data.data : res.data;
+  delete sanitizedPayload.projectId;
+  delete sanitizedPayload.project;
+  delete sanitizedPayload.organization_id;
+  delete sanitizedPayload.organizationId;
+  const res = await api.post(
+    "/customer-service/change-requests",
+    sanitizedPayload,
+  );
+  return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
 /**
@@ -289,21 +289,21 @@ export async function updateChangeRequest(
   uuid: string,
   payload: UpdateChangeRequestPayload,
 ): Promise<ChangeRequestListItem> {
-    const sanitizedPayload: Record<string, unknown> = {
-      ...payload,
-      ...(payload.projectId || payload.project_id
-        ? { project_id: payload.project_id || payload.projectId }
-        : {}),
+  const sanitizedPayload: Record<string, unknown> = {
+    ...payload,
+    ...(payload.projectId || payload.project_id
+      ? { project_id: payload.project_id || payload.projectId }
+      : {}),
   };
-delete sanitizedPayload.projectId;
-delete sanitizedPayload.project;
-delete sanitizedPayload.organization_id;
-delete sanitizedPayload.organizationId;
-const res = await api.patch(
-  `/customer-service/change-requests/${uuid}`,
-  sanitizedPayload,
-);
-return res.data?.data !== undefined ? res.data.data : res.data;
+  delete sanitizedPayload.projectId;
+  delete sanitizedPayload.project;
+  delete sanitizedPayload.organization_id;
+  delete sanitizedPayload.organizationId;
+  const res = await api.patch(
+    `/customer-service/change-requests/${uuid}`,
+    sanitizedPayload,
+  );
+  return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
 /**

@@ -208,17 +208,17 @@ export async function getCustomer360ById(
 export async function createCustomerProfile(
   payload: CreateCustomerPayload,
 ): Promise<CustomerListItem> {
-    const sanitizedPayload: Record<string, unknown> = {
-      ...payload,
-      ...(payload.projectId || payload.project_id
-        ? { project_id: payload.project_id || payload.projectId }
-        : {}),
+  const sanitizedPayload: Record<string, unknown> = {
+    ...payload,
+    ...(payload.projectId || payload.project_id
+      ? { project_id: payload.project_id || payload.projectId }
+      : {}),
   };
-delete sanitizedPayload.projectId;
-delete sanitizedPayload.organization_id;
-delete sanitizedPayload.organizationId;
-const res = await api.post("/customer-service/customers", sanitizedPayload);
-return res.data?.data !== undefined ? res.data.data : res.data;
+  delete sanitizedPayload.projectId;
+  delete sanitizedPayload.organization_id;
+  delete sanitizedPayload.organizationId;
+  const res = await api.post("/customer-service/customers", sanitizedPayload);
+  return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
 /**
@@ -228,20 +228,20 @@ export async function updateCustomerProfile(
   uuid: string,
   payload: UpdateCustomerPayload,
 ): Promise<CustomerListItem> {
-    const sanitizedPayload: Record<string, unknown> = {
-      ...payload,
-      ...(payload.projectId || payload.project_id
-        ? { project_id: payload.project_id || payload.projectId }
-        : {}),
+  const sanitizedPayload: Record<string, unknown> = {
+    ...payload,
+    ...(payload.projectId || payload.project_id
+      ? { project_id: payload.project_id || payload.projectId }
+      : {}),
   };
-delete sanitizedPayload.projectId;
-delete sanitizedPayload.organization_id;
-delete sanitizedPayload.organizationId;
-const res = await api.patch(
-  `/customer-service/customers/${uuid}`,
-  sanitizedPayload,
-);
-return res.data?.data !== undefined ? res.data.data : res.data;
+  delete sanitizedPayload.projectId;
+  delete sanitizedPayload.organization_id;
+  delete sanitizedPayload.organizationId;
+  const res = await api.patch(
+    `/customer-service/customers/${uuid}`,
+    sanitizedPayload,
+  );
+  return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
 /**
@@ -288,20 +288,20 @@ export async function getCustomerDropdownMeta(): Promise<CustomerDropdownMeta> {
     customer_statuses: Array.isArray(data?.customer_statuses)
       ? data.customer_statuses
       : [
-        { value: "active", label: "Active Regular" },
-        { value: "vip", label: "VIP Client" },
-        { value: "disputed", label: "Flagged / Disputed" },
-        { value: "closed", label: "Closed Account" },
-      ],
+          { value: "active", label: "Active Regular" },
+          { value: "vip", label: "VIP Client" },
+          { value: "disputed", label: "Flagged / Disputed" },
+          { value: "closed", label: "Closed Account" },
+        ],
     nominee_relations: Array.isArray(data?.nominee_relations)
       ? data.nominee_relations
       : [
-        { value: "Spouse", label: "Spouse" },
-        { value: "Son", label: "Son" },
-        { value: "Daughter", label: "Daughter" },
-        { value: "Father", label: "Father" },
-        { value: "Mother", label: "Mother" },
-        { value: "Brother", label: "Brother" },
-      ],
+          { value: "Spouse", label: "Spouse" },
+          { value: "Son", label: "Son" },
+          { value: "Daughter", label: "Daughter" },
+          { value: "Father", label: "Father" },
+          { value: "Mother", label: "Mother" },
+          { value: "Brother", label: "Brother" },
+        ],
   };
 }

@@ -73,13 +73,20 @@ const TABS = [
 export default function ServiceChargePage() {
   const { primaryColor } = useTheme();
   const brand = primaryColor || "#6D4AFF";
-  const { projectId, project, isLoading: isProjectLoading } = useSelectedProject();
+  const {
+    projectId,
+    project,
+    isLoading: isProjectLoading,
+  } = useSelectedProject();
 
   // Active top tab
   const [activeTab, setActiveTab] = useState("charges");
 
   // Selected Billing Month (defaults to current YYYY-MM)
-  const currentMonthStr = useMemo(() => new Date().toISOString().slice(0, 7), []);
+  const currentMonthStr = useMemo(
+    () => new Date().toISOString().slice(0, 7),
+    [],
+  );
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
 
   // ---------------------------------------------------------------------------
@@ -104,7 +111,10 @@ export default function ServiceChargePage() {
   // TAB 2: EXTRA INCOMES STATE
   // ---------------------------------------------------------------------------
   const [incomes, setIncomes] = useState<BuildingIncomeItem[]>([]);
-  const [incomesStats, setIncomesStats] = useState<{ total_income: number; by_category: Record<string, number> }>({
+  const [incomesStats, setIncomesStats] = useState<{
+    total_income: number;
+    by_category: Record<string, number>;
+  }>({
     total_income: 0,
     by_category: {},
   });
@@ -116,7 +126,10 @@ export default function ServiceChargePage() {
   // TAB 3: EXPENSES STATE
   // ---------------------------------------------------------------------------
   const [expenses, setExpenses] = useState<BuildingExpenseItem[]>([]);
-  const [expensesStats, setExpensesStats] = useState<{ total_expense: number; by_category: Record<string, number> }>({
+  const [expensesStats, setExpensesStats] = useState<{
+    total_expense: number;
+    by_category: Record<string, number>;
+  }>({
     total_expense: 0,
     by_category: {},
   });
@@ -127,7 +140,9 @@ export default function ServiceChargePage() {
   // ---------------------------------------------------------------------------
   // TAB 4: MONTHLY SUMMARY STATE
   // ---------------------------------------------------------------------------
-  const [summaryData, setSummaryData] = useState<MonthlySummaryData | null>(null);
+  const [summaryData, setSummaryData] = useState<MonthlySummaryData | null>(
+    null,
+  );
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
 
   // ---------------------------------------------------------------------------
@@ -153,7 +168,8 @@ export default function ServiceChargePage() {
 
   // 3. Collect Payment Modal
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [selectedChargeForPayment, setSelectedChargeForPayment] = useState<FlatServiceChargeItem | null>(null);
+  const [selectedChargeForPayment, setSelectedChargeForPayment] =
+    useState<FlatServiceChargeItem | null>(null);
   const [paymentForm, setPaymentForm] = useState({
     paid_amount: 0,
     payment_date: new Date().toISOString().slice(0, 10),
@@ -178,7 +194,9 @@ export default function ServiceChargePage() {
 
   // 5. Income Modal
   const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
-  const [editingIncome, setEditingIncome] = useState<BuildingIncomeItem | null>(null);
+  const [editingIncome, setEditingIncome] = useState<BuildingIncomeItem | null>(
+    null,
+  );
   const [incomeForm, setIncomeForm] = useState({
     income_type: "COMMUNITY_HALL" as BuildingIncomeType,
     title: "",
@@ -191,7 +209,8 @@ export default function ServiceChargePage() {
 
   // 6. Expense Modal
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<BuildingExpenseItem | null>(null);
+  const [editingExpense, setEditingExpense] =
+    useState<BuildingExpenseItem | null>(null);
   const [expenseForm, setExpenseForm] = useState({
     expense_type: "MAINTENANCE" as BuildingExpenseType,
     title: "",
@@ -233,7 +252,8 @@ export default function ServiceChargePage() {
       const res = await getFlatServiceCharges({
         project_id: projectId,
         billing_month: selectedMonth || undefined,
-        payment_status: chargesStatusFilter !== "all" ? chargesStatusFilter : undefined,
+        payment_status:
+          chargesStatusFilter !== "all" ? chargesStatusFilter : undefined,
         search: chargesSearch.trim() || undefined,
         limit: 100,
       });
@@ -277,7 +297,8 @@ export default function ServiceChargePage() {
       const res = await getBuildingExpenses({
         project_id: projectId,
         month: selectedMonth || undefined,
-        expense_type: expenseTypeFilter !== "all" ? expenseTypeFilter : undefined,
+        expense_type:
+          expenseTypeFilter !== "all" ? expenseTypeFilter : undefined,
         search: expenseSearch.trim() || undefined,
         limit: 100,
       });
@@ -315,7 +336,15 @@ export default function ServiceChargePage() {
       else if (activeTab === "expenses") loadExpenses();
       else if (activeTab === "summary") loadSummary();
     }
-  }, [projectId, activeTab, loadRate, loadCharges, loadIncomes, loadExpenses, loadSummary]);
+  }, [
+    projectId,
+    activeTab,
+    loadRate,
+    loadCharges,
+    loadIncomes,
+    loadExpenses,
+    loadSummary,
+  ]);
 
   // ---------------------------------------------------------------------------
   // HANDLERS
@@ -336,8 +365,11 @@ export default function ServiceChargePage() {
       toast.success("Tariff rate policy updated successfully");
       setIsTariffModalOpen(false);
       loadRate();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to update tariff rate");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to update tariff rate",
+      );
     }
   };
 
@@ -351,12 +383,17 @@ export default function ServiceChargePage() {
         billing_month: generateForm.billing_month,
         due_date: generateForm.due_date || undefined,
       });
-      toast.success(res.message || `Bills generated for ${generateForm.billing_month}`);
+      toast.success(
+        res.message || `Bills generated for ${generateForm.billing_month}`,
+      );
       setIsGenerateModalOpen(false);
       setSelectedMonth(generateForm.billing_month);
       loadCharges();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to generate monthly bills");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to generate monthly bills",
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -373,15 +410,20 @@ export default function ServiceChargePage() {
         resident_phone: createChargeForm.resident_phone.trim() || undefined,
         flat_size_sqft: Number(createChargeForm.flat_size_sqft || 1500),
         billing_month: createChargeForm.billing_month,
-        total_amount: createChargeForm.total_amount ? Number(createChargeForm.total_amount) : undefined,
+        total_amount: createChargeForm.total_amount
+          ? Number(createChargeForm.total_amount)
+          : undefined,
         due_date: createChargeForm.due_date || undefined,
         notes: createChargeForm.notes || undefined,
       });
       toast.success("Flat bill created successfully");
       setIsCreateChargeModalOpen(false);
       loadCharges();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to create flat bill");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to create flat bill",
+      );
     }
   };
 
@@ -413,8 +455,11 @@ export default function ServiceChargePage() {
       setIsPaymentModalOpen(false);
       loadCharges();
       if (activeTab === "summary") loadSummary();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to record payment");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to record payment",
+      );
     } finally {
       setIsCollecting(false);
     }
@@ -451,8 +496,11 @@ export default function ServiceChargePage() {
       setIsIncomeModalOpen(false);
       loadIncomes();
       if (activeTab === "summary") loadSummary();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save income");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to save income",
+      );
     }
   };
 
@@ -462,7 +510,7 @@ export default function ServiceChargePage() {
       await deleteBuildingIncome(item.uuid);
       toast.success("Income entry deleted");
       loadIncomes();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error("Failed to delete income");
     }
   };
@@ -500,8 +548,11 @@ export default function ServiceChargePage() {
       setIsExpenseModalOpen(false);
       loadExpenses();
       if (activeTab === "summary") loadSummary();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save expense");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to save expense",
+      );
     }
   };
 
@@ -511,7 +562,7 @@ export default function ServiceChargePage() {
       await deleteBuildingExpense(item.uuid);
       toast.success("Expense entry deleted");
       loadExpenses();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error("Failed to delete expense");
     }
   };
@@ -556,7 +607,8 @@ export default function ServiceChargePage() {
               {item.resident_name}
             </div>
             <div className="text-xs text-slate-500">
-              {item.flat_size_sqft} sqft {item.resident_phone ? `• ${item.resident_phone}` : ""}
+              {item.flat_size_sqft} sqft{" "}
+              {item.resident_phone ? `• ${item.resident_phone}` : ""}
             </div>
           </div>
         </div>
@@ -584,7 +636,10 @@ export default function ServiceChargePage() {
       header: "Total Billed",
       render: (item) => (
         <div className="text-sm font-bold text-slate-900 font-mono">
-          ৳ {item.total_amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+          ৳{" "}
+          {item.total_amount.toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+          })}
         </div>
       ),
     },
@@ -606,9 +661,7 @@ export default function ServiceChargePage() {
     {
       header: "Due Date",
       render: (item) => (
-        <div className="text-xs text-slate-600">
-          {item.due_date}
-        </div>
+        <div className="text-xs text-slate-600">{item.due_date}</div>
       ),
     },
     {
@@ -690,12 +743,18 @@ export default function ServiceChargePage() {
       header: "Title & Details",
       render: (item) => (
         <div>
-          <div className="text-sm font-semibold text-slate-800">{item.title}</div>
+          <div className="text-sm font-semibold text-slate-800">
+            {item.title}
+          </div>
           {item.received_from && (
-            <div className="text-xs text-slate-500">From: {item.received_from}</div>
+            <div className="text-xs text-slate-500">
+              From: {item.received_from}
+            </div>
           )}
           {item.source_reference && (
-            <div className="text-xs text-slate-400 font-mono">Ref: {item.source_reference}</div>
+            <div className="text-xs text-slate-400 font-mono">
+              Ref: {item.source_reference}
+            </div>
           )}
         </div>
       ),
@@ -704,7 +763,8 @@ export default function ServiceChargePage() {
       header: "Amount",
       render: (item) => (
         <div className="text-sm font-bold text-emerald-600 font-mono">
-          + ৳ {item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+          + ৳{" "}
+          {item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
         </div>
       ),
     },
@@ -773,12 +833,18 @@ export default function ServiceChargePage() {
       header: "Title & Vendor",
       render: (item) => (
         <div>
-          <div className="text-sm font-semibold text-slate-800">{item.title}</div>
+          <div className="text-sm font-semibold text-slate-800">
+            {item.title}
+          </div>
           {item.vendor_name && (
-            <div className="text-xs text-slate-500">Vendor: {item.vendor_name}</div>
+            <div className="text-xs text-slate-500">
+              Vendor: {item.vendor_name}
+            </div>
           )}
           {item.invoice_reference && (
-            <div className="text-xs text-slate-400 font-mono">Inv: {item.invoice_reference}</div>
+            <div className="text-xs text-slate-400 font-mono">
+              Inv: {item.invoice_reference}
+            </div>
           )}
         </div>
       ),
@@ -801,7 +867,8 @@ export default function ServiceChargePage() {
       header: "Amount",
       render: (item) => (
         <div className="text-sm font-bold text-rose-600 font-mono">
-          - ৳ {item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+          - ৳{" "}
+          {item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
         </div>
       ),
     },
@@ -969,7 +1036,9 @@ export default function ServiceChargePage() {
                 ? "border-current text-[#111827]"
                 : "border-transparent text-[#6B7280] hover:text-[#111827]"
             }`}
-            style={{ borderColor: activeTab === tab.id ? brand : "transparent" }}
+            style={{
+              borderColor: activeTab === tab.id ? brand : "transparent",
+            }}
           >
             {tab.label}
           </button>
@@ -1003,7 +1072,8 @@ export default function ServiceChargePage() {
                   </span>
                 </div>
                 <div className="text-xs text-slate-500 mt-0.5">
-                  {rateConfig?.notes || "Standard tariff configuration for flat owners"}
+                  {rateConfig?.notes ||
+                    "Standard tariff configuration for flat owners"}
                 </div>
               </div>
             </div>
@@ -1054,7 +1124,11 @@ export default function ServiceChargePage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-[#E5E7EB]">
             <CSFilterTabs
               tabs={[
-                { key: "all", label: "All Bills", count: chargesStats.total_flats },
+                {
+                  key: "all",
+                  label: "All Bills",
+                  count: chargesStats.total_flats,
+                },
                 { key: "PAID", label: "Paid", count: chargesStats.paid_count },
                 { key: "PARTIAL", label: "Partial" },
                 { key: "DUE", label: "Due", count: chargesStats.due_count },
@@ -1255,11 +1329,19 @@ export default function ServiceChargePage() {
                     </div>
                   </div>
                   <div className="mt-2 text-2xl font-bold text-slate-900 font-mono">
-                    ৳ {summaryData.summary.total_gross_income.toLocaleString("en-IN")}
+                    ৳{" "}
+                    {summaryData.summary.total_gross_income.toLocaleString(
+                      "en-IN",
+                    )}
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
-                    ৳ {summaryData.service_charges.collected.toLocaleString("en-IN")} charges + ৳{" "}
-                    {summaryData.extra_incomes.total.toLocaleString("en-IN")} facilities
+                    ৳{" "}
+                    {summaryData.service_charges.collected.toLocaleString(
+                      "en-IN",
+                    )}{" "}
+                    charges + ৳{" "}
+                    {summaryData.extra_incomes.total.toLocaleString("en-IN")}{" "}
+                    facilities
                   </div>
                 </div>
 
@@ -1273,7 +1355,8 @@ export default function ServiceChargePage() {
                     </div>
                   </div>
                   <div className="mt-2 text-2xl font-bold text-slate-900 font-mono">
-                    ৳ {summaryData.summary.total_expenses.toLocaleString("en-IN")}
+                    ৳{" "}
+                    {summaryData.summary.total_expenses.toLocaleString("en-IN")}
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
                     Security, lift, utilities, cleaning & repairs
@@ -1297,11 +1380,15 @@ export default function ServiceChargePage() {
                   </div>
                   <div
                     className={`mt-2 text-2xl font-bold font-mono ${
-                      summaryData.summary.net_balance >= 0 ? "text-emerald-600" : "text-rose-600"
+                      summaryData.summary.net_balance >= 0
+                        ? "text-emerald-600"
+                        : "text-rose-600"
                     }`}
                   >
                     {summaryData.summary.net_balance >= 0 ? "+ " : "- "}৳{" "}
-                    {Math.abs(summaryData.summary.net_balance).toLocaleString("en-IN")}
+                    {Math.abs(summaryData.summary.net_balance).toLocaleString(
+                      "en-IN",
+                    )}
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
                     Cash surplus / (shortfall) for {summaryData.billing_month}
@@ -1321,7 +1408,8 @@ export default function ServiceChargePage() {
                     {summaryData.service_charges.collection_rate_percent}%
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
-                    ৳ {summaryData.service_charges.due.toLocaleString("en-IN")} pending collection
+                    ৳ {summaryData.service_charges.due.toLocaleString("en-IN")}{" "}
+                    pending collection
                   </div>
                 </div>
               </div>
@@ -1336,45 +1424,76 @@ export default function ServiceChargePage() {
                       Income Sources Breakdown
                     </h3>
                     <span className="text-xs font-bold text-emerald-600 font-mono">
-                      ৳ {summaryData.summary.total_gross_income.toLocaleString("en-IN")}
+                      ৳{" "}
+                      {summaryData.summary.total_gross_income.toLocaleString(
+                        "en-IN",
+                      )}
                     </span>
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-600 font-medium">Flat Service Charges Collected</span>
+                      <span className="text-slate-600 font-medium">
+                        Flat Service Charges Collected
+                      </span>
                       <span className="font-bold text-slate-900 font-mono">
-                        ৳ {summaryData.service_charges.collected.toLocaleString("en-IN")}
+                        ৳{" "}
+                        {summaryData.service_charges.collected.toLocaleString(
+                          "en-IN",
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-600 font-medium">Community Hall Bookings</span>
+                      <span className="text-slate-600 font-medium">
+                        Community Hall Bookings
+                      </span>
                       <span className="font-bold text-slate-900 font-mono">
-                        ৳ {summaryData.extra_incomes.breakdown.COMMUNITY_HALL.toLocaleString("en-IN")}
+                        ৳{" "}
+                        {summaryData.extra_incomes.breakdown.COMMUNITY_HALL.toLocaleString(
+                          "en-IN",
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-600 font-medium">Rooftop Retained Flats Rent</span>
+                      <span className="text-slate-600 font-medium">
+                        Rooftop Retained Flats Rent
+                      </span>
                       <span className="font-bold text-slate-900 font-mono">
-                        ৳ {summaryData.extra_incomes.breakdown.ROOFTOP_RENT.toLocaleString("en-IN")}
+                        ৳{" "}
+                        {summaryData.extra_incomes.breakdown.ROOFTOP_RENT.toLocaleString(
+                          "en-IN",
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-600 font-medium">External Parking Rent</span>
+                      <span className="text-slate-600 font-medium">
+                        External Parking Rent
+                      </span>
                       <span className="font-bold text-slate-900 font-mono">
-                        ৳ {summaryData.extra_incomes.breakdown.PARKING.toLocaleString("en-IN")}
+                        ৳{" "}
+                        {summaryData.extra_incomes.breakdown.PARKING.toLocaleString(
+                          "en-IN",
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-600 font-medium">Swimming Pool & Club Facilities</span>
+                      <span className="text-slate-600 font-medium">
+                        Swimming Pool & Club Facilities
+                      </span>
                       <span className="font-bold text-slate-900 font-mono">
-                        ৳ {summaryData.extra_incomes.breakdown.SWIMMING_POOL.toLocaleString("en-IN")}
+                        ৳{" "}
+                        {summaryData.extra_incomes.breakdown.SWIMMING_POOL.toLocaleString(
+                          "en-IN",
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-600 font-medium">Mosque Donations & Others</span>
+                      <span className="text-slate-600 font-medium">
+                        Mosque Donations & Others
+                      </span>
                       <span className="font-bold text-slate-900 font-mono">
-                        ৳ {(
+                        ৳{" "}
+                        {(
                           summaryData.extra_incomes.breakdown.MOSQUE +
                           summaryData.extra_incomes.breakdown.OTHER
                         ).toLocaleString("en-IN")}
@@ -1391,45 +1510,78 @@ export default function ServiceChargePage() {
                       Operating Expenses Breakdown
                     </h3>
                     <span className="text-xs font-bold text-rose-600 font-mono">
-                      ৳ {summaryData.summary.total_expenses.toLocaleString("en-IN")}
+                      ৳{" "}
+                      {summaryData.summary.total_expenses.toLocaleString(
+                        "en-IN",
+                      )}
                     </span>
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-600 font-medium">Security Guard Services (Agency/In-house)</span>
+                      <span className="text-slate-600 font-medium">
+                        Security Guard Services (Agency/In-house)
+                      </span>
                       <span className="font-bold text-slate-900 font-mono">
-                        ৳ {summaryData.expenses.breakdown.SECURITY.toLocaleString("en-IN")}
+                        ৳{" "}
+                        {summaryData.expenses.breakdown.SECURITY.toLocaleString(
+                          "en-IN",
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-600 font-medium">Elevator / Lift Monthly AMC & Repairs</span>
+                      <span className="text-slate-600 font-medium">
+                        Elevator / Lift Monthly AMC & Repairs
+                      </span>
                       <span className="font-bold text-slate-900 font-mono">
-                        ৳ {summaryData.expenses.breakdown.LIFT.toLocaleString("en-IN")}
+                        ৳{" "}
+                        {summaryData.expenses.breakdown.LIFT.toLocaleString(
+                          "en-IN",
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-600 font-medium">Common Area Electricity, WASA & Generator</span>
+                      <span className="text-slate-600 font-medium">
+                        Common Area Electricity, WASA & Generator
+                      </span>
                       <span className="font-bold text-slate-900 font-mono">
-                        ৳ {summaryData.expenses.breakdown.UTILITIES.toLocaleString("en-IN")}
+                        ৳{" "}
+                        {summaryData.expenses.breakdown.UTILITIES.toLocaleString(
+                          "en-IN",
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-600 font-medium">Janitorial & Common Area Cleaning</span>
+                      <span className="text-slate-600 font-medium">
+                        Janitorial & Common Area Cleaning
+                      </span>
                       <span className="font-bold text-slate-900 font-mono">
-                        ৳ {summaryData.expenses.breakdown.CLEANING.toLocaleString("en-IN")}
+                        ৳{" "}
+                        {summaryData.expenses.breakdown.CLEANING.toLocaleString(
+                          "en-IN",
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-600 font-medium">General Maintenance & Civil Plumbing</span>
+                      <span className="text-slate-600 font-medium">
+                        General Maintenance & Civil Plumbing
+                      </span>
                       <span className="font-bold text-slate-900 font-mono">
-                        ৳ {summaryData.expenses.breakdown.MAINTENANCE.toLocaleString("en-IN")}
+                        ৳{" "}
+                        {summaryData.expenses.breakdown.MAINTENANCE.toLocaleString(
+                          "en-IN",
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-600 font-medium">Other Miscellaneous Outlays</span>
+                      <span className="text-slate-600 font-medium">
+                        Other Miscellaneous Outlays
+                      </span>
                       <span className="font-bold text-slate-900 font-mono">
-                        ৳ {summaryData.expenses.breakdown.OTHER.toLocaleString("en-IN")}
+                        ৳{" "}
+                        {summaryData.expenses.breakdown.OTHER.toLocaleString(
+                          "en-IN",
+                        )}
                       </span>
                     </div>
                   </div>
@@ -1445,7 +1597,8 @@ export default function ServiceChargePage() {
                       Cross-Module Automation Feeds Audit
                     </h3>
                     <p className="text-xs text-slate-300 mt-0.5">
-                      Live data connections from Parking Service (Prompt 8) and Security Service (Prompt 7)
+                      Live data connections from Parking Service (Prompt 8) and
+                      Security Service (Prompt 7)
                     </p>
                   </div>
                   <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
@@ -1464,20 +1617,30 @@ export default function ServiceChargePage() {
                         </span>
                       </div>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-mono">
-                        {summaryData.cross_module_feeds.parking.active_external_rentals_count} Active Slot Rentals
+                        {
+                          summaryData.cross_module_feeds.parking
+                            .active_external_rentals_count
+                        }{" "}
+                        Active Slot Rentals
                       </span>
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                       <div>
                         <div className="text-slate-400">Monthly Expected:</div>
                         <div className="font-bold text-white font-mono mt-0.5">
-                          ৳ {summaryData.cross_module_feeds.parking.monthly_rent_expected.toLocaleString("en-IN")}
+                          ৳{" "}
+                          {summaryData.cross_module_feeds.parking.monthly_rent_expected.toLocaleString(
+                            "en-IN",
+                          )}
                         </div>
                       </div>
                       <div>
                         <div className="text-slate-400">Monthly Collected:</div>
                         <div className="font-bold text-emerald-400 font-mono mt-0.5">
-                          ৳ {summaryData.cross_module_feeds.parking.monthly_rent_collected.toLocaleString("en-IN")}
+                          ৳{" "}
+                          {summaryData.cross_module_feeds.parking.monthly_rent_collected.toLocaleString(
+                            "en-IN",
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1493,13 +1656,23 @@ export default function ServiceChargePage() {
                         </span>
                       </div>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono">
-                        {summaryData.cross_module_feeds.security.active_companies_count} Contracted Agencies
+                        {
+                          summaryData.cross_module_feeds.security
+                            .active_companies_count
+                        }{" "}
+                        Contracted Agencies
                       </span>
                     </div>
                     <div className="mt-3 text-xs">
-                      <div className="text-slate-400">Active Monthly Contract Bill:</div>
+                      <div className="text-slate-400">
+                        Active Monthly Contract Bill:
+                      </div>
                       <div className="font-bold text-rose-400 font-mono text-sm mt-0.5">
-                        ৳ {summaryData.cross_module_feeds.security.contracted_monthly_cost.toLocaleString("en-IN")} / month
+                        ৳{" "}
+                        {summaryData.cross_module_feeds.security.contracted_monthly_cost.toLocaleString(
+                          "en-IN",
+                        )}{" "}
+                        / month
                       </div>
                     </div>
                   </div>
@@ -1537,10 +1710,14 @@ export default function ServiceChargePage() {
                   name="rate_basis"
                   value="PER_SQFT"
                   checked={tariffForm.rate_basis === "PER_SQFT"}
-                  onChange={() => setTariffForm((p) => ({ ...p, rate_basis: "PER_SQFT" }))}
+                  onChange={() =>
+                    setTariffForm((p) => ({ ...p, rate_basis: "PER_SQFT" }))
+                  }
                   className="accent-purple-600"
                 />
-                <span className="text-xs font-semibold">Per Square Foot (৳/sqft)</span>
+                <span className="text-xs font-semibold">
+                  Per Square Foot (৳/sqft)
+                </span>
               </label>
 
               <label
@@ -1555,10 +1732,17 @@ export default function ServiceChargePage() {
                   name="rate_basis"
                   value="FIXED_PER_FLAT"
                   checked={tariffForm.rate_basis === "FIXED_PER_FLAT"}
-                  onChange={() => setTariffForm((p) => ({ ...p, rate_basis: "FIXED_PER_FLAT" }))}
+                  onChange={() =>
+                    setTariffForm((p) => ({
+                      ...p,
+                      rate_basis: "FIXED_PER_FLAT",
+                    }))
+                  }
                   className="accent-purple-600"
                 />
-                <span className="text-xs font-semibold">Fixed Charge Per Flat (৳)</span>
+                <span className="text-xs font-semibold">
+                  Fixed Charge Per Flat (৳)
+                </span>
               </label>
             </div>
           </div>
@@ -1575,13 +1759,17 @@ export default function ServiceChargePage() {
                 required
                 value={tariffForm.rate_per_sqft}
                 onChange={(e) =>
-                  setTariffForm((p) => ({ ...p, rate_per_sqft: parseFloat(e.target.value) || 0 }))
+                  setTariffForm((p) => ({
+                    ...p,
+                    rate_per_sqft: parseFloat(e.target.value) || 0,
+                  }))
                 }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
                 placeholder="e.g. 5.50"
               />
               <p className="text-[11px] text-slate-500 mt-1">
-                A 1,500 sqft flat will be billed ৳ {(1500 * tariffForm.rate_per_sqft).toLocaleString()} / month.
+                A 1,500 sqft flat will be billed ৳{" "}
+                {(1500 * tariffForm.rate_per_sqft).toLocaleString()} / month.
               </p>
             </div>
           ) : (
@@ -1596,13 +1784,17 @@ export default function ServiceChargePage() {
                 required
                 value={tariffForm.fixed_rate_per_flat}
                 onChange={(e) =>
-                  setTariffForm((p) => ({ ...p, fixed_rate_per_flat: parseFloat(e.target.value) || 0 }))
+                  setTariffForm((p) => ({
+                    ...p,
+                    fixed_rate_per_flat: parseFloat(e.target.value) || 0,
+                  }))
                 }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
                 placeholder="e.g. 6000"
               />
               <p className="text-[11px] text-slate-500 mt-1">
-                Every unit in this project will be billed exactly this flat monthly amount.
+                Every unit in this project will be billed exactly this flat
+                monthly amount.
               </p>
             </div>
           )}
@@ -1618,7 +1810,10 @@ export default function ServiceChargePage() {
               required
               value={tariffForm.due_day_of_month}
               onChange={(e) =>
-                setTariffForm((p) => ({ ...p, due_day_of_month: parseInt(e.target.value) || 10 }))
+                setTariffForm((p) => ({
+                  ...p,
+                  due_day_of_month: parseInt(e.target.value) || 10,
+                }))
               }
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
             />
@@ -1631,7 +1826,9 @@ export default function ServiceChargePage() {
             <textarea
               rows={2}
               value={tariffForm.notes}
-              onChange={(e) => setTariffForm((p) => ({ ...p, notes: e.target.value }))}
+              onChange={(e) =>
+                setTariffForm((p) => ({ ...p, notes: e.target.value }))
+              }
               placeholder="e.g. Approved in AGM 2026. Includes lift and security."
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
             />
@@ -1674,7 +1871,12 @@ export default function ServiceChargePage() {
               type="month"
               required
               value={generateForm.billing_month}
-              onChange={(e) => setGenerateForm((p) => ({ ...p, billing_month: e.target.value }))}
+              onChange={(e) =>
+                setGenerateForm((p) => ({
+                  ...p,
+                  billing_month: e.target.value,
+                }))
+              }
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
             />
           </div>
@@ -1686,11 +1888,14 @@ export default function ServiceChargePage() {
             <input
               type="date"
               value={generateForm.due_date}
-              onChange={(e) => setGenerateForm((p) => ({ ...p, due_date: e.target.value }))}
+              onChange={(e) =>
+                setGenerateForm((p) => ({ ...p, due_date: e.target.value }))
+              }
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
             />
             <p className="text-[11px] text-slate-500 mt-1">
-              Leave blank to default to day {rateConfig?.due_day_of_month || 10} of the billing month.
+              Leave blank to default to day {rateConfig?.due_day_of_month || 10}{" "}
+              of the billing month.
             </p>
           </div>
 
@@ -1708,7 +1913,8 @@ export default function ServiceChargePage() {
               </strong>
             </div>
             <div>
-              Units will be auto-loaded from registered project flats & bookings. Existing paid balances are preserved.
+              Units will be auto-loaded from registered project flats &
+              bookings. Existing paid balances are preserved.
             </div>
           </div>
 
@@ -1726,7 +1932,11 @@ export default function ServiceChargePage() {
               className="px-4 py-2 text-xs font-medium rounded-lg text-white flex items-center gap-1.5"
               style={{ backgroundColor: brand }}
             >
-              {isGenerating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+              {isGenerating ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5" />
+              )}
               {isGenerating ? "Generating..." : "Generate Bills"}
             </button>
           </div>
@@ -1747,13 +1957,15 @@ export default function ServiceChargePage() {
             <div>
               <div className="text-slate-500">Total Billed:</div>
               <div className="font-bold text-slate-900 font-mono mt-0.5">
-                ৳ {selectedChargeForPayment?.total_amount.toLocaleString("en-IN")}
+                ৳{" "}
+                {selectedChargeForPayment?.total_amount.toLocaleString("en-IN")}
               </div>
             </div>
             <div>
               <div className="text-slate-500">Already Paid:</div>
               <div className="font-bold text-emerald-600 font-mono mt-0.5">
-                ৳ {selectedChargeForPayment?.paid_amount.toLocaleString("en-IN")}
+                ৳{" "}
+                {selectedChargeForPayment?.paid_amount.toLocaleString("en-IN")}
               </div>
             </div>
             <div>
@@ -1775,7 +1987,10 @@ export default function ServiceChargePage() {
               required
               value={paymentForm.paid_amount}
               onChange={(e) =>
-                setPaymentForm((p) => ({ ...p, paid_amount: parseFloat(e.target.value) || 0 }))
+                setPaymentForm((p) => ({
+                  ...p,
+                  paid_amount: parseFloat(e.target.value) || 0,
+                }))
               }
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500 font-mono text-base font-bold"
             />
@@ -1790,7 +2005,12 @@ export default function ServiceChargePage() {
                 type="date"
                 required
                 value={paymentForm.payment_date}
-                onChange={(e) => setPaymentForm((p) => ({ ...p, payment_date: e.target.value }))}
+                onChange={(e) =>
+                  setPaymentForm((p) => ({
+                    ...p,
+                    payment_date: e.target.value,
+                  }))
+                }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
             </div>
@@ -1800,7 +2020,12 @@ export default function ServiceChargePage() {
               </label>
               <select
                 value={paymentForm.payment_method}
-                onChange={(e) => setPaymentForm((p) => ({ ...p, payment_method: e.target.value }))}
+                onChange={(e) =>
+                  setPaymentForm((p) => ({
+                    ...p,
+                    payment_method: e.target.value,
+                  }))
+                }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500 bg-white"
               >
                 <option value="Bank Transfer">Bank Transfer</option>
@@ -1819,7 +2044,12 @@ export default function ServiceChargePage() {
             <input
               type="text"
               value={paymentForm.reference_number}
-              onChange={(e) => setPaymentForm((p) => ({ ...p, reference_number: e.target.value }))}
+              onChange={(e) =>
+                setPaymentForm((p) => ({
+                  ...p,
+                  reference_number: e.target.value,
+                }))
+              }
               placeholder="e.g. TR-9988231 or Chq-45210"
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
             />
@@ -1832,7 +2062,9 @@ export default function ServiceChargePage() {
             <input
               type="text"
               value={paymentForm.notes}
-              onChange={(e) => setPaymentForm((p) => ({ ...p, notes: e.target.value }))}
+              onChange={(e) =>
+                setPaymentForm((p) => ({ ...p, notes: e.target.value }))
+              }
               placeholder="e.g. Received at site office"
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
             />
@@ -1879,7 +2111,10 @@ export default function ServiceChargePage() {
                 required
                 value={createChargeForm.flat_number}
                 onChange={(e) =>
-                  setCreateChargeForm((p) => ({ ...p, flat_number: e.target.value }))
+                  setCreateChargeForm((p) => ({
+                    ...p,
+                    flat_number: e.target.value,
+                  }))
                 }
                 placeholder="e.g. 5-B"
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
@@ -1894,7 +2129,10 @@ export default function ServiceChargePage() {
                 min="100"
                 value={createChargeForm.flat_size_sqft}
                 onChange={(e) =>
-                  setCreateChargeForm((p) => ({ ...p, flat_size_sqft: parseFloat(e.target.value) || 1500 }))
+                  setCreateChargeForm((p) => ({
+                    ...p,
+                    flat_size_sqft: parseFloat(e.target.value) || 1500,
+                  }))
                 }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
@@ -1911,7 +2149,10 @@ export default function ServiceChargePage() {
                 required
                 value={createChargeForm.resident_name}
                 onChange={(e) =>
-                  setCreateChargeForm((p) => ({ ...p, resident_name: e.target.value }))
+                  setCreateChargeForm((p) => ({
+                    ...p,
+                    resident_name: e.target.value,
+                  }))
                 }
                 placeholder="e.g. Mohammad Rafiqul Islam"
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
@@ -1925,7 +2166,10 @@ export default function ServiceChargePage() {
                 type="text"
                 value={createChargeForm.resident_phone}
                 onChange={(e) =>
-                  setCreateChargeForm((p) => ({ ...p, resident_phone: e.target.value }))
+                  setCreateChargeForm((p) => ({
+                    ...p,
+                    resident_phone: e.target.value,
+                  }))
                 }
                 placeholder="e.g. +880 1711-000000"
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
@@ -1943,7 +2187,10 @@ export default function ServiceChargePage() {
                 required
                 value={createChargeForm.billing_month}
                 onChange={(e) =>
-                  setCreateChargeForm((p) => ({ ...p, billing_month: e.target.value }))
+                  setCreateChargeForm((p) => ({
+                    ...p,
+                    billing_month: e.target.value,
+                  }))
                 }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
@@ -1957,7 +2204,10 @@ export default function ServiceChargePage() {
                 step="1"
                 value={createChargeForm.total_amount}
                 onChange={(e) =>
-                  setCreateChargeForm((p) => ({ ...p, total_amount: e.target.value }))
+                  setCreateChargeForm((p) => ({
+                    ...p,
+                    total_amount: e.target.value,
+                  }))
                 }
                 placeholder="Auto-computed if empty"
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
@@ -1990,7 +2240,11 @@ export default function ServiceChargePage() {
       <CSModal
         isOpen={isIncomeModalOpen}
         onClose={() => setIsIncomeModalOpen(false)}
-        title={editingIncome ? "Edit Extra Income Entry" : "Add Extra Building Income"}
+        title={
+          editingIncome
+            ? "Edit Extra Income Entry"
+            : "Add Extra Building Income"
+        }
         subtitle="Log revenues from community hall, rooftop flats, external parking, or amenities"
       >
         <form onSubmit={handleSaveIncome} className="space-y-4 p-6">
@@ -2002,7 +2256,10 @@ export default function ServiceChargePage() {
               <select
                 value={incomeForm.income_type}
                 onChange={(e) =>
-                  setIncomeForm((p) => ({ ...p, income_type: e.target.value as BuildingIncomeType }))
+                  setIncomeForm((p) => ({
+                    ...p,
+                    income_type: e.target.value as BuildingIncomeType,
+                  }))
                 }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500 bg-white"
               >
@@ -2025,7 +2282,10 @@ export default function ServiceChargePage() {
                 required
                 value={incomeForm.amount}
                 onChange={(e) =>
-                  setIncomeForm((p) => ({ ...p, amount: parseFloat(e.target.value) || 0 }))
+                  setIncomeForm((p) => ({
+                    ...p,
+                    amount: parseFloat(e.target.value) || 0,
+                  }))
                 }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500 font-mono"
               />
@@ -2040,7 +2300,9 @@ export default function ServiceChargePage() {
               type="text"
               required
               value={incomeForm.title}
-              onChange={(e) => setIncomeForm((p) => ({ ...p, title: e.target.value }))}
+              onChange={(e) =>
+                setIncomeForm((p) => ({ ...p, title: e.target.value }))
+              }
               placeholder="e.g. Wedding Reception Hall Booking - Flat 7A"
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
             />
@@ -2055,7 +2317,9 @@ export default function ServiceChargePage() {
                 type="date"
                 required
                 value={incomeForm.income_date}
-                onChange={(e) => setIncomeForm((p) => ({ ...p, income_date: e.target.value }))}
+                onChange={(e) =>
+                  setIncomeForm((p) => ({ ...p, income_date: e.target.value }))
+                }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
             </div>
@@ -2066,7 +2330,12 @@ export default function ServiceChargePage() {
               <input
                 type="text"
                 value={incomeForm.received_from}
-                onChange={(e) => setIncomeForm((p) => ({ ...p, received_from: e.target.value }))}
+                onChange={(e) =>
+                  setIncomeForm((p) => ({
+                    ...p,
+                    received_from: e.target.value,
+                  }))
+                }
                 placeholder="e.g. Mr. Rafiqul / Guest"
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
@@ -2080,7 +2349,12 @@ export default function ServiceChargePage() {
             <input
               type="text"
               value={incomeForm.source_reference}
-              onChange={(e) => setIncomeForm((p) => ({ ...p, source_reference: e.target.value }))}
+              onChange={(e) =>
+                setIncomeForm((p) => ({
+                  ...p,
+                  source_reference: e.target.value,
+                }))
+              }
               placeholder="e.g. MR-09923"
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
             />
@@ -2111,7 +2385,11 @@ export default function ServiceChargePage() {
       <CSModal
         isOpen={isExpenseModalOpen}
         onClose={() => setIsExpenseModalOpen(false)}
-        title={editingExpense ? "Edit Expense Entry" : "Add Building Maintenance Expense"}
+        title={
+          editingExpense
+            ? "Edit Expense Entry"
+            : "Add Building Maintenance Expense"
+        }
         subtitle="Record vendor payouts for security, lift AMC, utilities, or repairs"
       >
         <form onSubmit={handleSaveExpense} className="space-y-4 p-6">
@@ -2123,15 +2401,22 @@ export default function ServiceChargePage() {
               <select
                 value={expenseForm.expense_type}
                 onChange={(e) =>
-                  setExpenseForm((p) => ({ ...p, expense_type: e.target.value as BuildingExpenseType }))
+                  setExpenseForm((p) => ({
+                    ...p,
+                    expense_type: e.target.value as BuildingExpenseType,
+                  }))
                 }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500 bg-white"
               >
                 <option value="SECURITY">Security Services Bill</option>
                 <option value="LIFT">Lift AMC & Servicing</option>
-                <option value="UTILITIES">Common Utilities (Electricity/Water)</option>
+                <option value="UTILITIES">
+                  Common Utilities (Electricity/Water)
+                </option>
                 <option value="CLEANING">Cleaning & Janitorial Supplies</option>
-                <option value="MAINTENANCE">General Repairs & Civil Works</option>
+                <option value="MAINTENANCE">
+                  General Repairs & Civil Works
+                </option>
                 <option value="OTHER">Other Operational Expense</option>
               </select>
             </div>
@@ -2146,7 +2431,10 @@ export default function ServiceChargePage() {
                 required
                 value={expenseForm.amount}
                 onChange={(e) =>
-                  setExpenseForm((p) => ({ ...p, amount: parseFloat(e.target.value) || 0 }))
+                  setExpenseForm((p) => ({
+                    ...p,
+                    amount: parseFloat(e.target.value) || 0,
+                  }))
                 }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500 font-mono"
               />
@@ -2161,7 +2449,9 @@ export default function ServiceChargePage() {
               type="text"
               required
               value={expenseForm.title}
-              onChange={(e) => setExpenseForm((p) => ({ ...p, title: e.target.value }))}
+              onChange={(e) =>
+                setExpenseForm((p) => ({ ...p, title: e.target.value }))
+              }
               placeholder="e.g. Otis Lift Monthly AMC & Greasing"
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
             />
@@ -2175,7 +2465,9 @@ export default function ServiceChargePage() {
               <input
                 type="text"
                 value={expenseForm.vendor_name}
-                onChange={(e) => setExpenseForm((p) => ({ ...p, vendor_name: e.target.value }))}
+                onChange={(e) =>
+                  setExpenseForm((p) => ({ ...p, vendor_name: e.target.value }))
+                }
                 placeholder="e.g. Otis Elevator Co."
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
@@ -2187,7 +2479,12 @@ export default function ServiceChargePage() {
               <input
                 type="text"
                 value={expenseForm.invoice_reference}
-                onChange={(e) => setExpenseForm((p) => ({ ...p, invoice_reference: e.target.value }))}
+                onChange={(e) =>
+                  setExpenseForm((p) => ({
+                    ...p,
+                    invoice_reference: e.target.value,
+                  }))
+                }
                 placeholder="e.g. INV-2026-8812"
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
@@ -2203,7 +2500,12 @@ export default function ServiceChargePage() {
                 type="date"
                 required
                 value={expenseForm.expense_date}
-                onChange={(e) => setExpenseForm((p) => ({ ...p, expense_date: e.target.value }))}
+                onChange={(e) =>
+                  setExpenseForm((p) => ({
+                    ...p,
+                    expense_date: e.target.value,
+                  }))
+                }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
             </div>
@@ -2214,7 +2516,10 @@ export default function ServiceChargePage() {
               <select
                 value={expenseForm.payment_status}
                 onChange={(e) =>
-                  setExpenseForm((p) => ({ ...p, payment_status: e.target.value as "PAID" | "PENDING" }))
+                  setExpenseForm((p) => ({
+                    ...p,
+                    payment_status: e.target.value as "PAID" | "PENDING",
+                  }))
                 }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500 bg-white"
               >

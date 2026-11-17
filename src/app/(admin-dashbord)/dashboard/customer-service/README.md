@@ -136,7 +136,7 @@ When authoring or modifying any Customer Service API service (`src/services/cust
 ## 7. Modules Under Review (Preserved Intact)
 
 The following modules are preserved intact pending meeting speaker decision:
-1. **Customer Entry** (`/customers`) & **Customer 360°** (`/customers/customer-360`): Post-sales resident directory, emergency contacts, KYC docs, and unit ownership history.
+1. **Customer Entry** (`/customers` & `/customers/customer-360`): Post-sales resident directory, emergency contacts, KYC docs, and unit ownership history.
 2. **Bookings & Property Portfolio** (`/customers/properties-bookings`): Handover lifecycle stages (`Under Construction` → `Snagging` → `DLP Active` → `Handed Over`), statutory 2-year DLP tracking, and key handover records.
 
 

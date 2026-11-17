@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Layers,
   Building,
@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Plus,
   Users,
+  X,
 } from "lucide-react";
 import { CSPageHeader } from "@/components/customer-service/CSPageHeader";
 import { CSStatCard } from "@/components/customer-service/CSStatCard";
@@ -18,13 +19,24 @@ import { CSTable, Column } from "@/components/customer-service/CSTable";
 import { CSFilterTabs } from "@/components/customer-service/CSFilterTabs";
 import { useSelectedProject } from "@/hooks/useSelectedProject";
 import { CSSelectProjectEmptyState } from "@/components/customer-service/CSSelectProjectEmptyState";
+import {
+  getMaintenanceRequests,
+  getMaintenanceStats,
+  createMaintenanceRequest,
+  MaintenanceItem,
+} from "@/services/customerPropertyCareService";
 import { toast } from "sonner";
 import { useTheme } from "@/lib/theme";
 
 interface AmenityServiceItem {
   id: string;
   project: string;
-  serviceCategory: "Waste Management" | "Pest Control" | "Gym & Fitness" | "Swimming Pool" | "Landscaping & Greenery";
+  serviceCategory:
+  | "Waste Management"
+  | "Pest Control"
+  | "Gym & Fitness"
+  | "Swimming Pool"
+  | "Landscaping & Greenery";
   serviceProvider: string;
   frequency: "Daily" | "Weekly" | "Monthly" | "Bi-Monthly";
   nextScheduledDate: string;
@@ -80,6 +92,119 @@ export default function OtherServicesPage() {
   const brand = primaryColor || "#6D4AFF";
   const { projectId, project, isLoading } = useSelectedProject();
   const [activeTab, setActiveTab] = useState("all");
+  const [services, setServices] =
+    useState<AmenityServiceItem[]>(INITIAL_SERVICES);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formCategory, setFormCategory] =
+    useState<AmenityServiceItem["serviceCategory"]>("Waste Management");
+  const [formVendor, setFormVendor] = useState("");
+  const [formSupervisor, setFormSupervisor] = useState("");
+  const [formFrequency, setFormFrequency] =
+    useState<AmenityServiceItem["frequency"]>("Weekly");
+  const [formDate, setFormDate] = useState("");
+  const [formCost, setFormCost] = useState("0");
+
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoadingData(true);
+      const res = await getMaintenanceRequests({
+        project_id: projectId || undefined,
+        limit: 100,
+      });
+      if (res && res.items && res.items.length > 0) {
+        const mapped: AmenityServiceItem[] = res.items.map(
+          (m: MaintenanceItem) => {
+            let cat: AmenityServiceItem["serviceCategory"] = "Waste Management";
+            const facility = (m.facility || "").toLowerCase();
+            if (facility.includes("pest")) cat = "Pest Control";
+            else if (facility.includes("pool") || facility.includes("swim"))
+              cat = "Swimming Pool";
+            else if (facility.includes("land") || facility.includes("green"))
+              cat = "Landscaping & Greenery";
+            else if (facility.includes("gym") || facility.includes("fit"))
+              cat = "Gym & Fitness";
+
+            return {
+              id: m.id,
+              project:
+                m.project_name ||
+                m.project ||
+                project?.name ||
+                "Selected Project",
+              serviceCategory: cat,
+              serviceProvider:
+                m.vendorName || m.vendor_name || "Contracted Facility Vendor",
+              frequency: "Monthly",
+              nextScheduledDate:
+                m.scheduledDate || m.scheduled_date || "Scheduled",
+              supervisorName: "Facility Supervisor",
+              status:
+                m.status === "Completed"
+                  ? "Active"
+                  : m.status === "In Progress"
+                    ? "Scheduled"
+                    : "Active",
+            };
+          },
+        );
+        setServices(mapped);
+      }
+    } catch (err) {
+      console.warn(
+        "Could not fetch remote maintenance contracts, using cache.",
+        err,
+      );
+    } finally {
+      setIsLoadingData(false);
+    }
+  }, [projectId, project]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleRegisterService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formVendor.trim() || !formSupervisor.trim()) {
+      toast.error("Please fill in Vendor Name and Supervisor Name.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await createMaintenanceRequest({
+        facility: `${formCategory} - ${project?.name || "Project Facility"}`,
+        project_id: projectId || undefined,
+        project_name: project?.name || "Selected Project",
+        maintenance_type: "Routine Service",
+        vendor_name: formVendor.trim(),
+        cost_estimate: Number(formCost) || 0,
+        scheduled_date: formDate || new Date().toISOString().slice(0, 10),
+        remarks: `Supervisor: ${formSupervisor.trim()}. Frequency: ${formFrequency}. Communal amenity contract.`,
+      });
+
+      toast.success(
+        `Service contract for ${formCategory} registered successfully.`,
+      );
+      setIsModalOpen(false);
+      setFormVendor("");
+      setFormSupervisor("");
+      setFormCost("0");
+      setFormDate("");
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to register service contract.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (!isLoading && !projectId) {
     return (
@@ -101,7 +226,7 @@ export default function OtherServicesPage() {
     );
   }
 
-  const filteredData = INITIAL_SERVICES.filter((item) => {
+  const filteredData = services.filter((item) => {
     if (activeTab === "all") return true;
     if (activeTab === "active") return item.status === "Active";
     if (activeTab === "scheduled") return item.status === "Scheduled";
@@ -121,7 +246,9 @@ export default function OtherServicesPage() {
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <span className="font-semibold text-foreground text-xs">{item.serviceCategory}</span>
+            <span className="font-semibold text-foreground text-xs">
+              {item.serviceCategory}
+            </span>
             <p className="text-[11px] text-muted-foreground">{item.id}</p>
           </div>
         </div>
@@ -142,8 +269,12 @@ export default function OtherServicesPage() {
       header: "Vendor / Provider",
       render: (item) => (
         <div>
-          <span className="font-medium text-xs text-foreground">{item.serviceProvider}</span>
-          <p className="text-[11px] text-muted-foreground">Supervisor: {item.supervisorName}</p>
+          <span className="font-medium text-xs text-foreground">
+            {item.serviceProvider}
+          </span>
+          <p className="text-[11px] text-muted-foreground">
+            Supervisor: {item.supervisorName}
+          </p>
         </div>
       ),
     },
@@ -152,8 +283,12 @@ export default function OtherServicesPage() {
       header: "Frequency & Next Schedule",
       render: (item) => (
         <div>
-          <span className="font-medium text-xs text-foreground">{item.frequency}</span>
-          <p className="text-[11px] text-muted-foreground">Due: {item.nextScheduledDate}</p>
+          <span className="font-medium text-xs text-foreground">
+            {item.frequency}
+          </span>
+          <p className="text-[11px] text-muted-foreground">
+            Due: {item.nextScheduledDate}
+          </p>
         </div>
       ),
     },
@@ -164,13 +299,16 @@ export default function OtherServicesPage() {
         const isActive = item.status === "Active";
         return (
           <span
-            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-              isActive
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${isActive
                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                 : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-            }`}
+              }`}
           >
-            {isActive ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+            {isActive ? (
+              <CheckCircle2 className="h-3 w-3" />
+            ) : (
+              <Clock className="h-3 w-3" />
+            )}
             {item.status}
           </span>
         );
@@ -186,7 +324,7 @@ export default function OtherServicesPage() {
         badgeText="Building Services"
         primaryAction={{
           label: "Register Service Contract",
-          onClick: () => toast.info("Amenity Service Registration will be available soon."),
+          onClick: () => setIsModalOpen(true),
           icon: Plus,
         }}
       />
@@ -194,28 +332,30 @@ export default function OtherServicesPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <CSStatCard
           title="Active Service Contracts"
-          value="14"
+          value={String(services.filter((s) => s.status === "Active").length)}
           change="Across all properties"
           icon={Layers}
           color="emerald"
         />
         <CSStatCard
           title="Upcoming Cleanings"
-          value="6"
+          value={String(
+            services.filter((s) => s.status === "Scheduled").length,
+          )}
           change="Next 7 days"
           icon={Sparkles}
           color="blue"
         />
         <CSStatCard
           title="Amenity Facilities"
-          value="8"
+          value={String(services.length)}
           change="Pools, gyms & gardens"
           icon={Building}
           color="purple"
         />
         <CSStatCard
           title="Active Vendor Partners"
-          value="5"
+          value={String(new Set(services.map((s) => s.serviceProvider)).size)}
           change="Verified contractors"
           icon={Users}
           color="teal"
@@ -225,9 +365,17 @@ export default function OtherServicesPage() {
       <div className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
         <CSFilterTabs
           tabs={[
-            { key: "all", label: "All Services", count: INITIAL_SERVICES.length },
-            { key: "active", label: "Active Contracts", count: 3 },
-            { key: "scheduled", label: "Scheduled Visits", count: 1 },
+            { key: "all", label: "All Services", count: services.length },
+            {
+              key: "active",
+              label: "Active Contracts",
+              count: services.filter((s) => s.status === "Active").length,
+            },
+            {
+              key: "scheduled",
+              label: "Scheduled Visits",
+              count: services.filter((s) => s.status === "Scheduled").length,
+            },
           ]}
           activeTab={activeTab}
           onTabChange={setActiveTab}
@@ -237,9 +385,151 @@ export default function OtherServicesPage() {
           columns={columns}
           data={filteredData}
           searchPlaceholder="Search service category, vendor or project..."
-          searchFields={["serviceCategory", "serviceProvider", "project", "supervisorName"]}
+          searchFields={[
+            "serviceCategory",
+            "serviceProvider",
+            "project",
+            "supervisorName",
+          ]}
         />
       </div>
+
+      {/* Register Service Contract Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-lg rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-base font-semibold text-foreground">
+                Register Facility Service Contract
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-md"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRegisterService} className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-foreground">
+                  Service Category
+                </label>
+                <select
+                  className="w-full mt-1.5 rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  value={formCategory}
+                  onChange={(e) =>
+                    setFormCategory(
+                      e.target.value as AmenityServiceItem["serviceCategory"],
+                    )
+                  }
+                >
+                  <option value="Waste Management">Waste Management</option>
+                  <option value="Pest Control">Pest Control</option>
+                  <option value="Gym & Fitness">Gym & Fitness</option>
+                  <option value="Swimming Pool">Swimming Pool</option>
+                  <option value="Landscaping & Greenery">
+                    Landscaping & Greenery
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-foreground">
+                  Service Provider / Vendor
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Dhaka Clean Waste Solutions Ltd."
+                  value={formVendor}
+                  onChange={(e) => setFormVendor(e.target.value)}
+                  className="w-full mt-1.5 rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-foreground">
+                    Supervisor Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Md. Shafiqur Rahman"
+                    value={formSupervisor}
+                    onChange={(e) => setFormSupervisor(e.target.value)}
+                    className="w-full mt-1.5 rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-foreground">
+                    Frequency
+                  </label>
+                  <select
+                    className="w-full mt-1.5 rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    value={formFrequency}
+                    onChange={(e) =>
+                      setFormFrequency(
+                        e.target.value as AmenityServiceItem["frequency"],
+                      )
+                    }
+                  >
+                    <option value="Daily">Daily</option>
+                    <option value="Weekly">Weekly</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Bi-Monthly">Bi-Monthly</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-foreground">
+                    Next Scheduled Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formDate}
+                    onChange={(e) => setFormDate(e.target.value)}
+                    className="w-full mt-1.5 rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-foreground">
+                    Contract / Estimated Cost (৳)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formCost}
+                    onChange={(e) => setFormCost(e.target.value)}
+                    className="w-full mt-1.5 rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="rounded-lg border border-input px-4 py-2 text-xs font-medium text-foreground hover:bg-muted"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  style={{ backgroundColor: brand }}
+                  className="rounded-lg px-4 py-2 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {isSubmitting ? "Registering..." : "Register Contract"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

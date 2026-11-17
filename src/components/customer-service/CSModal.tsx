@@ -44,7 +44,9 @@ export function CSModal({
         {/* Header Spec: 15px font-semibold #111827 */}
         <div className="flex items-center justify-between border-b border-[#E5E7EB] px-6 py-4 bg-white">
           <div>
-            <h3 className="text-[15px] font-semibold text-[#111827]">{title}</h3>
+            <h3 className="text-[15px] font-semibold text-[#111827]">
+              {title}
+            </h3>
             {displaySubtitle && (
               <p className="mt-0.5 text-xs text-[#6B7280]">{displaySubtitle}</p>
             )}

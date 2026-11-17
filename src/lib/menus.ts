@@ -92,7 +92,7 @@ const CUSTOM_SLUG_LABELS: Record<string, string> = {
 
   // Customer Service Sub-Pages
   "payment-schedules": "Payment Schedules & Demand Letters",
-  "customer-360": "Customer 360°",
+  "customer-360": "Customer Entry",
   "properties-bookings": "Bookings & Property Portfolio",
   "change-requests": "Transfer, Resale, Change Request",
   "collections-ledger-receipts": "Collections, Receipts & Customer Ledger",
@@ -768,8 +768,8 @@ const customerServiceNodes: MenuNode[] = [
     path: "customers-properties",
     children: [
       {
-        label: "Customer 360°",
-        slug: "customer-360",
+        label: "Customer Entry",
+        slug: "customer-entry",
         path: "customers",
       },
       {

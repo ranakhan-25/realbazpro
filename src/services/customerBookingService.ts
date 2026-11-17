@@ -18,6 +18,7 @@ export interface BookingStatsData {
   total_collected_amount_formatted: string;
   total_outstanding_due: number;
   total_outstanding_due_formatted: string;
+  deleted_count?: number;
 }
 
 export interface BookingListItem {
@@ -244,6 +245,8 @@ export interface QueryPropertiesBookingsParams {
   customer_id?: string;
   sort_by?: string;
   sort_order?: "ASC" | "DESC";
+  is_deleted?: boolean;
+  isDeleted?: boolean;
 }
 
 /**
@@ -275,6 +278,7 @@ export async function getPropertiesBookingStats(
     total_outstanding_due: Number(raw?.total_outstanding_due || 0),
     total_outstanding_due_formatted:
       raw?.total_outstanding_due_formatted || "৳ 0.00",
+    deleted_count: Number(raw?.deleted_count || 0),
   };
 }
 

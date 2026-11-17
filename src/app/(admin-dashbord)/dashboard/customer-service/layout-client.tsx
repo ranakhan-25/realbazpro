@@ -62,7 +62,9 @@ function CustomerServiceTopBar() {
         <div className="mt-2.5 flex items-center gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
           <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
           <span>
-            <strong>No project found for your organization.</strong> Customer service records are scoped per-project. Please contact your administrator to provision projects for your organization.
+            <strong>No project found for your organization.</strong> Customer
+            service records are scoped per-project. Please contact your
+            administrator to provision projects for your organization.
           </span>
         </div>
       )}
@@ -84,4 +86,3 @@ export function CustomerServiceLayoutClient({
     </CustomerServiceProjectProvider>
   );
 }
-

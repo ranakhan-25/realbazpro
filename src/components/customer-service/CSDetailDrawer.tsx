@@ -34,11 +34,7 @@ export function CSDetailDrawer({
 
   return (
     <div className="fixed inset-0 z-[120] flex justify-end bg-slate-900/40 backdrop-blur-2xs animate-in fade-in duration-140">
-      <div
-        className="fixed inset-0"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
       <div
         className={`relative z-10 flex h-full w-full ${WIDTH_CLASSES[width]} flex-col bg-white shadow-[0_8px_24px_rgba(16,24,40,0.08)] border-l border-[#E5E7EB] animate-in slide-in-from-right duration-140`}
       >
@@ -46,7 +42,9 @@ export function CSDetailDrawer({
         <div className="flex items-center justify-between border-b border-[#E5E7EB] px-6 py-4 bg-white">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-[15px] font-semibold text-[#111827]">{title}</h3>
+              <h3 className="text-[15px] font-semibold text-[#111827]">
+                {title}
+              </h3>
               {badge && (
                 <span className="rounded-full bg-[#F4F1FF] text-[#6D4AFF] border border-[#DDD6FE] px-2 py-0.5 text-[11px] font-semibold">
                   {badge}

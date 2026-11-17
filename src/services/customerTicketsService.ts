@@ -74,6 +74,8 @@ export interface TicketStatsResult {
   overdue_tickets: number;
   resolved_rate: number;
   all_count: number;
+  deleted_tickets?: number;
+  deleted_count?: number;
 }
 
 export interface QueryTicketsParams {
@@ -85,6 +87,7 @@ export interface QueryTicketsParams {
   priority?: string;
   status?: string;
   project_id?: string;
+  is_deleted?: boolean;
 }
 
 export interface PaginatedTicketsResult {
@@ -143,7 +146,9 @@ export async function getCustomerTicketStats(params?: {
 export async function getCustomerTickets(
   params?: QueryTicketsParams,
 ): Promise<PaginatedTicketsResult> {
-  const res = await api.get("/customer-service/tickets", { params });
+  const query: Record<string, unknown> = { ...(params || {}) };
+  if (!query.is_deleted) delete query.is_deleted;
+  const res = await api.get("/customer-service/tickets", { params: query });
   return res.data?.data ?? res.data;
 }
 

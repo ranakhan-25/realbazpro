@@ -36,14 +36,35 @@ export function CSStatCard({
   const displaySubtext = subtext || subtitle;
 
   const colorClasses: Record<string, { bg: string; text: string }> = {
-    purple: { bg: "bg-[#F4F1FF] border border-[#DDD6FE]", text: "text-[#6D4AFF]" },
-    blue: { bg: "bg-[#EFF6FF] border border-[#BFDBFE]", text: "text-[#2563EB]" },
-    emerald: { bg: "bg-[#ECFDF3] border border-[#A6F4C5]", text: "text-[#027A48]" },
-    amber: { bg: "bg-[#FFFAEB] border border-[#FEDF89]", text: "text-[#DC6803]" },
-    rose: { bg: "bg-[#FEF2F2] border border-[#FECACA]", text: "text-[#DC2626]" },
+    purple: {
+      bg: "bg-[#F4F1FF] border border-[#DDD6FE]",
+      text: "text-[#6D4AFF]",
+    },
+    blue: {
+      bg: "bg-[#EFF6FF] border border-[#BFDBFE]",
+      text: "text-[#2563EB]",
+    },
+    emerald: {
+      bg: "bg-[#ECFDF3] border border-[#A6F4C5]",
+      text: "text-[#027A48]",
+    },
+    amber: {
+      bg: "bg-[#FFFAEB] border border-[#FEDF89]",
+      text: "text-[#DC6803]",
+    },
+    rose: {
+      bg: "bg-[#FEF2F2] border border-[#FECACA]",
+      text: "text-[#DC2626]",
+    },
     sky: { bg: "bg-[#EFF8FF] border border-[#BFDBFE]", text: "text-[#175CD3]" },
-    teal: { bg: "bg-[#F0FDFA] border border-[#99F6E4]", text: "text-[#0F766E]" },
-    indigo: { bg: "bg-[#EEF2FF] border border-[#C7D2FE]", text: "text-[#4F46E5]" },
+    teal: {
+      bg: "bg-[#F0FDFA] border border-[#99F6E4]",
+      text: "text-[#0F766E]",
+    },
+    indigo: {
+      bg: "bg-[#EEF2FF] border border-[#C7D2FE]",
+      text: "text-[#4F46E5]",
+    },
   };
 
   const palette = (color && colorClasses[color]) || colorClasses.purple;
@@ -92,7 +113,9 @@ export function CSStatCard({
       </div>
 
       {displaySubtext && (
-        <p className="mt-1 text-xs text-[#6B7280] line-clamp-1">{displaySubtext}</p>
+        <p className="mt-1 text-xs text-[#6B7280] line-clamp-1">
+          {displaySubtext}
+        </p>
       )}
     </div>
   );

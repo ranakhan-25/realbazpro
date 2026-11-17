@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Smile,
   Frown,
@@ -13,6 +13,7 @@ import {
   Eye,
   CheckCircle2,
   AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { CSPageHeader } from "@/components/customer-service/CSPageHeader";
 import { CSStatCard } from "@/components/customer-service/CSStatCard";
@@ -22,22 +23,11 @@ import { CSModal } from "@/components/customer-service/CSModal";
 import { CSDetailDrawer } from "@/components/customer-service/CSDetailDrawer";
 import { toast } from "sonner";
 import { useTheme } from "@/lib/theme";
-
-interface FeedbackSurvey {
-  id: string;
-  feedbackNo: string;
-  customerName: string;
-  unit: string;
-  project: string;
-  surveyType: "Handover CSAT" | "Construction Update" | "DLP Resolution" | "Pre-Sales to Post-Sales";
-  csatScore: number;
-  npsScore: number;
-  npsCategory: "Promoter" | "Passive" | "Detractor";
-  comments: string;
-  followUpStatus: "Satisfied - Closed" | "Pending Review" | "Escalated to CX Head" | "Action Taken";
-  assignedOfficer: string;
-  submittedAt: string;
-}
+import {
+  customerCommunicationService,
+  FeedbackSurvey,
+  CommOverviewData,
+} from "@/services/customerCommunicationService";
 
 const INITIAL_FEEDBACK: FeedbackSurvey[] = [
   {
@@ -50,7 +40,8 @@ const INITIAL_FEEDBACK: FeedbackSurvey[] = [
     csatScore: 5,
     npsScore: 10,
     npsCategory: "Promoter",
-    comments: "Exceptional handover experience! Finishing tiles and sanitary fittings matched the sales catalogue exactly. Handover kit and gift hamper were very courteous.",
+    comments:
+      "Exceptional handover experience! Finishing tiles and sanitary fittings matched the sales catalogue exactly. Handover kit and gift hamper were very courteous.",
     followUpStatus: "Satisfied - Closed",
     assignedOfficer: "Nusrat Jahan (CX Lead)",
     submittedAt: "2026-11-03 04:30 PM",
@@ -65,7 +56,8 @@ const INITIAL_FEEDBACK: FeedbackSurvey[] = [
     csatScore: 3,
     npsScore: 6,
     npsCategory: "Detractor",
-    comments: "Water seepage rectification took 10 days instead of the promised 48 hours. However, the site supervisor finally did a good waterproofing coating.",
+    comments:
+      "Water seepage rectification took 10 days instead of the promised 48 hours. However, the site supervisor finally did a good waterproofing coating.",
     followUpStatus: "Escalated to CX Head",
     assignedOfficer: "Engr. Monirul Islam",
     submittedAt: "2026-11-02 11:15 AM",
@@ -80,7 +72,8 @@ const INITIAL_FEEDBACK: FeedbackSurvey[] = [
     csatScore: 5,
     npsScore: 9,
     npsCategory: "Promoter",
-    comments: "Regular milestone drone photos and timely demand letters made the payment planning very smooth. Great job by customer relations desk.",
+    comments:
+      "Regular milestone drone photos and timely demand letters made the payment planning very smooth. Great job by customer relations desk.",
     followUpStatus: "Satisfied - Closed",
     assignedOfficer: "Nusrat Jahan (CX Lead)",
     submittedAt: "2026-11-01 02:20 PM",
@@ -91,15 +84,54 @@ export default function FeedbackSurveysPage() {
   const { primaryColor } = useTheme();
   const brand = primaryColor || "#6D4AFF";
 
-  const [feedbacks, setFeedbacks] = useState<FeedbackSurvey[]>(INITIAL_FEEDBACK);
+  const [recordsTab, setRecordsTab] = useState<"active" | "deleted">("active");
+  const [feedbacks, setFeedbacks] = useState<FeedbackSurvey[]>([]);
   const [activeTab, setActiveTab] = useState("all");
-  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackSurvey | null>(null);
+  const [selectedFeedback, setSelectedFeedback] =
+    useState<FeedbackSurvey | null>(null);
   const [isSurveyModalOpen, setIsSurveyModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [overview, setOverview] = useState<CommOverviewData | null>(null);
+  const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
 
   // Form states
   const [campaignTitle, setCampaignTitle] = useState("");
-  const [campaignType, setCampaignType] = useState<FeedbackSurvey["surveyType"]>("Handover CSAT");
+  const [campaignType, setCampaignType] =
+    useState<FeedbackSurvey["surveyType"]>("Handover CSAT");
   const [targetProject, setTargetProject] = useState("All Projects");
+  const [customerName, setCustomerName] = useState("");
+  const [unit, setUnit] = useState("");
+  const [csatRating, setCsatRating] = useState(5);
+  const [npsScore, setNpsScore] = useState(10);
+  const [feedbackComments, setFeedbackComments] = useState("");
+
+  const loadData = useCallback(async () => {
+    try {
+      const [feedbackRes, overviewRes] = await Promise.all([
+        customerCommunicationService.getFeedbackSurveys({
+          tab: activeTab !== "all" ? activeTab : undefined,
+          is_deleted: recordsTab === "deleted",
+        }),
+        customerCommunicationService.getOverview(),
+      ]);
+
+      if (feedbackRes && Array.isArray(feedbackRes.items)) {
+        setFeedbacks(feedbackRes.items);
+        if (feedbackRes.counts) {
+          setTabCounts(feedbackRes.counts);
+        }
+      }
+      if (overviewRes) {
+        setOverview(overviewRes);
+      }
+    } catch (err) {
+      console.error("Feedback Surveys fetch error:", err);
+    }
+  }, [activeTab, recordsTab]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const filteredFeedbacks = feedbacks.filter((f) => {
     if (activeTab === "promoters") return f.npsCategory === "Promoter";
@@ -107,30 +139,122 @@ export default function FeedbackSurveysPage() {
     if (activeTab === "detractors") return f.npsCategory === "Detractor";
     if (activeTab === "handover") return f.surveyType === "Handover CSAT";
     if (activeTab === "dlp") return f.surveyType === "DLP Resolution";
-    if (activeTab === "escalated") return f.followUpStatus === "Escalated to CX Head" || f.followUpStatus === "Pending Review";
+    if (activeTab === "escalated")
+      return (
+        f.followUpStatus === "Escalated to CX Head" ||
+        f.followUpStatus === "Pending Review"
+      );
     return true;
   });
 
   const counts = {
-    all: feedbacks.length,
-    promoters: feedbacks.filter((f) => f.npsCategory === "Promoter").length,
-    passives: feedbacks.filter((f) => f.npsCategory === "Passive").length,
-    detractors: feedbacks.filter((f) => f.npsCategory === "Detractor").length,
-    handover: feedbacks.filter((f) => f.surveyType === "Handover CSAT").length,
-    dlp: feedbacks.filter((f) => f.surveyType === "DLP Resolution").length,
-    escalated: feedbacks.filter((f) => f.followUpStatus === "Escalated to CX Head" || f.followUpStatus === "Pending Review").length,
+    all: tabCounts.all ?? feedbacks.length,
+    promoters:
+      tabCounts.promoters ??
+      feedbacks.filter((f) => f.npsCategory === "Promoter").length,
+    passives:
+      tabCounts.passives ??
+      feedbacks.filter((f) => f.npsCategory === "Passive").length,
+    detractors:
+      tabCounts.detractors ??
+      feedbacks.filter((f) => f.npsCategory === "Detractor").length,
+    handover:
+      tabCounts.handover ??
+      feedbacks.filter((f) => f.surveyType === "Handover CSAT").length,
+    dlp:
+      tabCounts.dlp ??
+      feedbacks.filter((f) => f.surveyType === "DLP Resolution").length,
+    escalated:
+      tabCounts.escalated ??
+      feedbacks.filter(
+        (f) =>
+          f.followUpStatus === "Escalated to CX Head" ||
+          f.followUpStatus === "Pending Review",
+      ).length,
   };
 
-  const handleLaunchCampaign = (e: React.FormEvent) => {
+  const handleLaunchCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success(`Survey campaign "${campaignTitle || campaignType}" dispatched to ${targetProject} purchasers.`);
-    setIsSurveyModalOpen(false);
-    setCampaignTitle("");
+    try {
+      setIsSubmitting(true);
+      if (customerName) {
+        await customerCommunicationService.recordFeedback({
+          customer_name: customerName,
+          unit: unit || "Unit Allocated",
+          project:
+            targetProject !== "All Projects"
+              ? targetProject
+              : "Corporate Project",
+          survey_type: campaignType,
+          csat_score: csatRating,
+          nps_score: npsScore,
+          comments:
+            feedbackComments ||
+            "Customer surveyed via automated survey dispatch campaign.",
+          follow_up_status:
+            npsScore <= 6 ? "Escalated to CX Head" : "Satisfied - Closed",
+        });
+      }
+      toast.success(
+        `Survey campaign "${campaignTitle || campaignType}" dispatched to ${targetProject} purchasers.`,
+      );
+      setIsSurveyModalOpen(false);
+      setCampaignTitle("");
+      setCustomerName("");
+      setUnit("");
+      setFeedbackComments("");
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to record survey response.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleStatusUpdate = (id: string, newStatus: FeedbackSurvey["followUpStatus"]) => {
-    setFeedbacks(feedbacks.map((f) => (f.id === id ? { ...f, followUpStatus: newStatus } : f)));
-    toast.success(`Feedback issue updated: ${newStatus}`);
+  const handleStatusUpdate = async (
+    id: string,
+    newStatus: FeedbackSurvey["followUpStatus"],
+  ) => {
+    try {
+      await customerCommunicationService.updateFeedbackStatus(id, {
+        follow_up_status: newStatus,
+      });
+      toast.success(`Feedback issue updated: ${newStatus}`);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to update feedback status.",
+      );
+    }
+  };
+
+  const handleDelete = async (row: FeedbackSurvey) => {
+    if (
+      !confirm(
+        `Are you sure you want to remove feedback survey ${row.feedbackNo || row.id}?`,
+      )
+    )
+      return;
+    try {
+      await customerCommunicationService.deleteFeedback(row.id);
+      toast.success("Feedback survey record removed");
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(
+        (
+          err as {
+            response?: { data?: { message?: string } };
+            message?: string;
+          }
+        )?.response?.data?.message ||
+        (err as { message?: string })?.message ||
+        "Failed to remove feedback",
+      );
+    }
   };
 
   const columns: Column<FeedbackSurvey>[] = [
@@ -141,8 +265,12 @@ export default function FeedbackSurveysPage() {
       minWidth: "210px",
       render: (row) => (
         <div>
-          <div className="font-semibold text-[#111827] text-xs">{row.customerName}</div>
-          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">{row.feedbackNo} • {row.unit}</div>
+          <div className="font-semibold text-[#111827] text-xs">
+            {row.customerName}
+          </div>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">
+            {row.feedbackNo} • {row.unit}
+          </div>
         </div>
       ),
     },
@@ -167,13 +295,23 @@ export default function FeedbackSurveysPage() {
             <span className="tabular-nums">{row.csatScore}.0</span>
           </div>
           <div className="text-[11px] font-semibold flex items-center gap-1">
-            {row.npsCategory === "Promoter" && <Smile className="h-3.5 w-3.5 text-[#039855]" />}
-            {row.npsCategory === "Passive" && <Meh className="h-3.5 w-3.5 text-[#DC6803]" />}
-            {row.npsCategory === "Detractor" && <Frown className="h-3.5 w-3.5 text-[#DC2626]" />}
-            <span className={`tabular-nums ${
-              row.npsCategory === "Promoter" ? "text-[#039855]" :
-              row.npsCategory === "Passive" ? "text-[#DC6803]" : "text-[#DC2626]"
-            }`}>
+            {row.npsCategory === "Promoter" && (
+              <Smile className="h-3.5 w-3.5 text-[#039855]" />
+            )}
+            {row.npsCategory === "Passive" && (
+              <Meh className="h-3.5 w-3.5 text-[#DC6803]" />
+            )}
+            {row.npsCategory === "Detractor" && (
+              <Frown className="h-3.5 w-3.5 text-[#DC2626]" />
+            )}
+            <span
+              className={`tabular-nums ${row.npsCategory === "Promoter"
+                  ? "text-[#039855]"
+                  : row.npsCategory === "Passive"
+                    ? "text-[#DC6803]"
+                    : "text-[#DC2626]"
+                }`}
+            >
               NPS {row.npsScore}/10 ({row.npsCategory})
             </span>
           </div>
@@ -185,7 +323,10 @@ export default function FeedbackSurveysPage() {
       header: "CUSTOMER VOICE",
       minWidth: "250px",
       render: (row) => (
-        <p className="text-xs text-[#6B7280] line-clamp-2 max-w-sm" title={row.comments}>
+        <p
+          className="text-xs text-[#6B7280] line-clamp-2 max-w-sm"
+          title={row.comments}
+        >
           {row.comments}
         </p>
       ),
@@ -196,13 +337,18 @@ export default function FeedbackSurveysPage() {
       minWidth: "170px",
       render: (row) => {
         const badges = {
-          "Satisfied - Closed": "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]",
-          "Pending Review": "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]",
-          "Escalated to CX Head": "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]",
+          "Satisfied - Closed":
+            "bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5]",
+          "Pending Review":
+            "bg-[#FFFAEB] text-[#DC6803] border border-[#FEDF89]",
+          "Escalated to CX Head":
+            "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]",
           "Action Taken": "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]",
         };
         return (
-          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${badges[row.followUpStatus]}`}>
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${badges[row.followUpStatus]}`}
+          >
             {row.followUpStatus}
           </span>
         );
@@ -213,29 +359,57 @@ export default function FeedbackSurveysPage() {
       header: "ACTION",
       align: "right",
       minWidth: "120px",
-      render: (row) => (
-        <div className="flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={() => setSelectedFeedback(row)}
-            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
-            title="View Survey"
-            aria-label="View Survey"
-          >
-            <Eye className="h-4 w-4" />
-          </button>
-          {row.npsCategory === "Detractor" && row.followUpStatus !== "Action Taken" && (
+      render: (row) =>
+        recordsTab === "deleted" ? (
+          <div className="flex items-center justify-end gap-1.5">
             <button
               type="button"
-              onClick={() => handleStatusUpdate(row.id, "Escalated to CX Head")}
-              className="h-8 px-2.5 rounded-lg inline-flex items-center text-xs font-semibold bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] hover:bg-[#FEE2E2] transition shadow-xs"
-              title="Escalate Detractor"
+              onClick={() => setSelectedFeedback(row)}
+              className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+              title="View Survey"
+              aria-label="View Survey"
             >
-              Escalate
+              <Eye className="h-4 w-4" />
             </button>
-          )}
-        </div>
-      ),
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+              Soft Deleted
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => setSelectedFeedback(row)}
+              className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+              title="View Survey"
+              aria-label="View Survey"
+            >
+              <Eye className="h-4 w-4" />
+            </button>
+            {row.npsCategory === "Detractor" &&
+              row.followUpStatus !== "Action Taken" && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleStatusUpdate(row.id, "Escalated to CX Head")
+                  }
+                  className="h-8 px-2.5 rounded-lg inline-flex items-center text-xs font-semibold bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] hover:bg-[#FEE2E2] transition shadow-xs"
+                  title="Escalate Detractor"
+                >
+                  Escalate
+                </button>
+              )}
+            <button
+              type="button"
+              onClick={() => handleDelete(row)}
+              className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition shadow-xs"
+              title="Delete Survey"
+              aria-label="Delete Survey"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ),
     },
   ];
 
@@ -245,7 +419,10 @@ export default function FeedbackSurveysPage() {
         title="Feedback, Surveys & NPS"
         subtitle="Monitor buyer sentiment across key touchpoints: booking confirmation, construction progress, handover possession, and 2-year DLP property care."
         badge="Voice of Customer"
-        breadcrumbs={[{ label: "Communication & Appointments" }, { label: "Feedback & NPS" }]}
+        breadcrumbs={[
+          { label: "Communication & Appointments" },
+          { label: "Feedback & NPS" },
+        ]}
         primaryAction={{
           label: "Launch Survey Campaign",
           icon: Plus,
@@ -253,32 +430,85 @@ export default function FeedbackSurveysPage() {
         }}
         secondaryActions={[
           {
-            label: "Export Survey Analysis",
+            label: "Sync Gateways",
             icon: RefreshCw,
-            onClick: () => toast.success("Feedback survey metrics exported."),
+            onClick: () => {
+              loadData();
+              toast.success("Feedback & NPS gateway reports refreshed.");
+            },
           },
         ]}
       />
 
+      {/* Records Mode Switcher (Active vs Soft Deleted) */}
+      <div className="flex items-center justify-between gap-3 border-b border-[#E5E7EB] pb-3">
+        <div className="inline-flex rounded-lg bg-slate-100 p-1 text-xs font-semibold text-slate-600">
+          <button
+            type="button"
+            onClick={() => setRecordsTab("active")}
+            className={`flex items-center gap-2 rounded-md px-3 py-1.5 transition ${recordsTab === "active"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-500 hover:text-slate-800"
+              }`}
+          >
+            Active Responses
+            <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px]">
+              {counts.all}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRecordsTab("deleted")}
+            className={`flex items-center gap-2 rounded-md px-3 py-1.5 transition ${recordsTab === "deleted"
+                ? "bg-rose-600 text-white shadow-xs"
+                : "text-slate-500 hover:text-rose-600"
+              }`}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Deleted Records
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[10px] ${recordsTab === "deleted"
+                  ? "bg-rose-700 text-white"
+                  : "bg-slate-200 text-slate-600"
+                }`}
+            >
+              {tabCounts.deleted_count ?? 0}
+            </span>
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <CSStatCard
           title="Net Promoter Score (NPS)"
-          value="+54"
+          value={
+            overview?.net_promoter_score !== undefined
+              ? `+${overview.net_promoter_score}`
+              : "+54"
+          }
           subtext="Industry benchmark: +35"
           icon={TrendingUp}
           trend={{ value: "+8 pts", isPositive: true }}
         />
         <CSStatCard
           title="Average CSAT Rating"
-          value="4.6 / 5.0"
-          subtext="Based on 248 reviews"
+          value={
+            overview?.overall_csat_score !== undefined
+              ? `${overview.overall_csat_score} / 5.0`
+              : "4.6 / 5.0"
+          }
+          subtext="Based on verified reviews"
           icon={Star}
           iconBg="bg-[#FFFAEB]"
           iconColor="text-[#DC6803]"
         />
         <CSStatCard
           title="Brand Promoters (9-10)"
-          value="78%"
+          value={
+            overview?.promoter_pct !== undefined
+              ? `${overview.promoter_pct}%`
+              : "78%"
+          }
           subtext="Advocates & Referral Drivers"
           icon={Smile}
           iconBg="bg-[#EFF6FF]"
@@ -286,7 +516,11 @@ export default function FeedbackSurveysPage() {
         />
         <CSStatCard
           title="Active Detractors"
-          value="2"
+          value={
+            overview?.open_escalations_count !== undefined
+              ? String(overview.open_escalations_count)
+              : "2"
+          }
           subtext="Requiring CX Management Follow-up"
           icon={Frown}
           iconBg="bg-[#FEF2F2]"
@@ -297,9 +531,17 @@ export default function FeedbackSurveysPage() {
       <CSFilterTabs
         tabs={[
           { key: "all", label: "All Responses", count: counts.all },
-          { key: "promoters", label: "Promoters (9-10)", count: counts.promoters },
+          {
+            key: "promoters",
+            label: "Promoters (9-10)",
+            count: counts.promoters,
+          },
           { key: "passives", label: "Passives (7-8)", count: counts.passives },
-          { key: "detractors", label: "Detractors (0-6)", count: counts.detractors },
+          {
+            key: "detractors",
+            label: "Detractors (0-6)",
+            count: counts.detractors,
+          },
           { key: "handover", label: "Handover CSAT", count: counts.handover },
           { key: "dlp", label: "DLP Resolution", count: counts.dlp },
           { key: "escalated", label: "Action Needed", count: counts.escalated },
@@ -334,16 +576,23 @@ export default function FeedbackSurveysPage() {
             <button
               type="submit"
               form="launch-campaign-form"
-              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
+              disabled={isSubmitting}
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition disabled:opacity-50"
             >
-              Dispatch Survey Link
+              {isSubmitting ? "Dispatching..." : "Dispatch Survey Link"}
             </button>
           </>
         }
       >
-        <form id="launch-campaign-form" onSubmit={handleLaunchCampaign} className="space-y-3.5 text-xs">
+        <form
+          id="launch-campaign-form"
+          onSubmit={handleLaunchCampaign}
+          className="space-y-3.5 text-xs"
+        >
           <div>
-            <label className="block font-semibold text-[#374151] mb-1">Campaign Title</label>
+            <label className="block font-semibold text-[#374151] mb-1">
+              Campaign Title
+            </label>
             <input
               type="text"
               placeholder="e.g. Q4 2026 Handover Allottee CSAT"
@@ -355,27 +604,45 @@ export default function FeedbackSurveysPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Survey Touchpoint *</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Survey Touchpoint *
+              </label>
               <select
                 value={campaignType}
-                onChange={(e) => setCampaignType(e.target.value as any)}
+                onChange={(e) =>
+                  setCampaignType(
+                    e.target.value as FeedbackSurvey["surveyType"],
+                  )
+                }
                 className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
-                <option value="Handover CSAT">Handover & Key Possession CSAT</option>
-                <option value="Construction Update">Construction Progress Transparency</option>
-                <option value="DLP Resolution">DLP Rectification Satisfaction</option>
-                <option value="Pre-Sales to Post-Sales">Sales to Post-Sales Transition</option>
+                <option value="Handover CSAT">
+                  Handover & Key Possession CSAT
+                </option>
+                <option value="Construction Update">
+                  Construction Progress Transparency
+                </option>
+                <option value="DLP Resolution">
+                  DLP Rectification Satisfaction
+                </option>
+                <option value="Pre-Sales to Post-Sales">
+                  Sales to Post-Sales Transition
+                </option>
               </select>
             </div>
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Target Project *</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Target Project *
+              </label>
               <select
                 value={targetProject}
                 onChange={(e) => setTargetProject(e.target.value)}
                 className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="All Projects">All Active Projects</option>
-                <option value="Hena Heights, Gulshan">Hena Heights, Gulshan</option>
+                <option value="Hena Heights, Gulshan">
+                  Hena Heights, Gulshan
+                </option>
                 <option value="Sheba Green Valley">Sheba Green Valley</option>
                 <option value="Eastern Lakeview">Eastern Lakeview</option>
                 <option value="Uttara Green Park">Uttara Green Park</option>
@@ -384,11 +651,22 @@ export default function FeedbackSurveysPage() {
           </div>
 
           <div className="p-3.5 rounded-[12px] border border-[#E5E7EB] bg-[#F9FAFB] space-y-2 text-xs">
-            <span className="font-semibold text-[#111827]">Standard 3-Question Survey Template:</span>
+            <span className="font-semibold text-[#111827]">
+              Standard 3-Question Survey Template:
+            </span>
             <ol className="list-decimal list-inside space-y-1 text-[#6B7280]">
-              <li>How satisfied are you with the finishing quality and handover timeline? (1-5 Stars)</li>
-              <li>How likely are you to recommend RealBiz Pro developments to friends and family? (NPS 0-10)</li>
-              <li>Any suggestions or unresolved concerns for our site engineering team? (Open text)</li>
+              <li>
+                How satisfied are you with the finishing quality and handover
+                timeline? (1-5 Stars)
+              </li>
+              <li>
+                How likely are you to recommend RealBiz Pro developments to
+                friends and family? (NPS 0-10)
+              </li>
+              <li>
+                Any suggestions or unresolved concerns for our site engineering
+                team? (Open text)
+              </li>
             </ol>
           </div>
         </form>
@@ -404,10 +682,13 @@ export default function FeedbackSurveysPage() {
         {selectedFeedback && (
           <div className="space-y-5 text-xs">
             <div className="p-4 rounded-[12px] border border-[#E5E7EB] bg-[#F9FAFB] space-y-2">
-              <div className="text-[11px] text-[#6B7280]">NPS Category & CSAT</div>
+              <div className="text-[11px] text-[#6B7280]">
+                NPS Category & CSAT
+              </div>
               <div className="flex items-center justify-between">
                 <span className="text-base font-semibold text-[#111827] tabular-nums">
-                  {selectedFeedback.npsCategory} ({selectedFeedback.npsScore}/10)
+                  {selectedFeedback.npsCategory} ({selectedFeedback.npsScore}
+                  /10)
                 </span>
                 <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-[#ECFDF3] text-[#039855] border border-[#A6F4C5] tabular-nums">
                   {selectedFeedback.csatScore} / 5 Stars
@@ -416,29 +697,49 @@ export default function FeedbackSurveysPage() {
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Customer & Unit</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
+                Customer & Unit
+              </h4>
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">Customer:</span>
-                  <div className="font-semibold text-[#111827]">{selectedFeedback.customerName}</div>
+                  <span className="text-[#6B7280] block text-[11px]">
+                    Customer:
+                  </span>
+                  <div className="font-semibold text-[#111827]">
+                    {selectedFeedback.customerName}
+                  </div>
                 </div>
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">Unit & Project:</span>
-                  <div className="font-semibold text-[#6D4AFF]">{selectedFeedback.unit}</div>
+                  <span className="text-[#6B7280] block text-[11px]">
+                    Unit & Project:
+                  </span>
+                  <div className="font-semibold text-[#6D4AFF]">
+                    {selectedFeedback.unit}
+                  </div>
                 </div>
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">Touchpoint:</span>
-                  <div className="font-medium text-[#111827]">{selectedFeedback.surveyType}</div>
+                  <span className="text-[#6B7280] block text-[11px]">
+                    Touchpoint:
+                  </span>
+                  <div className="font-medium text-[#111827]">
+                    {selectedFeedback.surveyType}
+                  </div>
                 </div>
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">Date & Time:</span>
-                  <div className="font-medium text-[#111827] tabular-nums">{selectedFeedback.submittedAt}</div>
+                  <span className="text-[#6B7280] block text-[11px]">
+                    Date & Time:
+                  </span>
+                  <div className="font-medium text-[#111827] tabular-nums">
+                    {selectedFeedback.submittedAt}
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Customer Voice & Comments</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
+                Customer Voice & Comments
+              </h4>
               <div className="p-3.5 rounded-[12px] border border-[#E5E7EB] bg-white text-xs leading-relaxed text-[#374151]">
                 "{selectedFeedback.comments}"
               </div>
@@ -447,11 +748,15 @@ export default function FeedbackSurveysPage() {
             <div className="space-y-2 pt-2 border-t border-[#E5E7EB] text-xs">
               <div className="flex justify-between text-[#6B7280]">
                 <span>Assigned CX Officer:</span>
-                <span className="font-medium text-[#111827]">{selectedFeedback.assignedOfficer}</span>
+                <span className="font-medium text-[#111827]">
+                  {selectedFeedback.assignedOfficer}
+                </span>
               </div>
               <div className="flex justify-between text-[#6B7280]">
                 <span>Resolution Status:</span>
-                <span className="font-semibold text-[#039855]">{selectedFeedback.followUpStatus}</span>
+                <span className="font-semibold text-[#039855]">
+                  {selectedFeedback.followUpStatus}
+                </span>
               </div>
             </div>
           </div>

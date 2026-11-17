@@ -54,6 +54,7 @@ export interface DlpStatsResult {
   inProgressClaims: number;
   resolvedClaims: number;
   criticalClaims: number;
+  deleted_count?: number;
 }
 
 export interface QueryDlpClaimsParams {
@@ -65,6 +66,7 @@ export interface QueryDlpClaimsParams {
   defect_category?: string;
   severity?: string;
   status?: string;
+  is_deleted?: boolean;
 }
 
 export interface CreateDlpClaimPayload {
@@ -105,8 +107,10 @@ export async function getDlpClaims(params?: QueryDlpClaimsParams): Promise<{
   limit: number;
   totalPages: number;
 }> {
+  const query: Record<string, unknown> = { ...(params || {}) };
+  if (!query.is_deleted) delete query.is_deleted;
   const res = await api.get("/customer-service/property-care/dlp-claims", {
-    params,
+    params: query,
   });
   return res.data?.data ?? res.data;
 }
@@ -199,6 +203,7 @@ export interface MaintenanceStatsResult {
   inProgress: number;
   completed: number;
   totalCostEstimate: number;
+  deleted_count?: number;
 }
 
 export interface QueryMaintenanceParams {
@@ -209,6 +214,7 @@ export interface QueryMaintenanceParams {
   project_id?: string;
   maintenance_type?: string;
   status?: string;
+  is_deleted?: boolean;
 }
 
 export interface CreateMaintenancePayload {
@@ -248,9 +254,11 @@ export async function getMaintenanceRequests(
   limit: number;
   totalPages: number;
 }> {
+  const query: Record<string, unknown> = { ...(params || {}) };
+  if (!query.is_deleted) delete query.is_deleted;
   const res = await api.get(
     "/customer-service/property-care/maintenance-requests",
-    { params },
+    { params: query },
   );
   return res.data?.data ?? res.data;
 }
@@ -348,6 +356,7 @@ export interface AssociationStatsResult {
   developerManagingCount: number;
   adHocCount: number;
   avgServiceCharge: number;
+  deleted_count?: number;
 }
 
 export interface QueryOwnersAssociationParams {
@@ -357,6 +366,7 @@ export interface QueryOwnersAssociationParams {
   tab?: string;
   project_id?: string;
   handover_status?: string;
+  is_deleted?: boolean;
 }
 
 export interface CreateOwnersAssociationPayload {
@@ -397,9 +407,11 @@ export async function getOwnersAssociations(
   limit: number;
   totalPages: number;
 }> {
+  const query: Record<string, unknown> = { ...(params || {}) };
+  if (!query.is_deleted) delete query.is_deleted;
   const res = await api.get(
     "/customer-service/property-care/owners-associations",
-    { params },
+    { params: query },
   );
   return res.data?.data ?? res.data;
 }

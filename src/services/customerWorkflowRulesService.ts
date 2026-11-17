@@ -12,9 +12,9 @@ export interface WorkflowRuleItem {
   rule_name: string;
   ruleName: string;
   rule_type:
-  "SLA Policy" | "Auto-Routing" | "Escalation Matrix" | "Statutory Rule";
+    "SLA Policy" | "Auto-Routing" | "Escalation Matrix" | "Statutory Rule";
   ruleType:
-  "SLA Policy" | "Auto-Routing" | "Escalation Matrix" | "Statutory Rule";
+    "SLA Policy" | "Auto-Routing" | "Escalation Matrix" | "Statutory Rule";
   category_or_trigger: string;
   categoryOrTrigger: string;
   first_response_target: string;
@@ -65,7 +65,7 @@ export interface CreateWorkflowRulePayload {
   rule_code?: string;
   rule_name: string;
   rule_type?:
-  "SLA Policy" | "Auto-Routing" | "Escalation Matrix" | "Statutory Rule";
+    "SLA Policy" | "Auto-Routing" | "Escalation Matrix" | "Statutory Rule";
   category_or_trigger: string;
   first_response_target?: string;
   resolution_target?: string;

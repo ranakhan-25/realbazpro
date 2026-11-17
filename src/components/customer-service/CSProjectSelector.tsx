@@ -61,7 +61,9 @@ export function CSProjectSelector({
         className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 bg-white/80 shadow-xs ${className}`}
       >
         <Loader2 className="w-4 h-4 text-[#6D4AFF] animate-spin" />
-        <span className="text-xs font-medium text-gray-500">Loading projects…</span>
+        <span className="text-xs font-medium text-gray-500">
+          Loading projects…
+        </span>
       </div>
     );
   }
@@ -74,7 +76,9 @@ export function CSProjectSelector({
         title="No projects have been provisioned or assigned to your organization yet"
       >
         <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-        <span className="font-medium">No project found for your organization</span>
+        <span className="font-medium">
+          No project found for your organization
+        </span>
         <button
           type="button"
           onClick={() => refetchProjects()}
@@ -204,4 +208,3 @@ export function CSProjectSelector({
     </div>
   );
 }
-
