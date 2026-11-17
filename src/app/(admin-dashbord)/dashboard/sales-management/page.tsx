@@ -301,7 +301,7 @@ export default function RealEstateDashboard() {
             Real Estate Dashboard
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
-            Overview of property sales, land deals & agent performance.
+            Overview of property sales, lands deals & agent performance.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -323,7 +323,7 @@ export default function RealEstateDashboard() {
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors shadow-lg shadow-indigo-600/20"
           >
             <Download size={16} />
-            Export
+            Export...
           </button>
         </div>
       </div>
