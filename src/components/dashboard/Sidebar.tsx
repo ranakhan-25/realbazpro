@@ -418,46 +418,27 @@ function sanitizeMenuLabel(label: string, slug?: string, moduleKey?: string): st
   }, [accessibleModules, module]);
 
   const permittedTree = useMemo(() => {
-    let base: MenuNode[] = [];
-    if (
-      currentAccessibleMod?.menuTree &&
-      currentAccessibleMod.menuTree.length > 0
-    ) {
-      base = cloneTree(currentAccessibleMod.menuTree);
-    } else {
-      const rawTree = MENUS[module] || [];
-      base = pruneTreeByAccess(rawTree, module, hasAccessToRoute);
-    }
-
-    if (module === "cr") {
-      const rawCr = MENUS.cr || [];
-      const existingSlugs = new Set(base.map((n) => n.slug));
-      for (const item of rawCr) {
-        if (!existingSlugs.has(item.slug)) {
-          base.push(item);
-          existingSlugs.add(item.slug);
-        }
-      }
-    }
-    // let base = pruneTreeByAccess(MENUS[module], module, hasAccessToRoute);
-    if (module === "procurement") {
-      base = base.filter(
-        (n) => n.slug !== "approvals" && n.slug !== "vendors"
-      );
-    }, [accessibleModules, module]);
-
-    const permittedTree = useMemo(() => {
       let base: MenuNode[] = [];
       if (
         currentAccessibleMod?.menuTree &&
         currentAccessibleMod.menuTree.length > 0
       ) {
-        base = currentAccessibleMod.menuTree;
+        base = cloneTree(currentAccessibleMod.menuTree);
       } else {
         const rawTree = MENUS[module] || [];
         base = pruneTreeByAccess(rawTree, module, hasAccessToRoute);
       }
-      // let base = pruneTreeByAccess(MENUS[module], module, hasAccessToRoute);
+      if (module === "cr") {
+        const rawCr = MENUS.cr || [];
+        const existingSlugs = new Set(base.map((n) => n.slug));
+        for (const item of rawCr) {
+          if (!existingSlugs.has(item.slug)) {
+            base.push(item);
+            existingSlugs.add(item.slug);
+          }
+        }
+      }
+
       if (module === "procurement") {
         base = base.filter(
           (n) => n.slug !== "approvals" && n.slug !== "vendors"
@@ -497,13 +478,13 @@ function sanitizeMenuLabel(label: string, slug?: string, moduleKey?: string): st
         base = normalizeMenuNodes(base, module);
       }
       return base;
-    }, [currentAccessibleMod, module, hasAccessToRoute]);
+  }, [currentAccessibleMod, module, hasAccessToRoute]);
 
-    const tree = useMemo(() => filterTree(permittedTree, q), [permittedTree, q]);
+  const tree = useMemo(() => filterTree(permittedTree, q), [permittedTree, q]);
 
-    const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-    useEffect(() => {
+  useEffect(() => {
       const parts = activePath.split("/").filter(Boolean);
       const next = new Set<string>();
       for (let i = 1; i < parts.length; i++) {
@@ -540,19 +521,6 @@ function sanitizeMenuLabel(label: string, slug?: string, moduleKey?: string): st
       findAncestors(permittedTree, []);
 
       setExpanded((prev) => new Set([...prev, ...next]));
-    }, [activePath, module, permittedTree]);
-
-    const toggle = (path: string) => {
-      setExpanded((prev) => {
-        const n = new Set(prev);
-        if (n.has(path)) n.delete(path);
-        else n.add(path);
-        return n;
-      });
-    };
-    findAncestors(permittedTree, []);
-
-    setExpanded((prev) => new Set([...prev, ...next]));
   }, [activePath, module, permittedTree]);
 
   const toggle = (path: string) => {
@@ -606,20 +574,20 @@ function sanitizeMenuLabel(label: string, slug?: string, moduleKey?: string): st
         if (n.children?.length) {
           return (
             <li key={n.path}>
-              <Link
-                href={href}
-                onClick={onClose}
+              <button
+                type="button"
+                onClick={() => toggle(n.path)}
                 className={cn(
-                  "group flex items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition",
-                  isActive
-                    ? "font-semibold text-white shadow-sm"
-                    : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
+                  "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-sm transition",
+                  depth === 0 ? "font-semibold" : "font-medium",
+                  !isAncestor && "text-foreground/80 hover:bg-foreground/5",
                 )}
                 style={
-                  isActive
+                  isAncestor
                     ? {
-                      backgroundColor: brandColor,
-                      boxShadow: `0 1px 2px ${brandColor}33`,
+                      backgroundColor: `${brandColor}1A`,
+                      color: brandColor,
+                      boxShadow: `inset 0 0 0 1px ${brandColor}40`,
                     }
                     : undefined
                 }
@@ -629,22 +597,77 @@ function sanitizeMenuLabel(label: string, slug?: string, moduleKey?: string): st
                     <Icon
                       className={cn(
                         "h-4 w-4 shrink-0 transition-colors",
-                        isActive
-                          ? "text-white"
-                          : "text-muted-foreground group-hover:text-foreground",
+                        isAncestor ? "text-primary" : "text-muted-foreground",
                       )}
+                      style={isAncestor ? { color: brandColor } : undefined}
                     />
-                  ) : isActive ? (
-                    <span className="h-3.5 w-1 rounded bg-white/80" />
+                  ) : isAncestor ? (
+                    <span
+                      className="h-3.5 w-1 rounded shrink-0"
+                      style={{ backgroundColor: brandColor }}
+                    />
                   ) : null}
                   <span className="truncate">{sanitizeMenuLabel(n.label, n.slug, module)}</span>
                 </div>
-              </Link>
+                <ChevronRight
+                  className={cn(
+                    "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform",
+                    isOpen && "rotate-90",
+                  )}
+                />
+              </button>
+              {isOpen ? (
+                <div className="mt-0.5">
+                  {renderNodes(n.children, depth + 1)}
+                </div>
+              ) : null}
             </li>
           );
-        })}
-      </ul>
-    );
+        }
+
+        const href = getMenuHref(n, module);
+
+        return (
+          <li key={n.path}>
+            <Link
+              href={href}
+              onClick={onClose}
+              className={cn(
+                "group flex items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition",
+                isActive
+                  ? "font-semibold text-white shadow-sm"
+                  : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
+              )}
+              style={
+                isActive
+                  ? {
+                    backgroundColor: brandColor,
+                    boxShadow: `0 1px 2px ${brandColor}33`,
+                  }
+                  : undefined
+              }
+            >
+              <div className="flex items-center gap-2 truncate">
+                {Icon ? (
+                  <Icon
+                    className={cn(
+                      "h-4 w-4 shrink-0 transition-colors",
+                      isActive
+                        ? "text-white"
+                        : "text-muted-foreground group-hover:text-foreground",
+                    )}
+                  />
+                ) : isActive ? (
+                  <span className="h-3.5 w-1 rounded bg-white/80" />
+                ) : null}
+                <span className="truncate">{sanitizeMenuLabel(n.label, n.slug, module)}</span>
+              </div>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
 
     const renderCollapsedNodes = (nodes: MenuNode[]) => (
       <ul className="space-y-1.5 py-1">
@@ -665,7 +688,7 @@ function sanitizeMenuLabel(label: string, slug?: string, moduleKey?: string): st
           const Icon =
             module === "lams"
               ? LAMS_ICONS[n.slug]
-              : module === "collection"
+              : module === "collection" || module === "cr"
                 ? COLLECTION_ICONS[n.slug]
                 : module === "customer-service"
                   ? CUSTOMER_SERVICE_ICONS[n.slug]
@@ -691,55 +714,27 @@ function sanitizeMenuLabel(label: string, slug?: string, moduleKey?: string): st
                       ? { backgroundColor: brandColor }
                       : undefined
                   }
-                  : undefined
-              }
-            >
-              <div className="flex items-center gap-2 truncate">
-                {Icon ? (
-                  <Icon
-                    className={cn(
-                      "h-4 w-4 shrink-0 transition-colors",
-                      isActive
-                        ? "text-white"
-                        : "text-muted-foreground group-hover:text-foreground",
-                    )}
-                  />
-                ) : isActive ? (
-                  <span className="h-3.5 w-1 rounded bg-white/80" />
-                ) : null}
-                <span className="truncate">{n.label}</span>
-              </div>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  );
+                  title={sanitizeMenuLabel(n.label, n.slug, module)}
+                >
+                  {Icon ? (
+                    <Icon className="h-4.5 w-4.5" />
+                  ) : (
+                    <span className="text-xs font-bold tracking-tight">
+                      {sanitizeMenuLabel(n.label, n.slug, module).slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                </button>
 
-  const renderCollapsedNodes = (nodes: MenuNode[]) => (
-    <ul className="space-y-1.5 py-1">
-      {nodes.map((n) => {
-        const cleanNodePath = n.path
-          .replace(/^\//, "")
-          .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
-        const cleanActivePath = activePath
-          .replace(/^\//, "")
-          .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
-        const isActive =
-          cleanNodePath === cleanActivePath ||
-          n.path === activePath ||
-          (!cleanActivePath && (n.slug === "dashboard" || cleanNodePath === "dashboard"));
-        const isAncestor = Boolean(
-          cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")
-        );
-        const Icon =
-          module === "lams"
-            ? LAMS_ICONS[n.slug]
-            : module === "collection" || module === "cr"
-            ? COLLECTION_ICONS[n.slug]
-            : null;
+                <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 z-50 rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
+                  {sanitizeMenuLabel(n.label, n.slug, module)}
+                  <span className="ml-1 text-[10px] text-slate-300">({n.children.length})</span>
+                </div>
+              </li>
+            );
+          }
 
-        if (n.children?.length) {
+          const href = getMenuHref(n, module);
+
           return (
             <li key={n.path} className="relative group">
               <Link
