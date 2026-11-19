@@ -169,7 +169,8 @@ export default function Customer360Page() {
             undefined,
           status: currentStatus,
           is_deleted: isDeleted,
-          project_id: projectId || undefined,
+          project_id:
+            projectId && projectId !== "all" ? projectId : undefined,
         });
 
         // Discard stale responses if a newer request was dispatched
@@ -268,7 +269,8 @@ export default function Customer360Page() {
         nominee_relation: formNomineeRelation,
         nominee_nid: formNomineeNid.trim() || undefined,
         customer_status: formStatus,
-        project_id: projectId || undefined,
+        project_id:
+          projectId && projectId !== "all" ? projectId : undefined,
       });
 
       toast.success(

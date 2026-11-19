@@ -147,6 +147,8 @@ export async function getCustomers(params?: {
   const targetProjectId = params?.projectId || params?.project_id;
   if (targetProjectId && targetProjectId !== "all") {
     queryParams.project_id = targetProjectId;
+  } else {
+    delete queryParams.project_id;
   }
   delete queryParams.projectId;
   delete queryParams.organization_id;
