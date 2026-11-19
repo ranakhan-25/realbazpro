@@ -359,4 +359,273 @@ export const crApi = {
       return null;
     }
   },
+
+  async getOfficerPerformance() {
+    try {
+      const res = await crClient.get("/reports/officer-performance");
+      return res.data?.data || res.data || [];
+    } catch (err: any) {
+      console.error("Error fetching officer performance:", err);
+      showAlert.error(
+        "Failed to load officer performance",
+        err.response?.data?.message || err.message,
+      );
+      return [];
+    }
+  },
+
+  async getDefaultersLeaderboard(limit: number = 10) {
+    try {
+      const res = await crClient.get(`/reports/defaulters-leaderboard?limit=${limit}`);
+      return res.data?.data || res.data || [];
+    } catch (err: any) {
+      console.error("Error fetching defaulters leaderboard:", err);
+      showAlert.error(
+        "Failed to load defaulters leaderboard",
+        err.response?.data?.message || err.message,
+      );
+      return [];
+    }
+  },
+
+  // Officer Assignments
+  async getAssignments(params?: { officer_id?: string; status?: string; sale_agreement_id?: number }) {
+    try {
+      const res = await crClient.get("/assignments", { params });
+      return res.data?.data || res.data || [];
+    } catch (err: any) {
+      console.error("Error fetching assignments:", err);
+      showAlert.error(
+        "Failed to load assignments",
+        err.response?.data?.message || err.message,
+      );
+      return [];
+    }
+  },
+
+  async getAssignmentDetails(uuid: string) {
+    try {
+      const res = await crClient.get(`/assignments/${uuid}`);
+      return res.data?.data || res.data;
+    } catch (err: any) {
+      showAlert.error(
+        "Failed to load assignment details",
+        err.response?.data?.message || err.message,
+      );
+      return null;
+    }
+  },
+
+  async createAssignment(dto: any) {
+    try {
+      const res = await crClient.post("/assignments", dto);
+      showAlert.success(
+        "Assignment Created",
+        "Officer assigned to target successfully.",
+      );
+      return res.data?.data || res.data;
+    } catch (err: any) {
+      showAlert.error(
+        "Assignment Failed",
+        err.response?.data?.message || err.message,
+      );
+      throw err;
+    }
+  },
+
+  async bulkAssign(dto: {
+    officer_id: string;
+    officer_name: string;
+    sale_agreement_ids: number[];
+    due_date: string;
+    notes?: string;
+  }) {
+    try {
+      const res = await crClient.post("/assignments/bulk", dto);
+      showAlert.success(
+        "Bulk Assignment Successful",
+        `${dto.sale_agreement_ids.length} accounts assigned to ${dto.officer_name}.`,
+      );
+      return res.data?.data || res.data;
+    } catch (err: any) {
+      showAlert.error(
+        "Bulk Assignment Failed",
+        err.response?.data?.message || err.message,
+      );
+      throw err;
+    }
+  },
+
+  async updateAssignment(uuid: string, dto: any) {
+    try {
+      const res = await crClient.put(`/assignments/${uuid}`, dto);
+      showAlert.success("Assignment Updated", "Assignment details saved.");
+      return res.data?.data || res.data;
+    } catch (err: any) {
+      showAlert.error(
+        "Update Failed",
+        err.response?.data?.message || err.message,
+      );
+      throw err;
+    }
+  },
+
+  async syncAssignmentProgress(uuid: string) {
+    try {
+      const res = await crClient.post(`/assignments/${uuid}/sync-progress`);
+      showAlert.success("Progress Synced", "Target collection progress updated against payments.");
+      return res.data?.data || res.data;
+    } catch (err: any) {
+      showAlert.error(
+        "Sync Failed",
+        err.response?.data?.message || err.message,
+      );
+      throw err;
+    }
+  },
+
+  async deleteAssignment(uuid: string) {
+    try {
+      const res = await crClient.delete(`/assignments/${uuid}`);
+      showAlert.success("Assignment Removed", "Officer assignment deleted.");
+      return res.data?.data || res.data;
+    } catch (err: any) {
+      showAlert.error(
+        "Delete Failed",
+        err.response?.data?.message || err.message,
+      );
+      throw err;
+    }
+  },
+
+  // Financial Adjustments
+  async getAdjustments(params?: { sale_agreement_id?: number; adjustment_type?: string; status?: string }) {
+    try {
+      const res = await crClient.get("/adjustments", { params });
+      return res.data?.data || res.data || [];
+    } catch (err: any) {
+      console.error("Error fetching adjustments:", err);
+      showAlert.error(
+        "Failed to load adjustments",
+        err.response?.data?.message || err.message,
+      );
+      return [];
+    }
+  },
+
+  async createAdjustment(dto: any) {
+    try {
+      const res = await crClient.post("/adjustments", dto);
+      showAlert.success(
+        "Adjustment Applied",
+        "Financial adjustment recorded and installment balances updated.",
+      );
+      return res.data?.data || res.data;
+    } catch (err: any) {
+      showAlert.error(
+        "Adjustment Failed",
+        err.response?.data?.message || err.message,
+      );
+      throw err;
+    }
+  },
+
+  async reverseAdjustment(uuid: string, reason: string) {
+    try {
+      const res = await crClient.post(`/adjustments/${uuid}/reverse`, { reason });
+      showAlert.success(
+        "Adjustment Reversed",
+        "Adjustment marked reversed and installment balances restored.",
+      );
+      return res.data?.data || res.data;
+    } catch (err: any) {
+      showAlert.error(
+        "Reversal Failed",
+        err.response?.data?.message || err.message,
+      );
+      throw err;
+    }
+  },
+
+  async deleteAdjustment(uuid: string) {
+    try {
+      const res = await crClient.delete(`/adjustments/${uuid}`);
+      showAlert.success("Adjustment Removed", "Adjustment record deleted.");
+      return res.data?.data || res.data;
+    } catch (err: any) {
+      showAlert.error(
+        "Delete Failed",
+        err.response?.data?.message || err.message,
+      );
+      throw err;
+    }
+  },
+
+  // Delay Penalty Waiver Requests
+  async getWaivers(params?: { sale_agreement_id?: number; approval_status?: string }) {
+    try {
+      const res = await crClient.get("/waivers", { params });
+      return res.data?.data || res.data || [];
+    } catch (err: any) {
+      console.error("Error fetching waivers:", err);
+      showAlert.error(
+        "Failed to load waivers",
+        err.response?.data?.message || err.message,
+      );
+      return [];
+    }
+  },
+
+  async createWaiver(dto: any) {
+    try {
+      const res = await crClient.post("/waivers", dto);
+      showAlert.success(
+        "Waiver Request Submitted",
+        "Request queued for management authorization.",
+      );
+      return res.data?.data || res.data;
+    } catch (err: any) {
+      showAlert.error(
+        "Submission Failed",
+        err.response?.data?.message || err.message,
+      );
+      throw err;
+    }
+  },
+
+  async updateWaiverStatus(uuid: string, dto: {
+    approval_status: string;
+    approved_amount?: number;
+    approval_remarks?: string;
+  }) {
+    try {
+      const res = await crClient.patch(`/waivers/${uuid}/status`, dto);
+      showAlert.success(
+        `Waiver ${dto.approval_status === "approved" ? "Approved" : "Rejected"}`,
+        `Waiver request updated successfully.`,
+      );
+      return res.data?.data || res.data;
+    } catch (err: any) {
+      showAlert.error(
+        "Action Failed",
+        err.response?.data?.message || err.message,
+      );
+      throw err;
+    }
+  },
+
+  async deleteWaiver(uuid: string) {
+    try {
+      const res = await crClient.delete(`/waivers/${uuid}`);
+      showAlert.success("Waiver Request Removed", "Waiver request deleted.");
+      return res.data?.data || res.data;
+    } catch (err: any) {
+      showAlert.error(
+        "Delete Failed",
+        err.response?.data?.message || err.message,
+      );
+      throw err;
+    }
+  },
 };
+

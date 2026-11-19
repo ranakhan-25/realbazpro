@@ -134,16 +134,23 @@ const LAMS_ICONS: Record<string, React.ElementType> = {
 
 const COLLECTION_ICONS: Record<string, React.ElementType> = {
   dashboard: LayoutDashboard,
+  agreements: Handshake,
   schedule: CalendarDays,
   due: AlertCircle,
   entries: Receipt,
+  "receipt-voucher": Receipt,
+  "overdue-list": AlertTriangle,
+  assignments: Users,
   waivers: Percent,
+  performance: TrendingUp,
   outstanding: BarChart3,
   aging: BarChart3,
   overdue: AlertTriangle,
   recovery: ShieldAlert,
   followups: CalendarCheck2,
   visits: Compass,
+  setups: Settings,
+  reports: BarChart3,
   perf: TrendingUp,
 };
 
@@ -404,9 +411,38 @@ function sanitizeMenuLabel(label: string, slug?: string, moduleKey?: string): st
 
     const q = filter.trim().toLowerCase();
 
-    const currentAccessibleMod = useMemo(() => {
-      return accessibleModules.find(
-        (m) => m.key.toLowerCase() === module.toLowerCase(),
+  const currentAccessibleMod = useMemo(() => {
+    return accessibleModules.find(
+      (m) => m.key.toLowerCase() === module.toLowerCase(),
+    );
+  }, [accessibleModules, module]);
+
+  const permittedTree = useMemo(() => {
+    let base: MenuNode[] = [];
+    if (
+      currentAccessibleMod?.menuTree &&
+      currentAccessibleMod.menuTree.length > 0
+    ) {
+      base = cloneTree(currentAccessibleMod.menuTree);
+    } else {
+      const rawTree = MENUS[module] || [];
+      base = pruneTreeByAccess(rawTree, module, hasAccessToRoute);
+    }
+
+    if (module === "cr") {
+      const rawCr = MENUS.cr || [];
+      const existingSlugs = new Set(base.map((n) => n.slug));
+      for (const item of rawCr) {
+        if (!existingSlugs.has(item.slug)) {
+          base.push(item);
+          existingSlugs.add(item.slug);
+        }
+      }
+    }
+    // let base = pruneTreeByAccess(MENUS[module], module, hasAccessToRoute);
+    if (module === "procurement") {
+      base = base.filter(
+        (n) => n.slug !== "approvals" && n.slug !== "vendors"
       );
     }, [accessibleModules, module]);
 
@@ -514,104 +550,60 @@ function sanitizeMenuLabel(label: string, slug?: string, moduleKey?: string): st
         return n;
       });
     };
+    findAncestors(permittedTree, []);
 
-    const renderNodes = (nodes: MenuNode[], depth = 0) => (
-      <ul
-        className={cn("space-y-0.5", depth > 0 && "ml-3 border-l pl-2")}
-        style={depth > 0 ? { borderColor: `${brandColor}33` } : undefined}
-      >
-        {nodes.map((n) => {
-          const cleanNodePath = n.path
-            .replace(/^\//, "")
-            .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
-          const cleanActivePath = activePath
-            .replace(/^\//, "")
-            .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
-          const isActive =
-            cleanNodePath === cleanActivePath ||
-            n.path === activePath ||
-            (!cleanActivePath && (n.slug === "dashboard" || cleanNodePath === "dashboard"));
-          const hasActiveDescendant = (node: MenuNode): boolean => {
-            if (!node.children?.length) return false;
-            return node.children.some((c) => {
-              const cleanC = c.path
-                .replace(/^\//, "")
-                .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
-              if (cleanC === cleanActivePath || c.path === activePath) return true;
-              if (cleanC && cleanActivePath.startsWith(cleanC + "/")) return true;
-              return hasActiveDescendant(c);
-            });
-          };
-          const isChildActive = hasActiveDescendant(n);
-          const isAncestor = Boolean(
-            (cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")) || isChildActive
-          );
-          const isOpen = !!q || expanded.has(n.path) || expanded.has(cleanNodePath);
-          const Icon =
-            module === "lams"
-              ? LAMS_ICONS[n.slug]
-              : module === "collection"
-                ? COLLECTION_ICONS[n.slug]
-                : module === "customer-service"
-                  ? CUSTOMER_SERVICE_ICONS[n.slug]
-                  : null;
+    setExpanded((prev) => new Set([...prev, ...next]));
+  }, [activePath, module, permittedTree]);
 
-          if (n.children?.length) {
-            return (
-              <li key={n.path}>
-                <button
-                  type="button"
-                  onClick={() => toggle(n.path)}
-                  className={cn(
-                    "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-sm transition",
-                    depth === 0 ? "font-semibold" : "font-medium",
-                    !isAncestor && "text-foreground/80 hover:bg-foreground/5",
-                  )}
-                  style={
-                    isAncestor
-                      ? {
-                        backgroundColor: `${brandColor}1A`,
-                        color: brandColor,
-                        boxShadow: `inset 0 0 0 1px ${brandColor}40`,
-                      }
-                      : undefined
-                  }
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    {Icon ? (
-                      <Icon
-                        className={cn(
-                          "h-4 w-4 shrink-0 transition-colors",
-                          isAncestor ? "text-primary" : "text-muted-foreground",
-                        )}
-                        style={isAncestor ? { color: brandColor } : undefined}
-                      />
-                    ) : isAncestor ? (
-                      <span
-                        className="h-3.5 w-1 rounded shrink-0"
-                        style={{ backgroundColor: brandColor }}
-                      />
-                    ) : null}
-                    <span className="truncate">{sanitizeMenuLabel(n.label, n.slug, module)}</span>
-                  </div>
-                  <ChevronRight
-                    className={cn(
-                      "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform",
-                      isOpen && "rotate-90",
-                    )}
-                  />
-                </button>
-                {isOpen ? (
-                  <div className="mt-0.5">
-                    {renderNodes(n.children, depth + 1)}
-                  </div>
-                ) : null}
-              </li>
-            );
-          }
+  const toggle = (path: string) => {
+    setExpanded((prev) => {
+      const n = new Set(prev);
+      if (n.has(path)) n.delete(path);
+      else n.add(path);
+      return n;
+    });
+  };
 
-          const href = getMenuHref(n, module);
+  const renderNodes = (nodes: MenuNode[], depth = 0) => (
+    <ul
+      className={cn("space-y-0.5", depth > 0 && "ml-3 border-l pl-2")}
+      style={depth > 0 ? { borderColor: `${brandColor}33` } : undefined}
+    >
+      {nodes.map((n) => {
+        const cleanNodePath = n.path
+          .replace(/^\//, "")
+          .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+        const cleanActivePath = activePath
+          .replace(/^\//, "")
+          .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+        const isActive =
+          cleanNodePath === cleanActivePath ||
+          n.path === activePath ||
+          (!cleanActivePath && (n.slug === "dashboard" || cleanNodePath === "dashboard"));
+        const hasActiveDescendant = (node: MenuNode): boolean => {
+          if (!node.children?.length) return false;
+          return node.children.some((c) => {
+            const cleanC = c.path
+              .replace(/^\//, "")
+              .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+            if (cleanC === cleanActivePath || c.path === activePath) return true;
+            if (cleanC && cleanActivePath.startsWith(cleanC + "/")) return true;
+            return hasActiveDescendant(c);
+          });
+        };
+        const isChildActive = hasActiveDescendant(n);
+        const isAncestor = Boolean(
+          (cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")) || isChildActive
+        );
+        const isOpen = !!q || expanded.has(n.path) || expanded.has(cleanNodePath);
+        const Icon =
+          module === "lams"
+            ? LAMS_ICONS[n.slug]
+            : module === "collection" || module === "cr"
+            ? COLLECTION_ICONS[n.slug]
+            : null;
 
+        if (n.children?.length) {
           return (
             <li key={n.path}>
               <Link
@@ -699,27 +691,55 @@ function sanitizeMenuLabel(label: string, slug?: string, moduleKey?: string): st
                       ? { backgroundColor: brandColor }
                       : undefined
                   }
-                  title={sanitizeMenuLabel(n.label, n.slug, module)}
-                >
-                  {Icon ? (
-                    <Icon className="h-4.5 w-4.5" />
-                  ) : (
-                    <span className="text-xs font-bold tracking-tight">
-                      {sanitizeMenuLabel(n.label, n.slug, module).slice(0, 2).toUpperCase()}
-                    </span>
-                  )}
-                </button>
+                  : undefined
+              }
+            >
+              <div className="flex items-center gap-2 truncate">
+                {Icon ? (
+                  <Icon
+                    className={cn(
+                      "h-4 w-4 shrink-0 transition-colors",
+                      isActive
+                        ? "text-white"
+                        : "text-muted-foreground group-hover:text-foreground",
+                    )}
+                  />
+                ) : isActive ? (
+                  <span className="h-3.5 w-1 rounded bg-white/80" />
+                ) : null}
+                <span className="truncate">{n.label}</span>
+              </div>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
 
-                <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 z-50 rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
-                  {sanitizeMenuLabel(n.label, n.slug, module)}
-                  <span className="ml-1 text-[10px] text-slate-300">({n.children.length})</span>
-                </div>
-              </li>
-            );
-          }
+  const renderCollapsedNodes = (nodes: MenuNode[]) => (
+    <ul className="space-y-1.5 py-1">
+      {nodes.map((n) => {
+        const cleanNodePath = n.path
+          .replace(/^\//, "")
+          .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+        const cleanActivePath = activePath
+          .replace(/^\//, "")
+          .replace(new RegExp(`^dashboard/${module}/?`, "i"), "");
+        const isActive =
+          cleanNodePath === cleanActivePath ||
+          n.path === activePath ||
+          (!cleanActivePath && (n.slug === "dashboard" || cleanNodePath === "dashboard"));
+        const isAncestor = Boolean(
+          cleanNodePath && cleanActivePath.startsWith(cleanNodePath + "/")
+        );
+        const Icon =
+          module === "lams"
+            ? LAMS_ICONS[n.slug]
+            : module === "collection" || module === "cr"
+            ? COLLECTION_ICONS[n.slug]
+            : null;
 
-          const href = getMenuHref(n, module);
-
+        if (n.children?.length) {
           return (
             <li key={n.path} className="relative group">
               <Link
