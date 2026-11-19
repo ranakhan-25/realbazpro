@@ -3,11 +3,7 @@ import api from "@/lib/api";
 export type ParkingSlotStatus = "FREE" | "OCCUPIED" | "RENTED_EXTERNAL";
 
 export type ParkingVehicleType =
-  | "Car"
-  | "SUV"
-  | "Motorcycle"
-  | "Van / Micro"
-  | "Any";
+  "Car" | "SUV" | "Motorcycle" | "Van / Micro" | "Any";
 
 export type RentalPaymentStatus = "PAID" | "PARTIAL" | "DUE" | "OVERDUE";
 
@@ -256,13 +252,16 @@ export interface QueryExternalRentalParams {
 export async function getParkingSlots(
   params?: QueryParkingSlotParams,
 ): Promise<PaginatedResponse<ParkingSlotItem>> {
-  const queryParams: Record<string, any> = { ...(params || {}) };
+  const queryParams: Record<string, unknown> = { ...(params || {}) };
   if (queryParams.project_id === "all") delete queryParams.project_id;
   if (queryParams.status === "all") delete queryParams.status;
   if (queryParams.floor_zone === "all") delete queryParams.floor_zone;
-  if (queryParams.allowed_vehicle_type === "all") delete queryParams.allowed_vehicle_type;
+  if (queryParams.allowed_vehicle_type === "all")
+    delete queryParams.allowed_vehicle_type;
 
-  const res = await api.get("/customer-service/parking/slots", { params: queryParams });
+  const res = await api.get("/customer-service/parking/slots", {
+    params: queryParams,
+  });
   const raw = res.data?.data !== undefined ? res.data.data : res.data;
   return {
     items: raw?.items || [],
@@ -270,7 +269,9 @@ export async function getParkingSlots(
   };
 }
 
-export async function getParkingSlotByUuid(uuid: string): Promise<ParkingSlotItem> {
+export async function getParkingSlotByUuid(
+  uuid: string,
+): Promise<ParkingSlotItem> {
   const res = await api.get(`/customer-service/parking/slots/${uuid}`);
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
@@ -300,11 +301,13 @@ export async function deleteParkingSlot(
 export async function getParkingAssignments(
   params?: QueryParkingAssignmentParams,
 ): Promise<PaginatedResponse<ParkingAssignmentItem>> {
-  const queryParams: Record<string, any> = { ...(params || {}) };
+  const queryParams: Record<string, unknown> = { ...(params || {}) };
   if (queryParams.project_id === "all") delete queryParams.project_id;
   if (queryParams.is_active === "all") delete queryParams.is_active;
 
-  const res = await api.get("/customer-service/parking/assignments", { params: queryParams });
+  const res = await api.get("/customer-service/parking/assignments", {
+    params: queryParams,
+  });
   const raw = res.data?.data !== undefined ? res.data.data : res.data;
   return {
     items: raw?.items || [],
@@ -340,12 +343,14 @@ export async function releaseParkingAssignment(
 export async function getParkingExternalRentals(
   params?: QueryExternalRentalParams,
 ): Promise<PaginatedResponse<ParkingExternalRentalItem>> {
-  const queryParams: Record<string, any> = { ...(params || {}) };
+  const queryParams: Record<string, unknown> = { ...(params || {}) };
   if (queryParams.project_id === "all") delete queryParams.project_id;
   if (queryParams.payment_status === "all") delete queryParams.payment_status;
   if (queryParams.status === "all") delete queryParams.status;
 
-  const res = await api.get("/customer-service/parking/rentals", { params: queryParams });
+  const res = await api.get("/customer-service/parking/rentals", {
+    params: queryParams,
+  });
   const raw = res.data?.data !== undefined ? res.data.data : res.data;
   return {
     items: raw?.items || [],
@@ -392,10 +397,12 @@ export async function terminateExternalRental(
 export async function getParkingIncomeSummary(
   projectId?: string,
 ): Promise<ParkingIncomeSummary> {
-  const params: Record<string, any> = {};
+  const params: Record<string, unknown> = {};
   if (projectId && projectId !== "all") params.project_id = projectId;
 
-  const res = await api.get("/customer-service/parking/income-summary", { params });
+  const res = await api.get("/customer-service/parking/income-summary", {
+    params,
+  });
   const raw = res.data?.data !== undefined ? res.data.data : res.data;
   return {
     project_id: raw?.project_id || null,
@@ -406,11 +413,15 @@ export async function getParkingIncomeSummary(
     occupied_slots: Number(raw?.occupied_slots || 0),
     rented_external_slots: Number(raw?.rented_external_slots || 0),
     occupancy_rate_percent: Number(raw?.occupancy_rate_percent || 0),
-    active_external_rentals_count: Number(raw?.active_external_rentals_count || 0),
+    active_external_rentals_count: Number(
+      raw?.active_external_rentals_count || 0,
+    ),
     monthly_rent_receivable: Number(raw?.monthly_rent_receivable || 0),
-    monthly_rent_receivable_formatted: raw?.monthly_rent_receivable_formatted || "৳ 0",
+    monthly_rent_receivable_formatted:
+      raw?.monthly_rent_receivable_formatted || "৳ 0",
     total_rent_collected: Number(raw?.total_rent_collected || 0),
-    total_rent_collected_formatted: raw?.total_rent_collected_formatted || "৳ 0",
+    total_rent_collected_formatted:
+      raw?.total_rent_collected_formatted || "৳ 0",
     total_rent_due: Number(raw?.total_rent_due || 0),
     total_rent_due_formatted: raw?.total_rent_due_formatted || "৳ 0",
     collection_rate_percent: Number(raw?.collection_rate_percent || 0),
@@ -421,16 +432,37 @@ export async function getParkingIncomeSummary(
 export async function getParkingDropdownMeta(
   projectId?: string,
 ): Promise<ParkingDropdownMeta> {
-  const params: Record<string, any> = {};
+  const params: Record<string, unknown> = {};
   if (projectId && projectId !== "all") params.project_id = projectId;
 
-  const res = await api.get("/customer-service/parking/dropdown/meta", { params });
+  const res = await api.get("/customer-service/parking/dropdown/meta", {
+    params,
+  });
   const raw = res.data?.data !== undefined ? res.data.data : res.data;
   return {
-    vehicle_types: raw?.vehicle_types || ["Car", "SUV", "Motorcycle", "Van / Micro", "Any"],
-    slot_statuses: raw?.slot_statuses || ["FREE", "OCCUPIED", "RENTED_EXTERNAL"],
-    rental_payment_statuses: raw?.rental_payment_statuses || ["PAID", "PARTIAL", "DUE", "OVERDUE"],
-    external_rental_statuses: raw?.external_rental_statuses || ["ACTIVE", "TERMINATED", "EXPIRED"],
+    vehicle_types: raw?.vehicle_types || [
+      "Car",
+      "SUV",
+      "Motorcycle",
+      "Van / Micro",
+      "Any",
+    ],
+    slot_statuses: raw?.slot_statuses || [
+      "FREE",
+      "OCCUPIED",
+      "RENTED_EXTERNAL",
+    ],
+    rental_payment_statuses: raw?.rental_payment_statuses || [
+      "PAID",
+      "PARTIAL",
+      "DUE",
+      "OVERDUE",
+    ],
+    external_rental_statuses: raw?.external_rental_statuses || [
+      "ACTIVE",
+      "TERMINATED",
+      "EXPIRED",
+    ],
     floors_zones: raw?.floors_zones || [
       "Basement 1 (B1)",
       "Basement 2 (B2)",

@@ -3,11 +3,7 @@ import api from "@/lib/api";
 export type CommitteeMemberType = "DEVELOPER_REP" | "FLAT_OWNER";
 
 export type CommitteeDesignation =
-  | "President"
-  | "Secretary"
-  | "Treasurer"
-  | "Member"
-  | "Advisor";
+  "President" | "Secretary" | "Treasurer" | "Member" | "Advisor";
 
 export type CommitteeMemberStatus = "ACTIVE" | "TERM_EXPIRED" | "RESIGNED";
 
@@ -122,16 +118,22 @@ export interface UpdateCommitteeDecisionPayload {
 export async function getCommitteeOverviewStats(
   projectId?: string,
 ): Promise<CommitteeOverviewStats> {
-  const res = await api.get("/customer-service/building-committee/overview-stats", {
-    params: { project_id: projectId },
-  });
+  const res = await api.get(
+    "/customer-service/building-committee/overview-stats",
+    {
+      params: { project_id: projectId },
+    },
+  );
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
 export async function createCommitteeMember(
   payload: CreateCommitteeMemberPayload,
 ): Promise<CommitteeMemberItem> {
-  const res = await api.post("/customer-service/building-committee/members", payload);
+  const res = await api.post(
+    "/customer-service/building-committee/members",
+    payload,
+  );
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
@@ -152,15 +154,21 @@ export async function getCommitteeMembers(params: {
     flat_owners_count: number;
   };
 }> {
-  const q: any = { ...params };
+  const q: Record<string, unknown> = { ...params };
   if (q.member_type === "all") delete q.member_type;
   if (q.status === "all") delete q.status;
-  const res = await api.get("/customer-service/building-committee/members", { params: q });
+  const res = await api.get("/customer-service/building-committee/members", {
+    params: q,
+  });
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
-export async function getCommitteeMember(uuid: string): Promise<CommitteeMemberItem> {
-  const res = await api.get(`/customer-service/building-committee/members/${uuid}`);
+export async function getCommitteeMember(
+  uuid: string,
+): Promise<CommitteeMemberItem> {
+  const res = await api.get(
+    `/customer-service/building-committee/members/${uuid}`,
+  );
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
@@ -182,7 +190,10 @@ export async function deleteCommitteeMember(uuid: string): Promise<void> {
 export async function createCommitteeDecision(
   payload: CreateCommitteeDecisionPayload,
 ): Promise<CommitteeDecisionItem> {
-  const res = await api.post("/customer-service/building-committee/decisions", payload);
+  const res = await api.post(
+    "/customer-service/building-committee/decisions",
+    payload,
+  );
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
@@ -203,10 +214,12 @@ export async function getCommitteeDecisions(params: {
     implemented_count: number;
   };
 }> {
-  const q: any = { ...params };
+  const q: Record<string, unknown> = { ...params };
   if (q.status === "all") delete q.status;
   if (q.agenda_category === "all") delete q.agenda_category;
-  const res = await api.get("/customer-service/building-committee/decisions", { params: q });
+  const res = await api.get("/customer-service/building-committee/decisions", {
+    params: q,
+  });
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
@@ -224,4 +237,3 @@ export async function updateCommitteeDecision(
 export async function deleteCommitteeDecision(uuid: string): Promise<void> {
   await api.delete(`/customer-service/building-committee/decisions/${uuid}`);
 }
-

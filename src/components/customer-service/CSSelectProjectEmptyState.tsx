@@ -15,7 +15,9 @@ export function CSSelectProjectEmptyState({
   featureTitle = "this module",
   description,
 }: CSSelectProjectEmptyStateProps) {
-  const headingText = title ? `Select a Project to View ${title}` : `Select a Project to View ${featureTitle}`;
+  const headingText = title
+    ? `Select a Project to View ${title}`
+    : `Select a Project to View ${featureTitle}`;
   return (
     <div className="flex flex-col items-center justify-center min-h-[380px] p-8 text-center bg-white rounded-3xl border border-gray-200/80 shadow-xs max-w-xl mx-auto my-8">
       <div className="w-14 h-14 rounded-2xl bg-[#F4F1FF] text-[#6D4AFF] flex items-center justify-center mb-4 shadow-inner ring-8 ring-[#F4F1FF]/60">
@@ -44,4 +46,3 @@ export function CSSelectProjectEmptyState({
     </div>
   );
 }
-

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Calendar,
   Clock,
@@ -13,6 +13,7 @@ import {
   HardHat,
   Eye,
   Filter,
+  Trash2,
 } from "lucide-react";
 import { CSPageHeader } from "@/components/customer-service/CSPageHeader";
 import { CSStatCard } from "@/components/customer-service/CSStatCard";
@@ -22,22 +23,11 @@ import { CSModal } from "@/components/customer-service/CSModal";
 import { CSDetailDrawer } from "@/components/customer-service/CSDetailDrawer";
 import { toast } from "sonner";
 import { useTheme } from "@/lib/theme";
-
-interface SiteVisitAppointment {
-  id: string;
-  visitNo: string;
-  customerName: string;
-  phone: string;
-  unit: string;
-  project: string;
-  visitPurpose: "Milestone Inspection" | "Snagging Walkthrough" | "Handover Walkthrough" | "Interior Fit-out" | "General Visit";
-  appointmentDate: string;
-  timeSlot: string;
-  assignedEscort: string;
-  safetyPpeRequired: boolean;
-  status: "Scheduled" | "In Progress" | "Completed" | "Rescheduled" | "Cancelled";
-  customerNotes?: string;
-}
+import {
+  customerCommunicationService,
+  SiteVisitAppointment,
+  CommOverviewData,
+} from "@/services/customerCommunicationService";
 
 const INITIAL_VISITS: SiteVisitAppointment[] = [
   {
@@ -53,7 +43,8 @@ const INITIAL_VISITS: SiteVisitAppointment[] = [
     assignedEscort: "Engr. Monirul Islam (Site QA)",
     safetyPpeRequired: true,
     status: "In Progress",
-    customerNotes: "Allottee wishes to inspect dining floor layout before granite installation begins.",
+    customerNotes:
+      "Allottee wishes to inspect dining floor layout before granite installation begins.",
   },
   {
     id: "VST-102",
@@ -68,7 +59,8 @@ const INITIAL_VISITS: SiteVisitAppointment[] = [
     assignedEscort: "Kazi Farhad (QA Supervisor)",
     safetyPpeRequired: true,
     status: "Scheduled",
-    customerNotes: "Joint inspection for electrical fixture checking prior to final possession sign-off.",
+    customerNotes:
+      "Joint inspection for electrical fixture checking prior to final possession sign-off.",
   },
   {
     id: "VST-103",
@@ -83,7 +75,8 @@ const INITIAL_VISITS: SiteVisitAppointment[] = [
     assignedEscort: "Nusrat Jahan (Post-Sales Officer)",
     safetyPpeRequired: false,
     status: "Scheduled",
-    customerNotes: "Key verification and utility sub-meter reading verification.",
+    customerNotes:
+      "Key verification and utility sub-meter reading verification.",
   },
   {
     id: "VST-104",
@@ -98,7 +91,8 @@ const INITIAL_VISITS: SiteVisitAppointment[] = [
     assignedEscort: "Md. Tariqul Hasan (Site Engr)",
     safetyPpeRequired: true,
     status: "Completed",
-    customerNotes: "Allottee contractor access granted for false ceiling design measurement.",
+    customerNotes:
+      "Allottee contractor access granted for false ceiling design measurement.",
   },
 ];
 
@@ -106,75 +100,174 @@ export default function SiteVisitsAppointmentsPage() {
   const { primaryColor } = useTheme();
   const brand = primaryColor || "#6D4AFF";
 
-  const [visits, setVisits] = useState<SiteVisitAppointment[]>(INITIAL_VISITS);
+  const [recordsTab, setRecordsTab] = useState<"active" | "deleted">("active");
+  const [visits, setVisits] = useState<SiteVisitAppointment[]>([]);
   const [activeTab, setActiveTab] = useState("all");
-  const [selectedVisit, setSelectedVisit] = useState<SiteVisitAppointment | null>(null);
+  const [selectedVisit, setSelectedVisit] =
+    useState<SiteVisitAppointment | null>(null);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [overview, setOverview] = useState<CommOverviewData | null>(null);
+  const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
 
   // Form State
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [unit, setUnit] = useState("");
   const [project, setProject] = useState("Hena Heights, Gulshan");
-  const [visitPurpose, setVisitPurpose] = useState<SiteVisitAppointment["visitPurpose"]>("Milestone Inspection");
+  const [visitPurpose, setVisitPurpose] = useState<
+    SiteVisitAppointment["visitPurpose"]
+  >("Milestone Inspection");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [timeSlot, setTimeSlot] = useState("10:00 AM - 11:30 AM");
-  const [assignedEscort, setAssignedEscort] = useState("Engr. Monirul Islam (Site QA)");
+  const [assignedEscort, setAssignedEscort] = useState(
+    "Engr. Monirul Islam (Site QA)",
+  );
   const [customerNotes, setCustomerNotes] = useState("");
+
+  const loadData = useCallback(async () => {
+    try {
+      const [visitsRes, overviewRes] = await Promise.all([
+        customerCommunicationService.getSiteVisits({
+          tab: activeTab !== "all" ? activeTab : undefined,
+          is_deleted: recordsTab === "deleted",
+        }),
+        customerCommunicationService.getOverview(),
+      ]);
+
+      if (visitsRes && Array.isArray(visitsRes.items)) {
+        setVisits(visitsRes.items);
+        if (visitsRes.counts) {
+          setTabCounts(visitsRes.counts);
+        }
+      }
+      if (overviewRes) {
+        setOverview(overviewRes);
+      }
+    } catch (err) {
+      console.error("Site Visits fetch error:", err);
+    }
+  }, [activeTab, recordsTab]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const filteredVisits = visits.filter((v) => {
     if (activeTab === "today") return v.appointmentDate === "2026-11-04";
     if (activeTab === "upcoming") return v.status === "Scheduled";
-    if (activeTab === "snagging") return v.visitPurpose === "Snagging Walkthrough";
+    if (activeTab === "snagging")
+      return v.visitPurpose === "Snagging Walkthrough";
     if (activeTab === "completed") return v.status === "Completed";
-    if (activeTab === "rescheduled") return v.status === "Rescheduled" || v.status === "Cancelled";
+    if (activeTab === "rescheduled")
+      return v.status === "Rescheduled" || v.status === "Cancelled";
     return true;
   });
 
   const counts = {
-    all: visits.length,
-    today: visits.filter((v) => v.appointmentDate === "2026-11-04").length,
-    upcoming: visits.filter((v) => v.status === "Scheduled").length,
-    snagging: visits.filter((v) => v.visitPurpose === "Snagging Walkthrough").length,
-    completed: visits.filter((v) => v.status === "Completed").length,
-    rescheduled: visits.filter((v) => v.status === "Rescheduled" || v.status === "Cancelled").length,
+    all: tabCounts.all ?? visits.length,
+    today:
+      tabCounts.today ??
+      visits.filter((v) => v.appointmentDate === "2026-11-04").length,
+    upcoming:
+      tabCounts.upcoming ??
+      visits.filter((v) => v.status === "Scheduled").length,
+    snagging:
+      tabCounts.snagging ??
+      visits.filter((v) => v.visitPurpose === "Snagging Walkthrough").length,
+    completed:
+      tabCounts.completed ??
+      visits.filter((v) => v.status === "Completed").length,
+    rescheduled:
+      tabCounts.rescheduled ??
+      visits.filter(
+        (v) => v.status === "Rescheduled" || v.status === "Cancelled",
+      ).length,
   };
 
-  const handleBookVisit = (e: React.FormEvent) => {
+  const handleBookVisit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName || !unit || !appointmentDate) {
       toast.error("Please fill in customer name, unit, and visit date.");
       return;
     }
 
-    const newVisit: SiteVisitAppointment = {
-      id: `VST-${Date.now().toString().slice(-4)}`,
-      visitNo: `VST-2026-${Math.floor(100 + Math.random() * 900)}`,
-      customerName,
-      phone: phone || "+880 1700-000000",
-      unit,
-      project,
-      visitPurpose,
-      appointmentDate,
-      timeSlot,
-      assignedEscort,
-      safetyPpeRequired: visitPurpose !== "Handover Walkthrough",
-      status: "Scheduled",
-      customerNotes,
-    };
+    try {
+      setIsSubmitting(true);
+      await customerCommunicationService.bookSiteVisit({
+        customer_name: customerName,
+        phone: phone || "+880 1700-000000",
+        unit,
+        project,
+        visit_purpose: visitPurpose,
+        appointment_date: appointmentDate,
+        time_slot: timeSlot,
+        assigned_escort: assignedEscort,
+        safety_ppe_required: visitPurpose !== "Handover Walkthrough",
+        status: "Scheduled",
+        customer_notes: customerNotes,
+      });
 
-    setVisits([newVisit, ...visits]);
-    toast.success(`Site appointment booked for ${customerName} on ${appointmentDate}`);
-    setIsBookModalOpen(false);
-    setCustomerName("");
-    setPhone("");
-    setUnit("");
-    setCustomerNotes("");
+      toast.success(
+        `Site appointment booked for ${customerName} on ${appointmentDate}`,
+      );
+      setIsBookModalOpen(false);
+      setCustomerName("");
+      setPhone("");
+      setUnit("");
+      setCustomerNotes("");
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to book appointment.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleStatusChange = (id: string, newStatus: SiteVisitAppointment["status"]) => {
-    setVisits(visits.map((v) => (v.id === id ? { ...v, status: newStatus } : v)));
-    toast.success(`Appointment status updated to ${newStatus}`);
+  const handleStatusChange = async (
+    id: string,
+    newStatus: SiteVisitAppointment["status"],
+  ) => {
+    try {
+      await customerCommunicationService.updateSiteVisitStatus(id, {
+        status: newStatus,
+      });
+      toast.success(`Appointment status updated to ${newStatus}`);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to update appointment status.",
+      );
+    }
+  };
+
+  const handleDelete = async (row: SiteVisitAppointment) => {
+    if (
+      !confirm(
+        `Are you sure you want to remove appointment ${row.visitNo || row.id}?`,
+      )
+    )
+      return;
+    try {
+      await customerCommunicationService.deleteSiteVisit(row.id);
+      toast.success("Appointment record removed");
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(
+        (
+          err as {
+            response?: { data?: { message?: string } };
+            message?: string;
+          }
+        )?.response?.data?.message ||
+        (err as { message?: string })?.message ||
+        "Failed to remove appointment",
+      );
+    }
   };
 
   const columns: Column<SiteVisitAppointment>[] = [
@@ -185,8 +278,12 @@ export default function SiteVisitsAppointmentsPage() {
       minWidth: "210px",
       render: (row) => (
         <div>
-          <div className="font-semibold text-[#111827] text-xs">{row.customerName}</div>
-          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">{row.visitNo} • {row.unit}</div>
+          <div className="font-semibold text-[#111827] text-xs">
+            {row.customerName}
+          </div>
+          <div className="text-[11px] text-[#6B7280] tabular-nums mt-0.5">
+            {row.visitNo} • {row.unit}
+          </div>
         </div>
       ),
     },
@@ -206,8 +303,12 @@ export default function SiteVisitsAppointmentsPage() {
       minWidth: "190px",
       render: (row) => (
         <div className="text-xs">
-          <div className="font-semibold text-[#111827] tabular-nums">{row.appointmentDate}</div>
-          <div className="text-[#6B7280] text-[11px] tabular-nums mt-0.5">{row.timeSlot}</div>
+          <div className="font-semibold text-[#111827] tabular-nums">
+            {row.appointmentDate}
+          </div>
+          <div className="text-[#6B7280] text-[11px] tabular-nums mt-0.5">
+            {row.timeSlot}
+          </div>
         </div>
       ),
     },
@@ -217,7 +318,9 @@ export default function SiteVisitsAppointmentsPage() {
       minWidth: "200px",
       render: (row) => (
         <div className="space-y-1">
-          <div className="text-xs font-semibold text-[#111827]">{row.assignedEscort}</div>
+          <div className="text-xs font-semibold text-[#111827]">
+            {row.assignedEscort}
+          </div>
           {row.safetyPpeRequired ? (
             <span className="inline-flex items-center gap-1 text-[10px] text-[#DC6803] font-semibold bg-[#FFFAEB] border border-[#FEDF89] px-2 py-0.5 rounded-full">
               <HardHat className="h-3 w-3" /> Helmet & Vest
@@ -243,7 +346,9 @@ export default function SiteVisitsAppointmentsPage() {
           Cancelled: "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]",
         };
         return (
-          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${badges[row.status]}`}>
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${badges[row.status]}`}
+          >
             {row.status}
           </span>
         );
@@ -254,39 +359,64 @@ export default function SiteVisitsAppointmentsPage() {
       header: "ACTION",
       align: "right",
       minWidth: "140px",
-      render: (row) => (
-        <div className="flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={() => setSelectedVisit(row)}
-            className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
-            title="View Details"
-            aria-label="View Details"
-          >
-            <Eye className="h-4 w-4" />
-          </button>
-          {row.status === "Scheduled" && (
+      render: (row) =>
+        recordsTab === "deleted" ? (
+          <div className="flex items-center justify-end gap-1.5">
             <button
               type="button"
-              onClick={() => handleStatusChange(row.id, "In Progress")}
-              className="h-8 px-2.5 rounded-lg inline-flex items-center text-xs font-semibold bg-[#FFFAEB] border border-[#FEDF89] text-[#DC6803] hover:bg-[#FEF0C7] transition shadow-xs"
-              title="Mark In Progress"
+              onClick={() => setSelectedVisit(row)}
+              className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+              title="View Details"
+              aria-label="View Details"
             >
-              Check-In
+              <Eye className="h-4 w-4" />
             </button>
-          )}
-          {row.status === "In Progress" && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+              Soft Deleted
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-end gap-1.5">
             <button
               type="button"
-              onClick={() => handleStatusChange(row.id, "Completed")}
-              className="h-8 px-2.5 rounded-lg inline-flex items-center text-xs font-semibold bg-[#ECFDF3] border border-[#A6F4C5] text-[#039855] hover:bg-[#D1FADF] transition shadow-xs"
-              title="Mark Completed"
+              onClick={() => setSelectedVisit(row)}
+              className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] hover:bg-[#DBEAFE] hover:border-[#93C5FD] hover:text-[#1D4ED8] transition shadow-xs focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+              title="View Details"
+              aria-label="View Details"
             >
-              Done
+              <Eye className="h-4 w-4" />
             </button>
-          )}
-        </div>
-      ),
+            {row.status === "Scheduled" && (
+              <button
+                type="button"
+                onClick={() => handleStatusChange(row.id, "In Progress")}
+                className="h-8 px-2.5 rounded-lg inline-flex items-center text-xs font-semibold bg-[#FFFAEB] border border-[#FEDF89] text-[#DC6803] hover:bg-[#FEF0C7] transition shadow-xs"
+                title="Mark In Progress"
+              >
+                Check-In
+              </button>
+            )}
+            {row.status === "In Progress" && (
+              <button
+                type="button"
+                onClick={() => handleStatusChange(row.id, "Completed")}
+                className="h-8 px-2.5 rounded-lg inline-flex items-center text-xs font-semibold bg-[#ECFDF3] border border-[#A6F4C5] text-[#039855] hover:bg-[#D1FADF] transition shadow-xs"
+                title="Mark Completed"
+              >
+                Done
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => handleDelete(row)}
+              className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition shadow-xs"
+              title="Delete Appointment"
+              aria-label="Delete Appointment"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ),
     },
   ];
 
@@ -296,7 +426,10 @@ export default function SiteVisitsAppointmentsPage() {
         title="Site Visits & Appointments"
         subtitle="Coordinate prospective and post-sales site visits, joint construction inspections, handover walkthroughs, and safety compliance."
         badge="On-Site Operations"
-        breadcrumbs={[{ label: "Communication & Appointments" }, { label: "Site Visits" }]}
+        breadcrumbs={[
+          { label: "Communication & Appointments" },
+          { label: "Site Visits" },
+        ]}
         primaryAction={{
           label: "Book Site Visit",
           icon: Plus,
@@ -306,22 +439,71 @@ export default function SiteVisitsAppointmentsPage() {
           {
             label: "Refresh Calendar",
             icon: RefreshCw,
-            onClick: () => toast.success("Site engineer visit calendar updated."),
+            onClick: () => {
+              loadData();
+              toast.success("Site engineer visit calendar updated.");
+            },
           },
         ]}
       />
 
+      {/* Records Mode Switcher (Active vs Soft Deleted) */}
+      <div className="flex items-center justify-between gap-3 border-b border-[#E5E7EB] pb-3">
+        <div className="inline-flex rounded-lg bg-slate-100 p-1 text-xs font-semibold text-slate-600">
+          <button
+            type="button"
+            onClick={() => setRecordsTab("active")}
+            className={`flex items-center gap-2 rounded-md px-3 py-1.5 transition ${recordsTab === "active"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-500 hover:text-slate-800"
+              }`}
+          >
+            Active Appointments
+            <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px]">
+              {counts.all}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRecordsTab("deleted")}
+            className={`flex items-center gap-2 rounded-md px-3 py-1.5 transition ${recordsTab === "deleted"
+                ? "bg-rose-600 text-white shadow-xs"
+                : "text-slate-500 hover:text-rose-600"
+              }`}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Deleted Records
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[10px] ${recordsTab === "deleted"
+                  ? "bg-rose-700 text-white"
+                  : "bg-slate-200 text-slate-600"
+                }`}
+            >
+              {tabCounts.deleted_count ?? 0}
+            </span>
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <CSStatCard
-          title="Scheduled This Week"
-          value="24"
-          subtext="Across 6 active projects"
+          title="Scheduled Visits"
+          value={
+            overview?.visits_scheduled_today !== undefined
+              ? String(overview.visits_scheduled_today)
+              : "24"
+          }
+          subtext="Across active projects"
           icon={Calendar}
         />
         <CSStatCard
           title="Today's Site Appointments"
-          value="5"
-          subtext="2 Completed, 1 In Progress"
+          value={
+            overview?.visits_scheduled_today !== undefined
+              ? String(overview.visits_scheduled_today)
+              : "5"
+          }
+          subtext="Inspections & Walkthroughs"
           icon={Clock}
           iconBg="bg-[#EFF6FF]"
           iconColor="text-[#2563EB]"
@@ -348,10 +530,22 @@ export default function SiteVisitsAppointmentsPage() {
         tabs={[
           { key: "all", label: "All Visits", count: counts.all },
           { key: "today", label: "Today's Schedule", count: counts.today },
-          { key: "upcoming", label: "Upcoming / Confirmed", count: counts.upcoming },
-          { key: "snagging", label: "Snagging Inspections", count: counts.snagging },
+          {
+            key: "upcoming",
+            label: "Upcoming / Confirmed",
+            count: counts.upcoming,
+          },
+          {
+            key: "snagging",
+            label: "Snagging Inspections",
+            count: counts.snagging,
+          },
           { key: "completed", label: "Completed", count: counts.completed },
-          { key: "rescheduled", label: "Rescheduled / Cancelled", count: counts.rescheduled },
+          {
+            key: "rescheduled",
+            label: "Rescheduled / Cancelled",
+            count: counts.rescheduled,
+          },
         ]}
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -383,17 +577,24 @@ export default function SiteVisitsAppointmentsPage() {
             <button
               type="submit"
               form="book-visit-form"
-              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
+              disabled={isSubmitting}
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition disabled:opacity-50"
             >
-              Confirm Appointment
+              {isSubmitting ? "Booking..." : "Confirm Appointment"}
             </button>
           </>
         }
       >
-        <form id="book-visit-form" onSubmit={handleBookVisit} className="space-y-3.5 text-xs">
+        <form
+          id="book-visit-form"
+          onSubmit={handleBookVisit}
+          className="space-y-3.5 text-xs"
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Customer Full Name *</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Customer Full Name *
+              </label>
               <input
                 type="text"
                 required
@@ -404,7 +605,9 @@ export default function SiteVisitsAppointmentsPage() {
               />
             </div>
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Contact Phone *</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Contact Phone *
+              </label>
               <input
                 type="text"
                 placeholder="+880 1700-000000"
@@ -417,13 +620,17 @@ export default function SiteVisitsAppointmentsPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Project *</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Project *
+              </label>
               <select
                 value={project}
                 onChange={(e) => setProject(e.target.value)}
                 className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
-                <option value="Hena Heights, Gulshan">Hena Heights, Gulshan</option>
+                <option value="Hena Heights, Gulshan">
+                  Hena Heights, Gulshan
+                </option>
                 <option value="Eastern Lakeview">Eastern Lakeview</option>
                 <option value="Sheba Green Valley">Sheba Green Valley</option>
                 <option value="Uttara Green Park">Uttara Green Park</option>
@@ -431,7 +638,9 @@ export default function SiteVisitsAppointmentsPage() {
               </select>
             </div>
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Unit / Flat No. *</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Unit / Flat No. *
+              </label>
               <input
                 type="text"
                 required
@@ -445,37 +654,61 @@ export default function SiteVisitsAppointmentsPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Visit Purpose *</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Visit Purpose *
+              </label>
               <select
                 value={visitPurpose}
-                onChange={(e) => setVisitPurpose(e.target.value as any)}
+                onChange={(e) =>
+                  setVisitPurpose(
+                    e.target.value as SiteVisitAppointment["visitPurpose"],
+                  )
+                }
                 className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
-                <option value="Milestone Inspection">Milestone Inspection</option>
-                <option value="Snagging Walkthrough">Snagging Walkthrough</option>
-                <option value="Handover Walkthrough">Handover Walkthrough</option>
+                <option value="Milestone Inspection">
+                  Milestone Inspection
+                </option>
+                <option value="Snagging Walkthrough">
+                  Snagging Walkthrough
+                </option>
+                <option value="Handover Walkthrough">
+                  Handover Walkthrough
+                </option>
                 <option value="Interior Fit-out">Interior Fit-out</option>
                 <option value="General Visit">General Visit</option>
               </select>
             </div>
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Assigned Escort *</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Assigned Escort *
+              </label>
               <select
                 value={assignedEscort}
                 onChange={(e) => setAssignedEscort(e.target.value)}
                 className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
-                <option value="Engr. Monirul Islam (Site QA)">Engr. Monirul Islam (Site QA)</option>
-                <option value="Kazi Farhad (QA Supervisor)">Kazi Farhad (QA Supervisor)</option>
-                <option value="Md. Tariqul Hasan (Site Engr)">Md. Tariqul Hasan (Site Engr)</option>
-                <option value="Nusrat Jahan (Post-Sales Officer)">Nusrat Jahan (Post-Sales Officer)</option>
+                <option value="Engr. Monirul Islam (Site QA)">
+                  Engr. Monirul Islam (Site QA)
+                </option>
+                <option value="Kazi Farhad (QA Supervisor)">
+                  Kazi Farhad (QA Supervisor)
+                </option>
+                <option value="Md. Tariqul Hasan (Site Engr)">
+                  Md. Tariqul Hasan (Site Engr)
+                </option>
+                <option value="Nusrat Jahan (Post-Sales Officer)">
+                  Nusrat Jahan (Post-Sales Officer)
+                </option>
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Appointment Date *</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Appointment Date *
+              </label>
               <input
                 type="date"
                 required
@@ -485,7 +718,9 @@ export default function SiteVisitsAppointmentsPage() {
               />
             </div>
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Time Slot *</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Time Slot *
+              </label>
               <select
                 value={timeSlot}
                 onChange={(e) => setTimeSlot(e.target.value)}
@@ -500,7 +735,9 @@ export default function SiteVisitsAppointmentsPage() {
           </div>
 
           <div>
-            <label className="block font-semibold text-[#374151] mb-1">Specific Inspection Focus / Notes</label>
+            <label className="block font-semibold text-[#374151] mb-1">
+              Specific Inspection Focus / Notes
+            </label>
             <textarea
               rows={2}
               placeholder="e.g. Inspect bathroom tile grouting and kitchen window sealant..."
@@ -522,9 +759,13 @@ export default function SiteVisitsAppointmentsPage() {
         {selectedVisit && (
           <div className="space-y-5 text-xs">
             <div className="p-4 rounded-[12px] border border-[#E5E7EB] bg-[#F9FAFB] space-y-2">
-              <div className="text-[11px] text-[#6B7280]">Appointment Status</div>
+              <div className="text-[11px] text-[#6B7280]">
+                Appointment Status
+              </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-[#111827]">{selectedVisit.visitPurpose}</span>
+                <span className="text-sm font-semibold text-[#111827]">
+                  {selectedVisit.visitPurpose}
+                </span>
                 <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">
                   {selectedVisit.status}
                 </span>
@@ -532,46 +773,82 @@ export default function SiteVisitsAppointmentsPage() {
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Customer & Project</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
+                Customer & Project
+              </h4>
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">Customer:</span>
-                  <div className="font-semibold text-[#111827]">{selectedVisit.customerName}</div>
+                  <span className="text-[#6B7280] block text-[11px]">
+                    Customer:
+                  </span>
+                  <div className="font-semibold text-[#111827]">
+                    {selectedVisit.customerName}
+                  </div>
                 </div>
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">Phone:</span>
-                  <div className="font-semibold text-[#111827] tabular-nums">{selectedVisit.phone}</div>
+                  <span className="text-[#6B7280] block text-[11px]">
+                    Phone:
+                  </span>
+                  <div className="font-semibold text-[#111827] tabular-nums">
+                    {selectedVisit.phone}
+                  </div>
                 </div>
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">Project:</span>
-                  <div className="font-semibold text-[#111827]">{selectedVisit.project}</div>
+                  <span className="text-[#6B7280] block text-[11px]">
+                    Project:
+                  </span>
+                  <div className="font-semibold text-[#111827]">
+                    {selectedVisit.project}
+                  </div>
                 </div>
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">Unit:</span>
-                  <div className="font-semibold text-[#6D4AFF]">{selectedVisit.unit}</div>
+                  <span className="text-[#6B7280] block text-[11px]">
+                    Unit:
+                  </span>
+                  <div className="font-semibold text-[#6D4AFF]">
+                    {selectedVisit.unit}
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="space-y-3 pt-2 border-t border-[#E5E7EB]">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Visit Logistics</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
+                Visit Logistics
+              </h4>
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">Date:</span>
-                  <div className="font-semibold text-[#111827] tabular-nums">{selectedVisit.appointmentDate}</div>
+                  <span className="text-[#6B7280] block text-[11px]">
+                    Date:
+                  </span>
+                  <div className="font-semibold text-[#111827] tabular-nums">
+                    {selectedVisit.appointmentDate}
+                  </div>
                 </div>
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">Time Slot:</span>
-                  <div className="font-semibold text-[#111827] tabular-nums">{selectedVisit.timeSlot}</div>
+                  <span className="text-[#6B7280] block text-[11px]">
+                    Time Slot:
+                  </span>
+                  <div className="font-semibold text-[#111827] tabular-nums">
+                    {selectedVisit.timeSlot}
+                  </div>
                 </div>
                 <div>
-                  <span className="text-[#6B7280] block text-[11px]">Assigned Escort:</span>
-                  <div className="font-semibold text-[#111827]">{selectedVisit.assignedEscort}</div>
-                </div>
-                <div>
-                  <span className="text-[#6B7280] block text-[11px]">Safety Gear:</span>
+                  <span className="text-[#6B7280] block text-[11px]">
+                    Assigned Escort:
+                  </span>
                   <div className="font-semibold text-[#111827]">
-                    {selectedVisit.safetyPpeRequired ? "Helmet & Vest Mandatory" : "General Access"}
+                    {selectedVisit.assignedEscort}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[#6B7280] block text-[11px]">
+                    Safety Gear:
+                  </span>
+                  <div className="font-semibold text-[#111827]">
+                    {selectedVisit.safetyPpeRequired
+                      ? "Helmet & Vest Mandatory"
+                      : "General Access"}
                   </div>
                 </div>
               </div>
@@ -579,7 +856,9 @@ export default function SiteVisitsAppointmentsPage() {
 
             {selectedVisit.customerNotes && (
               <div className="space-y-1 pt-2 border-t border-[#E5E7EB]">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Special Instructions</h4>
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
+                  Special Instructions
+                </h4>
                 <p className="text-xs text-[#374151] bg-[#F9FAFB] border border-[#E5E7EB] p-3 rounded-lg">
                   {selectedVisit.customerNotes}
                 </p>

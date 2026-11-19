@@ -29,6 +29,19 @@ api.interceptors.request.use((config) => {
         config.headers["Authorization"] = `Bearer ${token}`;
       }
     }
+
+    const orgId =
+      localStorage.getItem("realbiz_cs_selected_org_id") ||
+      localStorage.getItem("selected_org_id") ||
+      adminAuthStorage.getStoredUserProfile()?.orgId;
+    if (orgId && !config.headers?.["x-organization-id"]) {
+      if (config.headers?.set) {
+        config.headers.set("x-organization-id", String(orgId));
+      } else {
+        config.headers = config.headers || {};
+        config.headers["x-organization-id"] = String(orgId);
+      }
+    }
   }
   return config;
 });

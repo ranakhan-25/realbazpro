@@ -96,7 +96,8 @@ export default function SecurityServicePage() {
     monthly_cost: 0,
     monthly_cost_formatted: "৳ 0",
   });
-  const [monthlyCostData, setMonthlyCostData] = useState<MonthlySecurityCostData | null>(null);
+  const [monthlyCostData, setMonthlyCostData] =
+    useState<MonthlySecurityCostData | null>(null);
 
   // Dropdown Metadata
   const [meta, setMeta] = useState<SecurityDropdownMeta>({
@@ -105,7 +106,13 @@ export default function SecurityServicePage() {
     sources: ["IN_HOUSE", "COMPANY"],
     guard_statuses: ["ACTIVE", "ON_LEAVE", "INACTIVE", "TERMINATED"],
     shift_names: ["Morning", "Evening", "Night", "Custom"],
-    roster_statuses: ["SCHEDULED", "ON_DUTY", "COMPLETED", "ABSENT", "RELIEVED"],
+    roster_statuses: [
+      "SCHEDULED",
+      "ON_DUTY",
+      "COMPLETED",
+      "ABSENT",
+      "RELIEVED",
+    ],
     purposes: [
       "Delivery",
       "Guest / Personal",
@@ -125,12 +132,17 @@ export default function SecurityServicePage() {
 
   // Guard Modals
   const [isGuardModalOpen, setIsGuardModalOpen] = useState(false);
-  const [editingGuard, setEditingGuard] = useState<SecurityGuardItem | null>(null);
+  const [editingGuard, setEditingGuard] = useState<SecurityGuardItem | null>(
+    null,
+  );
   const [guardFormName, setGuardFormName] = useState("");
   const [guardFormPhone, setGuardFormPhone] = useState("");
   const [guardFormNid, setGuardFormNid] = useState("");
-  const [guardFormSource, setGuardFormSource] = useState<GuardSource>("IN_HOUSE");
-  const [guardFormCompanyId, setGuardFormCompanyId] = useState<number | undefined>(undefined);
+  const [guardFormSource, setGuardFormSource] =
+    useState<GuardSource>("IN_HOUSE");
+  const [guardFormCompanyId, setGuardFormCompanyId] = useState<
+    number | undefined
+  >(undefined);
   const [guardFormBadge, setGuardFormBadge] = useState("");
   const [guardFormStatus, setGuardFormStatus] = useState<GuardStatus>("ACTIVE");
   const [guardFormJoinedDate, setGuardFormJoinedDate] = useState(
@@ -146,16 +158,21 @@ export default function SecurityServicePage() {
   const [isCompaniesLoading, setIsCompaniesLoading] = useState(false);
   const [companyFilter, setCompanyFilter] = useState("all");
   const [companySearch, setCompanySearch] = useState("");
-  const [expiringCompaniesList, setExpiringCompaniesList] = useState<SecurityCompanyItem[]>([]);
+  const [expiringCompaniesList, setExpiringCompaniesList] = useState<
+    SecurityCompanyItem[]
+  >([]);
 
   // Company Modals
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
-  const [editingCompany, setEditingCompany] = useState<SecurityCompanyItem | null>(null);
+  const [editingCompany, setEditingCompany] =
+    useState<SecurityCompanyItem | null>(null);
   const [compFormName, setCompFormName] = useState("");
   const [compFormContact, setCompFormContact] = useState("");
   const [compFormPhone, setCompFormPhone] = useState("");
   const [compFormEmail, setCompFormEmail] = useState("");
-  const [compFormStart, setCompFormStart] = useState(new Date().toISOString().slice(0, 10));
+  const [compFormStart, setCompFormStart] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
   const [compFormEnd, setCompFormEnd] = useState("");
   const [compFormCost, setCompFormCost] = useState<number>(0);
   const [compFormLiability, setCompFormLiability] = useState("");
@@ -164,8 +181,12 @@ export default function SecurityServicePage() {
   // =========================================================================
   // 3. DUTY ROSTER STATE
   // =========================================================================
-  const [rosterViewMode, setRosterViewMode] = useState<"weekly" | "list">("weekly");
-  const [weeklyRoster, setWeeklyRoster] = useState<WeeklyRosterData | null>(null);
+  const [rosterViewMode, setRosterViewMode] = useState<"weekly" | "list">(
+    "weekly",
+  );
+  const [weeklyRoster, setWeeklyRoster] = useState<WeeklyRosterData | null>(
+    null,
+  );
   const [currentWeekStart, setCurrentWeekStart] = useState<string>(() => {
     const d = new Date();
     const day = d.getDay();
@@ -179,19 +200,28 @@ export default function SecurityServicePage() {
 
   // Roster Modal
   const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
-  const [rosterFormGuardId, setRosterFormGuardId] = useState<number | undefined>(undefined);
-  const [rosterFormDate, setRosterFormDate] = useState(new Date().toISOString().slice(0, 10));
-  const [rosterFormShiftName, setRosterFormShiftName] = useState<ShiftName>("Morning");
+  const [rosterFormGuardId, setRosterFormGuardId] = useState<
+    number | undefined
+  >(undefined);
+  const [rosterFormDate, setRosterFormDate] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
+  const [rosterFormShiftName, setRosterFormShiftName] =
+    useState<ShiftName>("Morning");
   const [rosterFormStart, setRosterFormStart] = useState("06:00");
   const [rosterFormEnd, setRosterFormEnd] = useState("14:00");
   const [rosterFormPost, setRosterFormPost] = useState("Main Entrance Gate 01");
   const [rosterFormNotes, setRosterFormNotes] = useState("");
   const [isSubmittingRoster, setIsSubmittingRoster] = useState(false);
-  const [rosterOverlapError, setRosterOverlapError] = useState<string | null>(null);
+  const [rosterOverlapError, setRosterOverlapError] = useState<string | null>(
+    null,
+  );
 
   // Quick Status Update Modal for Roster
-  const [statusUpdateRoster, setStatusUpdateRoster] = useState<SecurityRosterItem | null>(null);
-  const [newRosterStatus, setNewRosterStatus] = useState<RosterStatus>("ON_DUTY");
+  const [statusUpdateRoster, setStatusUpdateRoster] =
+    useState<SecurityRosterItem | null>(null);
+  const [newRosterStatus, setNewRosterStatus] =
+    useState<RosterStatus>("ON_DUTY");
   const [statusUpdateNotes, setStatusUpdateNotes] = useState("");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
@@ -209,10 +239,13 @@ export default function SecurityServicePage() {
   const [vFormName, setVFormName] = useState("");
   const [vFormPhone, setVFormPhone] = useState("");
   const [vFormFlat, setVFormFlat] = useState("");
-  const [vFormPurpose, setVFormPurpose] = useState<VisitorPurpose>("Guest / Personal");
+  const [vFormPurpose, setVFormPurpose] =
+    useState<VisitorPurpose>("Guest / Personal");
   const [vFormVehicle, setVFormVehicle] = useState("");
   const [vFormBadgeNid, setVFormBadgeNid] = useState("");
-  const [vFormGuardId, setVFormGuardId] = useState<number | undefined>(undefined);
+  const [vFormGuardId, setVFormGuardId] = useState<number | undefined>(
+    undefined,
+  );
   const [vFormRemarks, setVFormRemarks] = useState("");
   const [isSubmittingVisitor, setIsSubmittingVisitor] = useState(false);
 
@@ -233,7 +266,7 @@ export default function SecurityServicePage() {
       setMeta(mRes);
       setMonthlyCostData(cRes);
       setExpiringCompaniesList(expRes.items);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to load security statistics:", err);
     }
   }, [projectId]);
@@ -244,13 +277,20 @@ export default function SecurityServicePage() {
     try {
       const res = await getSecurityGuards({
         project_id: projectId,
-        source: guardFilter !== "all" && ["IN_HOUSE", "COMPANY"].includes(guardFilter) ? guardFilter : undefined,
-        status: guardFilter !== "all" && !["IN_HOUSE", "COMPANY"].includes(guardFilter) ? guardFilter : undefined,
+        source:
+          guardFilter !== "all" && ["IN_HOUSE", "COMPANY"].includes(guardFilter)
+            ? guardFilter
+            : undefined,
+        status:
+          guardFilter !== "all" &&
+          !["IN_HOUSE", "COMPANY"].includes(guardFilter)
+            ? guardFilter
+            : undefined,
         search: guardSearch || undefined,
         limit: 100,
       });
       setGuards(res.items);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch guards:", err);
       toast.error("Failed to load guards list");
     } finally {
@@ -269,7 +309,7 @@ export default function SecurityServicePage() {
         limit: 100,
       });
       setCompanies(res.items);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch security companies:", err);
       toast.error("Failed to load security companies");
     } finally {
@@ -292,7 +332,7 @@ export default function SecurityServicePage() {
         });
         setRostersList(res.items);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch duty roster:", err);
       toast.error("Failed to load duty roster");
     } finally {
@@ -312,7 +352,7 @@ export default function SecurityServicePage() {
         limit: 100,
       });
       setVisitorLogs(res.items);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch visitor logs:", err);
       toast.error("Failed to load visitor log entries");
     } finally {
@@ -329,7 +369,15 @@ export default function SecurityServicePage() {
       if (activeTab === "roster") loadWeeklyRoster();
       if (activeTab === "visitors") loadVisitorLogs();
     }
-  }, [projectId, activeTab, loadStatsAndMeta, loadGuards, loadCompanies, loadWeeklyRoster, loadVisitorLogs]);
+  }, [
+    projectId,
+    activeTab,
+    loadStatsAndMeta,
+    loadGuards,
+    loadCompanies,
+    loadWeeklyRoster,
+    loadVisitorLogs,
+  ]);
 
   // Shift Timing Presets Handler
   const handleShiftPresetChange = (name: ShiftName) => {
@@ -402,7 +450,11 @@ export default function SecurityServicePage() {
 
   const handleSubmitGuard = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!guardFormName.trim() || !guardFormPhone.trim() || !guardFormNid.trim()) {
+    if (
+      !guardFormName.trim() ||
+      !guardFormPhone.trim() ||
+      !guardFormNid.trim()
+    ) {
       toast.error("Please enter guard name, phone, and national ID.");
       return;
     }
@@ -419,7 +471,8 @@ export default function SecurityServicePage() {
           phone: guardFormPhone.trim(),
           national_id: guardFormNid.trim(),
           source: guardFormSource,
-          company_id: guardFormSource === "COMPANY" ? guardFormCompanyId : undefined,
+          company_id:
+            guardFormSource === "COMPANY" ? guardFormCompanyId : undefined,
           badge_number: guardFormBadge.trim() || undefined,
           status: guardFormStatus,
           joined_date: guardFormJoinedDate,
@@ -433,7 +486,8 @@ export default function SecurityServicePage() {
           phone: guardFormPhone.trim(),
           national_id: guardFormNid.trim(),
           source: guardFormSource,
-          company_id: guardFormSource === "COMPANY" ? guardFormCompanyId : undefined,
+          company_id:
+            guardFormSource === "COMPANY" ? guardFormCompanyId : undefined,
           badge_number: guardFormBadge.trim() || undefined,
           status: guardFormStatus,
           joined_date: guardFormJoinedDate,
@@ -445,22 +499,29 @@ export default function SecurityServicePage() {
       setIsGuardModalOpen(false);
       loadGuards();
       loadStatsAndMeta();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save security guard");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to save security guard",
+      );
     } finally {
       setIsSubmittingGuard(false);
     }
   };
 
   const handleDeleteGuard = async (guard: SecurityGuardItem) => {
-    if (!confirm(`Are you sure you want to remove guard "${guard.name}"?`)) return;
+    if (!confirm(`Are you sure you want to remove guard "${guard.name}"?`))
+      return;
     try {
       await deleteSecurityGuard(guard.uuid);
       toast.success("Guard removed successfully");
       loadGuards();
       loadStatsAndMeta();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to delete guard");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to delete guard",
+      );
     }
   };
 
@@ -476,7 +537,9 @@ export default function SecurityServicePage() {
     nextYear.setFullYear(nextYear.getFullYear() + 1);
     setCompFormEnd(nextYear.toISOString().slice(0, 10));
     setCompFormCost(0);
-    setCompFormLiability("Agency provides 24/7 guard replacement guarantee and assumes full theft/property liability as per master agreement.");
+    setCompFormLiability(
+      "Agency provides 24/7 guard replacement guarantee and assumes full theft/property liability as per master agreement.",
+    );
     setIsCompanyModalOpen(true);
   };
 
@@ -495,8 +558,15 @@ export default function SecurityServicePage() {
 
   const handleSubmitCompany = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!compFormName.trim() || !compFormContact.trim() || !compFormPhone.trim() || !compFormEnd) {
-      toast.error("Please fill in company name, contact person, phone, and contract end date.");
+    if (
+      !compFormName.trim() ||
+      !compFormContact.trim() ||
+      !compFormPhone.trim() ||
+      !compFormEnd
+    ) {
+      toast.error(
+        "Please fill in company name, contact person, phone, and contract end date.",
+      );
       return;
     }
 
@@ -532,8 +602,11 @@ export default function SecurityServicePage() {
       setIsCompanyModalOpen(false);
       loadCompanies();
       loadStatsAndMeta();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save security company");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to save security company",
+      );
     } finally {
       setIsSubmittingCompany(false);
     }
@@ -546,13 +619,19 @@ export default function SecurityServicePage() {
       toast.success("Security company deleted successfully");
       loadCompanies();
       loadStatsAndMeta();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to delete company");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to delete company",
+      );
     }
   };
 
   // --- Roster Handlers ---
-  const handleOpenAddRoster = (defaultGuardId?: number, defaultDate?: string) => {
+  const handleOpenAddRoster = (
+    defaultGuardId?: number,
+    defaultDate?: string,
+  ) => {
     setRosterOverlapError(null);
     setRosterFormGuardId(defaultGuardId ?? (meta.guards[0]?.id || undefined));
     setRosterFormDate(defaultDate || new Date().toISOString().slice(0, 10));
@@ -564,8 +643,16 @@ export default function SecurityServicePage() {
 
   const handleSubmitRoster = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rosterFormGuardId || !rosterFormDate || !rosterFormStart || !rosterFormEnd || !rosterFormPost) {
-      toast.error("Please fill in guard, date, shift timings, and post location.");
+    if (
+      !rosterFormGuardId ||
+      !rosterFormDate ||
+      !rosterFormStart ||
+      !rosterFormEnd ||
+      !rosterFormPost
+    ) {
+      toast.error(
+        "Please fill in guard, date, shift timings, and post location.",
+      );
       return;
     }
     if (!projectId) {
@@ -591,8 +678,10 @@ export default function SecurityServicePage() {
       setIsRosterModalOpen(false);
       loadWeeklyRoster();
       loadStatsAndMeta();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || "Failed to schedule shift";
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to schedule shift";
       setRosterOverlapError(msg);
       toast.error(msg);
     } finally {
@@ -618,22 +707,33 @@ export default function SecurityServicePage() {
       setStatusUpdateRoster(null);
       loadWeeklyRoster();
       loadStatsAndMeta();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to update shift status");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to update shift status",
+      );
     } finally {
       setIsUpdatingStatus(false);
     }
   };
 
   const handleDeleteRoster = async (roster: SecurityRosterItem) => {
-    if (!confirm(`Delete shift for ${roster.guard?.name || "guard"} on ${roster.duty_date}?`)) return;
+    if (
+      !confirm(
+        `Delete shift for ${roster.guard?.name || "guard"} on ${roster.duty_date}?`,
+      )
+    )
+      return;
     try {
       await deleteSecurityRoster(roster.uuid);
       toast.success("Shift cancelled and deleted");
       loadWeeklyRoster();
       loadStatsAndMeta();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to delete shift");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to delete shift",
+      );
     }
   };
 
@@ -678,8 +778,11 @@ export default function SecurityServicePage() {
       setIsCheckInModalOpen(false);
       loadVisitorLogs();
       loadStatsAndMeta();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to check in visitor");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to check in visitor",
+      );
     } finally {
       setIsSubmittingVisitor(false);
     }
@@ -693,8 +796,11 @@ export default function SecurityServicePage() {
       toast.success(`${log.visitor_name} checked out`);
       loadVisitorLogs();
       loadStatsAndMeta();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to check out visitor");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to check out visitor",
+      );
     }
   };
 
@@ -705,8 +811,11 @@ export default function SecurityServicePage() {
       toast.success("Visitor log deleted");
       loadVisitorLogs();
       loadStatsAndMeta();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to delete entry");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to delete entry",
+      );
     }
   };
 
@@ -723,10 +832,16 @@ export default function SecurityServicePage() {
             className="flex h-9 w-9 items-center justify-center rounded-lg font-semibold text-xs"
             style={{ backgroundColor: `${brand}15`, color: brand }}
           >
-            {guard.badge_number ? guard.badge_number.slice(0, 4) : <Shield className="h-4 w-4" />}
+            {guard.badge_number ? (
+              guard.badge_number.slice(0, 4)
+            ) : (
+              <Shield className="h-4 w-4" />
+            )}
           </div>
           <div>
-            <span className="font-semibold text-foreground text-xs">{guard.name}</span>
+            <span className="font-semibold text-foreground text-xs">
+              {guard.name}
+            </span>
             <p className="text-[11px] text-muted-foreground">
               {guard.badge_number ? `Badge #${guard.badge_number}` : "No badge"}
             </p>
@@ -794,13 +909,17 @@ export default function SecurityServicePage() {
               isActive
                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                 : isOnLeave
-                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                : isTerminated
-                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                : "bg-muted text-muted-foreground"
+                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  : isTerminated
+                    ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                    : "bg-muted text-muted-foreground"
             }`}
           >
-            {isActive ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+            {isActive ? (
+              <CheckCircle2 className="h-3 w-3" />
+            ) : (
+              <Clock className="h-3 w-3" />
+            )}
             {guard.status.replace("_", " ")}
           </span>
         );
@@ -856,7 +975,9 @@ export default function SecurityServicePage() {
             <Building className="h-4 w-4" />
           </div>
           <div>
-            <span className="font-semibold text-foreground text-xs">{comp.name}</span>
+            <span className="font-semibold text-foreground text-xs">
+              {comp.name}
+            </span>
             <p className="text-[11px] text-muted-foreground">
               Contact: {comp.contact_person}
             </p>
@@ -928,7 +1049,10 @@ export default function SecurityServicePage() {
       key: "liability_note",
       header: "Liability & Replacement Terms",
       render: (comp) => (
-        <div className="max-w-xs truncate text-[11px] text-muted-foreground" title={comp.liability_note}>
+        <div
+          className="max-w-xs truncate text-[11px] text-muted-foreground"
+          title={comp.liability_note}
+        >
           {comp.liability_note || "Standard terms apply"}
         </div>
       ),
@@ -974,7 +1098,9 @@ export default function SecurityServicePage() {
             <UserCheck className="h-4 w-4" />
           </div>
           <div>
-            <span className="font-semibold text-foreground text-xs">{v.visitor_name}</span>
+            <span className="font-semibold text-foreground text-xs">
+              {v.visitor_name}
+            </span>
             <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
               <Phone className="h-2.5 w-2.5" />
               {v.phone}
@@ -1057,7 +1183,11 @@ export default function SecurityServicePage() {
                 : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
             }`}
           >
-            {isInside ? <Clock className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+            {isInside ? (
+              <Clock className="h-3 w-3" />
+            ) : (
+              <CheckCircle2 className="h-3 w-3" />
+            )}
             {isInside ? "Checked In" : "Checked Out"}
           </span>
         );
@@ -1109,7 +1239,9 @@ export default function SecurityServicePage() {
       header: "Guard Name & Post",
       render: (r) => (
         <div className="space-y-0.5 text-xs">
-          <div className="font-medium text-foreground">{r.guard?.name || "Assigned Guard"}</div>
+          <div className="font-medium text-foreground">
+            {r.guard?.name || "Assigned Guard"}
+          </div>
           <p className="text-[11px] text-muted-foreground font-mono">
             {r.post_location}
           </p>
@@ -1125,10 +1257,10 @@ export default function SecurityServicePage() {
             r.status === "ON_DUTY"
               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
               : r.status === "COMPLETED"
-              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-              : r.status === "ABSENT"
-              ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-              : "bg-muted text-muted-foreground"
+                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                : r.status === "ABSENT"
+                  ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                  : "bg-muted text-muted-foreground"
           }`}
         >
           {r.status}
@@ -1139,9 +1271,7 @@ export default function SecurityServicePage() {
       key: "notes",
       header: "Notes",
       render: (r) => (
-        <span className="text-xs text-muted-foreground">
-          {r.notes || "—"}
-        </span>
+        <span className="text-xs text-muted-foreground">{r.notes || "—"}</span>
       ),
     },
     {
@@ -1209,19 +1339,19 @@ export default function SecurityServicePage() {
             activeTab === "guards"
               ? "Add Guard"
               : activeTab === "companies"
-              ? "Add Security Agency"
-              : activeTab === "roster"
-              ? "Schedule Shift"
-              : "Check-in Visitor",
+                ? "Add Security Agency"
+                : activeTab === "roster"
+                  ? "Schedule Shift"
+                  : "Check-in Visitor",
           icon: Plus,
           onClick:
             activeTab === "guards"
               ? handleOpenAddGuard
               : activeTab === "companies"
-              ? handleOpenAddCompany
-              : activeTab === "roster"
-              ? () => handleOpenAddRoster()
-              : handleOpenCheckIn,
+                ? handleOpenAddCompany
+                : activeTab === "roster"
+                  ? () => handleOpenAddRoster()
+                  : handleOpenCheckIn,
         }}
       />
 
@@ -1268,14 +1398,18 @@ export default function SecurityServicePage() {
             <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
             <div className="text-xs">
               <p className="font-semibold text-sm">
-                Attention: {expiringCompaniesList.length} Security Agency Contract(s) Expiring Soon!
+                Attention: {expiringCompaniesList.length} Security Agency
+                Contract(s) Expiring Soon!
               </p>
               <p className="mt-0.5 text-muted-foreground">
                 Contracts for{" "}
                 <span className="font-medium text-foreground">
-                  {expiringCompaniesList.map((c) => `${c.name} (${c.days_until_expiry}d left)`).join(", ")}
+                  {expiringCompaniesList
+                    .map((c) => `${c.name} (${c.days_until_expiry}d left)`)
+                    .join(", ")}
                 </span>{" "}
-                will expire within 30 days. Please initiate contract renewals or replacement guarantees.
+                will expire within 30 days. Please initiate contract renewals or
+                replacement guarantees.
               </p>
             </div>
           </div>
@@ -1484,9 +1618,14 @@ export default function SecurityServicePage() {
               <table className="w-full min-w-[950px] border-collapse text-left text-xs">
                 <thead>
                   <tr className="border-b bg-muted/40">
-                    <th className="p-3 font-semibold text-foreground w-56">Guard</th>
+                    <th className="p-3 font-semibold text-foreground w-56">
+                      Guard
+                    </th>
                     {weeklyRoster?.days.map((d) => (
-                      <th key={d.date} className="p-3 font-semibold text-foreground text-center">
+                      <th
+                        key={d.date}
+                        className="p-3 font-semibold text-foreground text-center"
+                      >
                         <div>{d.dayName}</div>
                         <span className="text-[10px] font-normal text-muted-foreground font-mono">
                           {d.date.slice(5)}
@@ -1497,17 +1636,27 @@ export default function SecurityServicePage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {weeklyRoster?.matrix.map((row) => (
-                    <tr key={row.guard_id} className="hover:bg-muted/20 transition">
+                    <tr
+                      key={row.guard_id}
+                      className="hover:bg-muted/20 transition"
+                    >
                       <td className="p-3 align-top">
-                        <div className="font-semibold text-foreground">{row.guard_name}</div>
+                        <div className="font-semibold text-foreground">
+                          {row.guard_name}
+                        </div>
                         <div className="text-[11px] text-muted-foreground">
-                          {row.guard_source === "IN_HOUSE" ? "In-House" : row.company_name || "Agency"}
+                          {row.guard_source === "IN_HOUSE"
+                            ? "In-House"
+                            : row.company_name || "Agency"}
                         </div>
                       </td>
                       {weeklyRoster.days.map((d) => {
                         const dayShifts = row.shifts[d.date] || [];
                         return (
-                          <td key={d.date} className="p-2 align-top text-center min-w-[120px]">
+                          <td
+                            key={d.date}
+                            className="p-2 align-top text-center min-w-[120px]"
+                          >
                             {dayShifts.length > 0 ? (
                               <div className="space-y-1.5">
                                 {dayShifts.map((s) => (
@@ -1518,8 +1667,8 @@ export default function SecurityServicePage() {
                                       s.shift_name === "Morning"
                                         ? "bg-amber-500/10 border-amber-500/20 text-amber-900 dark:text-amber-200"
                                         : s.shift_name === "Evening"
-                                        ? "bg-blue-500/10 border-blue-500/20 text-blue-900 dark:text-blue-200"
-                                        : "bg-indigo-500/10 border-indigo-500/20 text-indigo-900 dark:text-indigo-200"
+                                          ? "bg-blue-500/10 border-blue-500/20 text-blue-900 dark:text-blue-200"
+                                          : "bg-indigo-500/10 border-indigo-500/20 text-indigo-900 dark:text-indigo-200"
                                     }`}
                                   >
                                     <div className="flex items-center justify-between font-semibold text-[11px]">
@@ -1529,8 +1678,8 @@ export default function SecurityServicePage() {
                                           s.status === "ON_DUTY"
                                             ? "bg-emerald-600 text-white"
                                             : s.status === "ABSENT"
-                                            ? "bg-rose-600 text-white"
-                                            : "bg-muted text-muted-foreground"
+                                              ? "bg-rose-600 text-white"
+                                              : "bg-muted text-muted-foreground"
                                         }`}
                                       >
                                         {s.status}
@@ -1539,7 +1688,10 @@ export default function SecurityServicePage() {
                                     <div className="mt-1 text-[10px] font-mono text-muted-foreground">
                                       {s.shift_timing}
                                     </div>
-                                    <div className="text-[10px] font-medium truncate mt-0.5" title={s.post_location}>
+                                    <div
+                                      className="text-[10px] font-medium truncate mt-0.5"
+                                      title={s.post_location}
+                                    >
                                       {s.post_location}
                                     </div>
                                   </div>
@@ -1547,7 +1699,9 @@ export default function SecurityServicePage() {
                               </div>
                             ) : (
                               <button
-                                onClick={() => handleOpenAddRoster(row.guard_id, d.date)}
+                                onClick={() =>
+                                  handleOpenAddRoster(row.guard_id, d.date)
+                                }
                                 className="group flex h-14 w-full items-center justify-center rounded-lg border border-dashed border-border/60 hover:border-primary/50 hover:bg-muted/40 transition"
                                 title="Add Shift for this Day"
                               >
@@ -1561,7 +1715,10 @@ export default function SecurityServicePage() {
                   ))}
                   {weeklyRoster?.matrix.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-muted-foreground text-xs">
+                      <td
+                        colSpan={8}
+                        className="p-8 text-center text-muted-foreground text-xs"
+                      >
                         No active guards or shifts scheduled for this week.
                       </td>
                     </tr>
@@ -1588,16 +1745,22 @@ export default function SecurityServicePage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <CSFilterTabs
               tabs={[
-                { key: "all", label: "All Visitors", count: visitorLogs.length },
+                {
+                  key: "all",
+                  label: "All Visitors",
+                  count: visitorLogs.length,
+                },
                 {
                   key: "CHECKED_IN",
                   label: "Currently Inside",
-                  count: visitorLogs.filter((v) => v.status === "CHECKED_IN").length,
+                  count: visitorLogs.filter((v) => v.status === "CHECKED_IN")
+                    .length,
                 },
                 {
                   key: "CHECKED_OUT",
                   label: "Checked Out",
-                  count: visitorLogs.filter((v) => v.status === "CHECKED_OUT").length,
+                  count: visitorLogs.filter((v) => v.status === "CHECKED_OUT")
+                    .length,
                 },
               ]}
               activeTab={visitorStatusFilter}
@@ -1626,7 +1789,12 @@ export default function SecurityServicePage() {
             columns={visitorColumns}
             data={visitorLogs}
             searchPlaceholder="Search visitor name, flat visited, phone, vehicle..."
-            searchFields={["visitor_name", "flat_visited", "phone", "vehicle_number"]}
+            searchFields={[
+              "visitor_name",
+              "flat_visited",
+              "phone",
+              "vehicle_number",
+            ]}
           />
         </div>
       )}
@@ -1740,7 +1908,9 @@ export default function SecurityServicePage() {
               <select
                 required
                 value={guardFormCompanyId || ""}
-                onChange={(e) => setGuardFormCompanyId(Number(e.target.value) || undefined)}
+                onChange={(e) =>
+                  setGuardFormCompanyId(Number(e.target.value) || undefined)
+                }
                 className="w-full rounded-lg border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Select Security Agency</option>
@@ -1798,7 +1968,9 @@ export default function SecurityServicePage() {
               </label>
               <select
                 value={guardFormStatus}
-                onChange={(e) => setGuardFormStatus(e.target.value as GuardStatus)}
+                onChange={(e) =>
+                  setGuardFormStatus(e.target.value as GuardStatus)
+                }
                 className="w-full rounded-lg border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {meta.guard_statuses.map((st) => (
@@ -1823,7 +1995,11 @@ export default function SecurityServicePage() {
               disabled={isSubmittingGuard}
               className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground shadow hover:opacity-90 disabled:opacity-50"
             >
-              {isSubmittingGuard ? "Saving..." : editingGuard ? "Save Changes" : "Register Guard"}
+              {isSubmittingGuard
+                ? "Saving..."
+                : editingGuard
+                  ? "Save Changes"
+                  : "Register Guard"}
             </button>
           </div>
         </form>
@@ -1835,7 +2011,9 @@ export default function SecurityServicePage() {
       <CSModal
         isOpen={isCompanyModalOpen}
         onClose={() => setIsCompanyModalOpen(false)}
-        title={editingCompany ? "Edit Security Agency" : "Register Security Agency"}
+        title={
+          editingCompany ? "Edit Security Agency" : "Register Security Agency"
+        }
         description="Record security service provider agreements, monthly contract costs, and liability covenants."
         maxWidth="lg"
       >
@@ -1966,7 +2144,11 @@ export default function SecurityServicePage() {
               disabled={isSubmittingCompany}
               className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground shadow hover:opacity-90 disabled:opacity-50"
             >
-              {isSubmittingCompany ? "Saving..." : editingCompany ? "Save Changes" : "Register Agency"}
+              {isSubmittingCompany
+                ? "Saving..."
+                : editingCompany
+                  ? "Save Changes"
+                  : "Register Agency"}
             </button>
           </div>
         </form>
@@ -1988,7 +2170,9 @@ export default function SecurityServicePage() {
               <div className="flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-xs">Shift Scheduling Conflict</p>
+                  <p className="font-semibold text-xs">
+                    Shift Scheduling Conflict
+                  </p>
                   <p className="text-[11px] mt-0.5">{rosterOverlapError}</p>
                 </div>
               </div>
@@ -2002,13 +2186,16 @@ export default function SecurityServicePage() {
             <select
               required
               value={rosterFormGuardId || ""}
-              onChange={(e) => setRosterFormGuardId(Number(e.target.value) || undefined)}
+              onChange={(e) =>
+                setRosterFormGuardId(Number(e.target.value) || undefined)
+              }
               className="w-full rounded-lg border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Choose Guard</option>
               {meta.guards.map((g) => (
                 <option key={g.id} value={g.id}>
-                  {g.name} ({g.source === "IN_HOUSE" ? "In-House" : "Agency"} - {g.phone})
+                  {g.name} ({g.source === "IN_HOUSE" ? "In-House" : "Agency"} -{" "}
+                  {g.phone})
                 </option>
               ))}
             </select>
@@ -2033,7 +2220,9 @@ export default function SecurityServicePage() {
               </label>
               <select
                 value={rosterFormShiftName}
-                onChange={(e) => handleShiftPresetChange(e.target.value as ShiftName)}
+                onChange={(e) =>
+                  handleShiftPresetChange(e.target.value as ShiftName)
+                }
                 className="w-full rounded-lg border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {meta.shift_names.map((name) => (
@@ -2135,7 +2324,9 @@ export default function SecurityServicePage() {
             </label>
             <select
               value={newRosterStatus}
-              onChange={(e) => setNewRosterStatus(e.target.value as RosterStatus)}
+              onChange={(e) =>
+                setNewRosterStatus(e.target.value as RosterStatus)
+              }
               className="w-full rounded-lg border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {meta.roster_statuses.map((st) => (
@@ -2254,7 +2445,9 @@ export default function SecurityServicePage() {
               </label>
               <select
                 value={vFormPurpose}
-                onChange={(e) => setVFormPurpose(e.target.value as VisitorPurpose)}
+                onChange={(e) =>
+                  setVFormPurpose(e.target.value as VisitorPurpose)
+                }
                 className="w-full rounded-lg border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {meta.purposes.map((p) => (
@@ -2297,7 +2490,9 @@ export default function SecurityServicePage() {
               </label>
               <select
                 value={vFormGuardId || ""}
-                onChange={(e) => setVFormGuardId(Number(e.target.value) || undefined)}
+                onChange={(e) =>
+                  setVFormGuardId(Number(e.target.value) || undefined)
+                }
                 className="w-full rounded-lg border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Select Logging Guard</option>

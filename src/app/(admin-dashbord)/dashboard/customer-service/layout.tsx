@@ -4,7 +4,7 @@ import { CustomerServiceLayoutClient } from "./layout-client";
 export const metadata: Metadata = {
   title: "Customer Service & After-Sales - RealBiz Pro",
   description:
-    "Post-sales operations, customer 360, property portfolio bookings, change requests, handover, and warranties",
+    "Post-sales operations, customer entry, property portfolio bookings, change requests, handover, and warranties",
 };
 
 export default function CustomerServiceLayout({
@@ -14,4 +14,3 @@ export default function CustomerServiceLayout({
 }) {
   return <CustomerServiceLayoutClient>{children}</CustomerServiceLayoutClient>;
 }
-

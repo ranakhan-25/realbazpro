@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   LifeBuoy,
   Plus,
@@ -11,8 +11,9 @@ import {
   User,
   Building,
   Eye,
-  MessageSquare,
-  ShieldAlert,
+  Trash2,
+  RefreshCw,
+  Pencil,
 } from "lucide-react";
 import { CSPageHeader } from "@/components/customer-service/CSPageHeader";
 import { CSStatCard } from "@/components/customer-service/CSStatCard";
@@ -20,98 +21,286 @@ import { CSTable, Column } from "@/components/customer-service/CSTable";
 import { CSFilterTabs } from "@/components/customer-service/CSFilterTabs";
 import { CSModal } from "@/components/customer-service/CSModal";
 import { CSDetailDrawer } from "@/components/customer-service/CSDetailDrawer";
-import { MOCK_TICKETS, ServiceTicket } from "@/services/customerServiceData";
+import { useSelectedProject } from "@/hooks/useSelectedProject";
+import {
+  ServiceTicketItem,
+  TicketCategory,
+  TicketPriority,
+  TicketStatus,
+  getCustomerTickets,
+  getCustomerTicketStats,
+  createCustomerTicket,
+  updateCustomerTicket,
+  addCustomerTicketReply,
+  deleteCustomerTicket,
+} from "@/services/customerTicketsService";
 import { toast } from "sonner";
 import { useTheme } from "@/lib/theme";
 
 export default function AllTicketsPage() {
   const { primaryColor } = useTheme();
   const brand = primaryColor || "#6D4AFF";
+  const { projectId, project } = useSelectedProject();
 
+  const [recordsTab, setRecordsTab] = useState<"active" | "deleted">("active");
   const [activeTab, setActiveTab] = useState("all");
-  const [tickets, setTickets] = useState<ServiceTicket[]>(MOCK_TICKETS);
-  const [selectedTicket, setSelectedTicket] = useState<ServiceTicket | null>(null);
+  const [tickets, setTickets] = useState<ServiceTicketItem[]>([]);
+  const [selectedTicket, setSelectedTicket] =
+    useState<ServiceTicketItem | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingTicket, setEditingTicket] = useState<ServiceTicketItem | null>(
+    null,
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReplying, setIsReplying] = useState(false);
 
-  // Form states
+  // Stats state
+  const [stats, setStats] = useState({
+    total_tickets: 0,
+    open_tickets: 0,
+    in_progress: 0,
+    escalated_tickets: 0,
+    resolved_tickets: 0,
+    overdue_tickets: 0,
+    resolved_rate: 0,
+    all_count: 0,
+    deleted_tickets: 0,
+    deleted_count: 0,
+  });
+
+  // Form states (Create)
   const [subject, setSubject] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [unit, setUnit] = useState("");
-  const [project, setProject] = useState("Hena Heights, Gulshan-2");
-  const [category, setCategory] = useState<ServiceTicket["category"]>("Civil Work");
-  const [priority, setPriority] = useState<ServiceTicket["priority"]>("Medium");
-  const [agent, setAgent] = useState("Md. Tariqul Hasan (Site Engr)");
+  const [category, setCategory] = useState<TicketCategory>("Civil Work");
+  const [priority, setPriority] = useState<TicketPriority>("Medium");
+  const [agent, setAgent] = useState("Engr. Tariqul Hasan (Site Engr)");
+  const [remarks, setRemarks] = useState("");
+
+  // Edit form states
+  const [editSubject, setEditSubject] = useState("");
+  const [editCustomerName, setEditCustomerName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editUnit, setEditUnit] = useState("");
+  const [editCategory, setEditCategory] =
+    useState<TicketCategory>("Civil Work");
+  const [editPriority, setEditPriority] = useState<TicketPriority>("Medium");
+  const [editStatus, setEditStatus] = useState<TicketStatus>("Open");
+  const [editAgent, setEditAgent] = useState("");
+  const [editRemarks, setEditRemarks] = useState("");
 
   // Resolution reply
   const [replyMessage, setReplyMessage] = useState("");
 
-  const filtered = tickets.filter((t) => {
-    if (activeTab === "my") return t.assignedAgent.toLowerCase().includes("tariqul") || t.assignedAgent.toLowerCase().includes("you");
-    if (activeTab === "unassigned") return !t.assignedAgent || t.assignedAgent.includes("Unassigned");
-    if (activeTab === "open") return t.status === "Open";
-    if (activeTab === "in-progress") return t.status === "In Progress";
-    if (activeTab === "pending") return t.status === "Pending Customer";
-    if (activeTab === "overdue") return t.isOverdue;
-    if (activeTab === "escalated") return t.status === "Escalated";
-    if (activeTab === "resolved") return t.status === "Resolved";
-    if (activeTab === "closed") return t.status === "Closed";
-    if (activeTab === "reopened") return t.status === "Reopened";
-    return true;
-  });
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const isDeleted = recordsTab === "deleted";
+      const [ticketsRes, statsRes] = await Promise.all([
+        getCustomerTickets({
+          project_id: projectId && projectId !== "all" ? projectId : undefined,
+          tab: !isDeleted && activeTab !== "all" ? activeTab : undefined,
+          is_deleted: isDeleted,
+        }),
+        getCustomerTicketStats({
+          project_id: projectId && projectId !== "all" ? projectId : undefined,
+        }),
+      ]);
 
-  const handleCreateTicket = (e: React.FormEvent) => {
+      setTickets(ticketsRes.items || []);
+      setStats({
+        ...statsRes,
+        deleted_tickets:
+          statsRes.deleted_tickets ?? statsRes.deleted_count ?? 0,
+        deleted_count: statsRes.deleted_count ?? statsRes.deleted_tickets ?? 0,
+      });
+    } catch (err: unknown) {
+      console.error("Failed to load tickets:", err);
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ||
+          (err as { message?: string })?.message ||
+          "Failed to load customer tickets",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectId, activeTab, recordsTab]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!subject || !customerName) {
+    if (!subject.trim() || !customerName.trim()) {
       toast.error("Please provide ticket subject and customer name");
       return;
     }
 
-    const created: ServiceTicket = {
-      id: `TKT-${300 + tickets.length + 1}`,
-      ticketNo: `TKT-2026-0${300 + tickets.length + 1}`,
-      subject,
-      customerName,
-      phone: phone || "+880 1711-000000",
-      unit: unit || "Unit Allotment",
-      project,
-      category,
-      priority,
-      status: "Open",
-      assignedAgent: agent,
-      slaRemainingHours: priority === "Urgent" ? 4 : priority === "High" ? 12 : 24,
-      isOverdue: false,
-      createdAt: new Date().toLocaleDateString() + " 09:00 AM",
-      updatedAt: new Date().toLocaleDateString() + " 09:00 AM",
-    };
+    setIsSubmitting(true);
+    try {
+      const created = await createCustomerTicket({
+        subject: subject.trim(),
+        customer_name: customerName.trim(),
+        phone: phone.trim() || undefined,
+        unit: unit.trim() || undefined,
+        project_id: projectId && projectId !== "all" ? projectId : undefined,
+        project_name: project?.name || "Assigned Project",
+        category,
+        priority,
+        status: "Open",
+        assigned_agent: agent.trim() || "Unassigned",
+        remarks: remarks.trim() || undefined,
+      });
 
-    setTickets([created, ...tickets]);
-    toast.success(`Ticket ${created.ticketNo} logged with SLA timer (${created.slaRemainingHours}h)`);
-    setIsCreateOpen(false);
-    setSubject("");
-    setCustomerName("");
-    setUnit("");
+      toast.success(
+        `Ticket ${created.ticketNo} logged with SLA timer (${created.slaRemainingHours}h)`,
+      );
+      setIsCreateOpen(false);
+      setSubject("");
+      setCustomerName("");
+      setPhone("");
+      setUnit("");
+      setRemarks("");
+      loadData();
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ||
+          (err as { message?: string })?.message ||
+          "Failed to create ticket",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleSendReply = () => {
+  const handleOpenEdit = (ticket: ServiceTicketItem) => {
+    setEditingTicket(ticket);
+    setEditSubject(ticket.subject || "");
+    setEditCustomerName(ticket.customerName || "");
+    setEditPhone(ticket.phone || "");
+    setEditUnit(ticket.unit || "");
+    setEditCategory((ticket.category as TicketCategory) || "Civil Work");
+    setEditPriority((ticket.priority as TicketPriority) || "Medium");
+    setEditStatus((ticket.status as TicketStatus) || "Open");
+    setEditAgent(ticket.assignedAgent || "");
+    setEditRemarks(ticket.remarks || "");
+    setIsEditOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTicket) return;
+    if (!editSubject.trim() || !editCustomerName.trim()) {
+      toast.error("Please provide ticket subject and customer name");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await updateCustomerTicket(editingTicket.uuid, {
+        subject: editSubject.trim(),
+        customer_name: editCustomerName.trim(),
+        phone: editPhone.trim() || undefined,
+        unit: editUnit.trim() || undefined,
+        category: editCategory,
+        priority: editPriority,
+        status: editStatus,
+        assigned_agent: editAgent.trim() || undefined,
+        remarks: editRemarks.trim() || undefined,
+      });
+
+      toast.success(`Ticket ${editingTicket.ticketNo} updated successfully`);
+      setIsEditOpen(false);
+      setEditingTicket(null);
+      loadData();
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ||
+          (err as { message?: string })?.message ||
+          "Failed to update ticket",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSendReply = async () => {
     if (!replyMessage.trim() || !selectedTicket) return;
-    toast.success("Update and customer notification dispatched via SMS & Email");
-    setReplyMessage("");
+    setIsReplying(true);
+    try {
+      const updated = await addCustomerTicketReply(selectedTicket.uuid, {
+        message: replyMessage.trim(),
+        role: "Service Representative",
+      });
+      setSelectedTicket(updated);
+      setTickets((prev) =>
+        prev.map((t) => (t.uuid === updated.uuid ? updated : t)),
+      );
+      setReplyMessage("");
+      toast.success("Update and customer notification dispatched successfully");
+      loadData();
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ||
+          (err as { message?: string })?.message ||
+          "Failed to send update",
+      );
+    } finally {
+      setIsReplying(false);
+    }
   };
 
-  const handleStatusChange = (newStatus: ServiceTicket["status"]) => {
+  const handleStatusChange = async (newStatus: TicketStatus) => {
     if (!selectedTicket) return;
-    const updated = {
-      ...selectedTicket,
-      status: newStatus,
-      isOverdue: newStatus === "Resolved" || newStatus === "Closed" ? false : selectedTicket.isOverdue,
-    };
-    setTickets(tickets.map((t) => (t.id === selectedTicket.id ? updated : t)));
-    setSelectedTicket(updated);
-    toast.success(`Ticket status updated to ${newStatus}`);
+    try {
+      const updated = await updateCustomerTicket(selectedTicket.uuid, {
+        status: newStatus,
+      });
+      setSelectedTicket(updated);
+      setTickets((prev) =>
+        prev.map((t) => (t.uuid === updated.uuid ? updated : t)),
+      );
+      toast.success(`Ticket status updated to ${newStatus}`);
+      loadData();
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ||
+          (err as { message?: string })?.message ||
+          "Failed to update ticket status",
+      );
+    }
   };
 
-  const columns: Column<ServiceTicket>[] = [
+  const handleDelete = async (ticket: ServiceTicketItem) => {
+    if (!confirm(`Are you sure you want to delete ticket ${ticket.ticketNo}?`))
+      return;
+    try {
+      await deleteCustomerTicket(ticket.uuid);
+      toast.success(`Ticket ${ticket.ticketNo} deleted successfully`);
+      if (selectedTicket?.uuid === ticket.uuid) {
+        setSelectedTicket(null);
+      }
+      loadData();
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ||
+          (err as { message?: string })?.message ||
+          "Failed to delete ticket",
+      );
+    }
+  };
+
+  const columns: Column<ServiceTicketItem>[] = [
     {
       key: "ticketNo",
       header: "TICKET NO & SUBJECT",
@@ -120,7 +309,9 @@ export default function AllTicketsPage() {
       render: (t) => (
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-[#111827] tabular-nums text-xs">{t.ticketNo}</span>
+            <span className="font-semibold text-[#111827] tabular-nums text-xs">
+              {t.ticketNo}
+            </span>
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide ${
                 t.priority === "Urgent"
@@ -133,7 +324,9 @@ export default function AllTicketsPage() {
               {t.priority}
             </span>
           </div>
-          <p className="mt-1 text-xs text-[#4B5563] font-medium line-clamp-1">{t.subject}</p>
+          <p className="mt-1 text-xs text-[#4B5563] font-medium line-clamp-1">
+            {t.subject}
+          </p>
         </div>
       ),
     },
@@ -143,8 +336,12 @@ export default function AllTicketsPage() {
       minWidth: "180px",
       render: (t) => (
         <div>
-          <div className="font-semibold text-[#111827] text-xs">{t.customerName}</div>
-          <div className="text-[11px] text-[#6D4AFF] font-medium mt-0.5">{t.unit}</div>
+          <div className="font-semibold text-[#111827] text-xs">
+            {t.customerName}
+          </div>
+          <div className="text-[11px] text-[#6D4AFF] font-medium mt-0.5">
+            {t.unit || "N/A"}
+          </div>
         </div>
       ),
     },
@@ -157,7 +354,9 @@ export default function AllTicketsPage() {
           <span className="rounded-md bg-[#F3F4F6] border border-[#E5E7EB] px-2 py-0.5 text-[11px] font-medium text-[#374151]">
             {t.category}
           </span>
-          <div className="text-[11px] text-[#6B7280] font-medium mt-1">{t.assignedAgent}</div>
+          <div className="text-[11px] text-[#6B7280] font-medium mt-1">
+            {t.assignedAgent}
+          </div>
         </div>
       ),
     },
@@ -203,9 +402,9 @@ export default function AllTicketsPage() {
       key: "actions",
       header: "ACTION",
       align: "right",
-      minWidth: "90px",
+      minWidth: "100px",
       render: (t) => (
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end gap-1.5">
           <button
             type="button"
             onClick={() => setSelectedTicket(t)}
@@ -215,6 +414,32 @@ export default function AllTicketsPage() {
           >
             <Eye className="h-4 w-4" />
           </button>
+          {recordsTab === "deleted" ? (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+              Soft Deleted
+            </span>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => handleOpenEdit(t)}
+                title="Edit Ticket"
+                aria-label="Edit Ticket"
+                className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#F4F1FF] border border-[#DDD6FE] text-[#6D4AFF] hover:bg-[#EDE9FE] transition shadow-xs"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(t)}
+                title="Delete Ticket"
+                aria-label="Delete Ticket"
+                className="h-8 w-8 rounded-lg inline-flex items-center justify-center bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] hover:bg-[#FEE2E2] hover:text-[#B91C1C] transition shadow-xs"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </>
+          )}
         </div>
       ),
     },
@@ -226,7 +451,10 @@ export default function AllTicketsPage() {
         title="Tickets & Service Requests (অভিযোগ ও সেবা ব্যবস্থাপনা)"
         subtitle="Omnichannel customer ticketing, engineer dispatch, SLA timers, escalation tracking and resolution workflows."
         badge="SLA Engine"
-        breadcrumbs={[{ label: "Tickets & Service Requests" }, { label: "All Tickets" }]}
+        breadcrumbs={[
+          { label: "Tickets & Service Requests" },
+          { label: "All Tickets" },
+        ]}
         primaryAction={{
           label: "Create New Ticket",
           onClick: () => setIsCreateOpen(true),
@@ -238,13 +466,13 @@ export default function AllTicketsPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <CSStatCard
           title="Total Service Tickets"
-          value={tickets.length.toString()}
+          value={stats.total_tickets.toString()}
           subtext="Logged in system"
           icon={LifeBuoy}
         />
         <CSStatCard
           title="Active Open Tickets"
-          value={tickets.filter((t) => t.status === "Open" || t.status === "In Progress").length.toString()}
+          value={(stats.open_tickets + stats.in_progress).toString()}
           subtext="Under active resolution"
           icon={Clock}
           iconBg="bg-[#EFF6FF]"
@@ -252,7 +480,7 @@ export default function AllTicketsPage() {
         />
         <CSStatCard
           title="SLA Breached"
-          value={tickets.filter((t) => t.isOverdue).length.toString()}
+          value={stats.overdue_tickets.toString()}
           subtext="Requires supervisor escalation"
           icon={AlertTriangle}
           iconBg="bg-[#FEF2F2]"
@@ -260,7 +488,7 @@ export default function AllTicketsPage() {
         />
         <CSStatCard
           title="Resolved Rate"
-          value="94.2%"
+          value={`${stats.resolved_rate}%`}
           subtext="First-contact resolution benchmark"
           icon={CheckCircle2}
           iconBg="bg-[#ECFDF3]"
@@ -268,49 +496,117 @@ export default function AllTicketsPage() {
         />
       </div>
 
-      {/* Complete Workflow Filter Tabs */}
-      <CSFilterTabs
-        tabs={[
-          { key: "all", label: "All Tickets", count: tickets.length },
-          { key: "my", label: "My Tickets", count: 1 },
-          {
-            key: "overdue",
-            label: "Overdue / SLA Breach",
-            count: tickets.filter((t) => t.isOverdue).length,
-            badgeVariant: "danger",
-          },
-          {
-            key: "escalated",
-            label: "Escalated",
-            count: tickets.filter((t) => t.status === "Escalated").length,
-            badgeVariant: "warning",
-          },
-          {
-            key: "open",
-            label: "Open",
-            count: tickets.filter((t) => t.status === "Open").length,
-          },
-          {
-            key: "in-progress",
-            label: "In Progress",
-            count: tickets.filter((t) => t.status === "In Progress").length,
-          },
-          {
-            key: "resolved",
-            label: "Resolved",
-            count: tickets.filter((t) => t.status === "Resolved").length,
-          },
-        ]}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      {/* Records Mode Switcher: Active Records vs Deleted Records */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        <div className="flex items-center bg-[#F3F4F6] p-1 rounded-xl w-fit border border-[#E5E7EB]">
+          <button
+            type="button"
+            onClick={() => setRecordsTab("active")}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition ${
+              recordsTab === "active"
+                ? "bg-white text-[#111827] shadow-xs"
+                : "text-[#6B7280] hover:text-[#111827]"
+            }`}
+          >
+            <span>Active Records</span>
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full font-bold tabular-nums ${
+                recordsTab === "active"
+                  ? "bg-[#EEF2FF] text-[#6D4AFF]"
+                  : "bg-[#E5E7EB] text-[#4B5563]"
+              }`}
+            >
+              {stats.total_tickets}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRecordsTab("deleted")}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition ${
+              recordsTab === "deleted"
+                ? "bg-white text-[#DC2626] shadow-xs"
+                : "text-[#6B7280] hover:text-[#DC2626]"
+            }`}
+          >
+            <span>Deleted Records</span>
+            {(stats.deleted_tickets ?? 0) > 0 && (
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full font-bold tabular-nums ${
+                  recordsTab === "deleted"
+                    ? "bg-[#FEF2F2] text-[#DC2626]"
+                    : "bg-[#E5E7EB] text-[#4B5563]"
+                }`}
+              >
+                {stats.deleted_tickets}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Complete Workflow Filter Tabs (Active records only) */}
+      {recordsTab === "active" && (
+        <CSFilterTabs
+          tabs={[
+            { key: "all", label: "All Tickets", count: stats.total_tickets },
+            { key: "my", label: "My Tickets" },
+            {
+              key: "overdue",
+              label: "Overdue / SLA Breach",
+              count: stats.overdue_tickets,
+              badgeVariant: "danger",
+            },
+            {
+              key: "escalated",
+              label: "Escalated",
+              count: stats.escalated_tickets,
+              badgeVariant: "warning",
+            },
+            {
+              key: "open",
+              label: "Open",
+              count: stats.open_tickets,
+            },
+            {
+              key: "in-progress",
+              label: "In Progress",
+              count: stats.in_progress,
+            },
+            {
+              key: "resolved",
+              label: "Resolved",
+              count: stats.resolved_tickets,
+            },
+          ]}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+      )}
 
       <CSTable
-        data={filtered}
+        data={tickets}
         columns={columns}
         searchPlaceholder="Search ticket no, customer, subject, category or assigned agent..."
-        searchFields={["ticketNo", "subject", "customerName", "unit", "category", "assignedAgent"]}
-        emptyTitle="No tickets found in this tab"
+        searchFields={[
+          "ticketNo",
+          "subject",
+          "customerName",
+          "unit",
+          "category",
+          "assignedAgent",
+        ]}
+        emptyTitle={
+          isLoading
+            ? "Loading service tickets..."
+            : recordsTab === "deleted"
+              ? "No deleted tickets found"
+              : "No tickets found in this tab"
+        }
+        emptySubtitle={
+          recordsTab === "deleted"
+            ? "Soft-deleted tickets will appear here."
+            : "Try adjusting your search criteria or switch tabs."
+        }
       />
 
       {/* Slide-over Ticket Detail & Work Order Drawer */}
@@ -326,16 +622,19 @@ export default function AllTicketsPage() {
           <div className="space-y-5 text-xs">
             {/* Subject and SLA Header Box */}
             <div className="rounded-[12px] border border-[#E5E7EB] bg-[#F9FAFB] p-4 space-y-2">
-              <h4 className="font-semibold text-[#111827] text-sm">{selectedTicket.subject}</h4>
+              <h4 className="font-semibold text-[#111827] text-sm">
+                {selectedTicket.subject}
+              </h4>
               <div className="flex flex-wrap items-center gap-3 text-[#4B5563] pt-1">
                 <span className="flex items-center gap-1.5 font-semibold text-[#6D4AFF]">
                   <User className="h-3.5 w-3.5" /> {selectedTicket.customerName}
                 </span>
                 <span className="flex items-center gap-1.5 font-semibold text-[#111827]">
-                  <Building className="h-3.5 w-3.5 text-[#9CA3AF]" /> {selectedTicket.unit}
+                  <Building className="h-3.5 w-3.5 text-[#9CA3AF]" />{" "}
+                  {selectedTicket.unit || "N/A"}
                 </span>
                 <span className="flex items-center gap-1.5 tabular-nums text-[#6B7280]">
-                  {selectedTicket.phone}
+                  {selectedTicket.phone || "No phone provided"}
                 </span>
               </div>
             </div>
@@ -343,20 +642,31 @@ export default function AllTicketsPage() {
             {/* SLA Status Bar */}
             <div className="flex items-center justify-between rounded-[12px] border border-[#DDD6FE] bg-[#F4F1FF]/60 p-3.5">
               <div>
-                <span className="text-[11px] text-[#6B7280] font-semibold block uppercase tracking-wider">SLA Commitment</span>
+                <span className="text-[11px] text-[#6B7280] font-semibold block uppercase tracking-wider">
+                  SLA Commitment
+                </span>
                 <span className="font-semibold text-[#111827] text-xs">
                   {selectedTicket.isOverdue ? (
-                    <span className="text-[#DC2626] font-semibold">Target Response Breached by 6 hours</span>
+                    <span className="text-[#DC2626] font-semibold">
+                      Target Response SLA Breached
+                    </span>
                   ) : (
-                    <span className="text-[#039855]">Within Target ({selectedTicket.slaRemainingHours} hours remaining)</span>
+                    <span className="text-[#039855]">
+                      Within Target ({selectedTicket.slaRemainingHours} hours
+                      remaining)
+                    </span>
                   )}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[#6B7280] text-[11px] font-medium">Workflow:</span>
+                <span className="text-[#6B7280] text-[11px] font-medium">
+                  Workflow:
+                </span>
                 <select
                   value={selectedTicket.status}
-                  onChange={(e) => handleStatusChange(e.target.value as any)}
+                  onChange={(e) =>
+                    handleStatusChange(e.target.value as TicketStatus)
+                  }
                   className="h-8 px-2.5 rounded-lg border border-[#E5E7EB] bg-white font-medium text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] text-xs transition"
                 >
                   <option value="Open">Open</option>
@@ -373,29 +683,35 @@ export default function AllTicketsPage() {
             {/* Conversation Timeline & Engineering Dispatch */}
             <div className="space-y-3">
               <h5 className="font-semibold text-[#111827] text-xs uppercase tracking-wider">
-                Service Activity & Work Order Timeline
+                Service Activity & Work Order Timeline (
+                {selectedTicket.replies?.length || 0})
               </h5>
 
               <div className="space-y-3 border-l-2 border-[#E5E7EB] pl-3.5 ml-1">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-[#111827] text-[11px]">Customer Support Desk</span>
-                    <span className="text-[10px] text-[#9CA3AF] tabular-nums">08:00 AM</span>
-                  </div>
-                  <p className="text-[#4B5563] rounded-lg bg-[#F9FAFB] border border-[#E5E7EB] p-2.5">
-                    Ticket logged via Phone call. Forwarded to {selectedTicket.assignedAgent} for on-site inspection.
+                {selectedTicket.replies && selectedTicket.replies.length > 0 ? (
+                  selectedTicket.replies.map((rep) => (
+                    <div key={rep.id} className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-[#111827] text-[11px]">
+                          {rep.sender}
+                        </span>
+                        <span className="rounded bg-[#F3F4F6] px-1.5 py-0.5 text-[9px] font-medium text-[#6B7280]">
+                          {rep.role}
+                        </span>
+                        <span className="text-[10px] text-[#9CA3AF] tabular-nums">
+                          {rep.timestamp}
+                        </span>
+                      </div>
+                      <p className="text-[#374151] rounded-lg bg-[#F9FAFB] border border-[#E5E7EB] p-2.5 leading-relaxed">
+                        {rep.message}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-[#9CA3AF] italic text-[11px]">
+                    No activity logged yet.
                   </p>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-[#6D4AFF] text-[11px]">{selectedTicket.assignedAgent}</span>
-                    <span className="text-[10px] text-[#9CA3AF] tabular-nums">08:30 AM</span>
-                  </div>
-                  <p className="text-[#374151] rounded-lg bg-[#F4F1FF]/60 border border-[#DDD6FE] p-2.5">
-                    Site engineer scheduled inspection visit for today at 3:00 PM. Notified customer.
-                  </p>
-                </div>
+                )}
               </div>
             </div>
 
@@ -414,10 +730,12 @@ export default function AllTicketsPage() {
               <div className="flex justify-end">
                 <button
                   type="button"
+                  disabled={isReplying || !replyMessage.trim()}
                   onClick={handleSendReply}
-                  className="h-9 px-4 rounded-lg bg-[#6D4AFF] hover:bg-[#5935DE] text-white text-xs font-semibold shadow-xs transition inline-flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-[#6D4AFF]"
+                  className="h-9 px-4 rounded-lg bg-[#6D4AFF] hover:bg-[#5935DE] text-white text-xs font-semibold shadow-xs transition inline-flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-[#6D4AFF] disabled:opacity-50"
                 >
-                  <Send className="h-3.5 w-3.5" /> Send Update
+                  <Send className="h-3.5 w-3.5" />{" "}
+                  {isReplying ? "Sending..." : "Send Update"}
                 </button>
               </div>
             </div>
@@ -436,6 +754,7 @@ export default function AllTicketsPage() {
           <>
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={() => setIsCreateOpen(false)}
               className="h-9 px-4 text-xs font-semibold text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition"
             >
@@ -443,17 +762,27 @@ export default function AllTicketsPage() {
             </button>
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={handleCreateTicket}
-              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition"
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition disabled:opacity-50 inline-flex items-center gap-1.5"
             >
-              Open Ticket
+              {isSubmitting ? (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Open Ticket"
+              )}
             </button>
           </>
         }
       >
         <form onSubmit={handleCreateTicket} className="space-y-3.5 text-xs">
           <div>
-            <label className="block font-semibold text-[#374151] mb-1">Issue Subject *</label>
+            <label className="block font-semibold text-[#374151] mb-1">
+              Issue Subject *
+            </label>
             <input
               type="text"
               required
@@ -466,7 +795,9 @@ export default function AllTicketsPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Customer Name *</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Customer Name *
+              </label>
               <input
                 type="text"
                 required
@@ -477,7 +808,9 @@ export default function AllTicketsPage() {
               />
             </div>
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Phone Number</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Phone Number
+              </label>
               <input
                 type="text"
                 value={phone}
@@ -490,10 +823,11 @@ export default function AllTicketsPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Unit Number *</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Unit Number
+              </label>
               <input
                 type="text"
-                required
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 placeholder="e.g. A-7, Hena Heights"
@@ -501,28 +835,43 @@ export default function AllTicketsPage() {
               />
             </div>
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Category</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Category
+              </label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value as any)}
+                onChange={(e) => setCategory(e.target.value as TicketCategory)}
                 className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
-                <option value="Civil Work">Civil Work (Plaster, Brick, Tiles)</option>
-                <option value="Sanitary & Plumbing">Sanitary & Plumbing (Drainage, Leakage)</option>
-                <option value="Electrical">Electrical (Sub-station, DB, Fittings)</option>
+                <option value="Civil Work">
+                  Civil Work (Plaster, Brick, Tiles)
+                </option>
+                <option value="Sanitary & Plumbing">
+                  Sanitary & Plumbing (Drainage, Leakage)
+                </option>
+                <option value="Electrical">
+                  Electrical (Sub-station, DB, Fittings)
+                </option>
                 <option value="Finishing & Tiles">Finishing & Polish</option>
-                <option value="Accounts & Billing">Accounts & Billing Inquiry</option>
-                <option value="Handover Delay">Handover Delay / Snagging</option>
+                <option value="Accounts & Billing">
+                  Accounts & Billing Inquiry
+                </option>
+                <option value="Handover Delay">
+                  Handover Delay / Snagging
+                </option>
+                <option value="Other">Other</option>
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Priority (SLA Timer)</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Priority (SLA Timer)
+              </label>
               <select
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as any)}
+                onChange={(e) => setPriority(e.target.value as TicketPriority)}
                 className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
               >
                 <option value="Urgent">Urgent (4h SLA)</option>
@@ -532,14 +881,219 @@ export default function AllTicketsPage() {
               </select>
             </div>
             <div>
-              <label className="block font-semibold text-[#374151] mb-1">Assigned Engineer / Officer</label>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Assigned Engineer / Officer
+              </label>
               <input
                 type="text"
                 value={agent}
                 onChange={(e) => setAgent(e.target.value)}
+                placeholder="e.g. Engr. Tariqul Hasan"
                 className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-[#374151] mb-1">
+              Remarks / Details
+            </label>
+            <textarea
+              rows={2}
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              placeholder="Initial observations or customer comments..."
+              className="w-full p-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
+            />
+          </div>
+        </form>
+      </CSModal>
+
+      {/* Edit Ticket Modal */}
+      <CSModal
+        isOpen={isEditOpen}
+        onClose={() => {
+          setIsEditOpen(false);
+          setEditingTicket(null);
+        }}
+        title={`Edit Ticket — ${editingTicket?.ticketNo || ""}`}
+        subtitle="Update issue details, priority, category, or status"
+        maxWidth="md"
+        footer={
+          <>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => {
+                setIsEditOpen(false);
+                setEditingTicket(null);
+              }}
+              className="h-9 px-4 text-xs font-semibold text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleSaveEdit}
+              className="h-9 px-4 text-xs font-semibold text-white bg-[#6D4AFF] hover:bg-[#5935DE] rounded-lg shadow-xs transition disabled:opacity-50 inline-flex items-center gap-1.5"
+            >
+              {isSubmitting ? (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">
+          <div>
+            <label className="block font-semibold text-[#374151] mb-1">
+              Issue Subject *
+            </label>
+            <input
+              type="text"
+              required
+              value={editSubject}
+              onChange={(e) => setEditSubject(e.target.value)}
+              className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Customer Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={editCustomerName}
+                onChange={(e) => setEditCustomerName(e.target.value)}
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Phone Number
+              </label>
+              <input
+                type="text"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] tabular-nums outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Unit Number
+              </label>
+              <input
+                type="text"
+                value={editUnit}
+                onChange={(e) => setEditUnit(e.target.value)}
+                className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Category
+              </label>
+              <select
+                value={editCategory}
+                onChange={(e) =>
+                  setEditCategory(e.target.value as TicketCategory)
+                }
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
+              >
+                <option value="Civil Work">Civil Work</option>
+                <option value="Plumbing & Sanitary">Plumbing & Sanitary</option>
+                <option value="Electrical & Substation">
+                  Electrical & Substation
+                </option>
+                <option value="Lift & Generator">Lift & Generator</option>
+                <option value="Firefighting & Safety">
+                  Firefighting & Safety
+                </option>
+                <option value="Carpentry & Joinery">Carpentry & Joinery</option>
+                <option value="Documentation & Legal">
+                  Documentation & Legal
+                </option>
+                <option value="Accounts & Finance">Accounts & Finance</option>
+                <option value="Accounts & Billing">Accounts & Billing</option>
+                <option value="Handover Delay">Handover Delay</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Priority
+              </label>
+              <select
+                value={editPriority}
+                onChange={(e) =>
+                  setEditPriority(e.target.value as TicketPriority)
+                }
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
+              >
+                <option value="Low">Low (48h SLA)</option>
+                <option value="Medium">Medium (24h SLA)</option>
+                <option value="High">High (12h SLA)</option>
+                <option value="Urgent">Urgent (4h SLA)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-semibold text-[#374151] mb-1">
+                Status
+              </label>
+              <select
+                value={editStatus}
+                onChange={(e) => setEditStatus(e.target.value as TicketStatus)}
+                className="w-full h-9 px-2.5 rounded-lg border border-[#E5E7EB] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] bg-white text-[#111827] transition"
+              >
+                <option value="Open">Open</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Escalated">Escalated</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Closed">Closed</option>
+                <option value="Reopened">Reopened</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-[#374151] mb-1">
+              Assigned Agent
+            </label>
+            <input
+              type="text"
+              value={editAgent}
+              onChange={(e) => setEditAgent(e.target.value)}
+              placeholder="e.g. Engr. Tariqul Hasan"
+              className="w-full h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-[#374151] mb-1">
+              Remarks
+            </label>
+            <textarea
+              rows={2}
+              value={editRemarks}
+              onChange={(e) => setEditRemarks(e.target.value)}
+              className="w-full p-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:border-[#6D4AFF] focus:ring-1 focus:ring-[#6D4AFF] transition"
+            />
           </div>
         </form>
       </CSModal>

@@ -106,7 +106,9 @@ export default function UtilityServicePage() {
   // ==========================================
   // 3. WARRANTY REGISTRY STATE
   // ==========================================
-  const [warrantyItems, setWarrantyItems] = useState<WarrantyRegistryItem[]>([]);
+  const [warrantyItems, setWarrantyItems] = useState<WarrantyRegistryItem[]>(
+    [],
+  );
   const [isWarrantyLoading, setIsWarrantyLoading] = useState(false);
   const [warrantyTab, setWarrantyTab] = useState("all");
   const [warrantyStats, setWarrantyStats] = useState<WarrantyStatsData>({
@@ -124,7 +126,8 @@ export default function UtilityServicePage() {
   const [isUpdateStatusOpen, setIsUpdateStatusOpen] = useState(false);
   const [isCreateTechOpen, setIsCreateTechOpen] = useState(false);
   const [isCreateWarrantyOpen, setIsCreateWarrantyOpen] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState<UtilityTicketItem | null>(null);
+  const [selectedTicket, setSelectedTicket] =
+    useState<UtilityTicketItem | null>(null);
 
   // Ticket Form
   const [tUnit, setTUnit] = useState("");
@@ -133,23 +136,31 @@ export default function UtilityServicePage() {
   const [tCategory, setTCategory] = useState<UtilityTicketCategory>("Plumbing");
   const [tDescription, setTDescription] = useState("");
   const [tPriority, setTPriority] = useState<UtilityTicketPriority>("Medium");
-  const [tTechnicianId, setTTechnicianId] = useState<number | undefined>(undefined);
-  const [tWarrantyItemId, setTWarrantyItemId] = useState<number | undefined>(undefined);
+  const [tTechnicianId, setTTechnicianId] = useState<number | undefined>(
+    undefined,
+  );
+  const [tWarrantyItemId, setTWarrantyItemId] = useState<number | undefined>(
+    undefined,
+  );
   const [tEstimatedCharge, setTEstimatedCharge] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Workflow Form
-  const [wTargetStatus, setWTargetStatus] = useState<UtilityTicketStatus>("In Progress");
+  const [wTargetStatus, setWTargetStatus] =
+    useState<UtilityTicketStatus>("In Progress");
   const [wResolutionNotes, setWResolutionNotes] = useState("");
   const [wActualCharge, setWActualCharge] = useState<number>(0);
   const [wCustomerFeedback, setWCustomerFeedback] = useState("");
   const [wCustomerRating, setWCustomerRating] = useState<number>(5);
-  const [assignTechId, setAssignTechId] = useState<number | undefined>(undefined);
+  const [assignTechId, setAssignTechId] = useState<number | undefined>(
+    undefined,
+  );
 
   // Technician Form
   const [techName, setTechName] = useState("");
   const [techPhone, setTechPhone] = useState("");
-  const [techSpecialty, setTechSpecialty] = useState<TechnicianSpecialty>("Plumber");
+  const [techSpecialty, setTechSpecialty] =
+    useState<TechnicianSpecialty>("Plumber");
   const [techType, setTechType] = useState<TechnicianType>("In-house");
   const [techVendorName, setTechVendorName] = useState("");
 
@@ -157,19 +168,26 @@ export default function UtilityServicePage() {
   const [wItemUnit, setWItemUnit] = useState("");
   const [wItemCustomer, setWItemCustomer] = useState("");
   const [wItemName, setWItemName] = useState("");
-  const [wItemCategory, setWItemCategory] = useState<WarrantyItemCategory>("Plumbing");
+  const [wItemCategory, setWItemCategory] =
+    useState<WarrantyItemCategory>("Plumbing");
   const [wItemBrand, setWItemBrand] = useState("");
   const [wItemLocation, setWItemLocation] = useState("");
   const [wItemQuantity, setWItemQuantity] = useState(1);
-  const [wItemStart, setWItemStart] = useState(new Date().toISOString().slice(0, 10));
+  const [wItemStart, setWItemStart] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
   const [wItemEnd, setWItemEnd] = useState(
-    new Date(Date.now() + 365 * 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    new Date(Date.now() + 365 * 2 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10),
   );
 
   // Selected warranty fixture preview for Ticket Form
   const selectedWarrantyItem = useMemo(() => {
     if (!tWarrantyItemId) return null;
-    return meta.warranty_items.find((item) => item.id === tWarrantyItemId) || null;
+    return (
+      meta.warranty_items.find((item) => item.id === tWarrantyItemId) || null
+    );
   }, [tWarrantyItemId, meta.warranty_items]);
 
   // Data Loaders
@@ -211,7 +229,8 @@ export default function UtilityServicePage() {
     try {
       const res = await getUtilityTechnicians({
         project_id: projectId || undefined,
-        specialty: techSpecialtyFilter !== "all" ? techSpecialtyFilter : undefined,
+        specialty:
+          techSpecialtyFilter !== "all" ? techSpecialtyFilter : undefined,
         limit: 100,
       });
       setTechnicians(res.items);
@@ -532,12 +551,16 @@ export default function UtilityServicePage() {
                 </>
               ) : (
                 <>
-                  <DollarSign className="w-3.5 h-3.5" /> PAID (৳ {row.estimated_charge})
+                  <DollarSign className="w-3.5 h-3.5" /> PAID (৳{" "}
+                  {row.estimated_charge})
                 </>
               )}
             </span>
             {row.warranty_item && (
-              <div className="text-[11px] text-[#6B7280] truncate max-w-[170px]" title={row.warranty_item.item_name}>
+              <div
+                className="text-[11px] text-[#6B7280] truncate max-w-[170px]"
+                title={row.warranty_item.item_name}
+              >
                 🔗 {row.warranty_item.brand} {row.warranty_item.item_name}
               </div>
             )}
@@ -574,7 +597,9 @@ export default function UtilityServicePage() {
       cell: (row) =>
         row.technician ? (
           <div>
-            <div className="text-xs font-semibold text-[#111827]">{row.technician.name}</div>
+            <div className="text-xs font-semibold text-[#111827]">
+              {row.technician.name}
+            </div>
             <div className="text-[11px] text-[#6B7280]">
               {row.technician.specialty} • {row.technician.phone}
             </div>
@@ -601,7 +626,9 @@ export default function UtilityServicePage() {
               Assign
             </button>
           )}
-          {["Open", "Assigned", "In Progress", "Resolved"].includes(row.status) && (
+          {["Open", "Assigned", "In Progress", "Resolved"].includes(
+            row.status,
+          ) && (
             <button
               onClick={() => {
                 setSelectedTicket(row);
@@ -651,7 +678,9 @@ export default function UtilityServicePage() {
               {row.name.charAt(0).toUpperCase()}
             </div>
             <div>
-              <div className="text-xs font-semibold text-[#111827]">{row.name}</div>
+              <div className="text-xs font-semibold text-[#111827]">
+                {row.name}
+              </div>
               <div className="text-[11px] text-[#6B7280]">{row.phone}</div>
             </div>
           </div>
@@ -687,7 +716,9 @@ export default function UtilityServicePage() {
         <div>
           <span
             className={`text-xs font-semibold ${
-              row.technician_type === "In-house" ? "text-emerald-700" : "text-orange-700"
+              row.technician_type === "In-house"
+                ? "text-emerald-700"
+                : "text-orange-700"
             }`}
           >
             {row.technician_type}
@@ -736,12 +767,16 @@ export default function UtilityServicePage() {
       minWidth: "200px",
       cell: (row) => (
         <div>
-          <div className="text-xs font-semibold text-[#111827]">{row.item_name}</div>
+          <div className="text-xs font-semibold text-[#111827]">
+            {row.item_name}
+          </div>
           <div className="text-[11px] text-[#6B7280]">
             {row.unit} • {row.brand}
           </div>
           {row.customer_name && (
-            <div className="text-[11px] text-[#9CA3AF]">{row.customer_name}</div>
+            <div className="text-[11px] text-[#9CA3AF]">
+              {row.customer_name}
+            </div>
           )}
         </div>
       ),
@@ -1151,7 +1186,9 @@ export default function UtilityServicePage() {
               <select
                 required
                 value={tCategory}
-                onChange={(e) => setTCategory(e.target.value as UtilityTicketCategory)}
+                onChange={(e) =>
+                  setTCategory(e.target.value as UtilityTicketCategory)
+                }
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-hidden focus:ring-1 focus:ring-[#6D4AFF]"
               >
                 {meta.categories.map((c) => (
@@ -1184,7 +1221,9 @@ export default function UtilityServicePage() {
               </label>
               <select
                 value={tPriority}
-                onChange={(e) => setTPriority(e.target.value as UtilityTicketPriority)}
+                onChange={(e) =>
+                  setTPriority(e.target.value as UtilityTicketPriority)
+                }
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-hidden focus:ring-1 focus:ring-[#6D4AFF]"
               >
                 {meta.priorities.map((p) => (
@@ -1201,7 +1240,9 @@ export default function UtilityServicePage() {
               <select
                 value={tTechnicianId ?? ""}
                 onChange={(e) =>
-                  setTTechnicianId(e.target.value ? Number(e.target.value) : undefined)
+                  setTTechnicianId(
+                    e.target.value ? Number(e.target.value) : undefined,
+                  )
                 }
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-hidden focus:ring-1 focus:ring-[#6D4AFF]"
               >
@@ -1246,17 +1287,27 @@ export default function UtilityServicePage() {
               }}
               className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:outline-hidden focus:ring-1 focus:ring-[#6D4AFF]"
             >
-              <option value="">No warranty fixture linked (Default standard claim)</option>
+              <option value="">
+                No warranty fixture linked (Default standard claim)
+              </option>
               {meta.warranty_items.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {w.item_name} [{w.brand}] — Unit {w.unit} ({w.is_active_warranty ? "FREE - Active Warranty" : "PAID - Expired"})
+                  {w.item_name} [{w.brand}] — Unit {w.unit} (
+                  {w.is_active_warranty
+                    ? "FREE - Active Warranty"
+                    : "PAID - Expired"}
+                  )
                 </option>
               ))}
             </select>
             {selectedWarrantyItem && (
               <div className="flex items-center justify-between text-xs pt-1 px-1">
                 <span className="text-gray-600">
-                  Fixture: <strong className="text-gray-800">{selectedWarrantyItem.item_name}</strong> ({selectedWarrantyItem.brand})
+                  Fixture:{" "}
+                  <strong className="text-gray-800">
+                    {selectedWarrantyItem.item_name}
+                  </strong>{" "}
+                  ({selectedWarrantyItem.brand})
                 </span>
                 <span
                   className={`px-2 py-0.5 rounded-full font-semibold ${
@@ -1308,7 +1359,9 @@ export default function UtilityServicePage() {
             <select
               value={assignTechId ?? ""}
               onChange={(e) =>
-                setAssignTechId(e.target.value ? Number(e.target.value) : undefined)
+                setAssignTechId(
+                  e.target.value ? Number(e.target.value) : undefined,
+                )
               }
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-hidden focus:ring-1 focus:ring-[#6D4AFF]"
             >
@@ -1354,7 +1407,9 @@ export default function UtilityServicePage() {
             </label>
             <select
               value={wTargetStatus}
-              onChange={(e) => setWTargetStatus(e.target.value as UtilityTicketStatus)}
+              onChange={(e) =>
+                setWTargetStatus(e.target.value as UtilityTicketStatus)
+              }
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-hidden focus:ring-1 focus:ring-[#6D4AFF]"
             >
               {meta.statuses.map((s) => (
@@ -1499,7 +1554,9 @@ export default function UtilityServicePage() {
               <select
                 required
                 value={techSpecialty}
-                onChange={(e) => setTechSpecialty(e.target.value as TechnicianSpecialty)}
+                onChange={(e) =>
+                  setTechSpecialty(e.target.value as TechnicianSpecialty)
+                }
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-hidden focus:ring-1 focus:ring-[#6D4AFF]"
               >
                 <option value="Plumber">Plumber</option>
@@ -1617,7 +1674,9 @@ export default function UtilityServicePage() {
               <select
                 required
                 value={wItemCategory}
-                onChange={(e) => setWItemCategory(e.target.value as WarrantyItemCategory)}
+                onChange={(e) =>
+                  setWItemCategory(e.target.value as WarrantyItemCategory)
+                }
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-hidden focus:ring-1 focus:ring-[#6D4AFF]"
               >
                 <option value="Plumbing">Plumbing</option>

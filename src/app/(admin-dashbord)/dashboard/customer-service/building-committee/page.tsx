@@ -61,7 +61,11 @@ const TABS = [
 export default function BuildingCommitteePage() {
   const { primaryColor } = useTheme();
   const brand = primaryColor || "#6D4AFF";
-  const { projectId, project, isLoading: isProjectLoading } = useSelectedProject();
+  const {
+    projectId,
+    project,
+    isLoading: isProjectLoading,
+  } = useSelectedProject();
 
   const [activeTab, setActiveTab] = useState("members");
 
@@ -99,7 +103,8 @@ export default function BuildingCommitteePage() {
   // ---------------------------------------------------------------------------
   // 1. Member Modal
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<CommitteeMemberItem | null>(null);
+  const [editingMember, setEditingMember] =
+    useState<CommitteeMemberItem | null>(null);
   const [memberForm, setMemberForm] = useState({
     member_type: "FLAT_OWNER" as CommitteeMemberType,
     flat_number: "",
@@ -116,7 +121,8 @@ export default function BuildingCommitteePage() {
 
   // 2. Decision Modal
   const [isDecisionModalOpen, setIsDecisionModalOpen] = useState(false);
-  const [editingDecision, setEditingDecision] = useState<CommitteeDecisionItem | null>(null);
+  const [editingDecision, setEditingDecision] =
+    useState<CommitteeDecisionItem | null>(null);
   const [decisionForm, setDecisionForm] = useState({
     title: "",
     meeting_date: new Date().toISOString().slice(0, 10),
@@ -156,7 +162,8 @@ export default function BuildingCommitteePage() {
     try {
       const res = await getCommitteeDecisions({
         project_id: projectId,
-        status: decisionStatusFilter !== "all" ? decisionStatusFilter : undefined,
+        status:
+          decisionStatusFilter !== "all" ? decisionStatusFilter : undefined,
         search: decisionSearch.trim() || undefined,
         limit: 100,
       });
@@ -188,7 +195,10 @@ export default function BuildingCommitteePage() {
       if (editingMember) {
         await updateCommitteeMember(editingMember.uuid, {
           member_type: memberForm.member_type,
-          flat_number: memberForm.member_type === "FLAT_OWNER" ? memberForm.flat_number : undefined,
+          flat_number:
+            memberForm.member_type === "FLAT_OWNER"
+              ? memberForm.flat_number
+              : undefined,
           name: memberForm.name.trim(),
           designation: memberForm.designation,
           responsibility: memberForm.responsibility.trim() || undefined,
@@ -204,7 +214,10 @@ export default function BuildingCommitteePage() {
         await createCommitteeMember({
           project_id: projectId,
           member_type: memberForm.member_type,
-          flat_number: memberForm.member_type === "FLAT_OWNER" ? memberForm.flat_number : undefined,
+          flat_number:
+            memberForm.member_type === "FLAT_OWNER"
+              ? memberForm.flat_number
+              : undefined,
           name: memberForm.name.trim(),
           designation: memberForm.designation,
           responsibility: memberForm.responsibility.trim() || undefined,
@@ -219,8 +232,11 @@ export default function BuildingCommitteePage() {
       }
       setIsMemberModalOpen(false);
       loadMembers();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save committee member");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to save committee member",
+      );
     }
   };
 
@@ -230,7 +246,7 @@ export default function BuildingCommitteePage() {
       await deleteCommitteeMember(item.uuid);
       toast.success("Committee member removed");
       loadMembers();
-    } catch (err: any) {
+    } catch {
       toast.error("Failed to delete committee member");
     }
   };
@@ -261,8 +277,11 @@ export default function BuildingCommitteePage() {
       }
       setIsDecisionModalOpen(false);
       loadDecisions();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save decision");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to save decision",
+      );
     }
   };
 
@@ -272,17 +291,20 @@ export default function BuildingCommitteePage() {
       await deleteCommitteeDecision(item.uuid);
       toast.success("Resolution deleted");
       loadDecisions();
-    } catch (err: any) {
+    } catch {
       toast.error("Failed to delete resolution");
     }
   };
 
-  const handleUpdateDecisionStatus = async (item: CommitteeDecisionItem, newStatus: DecisionStatus) => {
+  const handleUpdateDecisionStatus = async (
+    item: CommitteeDecisionItem,
+    newStatus: DecisionStatus,
+  ) => {
     try {
       await updateCommitteeDecision(item.uuid, { status: newStatus });
       toast.success(`Resolution status updated to ${newStatus}`);
       loadDecisions();
-    } catch (err: any) {
+    } catch {
       toast.error("Failed to update status");
     }
   };
@@ -296,9 +318,9 @@ export default function BuildingCommitteePage() {
         <CSPageHeader
           title="Building Committee & Society"
           subtitle="Developer & Flat Owner Governance, Executive Portfolios & Meeting Resolutions"
-          badge="Building Services"
+          badge="Building Management"
           breadcrumbs={[
-            { label: "Building Services" },
+            { label: "Building Management" },
             { label: "Building Committee" },
           ]}
         />
@@ -335,7 +357,9 @@ export default function BuildingCommitteePage() {
                 </span>
               )}
             </div>
-            <div className="text-xs text-slate-500">{item.email || "No email listed"}</div>
+            <div className="text-xs text-slate-500">
+              {item.email || "No email listed"}
+            </div>
           </div>
         </div>
       ),
@@ -352,9 +376,8 @@ export default function BuildingCommitteePage() {
         };
         return (
           <span
-            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${
-              colors[item.designation] || "bg-slate-50 text-slate-700"
-            }`}
+            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${colors[item.designation] || "bg-slate-50 text-slate-700"
+              }`}
           >
             {item.designation}
           </span>
@@ -383,7 +406,9 @@ export default function BuildingCommitteePage() {
       render: (item) => (
         <div className="text-xs text-slate-600">
           <div>{item.term_start}</div>
-          <div className="text-[11px] text-slate-400">to {item.term_end || "Ongoing"}</div>
+          <div className="text-[11px] text-slate-400">
+            to {item.term_end || "Ongoing"}
+          </div>
         </div>
       ),
     },
@@ -391,19 +416,18 @@ export default function BuildingCommitteePage() {
       header: "Status",
       render: (item) => (
         <span
-          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-            item.status === "ACTIVE"
+          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${item.status === "ACTIVE"
               ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
               : item.status === "TERM_EXPIRED"
-              ? "bg-amber-50 text-amber-700 border border-amber-200"
-              : "bg-slate-100 text-slate-600"
-          }`}
+                ? "bg-amber-50 text-amber-700 border border-amber-200"
+                : "bg-slate-100 text-slate-600"
+            }`}
         >
           {item.status === "ACTIVE"
             ? "Active Term"
             : item.status === "TERM_EXPIRED"
-            ? "Term Expired"
-            : "Resigned"}
+              ? "Term Expired"
+              : "Resigned"}
         </span>
       ),
     },
@@ -469,8 +493,12 @@ export default function BuildingCommitteePage() {
       header: "Resolution Title & Notes",
       render: (item) => (
         <div className="max-w-md">
-          <div className="text-sm font-semibold text-slate-900">{item.title}</div>
-          <div className="text-xs text-slate-500 line-clamp-2 mt-0.5">{item.resolution_notes}</div>
+          <div className="text-sm font-semibold text-slate-900">
+            {item.title}
+          </div>
+          <div className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+            {item.resolution_notes}
+          </div>
         </div>
       ),
     },
@@ -484,11 +512,12 @@ export default function BuildingCommitteePage() {
         };
         return (
           <span
-            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
-              colors[item.status] || "bg-slate-50 text-slate-700"
-            }`}
+            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${colors[item.status] || "bg-slate-50 text-slate-700"
+              }`}
           >
-            {item.status === "IMPLEMENTED" && <CheckCircle2 className="w-3 h-3 mr-1" />}
+            {item.status === "IMPLEMENTED" && (
+              <CheckCircle2 className="w-3 h-3 mr-1" />
+            )}
             {item.status}
           </span>
         );
@@ -539,10 +568,10 @@ export default function BuildingCommitteePage() {
       {/* 1. Page Header */}
       <CSPageHeader
         title="Building Committee & Society"
-        subtitle={`Building Services • Developer & Flat Owner Executive Committee (${project?.name || "Selected Project"})`}
-        badge="Building Services"
+        subtitle={`Building Management • Developer & Flat Owner Executive Committee (${project?.name || "Selected Project"})`}
+        badge="Building Management"
         breadcrumbs={[
-          { label: "Building Services" },
+          { label: "Building Management" },
           { label: "Building Committee" },
         ]}
       >
@@ -603,12 +632,13 @@ export default function BuildingCommitteePage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-5 py-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
-              activeTab === tab.id
+            className={`px-5 py-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === tab.id
                 ? "border-current text-[#111827]"
                 : "border-transparent text-[#6B7280] hover:text-[#111827]"
-            }`}
-            style={{ borderColor: activeTab === tab.id ? brand : "transparent" }}
+              }`}
+            style={{
+              borderColor: activeTab === tab.id ? brand : "transparent",
+            }}
           >
             {tab.label}
           </button>
@@ -657,9 +687,21 @@ export default function BuildingCommitteePage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-[#E5E7EB]">
             <CSFilterTabs
               tabs={[
-                { key: "all", label: "All Members", count: membersStats.total_members },
-                { key: "FLAT_OWNER", label: "Flat Owners", count: membersStats.flat_owners_count },
-                { key: "DEVELOPER_REP", label: "Developer Reps", count: membersStats.developer_reps_count },
+                {
+                  key: "all",
+                  label: "All Members",
+                  count: membersStats.total_members,
+                },
+                {
+                  key: "FLAT_OWNER",
+                  label: "Flat Owners",
+                  count: membersStats.flat_owners_count,
+                },
+                {
+                  key: "DEVELOPER_REP",
+                  label: "Developer Reps",
+                  count: membersStats.developer_reps_count,
+                },
               ]}
               activeTab={memberTypeFilter}
               onChange={setMemberTypeFilter}
@@ -695,7 +737,9 @@ export default function BuildingCommitteePage() {
               Building Society Governance Structure
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Cooperative oversight between developer representatives and flat owners to ensure long-term building maintenance, security standards, and financial solvency.
+              Cooperative oversight between developer representatives and flat
+              owners to ensure long-term building maintenance, security
+              standards, and financial solvency.
             </p>
           </div>
 
@@ -708,8 +752,12 @@ export default function BuildingCommitteePage() {
                     <Award className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-900 text-sm">President</h4>
-                    <span className="text-[11px] text-slate-400">Chief Executive Officer</span>
+                    <h4 className="font-bold text-slate-900 text-sm">
+                      President
+                    </h4>
+                    <span className="text-[11px] text-slate-400">
+                      Chief Executive Officer
+                    </span>
                   </div>
                 </div>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-semibold">
@@ -717,13 +765,16 @@ export default function BuildingCommitteePage() {
                 </span>
               </div>
               <p className="text-xs text-slate-600">
-                Presides over AGM and monthly committee meetings, liaises with municipal authorities, and holds executive signing authority.
+                Presides over AGM and monthly committee meetings, liaises with
+                municipal authorities, and holds executive signing authority.
               </p>
               <div className="pt-2 border-t border-slate-100 text-xs">
                 <span className="text-slate-500">Assigned Member:</span>
                 <div className="font-semibold text-slate-800 mt-0.5">
                   {members.find((m) => m.designation === "President")?.name || (
-                    <span className="text-slate-400 italic font-normal">Vacant / Unassigned</span>
+                    <span className="text-slate-400 italic font-normal">
+                      Vacant / Unassigned
+                    </span>
                   )}
                 </div>
               </div>
@@ -737,8 +788,12 @@ export default function BuildingCommitteePage() {
                     <FileText className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-900 text-sm">General Secretary</h4>
-                    <span className="text-[11px] text-slate-400">Operational Head</span>
+                    <h4 className="font-bold text-slate-900 text-sm">
+                      General Secretary
+                    </h4>
+                    <span className="text-[11px] text-slate-400">
+                      Operational Head
+                    </span>
                   </div>
                 </div>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-semibold">
@@ -746,13 +801,17 @@ export default function BuildingCommitteePage() {
                 </span>
               </div>
               <p className="text-xs text-slate-600">
-                Maintains society registers, oversees daily facility operations, records minutes of meetings, and coordinates notices to flat owners.
+                Maintains society registers, oversees daily facility operations,
+                records minutes of meetings, and coordinates notices to flat
+                owners.
               </p>
               <div className="pt-2 border-t border-slate-100 text-xs">
                 <span className="text-slate-500">Assigned Member:</span>
                 <div className="font-semibold text-slate-800 mt-0.5">
                   {members.find((m) => m.designation === "Secretary")?.name || (
-                    <span className="text-slate-400 italic font-normal">Vacant / Unassigned</span>
+                    <span className="text-slate-400 italic font-normal">
+                      Vacant / Unassigned
+                    </span>
                   )}
                 </div>
               </div>
@@ -766,8 +825,12 @@ export default function BuildingCommitteePage() {
                     <Briefcase className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-900 text-sm">Treasurer</h4>
-                    <span className="text-[11px] text-slate-400">Finance & Accounts</span>
+                    <h4 className="font-bold text-slate-900 text-sm">
+                      Treasurer
+                    </h4>
+                    <span className="text-[11px] text-slate-400">
+                      Finance & Accounts
+                    </span>
                   </div>
                 </div>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
@@ -775,13 +838,17 @@ export default function BuildingCommitteePage() {
                 </span>
               </div>
               <p className="text-xs text-slate-600">
-                Monitors monthly service charge collections, reviews facility expense vouchers, manages bank accounts, and prepares quarterly budget audits.
+                Monitors monthly service charge collections, reviews facility
+                expense vouchers, manages bank accounts, and prepares quarterly
+                budget audits.
               </p>
               <div className="pt-2 border-t border-slate-100 text-xs">
                 <span className="text-slate-500">Assigned Member:</span>
                 <div className="font-semibold text-slate-800 mt-0.5">
                   {members.find((m) => m.designation === "Treasurer")?.name || (
-                    <span className="text-slate-400 italic font-normal">Vacant / Unassigned</span>
+                    <span className="text-slate-400 italic font-normal">
+                      Vacant / Unassigned
+                    </span>
                   )}
                 </div>
               </div>
@@ -795,20 +862,29 @@ export default function BuildingCommitteePage() {
                     <Shield className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-900 text-sm">Security & Access Portfolio</h4>
-                    <span className="text-[11px] text-slate-400">Guard Supervision</span>
+                    <h4 className="font-bold text-slate-900 text-sm">
+                      Security & Access Portfolio
+                    </h4>
+                    <span className="text-[11px] text-slate-400">
+                      Guard Supervision
+                    </span>
                   </div>
                 </div>
               </div>
               <p className="text-xs text-slate-600">
-                Monitors guard agency contracts, daily visitor registers, gate barrier operations, and CCTV surveillance health.
+                Monitors guard agency contracts, daily visitor registers, gate
+                barrier operations, and CCTV surveillance health.
               </p>
               <div className="pt-2 border-t border-slate-100 text-xs">
                 <span className="text-slate-500">Assigned In-charge:</span>
                 <div className="font-semibold text-slate-800 mt-0.5">
-                  {members.find((m) => m.responsibility?.toLowerCase().includes("security"))?.name || (
-                    <span className="text-slate-400 italic font-normal">Committee Member</span>
-                  )}
+                  {members.find((m) =>
+                    m.responsibility?.toLowerCase().includes("security"),
+                  )?.name || (
+                      <span className="text-slate-400 italic font-normal">
+                        Committee Member
+                      </span>
+                    )}
                 </div>
               </div>
             </div>
@@ -821,20 +897,31 @@ export default function BuildingCommitteePage() {
                     <Building className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-900 text-sm">Civil & Maintenance Portfolio</h4>
-                    <span className="text-[11px] text-slate-400">Lift, Generator & Plumbing</span>
+                    <h4 className="font-bold text-slate-900 text-sm">
+                      Civil & Maintenance Portfolio
+                    </h4>
+                    <span className="text-[11px] text-slate-400">
+                      Lift, Generator & Plumbing
+                    </span>
                   </div>
                 </div>
               </div>
               <p className="text-xs text-slate-600">
-                Audits lift AMC servicing, WASA water pump operation, generator diesel logs, rooftop waterproofing, and common civil repairs.
+                Audits lift AMC servicing, WASA water pump operation, generator
+                diesel logs, rooftop waterproofing, and common civil repairs.
               </p>
               <div className="pt-2 border-t border-slate-100 text-xs">
                 <span className="text-slate-500">Assigned In-charge:</span>
                 <div className="font-semibold text-slate-800 mt-0.5">
-                  {members.find((m) => m.responsibility?.toLowerCase().includes("maintenance") || m.responsibility?.toLowerCase().includes("civil"))?.name || (
-                    <span className="text-slate-400 italic font-normal">Committee Member</span>
-                  )}
+                  {members.find(
+                    (m) =>
+                      m.responsibility?.toLowerCase().includes("maintenance") ||
+                      m.responsibility?.toLowerCase().includes("civil"),
+                  )?.name || (
+                      <span className="text-slate-400 italic font-normal">
+                        Committee Member
+                      </span>
+                    )}
                 </div>
               </div>
             </div>
@@ -847,19 +934,26 @@ export default function BuildingCommitteePage() {
                     <UserCheck className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-900 text-sm">Resident Liaison & Advisory</h4>
-                    <span className="text-[11px] text-slate-400">Dispute Mediation</span>
+                    <h4 className="font-bold text-slate-900 text-sm">
+                      Resident Liaison & Advisory
+                    </h4>
+                    <span className="text-[11px] text-slate-400">
+                      Dispute Mediation
+                    </span>
                   </div>
                 </div>
               </div>
               <p className="text-xs text-slate-600">
-                Assists with neighbor mediation, parking disputes, common amenity booking approvals, and bylaws updates.
+                Assists with neighbor mediation, parking disputes, common
+                amenity booking approvals, and bylaws updates.
               </p>
               <div className="pt-2 border-t border-slate-100 text-xs">
                 <span className="text-slate-500">Assigned Advisor:</span>
                 <div className="font-semibold text-slate-800 mt-0.5">
                   {members.find((m) => m.designation === "Advisor")?.name || (
-                    <span className="text-slate-400 italic font-normal">Committee Advisor</span>
+                    <span className="text-slate-400 italic font-normal">
+                      Committee Advisor
+                    </span>
                   )}
                 </div>
               </div>
@@ -910,10 +1004,26 @@ export default function BuildingCommitteePage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-[#E5E7EB]">
             <CSFilterTabs
               tabs={[
-                { key: "all", label: "All Resolutions", count: decisionsStats.total_decisions },
-                { key: "APPROVED", label: "Approved", count: decisionsStats.approved_count },
-                { key: "IN_PROGRESS", label: "In Progress", count: decisionsStats.in_progress_count },
-                { key: "IMPLEMENTED", label: "Implemented", count: decisionsStats.implemented_count },
+                {
+                  key: "all",
+                  label: "All Resolutions",
+                  count: decisionsStats.total_decisions,
+                },
+                {
+                  key: "APPROVED",
+                  label: "Approved",
+                  count: decisionsStats.approved_count,
+                },
+                {
+                  key: "IN_PROGRESS",
+                  label: "In Progress",
+                  count: decisionsStats.in_progress_count,
+                },
+                {
+                  key: "IMPLEMENTED",
+                  label: "Implemented",
+                  count: decisionsStats.implemented_count,
+                },
               ]}
               activeTab={decisionStatusFilter}
               onChange={setDecisionStatusFilter}
@@ -957,7 +1067,10 @@ export default function BuildingCommitteePage() {
               <select
                 value={memberForm.member_type}
                 onChange={(e) =>
-                  setMemberForm((p) => ({ ...p, member_type: e.target.value as CommitteeMemberType }))
+                  setMemberForm((p) => ({
+                    ...p,
+                    member_type: e.target.value as CommitteeMemberType,
+                  }))
                 }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500 bg-white"
               >
@@ -972,7 +1085,10 @@ export default function BuildingCommitteePage() {
               <select
                 value={memberForm.designation}
                 onChange={(e) =>
-                  setMemberForm((p) => ({ ...p, designation: e.target.value as CommitteeDesignation }))
+                  setMemberForm((p) => ({
+                    ...p,
+                    designation: e.target.value as CommitteeDesignation,
+                  }))
                 }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500 bg-white"
               >
@@ -994,20 +1110,25 @@ export default function BuildingCommitteePage() {
                 type="text"
                 required
                 value={memberForm.name}
-                onChange={(e) => setMemberForm((p) => ({ ...p, name: e.target.value }))}
+                onChange={(e) =>
+                  setMemberForm((p) => ({ ...p, name: e.target.value }))
+                }
                 placeholder="e.g. Engr. Rafiqul Islam"
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Flat Number {memberForm.member_type === "FLAT_OWNER" ? "*" : "(Optional)"}
+                Flat Number{" "}
+                {memberForm.member_type === "FLAT_OWNER" ? "*" : "(Optional)"}
               </label>
               <input
                 type="text"
                 required={memberForm.member_type === "FLAT_OWNER"}
                 value={memberForm.flat_number}
-                onChange={(e) => setMemberForm((p) => ({ ...p, flat_number: e.target.value }))}
+                onChange={(e) =>
+                  setMemberForm((p) => ({ ...p, flat_number: e.target.value }))
+                }
                 placeholder="e.g. Flat 7-B"
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
@@ -1021,7 +1142,9 @@ export default function BuildingCommitteePage() {
             <input
               type="text"
               value={memberForm.responsibility}
-              onChange={(e) => setMemberForm((p) => ({ ...p, responsibility: e.target.value }))}
+              onChange={(e) =>
+                setMemberForm((p) => ({ ...p, responsibility: e.target.value }))
+              }
               placeholder="e.g. Security & CCTV Oversight, Finance & Audit"
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
             />
@@ -1036,7 +1159,9 @@ export default function BuildingCommitteePage() {
                 type="text"
                 required
                 value={memberForm.phone}
-                onChange={(e) => setMemberForm((p) => ({ ...p, phone: e.target.value }))}
+                onChange={(e) =>
+                  setMemberForm((p) => ({ ...p, phone: e.target.value }))
+                }
                 placeholder="e.g. +880 1711-000000"
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
@@ -1048,7 +1173,9 @@ export default function BuildingCommitteePage() {
               <input
                 type="email"
                 value={memberForm.email}
-                onChange={(e) => setMemberForm((p) => ({ ...p, email: e.target.value }))}
+                onChange={(e) =>
+                  setMemberForm((p) => ({ ...p, email: e.target.value }))
+                }
                 placeholder="e.g. member@example.com"
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
@@ -1064,7 +1191,9 @@ export default function BuildingCommitteePage() {
                 type="date"
                 required
                 value={memberForm.term_start}
-                onChange={(e) => setMemberForm((p) => ({ ...p, term_start: e.target.value }))}
+                onChange={(e) =>
+                  setMemberForm((p) => ({ ...p, term_start: e.target.value }))
+                }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
             </div>
@@ -1075,7 +1204,9 @@ export default function BuildingCommitteePage() {
               <input
                 type="date"
                 value={memberForm.term_end}
-                onChange={(e) => setMemberForm((p) => ({ ...p, term_end: e.target.value }))}
+                onChange={(e) =>
+                  setMemberForm((p) => ({ ...p, term_end: e.target.value }))
+                }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
             </div>
@@ -1088,7 +1219,10 @@ export default function BuildingCommitteePage() {
             <select
               value={memberForm.status}
               onChange={(e) =>
-                setMemberForm((p) => ({ ...p, status: e.target.value as CommitteeMemberStatus }))
+                setMemberForm((p) => ({
+                  ...p,
+                  status: e.target.value as CommitteeMemberStatus,
+                }))
               }
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500 bg-white"
             >
@@ -1123,7 +1257,9 @@ export default function BuildingCommitteePage() {
       <CSModal
         isOpen={isDecisionModalOpen}
         onClose={() => setIsDecisionModalOpen(false)}
-        title={editingDecision ? "Edit Meeting Resolution" : "Log Committee Decision"}
+        title={
+          editingDecision ? "Edit Meeting Resolution" : "Log Committee Decision"
+        }
         subtitle="Minutes of meeting resolution and action point for after-sales management"
       >
         <form onSubmit={handleSaveDecision} className="space-y-4 p-6">
@@ -1136,7 +1272,12 @@ export default function BuildingCommitteePage() {
                 type="date"
                 required
                 value={decisionForm.meeting_date}
-                onChange={(e) => setDecisionForm((p) => ({ ...p, meeting_date: e.target.value }))}
+                onChange={(e) =>
+                  setDecisionForm((p) => ({
+                    ...p,
+                    meeting_date: e.target.value,
+                  }))
+                }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
               />
             </div>
@@ -1146,14 +1287,23 @@ export default function BuildingCommitteePage() {
               </label>
               <select
                 value={decisionForm.agenda_category}
-                onChange={(e) => setDecisionForm((p) => ({ ...p, agenda_category: e.target.value }))}
+                onChange={(e) =>
+                  setDecisionForm((p) => ({
+                    ...p,
+                    agenda_category: e.target.value,
+                  }))
+                }
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500 bg-white"
               >
                 <option value="Service Charge">Service Charge & Billing</option>
-                <option value="Security & Access">Security & Gate Access</option>
+                <option value="Security & Access">
+                  Security & Gate Access
+                </option>
                 <option value="Maintenance">Lift & Utility Maintenance</option>
                 <option value="General Body">General Body (AGM / EGM)</option>
-                <option value="Civic Liaison">Civic / WASA / DESCO Liaison</option>
+                <option value="Civic Liaison">
+                  Civic / WASA / DESCO Liaison
+                </option>
               </select>
             </div>
           </div>
@@ -1166,7 +1316,9 @@ export default function BuildingCommitteePage() {
               type="text"
               required
               value={decisionForm.title}
-              onChange={(e) => setDecisionForm((p) => ({ ...p, title: e.target.value }))}
+              onChange={(e) =>
+                setDecisionForm((p) => ({ ...p, title: e.target.value }))
+              }
               placeholder="e.g. Approval of new security guard agency contract"
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
             />
@@ -1180,7 +1332,12 @@ export default function BuildingCommitteePage() {
               rows={4}
               required
               value={decisionForm.resolution_notes}
-              onChange={(e) => setDecisionForm((p) => ({ ...p, resolution_notes: e.target.value }))}
+              onChange={(e) =>
+                setDecisionForm((p) => ({
+                  ...p,
+                  resolution_notes: e.target.value,
+                }))
+              }
               placeholder="Detailed description of the decision, responsible officer, budget approved, and deadlines..."
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
             />
@@ -1193,7 +1350,10 @@ export default function BuildingCommitteePage() {
             <select
               value={decisionForm.status}
               onChange={(e) =>
-                setDecisionForm((p) => ({ ...p, status: e.target.value as DecisionStatus }))
+                setDecisionForm((p) => ({
+                  ...p,
+                  status: e.target.value as DecisionStatus,
+                }))
               }
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-purple-500 bg-white"
             >

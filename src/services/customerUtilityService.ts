@@ -10,33 +10,17 @@ export type TechnicianSpecialty =
 export type TechnicianType = "In-house" | "Vendor";
 
 export type UtilityTicketCategory =
-  | "Plumbing"
-  | "Electrical"
-  | "Sanitary"
-  | "Other";
+  "Plumbing" | "Electrical" | "Sanitary" | "Other";
 
-export type UtilityTicketPriority =
-  | "Low"
-  | "Medium"
-  | "High"
-  | "Emergency";
+export type UtilityTicketPriority = "Low" | "Medium" | "High" | "Emergency";
 
 export type UtilityTicketStatus =
-  | "Open"
-  | "Assigned"
-  | "In Progress"
-  | "Resolved"
-  | "Handed Over"
-  | "Closed";
+  "Open" | "Assigned" | "In Progress" | "Resolved" | "Handed Over" | "Closed";
 
 export type UtilityTicketCostType = "FREE" | "PAID";
 
 export type WarrantyItemCategory =
-  | "Electrical"
-  | "Plumbing"
-  | "Sanitary"
-  | "Water Fittings"
-  | "Other";
+  "Electrical" | "Plumbing" | "Sanitary" | "Water Fittings" | "Other";
 
 export type WarrantyStatus = "Active" | "Expiring Soon" | "Expired";
 
@@ -309,7 +293,12 @@ export async function getUtilityTicketDropdownMeta(
   });
   const raw = res.data?.data !== undefined ? res.data.data : res.data;
   return {
-    categories: raw?.categories || ["Plumbing", "Electrical", "Sanitary", "Other"],
+    categories: raw?.categories || [
+      "Plumbing",
+      "Electrical",
+      "Sanitary",
+      "Other",
+    ],
     priorities: raw?.priorities || ["Low", "Medium", "High", "Emergency"],
     statuses: raw?.statuses || [
       "Open",
@@ -320,7 +309,9 @@ export async function getUtilityTicketDropdownMeta(
       "Closed",
     ],
     technicians: Array.isArray(raw?.technicians) ? raw.technicians : [],
-    warranty_items: Array.isArray(raw?.warranty_items) ? raw.warranty_items : [],
+    warranty_items: Array.isArray(raw?.warranty_items)
+      ? raw.warranty_items
+      : [],
   };
 }
 
@@ -385,10 +376,7 @@ export async function getUtilityTechnicians(params?: {
 export async function createUtilityTechnician(
   payload: CreateTechnicianPayload,
 ): Promise<UtilityTechnicianItem> {
-  const res = await api.post(
-    "/customer-service/utility/technicians",
-    payload,
-  );
+  const res = await api.post("/customer-service/utility/technicians", payload);
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
 
@@ -407,10 +395,9 @@ export async function getWarrantyStats(
   if (projectId && projectId !== "all") {
     params.project_id = projectId;
   }
-  const res = await api.get(
-    "/customer-service/utility/warranty-items/stats",
-    { params },
-  );
+  const res = await api.get("/customer-service/utility/warranty-items/stats", {
+    params,
+  });
   const raw = res.data?.data !== undefined ? res.data.data : res.data;
   return {
     total_items: Number(raw?.total_items || 0),
@@ -455,4 +442,3 @@ export async function createWarrantyItem(
 export async function deleteWarrantyItem(uuid: string): Promise<void> {
   await api.delete(`/customer-service/utility/warranty-items/${uuid}`);
 }
-

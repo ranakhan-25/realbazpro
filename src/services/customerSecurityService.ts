@@ -1,10 +1,7 @@
 import api from "@/lib/api";
 
 export type SecurityCompanyStatus =
-  | "ACTIVE"
-  | "EXPIRING_SOON"
-  | "EXPIRED"
-  | "TERMINATED";
+  "ACTIVE" | "EXPIRING_SOON" | "EXPIRED" | "TERMINATED";
 
 export type GuardSource = "IN_HOUSE" | "COMPANY";
 
@@ -13,11 +10,7 @@ export type GuardStatus = "ACTIVE" | "ON_LEAVE" | "INACTIVE" | "TERMINATED";
 export type ShiftName = "Morning" | "Evening" | "Night" | "Custom";
 
 export type RosterStatus =
-  | "SCHEDULED"
-  | "ON_DUTY"
-  | "COMPLETED"
-  | "ABSENT"
-  | "RELIEVED";
+  "SCHEDULED" | "ON_DUTY" | "COMPLETED" | "ABSENT" | "RELIEVED";
 
 export type VisitorPurpose =
   | "Delivery"
@@ -380,7 +373,9 @@ export async function getSecurityDropdownMeta(
   return {
     companies: Array.isArray(raw?.companies) ? raw.companies : [],
     guards: Array.isArray(raw?.guards) ? raw.guards : [],
-    sources: Array.isArray(raw?.sources) ? raw.sources : ["IN_HOUSE", "COMPANY"],
+    sources: Array.isArray(raw?.sources)
+      ? raw.sources
+      : ["IN_HOUSE", "COMPANY"],
     guard_statuses: Array.isArray(raw?.guard_statuses)
       ? raw.guard_statuses
       : ["ACTIVE", "ON_LEAVE", "INACTIVE", "TERMINATED"],
@@ -449,7 +444,9 @@ export async function getExpiringCompanies(
   };
 }
 
-export async function getCompanyByUuid(uuid: string): Promise<SecurityCompanyItem> {
+export async function getCompanyByUuid(
+  uuid: string,
+): Promise<SecurityCompanyItem> {
   const res = await api.get(`/customer-service/security/companies/${uuid}`);
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
@@ -698,4 +695,3 @@ export async function deleteSecurityVisitorLog(
   const res = await api.delete(`/customer-service/security/visitors/${uuid}`);
   return res.data?.data !== undefined ? res.data.data : res.data;
 }
-

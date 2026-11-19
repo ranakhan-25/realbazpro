@@ -75,7 +75,9 @@ export function CSPageHeader({
                   {crumb.label}
                 </Link>
               ) : (
-                <span className="text-[#374151] font-semibold">{crumb.label}</span>
+                <span className="text-[#374151] font-semibold">
+                  {crumb.label}
+                </span>
               )}
             </React.Fragment>
           ))}

@@ -65,7 +65,11 @@ type MainTab = "slots" | "assignments" | "rentals" | "income";
 export default function ParkingServicePage() {
   const { primaryColor } = useTheme();
   const brand = primaryColor || "#6D4AFF";
-  const { projectId, project, isLoading: isProjectLoading } = useSelectedProject();
+  const {
+    projectId,
+    project,
+    isLoading: isProjectLoading,
+  } = useSelectedProject();
 
   // Active Main Tab
   const [activeMainTab, setActiveMainTab] = useState<MainTab>("slots");
@@ -88,7 +92,8 @@ export default function ParkingServicePage() {
   const [slots, setSlots] = useState<ParkingSlotItem[]>([]);
   const [assignments, setAssignments] = useState<ParkingAssignmentItem[]>([]);
   const [rentals, setRentals] = useState<ParkingExternalRentalItem[]>([]);
-  const [incomeSummary, setIncomeSummary] = useState<ParkingIncomeSummary | null>(null);
+  const [incomeSummary, setIncomeSummary] =
+    useState<ParkingIncomeSummary | null>(null);
   const [dropdownMeta, setDropdownMeta] = useState<ParkingDropdownMeta>({
     vehicle_types: ["Car", "SUV", "Motorcycle", "Van / Micro", "Any"],
     slot_statuses: ["FREE", "OCCUPIED", "RENTED_EXTERNAL"],
@@ -106,7 +111,8 @@ export default function ParkingServicePage() {
 
   // Loading states
   const [isSlotsLoading, setIsSlotsLoading] = useState<boolean>(false);
-  const [isAssignmentsLoading, setIsAssignmentsLoading] = useState<boolean>(false);
+  const [isAssignmentsLoading, setIsAssignmentsLoading] =
+    useState<boolean>(false);
   const [isRentalsLoading, setIsRentalsLoading] = useState<boolean>(false);
   const [isIncomeLoading, setIsIncomeLoading] = useState<boolean>(false);
 
@@ -121,25 +127,35 @@ export default function ParkingServicePage() {
   // Modals state
   const [isAddSlotOpen, setIsAddSlotOpen] = useState<boolean>(false);
   const [isEditSlotOpen, setIsEditSlotOpen] = useState<boolean>(false);
-  const [selectedSlotForEdit, setSelectedSlotForEdit] = useState<ParkingSlotItem | null>(null);
+  const [selectedSlotForEdit, setSelectedSlotForEdit] =
+    useState<ParkingSlotItem | null>(null);
   const [isDeleteSlotOpen, setIsDeleteSlotOpen] = useState<boolean>(false);
-  const [selectedSlotForDelete, setSelectedSlotForDelete] = useState<ParkingSlotItem | null>(null);
+  const [selectedSlotForDelete, setSelectedSlotForDelete] =
+    useState<ParkingSlotItem | null>(null);
 
   const [isAssignSlotOpen, setIsAssignSlotOpen] = useState<boolean>(false);
-  const [preselectedSlotId, setPreselectedSlotId] = useState<number | null>(null);
-  const [isReleaseAssignmentOpen, setIsReleaseAssignmentOpen] = useState<boolean>(false);
-  const [selectedAssignmentForRelease, setSelectedAssignmentForRelease] = useState<ParkingAssignmentItem | null>(null);
+  const [preselectedSlotId, setPreselectedSlotId] = useState<number | null>(
+    null,
+  );
+  const [isReleaseAssignmentOpen, setIsReleaseAssignmentOpen] =
+    useState<boolean>(false);
+  const [selectedAssignmentForRelease, setSelectedAssignmentForRelease] =
+    useState<ParkingAssignmentItem | null>(null);
 
   const [isNewRentalOpen, setIsNewRentalOpen] = useState<boolean>(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
-  const [selectedRentalForPayment, setSelectedRentalForPayment] = useState<ParkingExternalRentalItem | null>(null);
-  const [isTerminateRentalOpen, setIsTerminateRentalOpen] = useState<boolean>(false);
-  const [selectedRentalForTerminate, setSelectedRentalForTerminate] = useState<ParkingExternalRentalItem | null>(null);
+  const [selectedRentalForPayment, setSelectedRentalForPayment] =
+    useState<ParkingExternalRentalItem | null>(null);
+  const [isTerminateRentalOpen, setIsTerminateRentalOpen] =
+    useState<boolean>(false);
+  const [selectedRentalForTerminate, setSelectedRentalForTerminate] =
+    useState<ParkingExternalRentalItem | null>(null);
 
   // Slot Form State
   const [slotFormNumber, setSlotFormNumber] = useState("");
   const [slotFormFloor, setSlotFormFloor] = useState("Basement 1 (B1)");
-  const [slotFormVehicleType, setSlotFormVehicleType] = useState<ParkingVehicleType>("Car");
+  const [slotFormVehicleType, setSlotFormVehicleType] =
+    useState<ParkingVehicleType>("Car");
   const [slotFormNotes, setSlotFormNotes] = useState("");
 
   // Assignment Form State
@@ -148,7 +164,8 @@ export default function ParkingServicePage() {
   const [assignFormResident, setAssignFormResident] = useState("");
   const [assignFormPhone, setAssignFormPhone] = useState("");
   const [assignFormVehicleNo, setAssignFormVehicleNo] = useState("");
-  const [assignFormVehicleType, setAssignFormVehicleType] = useState<ParkingVehicleType>("Car");
+  const [assignFormVehicleType, setAssignFormVehicleType] =
+    useState<ParkingVehicleType>("Car");
   const [assignFormRfid, setAssignFormRfid] = useState("");
   const [assignFormStartDate, setAssignFormStartDate] = useState(
     new Date().toISOString().slice(0, 10),
@@ -167,8 +184,11 @@ export default function ParkingServicePage() {
   const [rentalFormPhone, setRentalFormPhone] = useState("");
   const [rentalFormNid, setRentalFormNid] = useState("");
   const [rentalFormVehicleNo, setRentalFormVehicleNo] = useState("");
-  const [rentalFormVehicleType, setRentalFormVehicleType] = useState<ParkingVehicleType>("Car");
-  const [rentalFormMonthlyRent, setRentalFormMonthlyRent] = useState<number | "">(4000);
+  const [rentalFormVehicleType, setRentalFormVehicleType] =
+    useState<ParkingVehicleType>("Car");
+  const [rentalFormMonthlyRent, setRentalFormMonthlyRent] = useState<
+    number | ""
+  >(4000);
   const [rentalFormDeposit, setRentalFormDeposit] = useState<number | "">(8000);
   const [rentalFormStartDate, setRentalFormStartDate] = useState(
     new Date().toISOString().slice(0, 10),
@@ -202,7 +222,7 @@ export default function ParkingServicePage() {
     try {
       const meta = await getParkingDropdownMeta(projectId);
       setDropdownMeta(meta);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to load parking dropdown metadata:", err);
     }
   }, [projectId]);
@@ -221,8 +241,11 @@ export default function ParkingServicePage() {
       });
       setSlots(res.items);
       setSlotTotalPages(res.meta.total_pages);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to load parking slots");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to load parking slots",
+      );
     } finally {
       setIsSlotsLoading(false);
     }
@@ -241,8 +264,11 @@ export default function ParkingServicePage() {
       });
       setAssignments(res.items);
       setAssignmentTotalPages(res.meta.total_pages);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to load parking assignments");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to load parking assignments",
+      );
     } finally {
       setIsAssignmentsLoading(false);
     }
@@ -261,8 +287,11 @@ export default function ParkingServicePage() {
       });
       setRentals(res.items);
       setRentalTotalPages(res.meta.total_pages);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to load external rentals");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to load external rentals",
+      );
     } finally {
       setIsRentalsLoading(false);
     }
@@ -274,8 +303,11 @@ export default function ParkingServicePage() {
     try {
       const summary = await getParkingIncomeSummary(projectId);
       setIncomeSummary(summary);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to load income summary");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to load income summary",
+      );
     } finally {
       setIsIncomeLoading(false);
     }
@@ -290,7 +322,14 @@ export default function ParkingServicePage() {
       loadRentals();
       loadIncomeSummary();
     }
-  }, [projectId, loadDropdownMeta, loadSlots, loadAssignments, loadRentals, loadIncomeSummary]);
+  }, [
+    projectId,
+    loadDropdownMeta,
+    loadSlots,
+    loadAssignments,
+    loadRentals,
+    loadIncomeSummary,
+  ]);
 
   // Trigger sub-filters
   useEffect(() => {
@@ -351,8 +390,11 @@ export default function ParkingServicePage() {
       loadSlots();
       loadDropdownMeta();
       loadIncomeSummary();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to create slot");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to create slot",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -384,8 +426,11 @@ export default function ParkingServicePage() {
       setSelectedSlotForEdit(null);
       loadSlots();
       loadDropdownMeta();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to update slot");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to update slot",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -401,14 +446,19 @@ export default function ParkingServicePage() {
     setIsSubmitting(true);
     try {
       await deleteParkingSlot(selectedSlotForDelete.uuid);
-      toast.success(`Slot ${selectedSlotForDelete.slot_number} deleted successfully`);
+      toast.success(
+        `Slot ${selectedSlotForDelete.slot_number} deleted successfully`,
+      );
       setIsDeleteSlotOpen(false);
       setSelectedSlotForDelete(null);
       loadSlots();
       loadDropdownMeta();
       loadIncomeSummary();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to delete slot");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to delete slot",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -471,8 +521,11 @@ export default function ParkingServicePage() {
       loadAssignments();
       loadDropdownMeta();
       loadIncomeSummary();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to assign slot");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to assign slot",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -504,8 +557,11 @@ export default function ParkingServicePage() {
       loadAssignments();
       loadDropdownMeta();
       loadIncomeSummary();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to release assignment");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to release assignment",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -570,14 +626,19 @@ export default function ParkingServicePage() {
         end_date: rentalFormEndDate.trim() || undefined,
         notes: rentalFormNotes.trim() || undefined,
       });
-      toast.success(`Slot rented to ${rentalFormName} (Monthly Rent: ৳ ${Number(rentalFormMonthlyRent).toLocaleString()})`);
+      toast.success(
+        `Slot rented to ${rentalFormName} (Monthly Rent: ৳ ${Number(rentalFormMonthlyRent).toLocaleString()})`,
+      );
       setIsNewRentalOpen(false);
       loadSlots();
       loadRentals();
       loadDropdownMeta();
       loadIncomeSummary();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to create external rental");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to create external rental",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -585,7 +646,9 @@ export default function ParkingServicePage() {
 
   const handleOpenPaymentModal = (rental: ParkingExternalRentalItem) => {
     setSelectedRentalForPayment(rental);
-    setPaymentFormAmount(rental.balance_due > 0 ? rental.balance_due : rental.monthly_rent);
+    setPaymentFormAmount(
+      rental.balance_due > 0 ? rental.balance_due : rental.monthly_rent,
+    );
     setPaymentFormDate(new Date().toISOString().slice(0, 10));
     setPaymentFormReference("");
     setPaymentFormNotes("");
@@ -615,14 +678,19 @@ export default function ParkingServicePage() {
       setSelectedRentalForPayment(null);
       loadRentals();
       loadIncomeSummary();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to record payment");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to record payment",
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleOpenTerminateRentalModal = (rental: ParkingExternalRentalItem) => {
+  const handleOpenTerminateRentalModal = (
+    rental: ParkingExternalRentalItem,
+  ) => {
     setSelectedRentalForTerminate(rental);
     setTerminateFormDate(new Date().toISOString().slice(0, 10));
     setTerminateFormNotes("");
@@ -648,8 +716,11 @@ export default function ParkingServicePage() {
       loadRentals();
       loadDropdownMeta();
       loadIncomeSummary();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to terminate rental");
+    } catch (err: unknown) {
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to terminate rental",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -672,8 +743,8 @@ export default function ParkingServicePage() {
               slot.status === "FREE"
                 ? "bg-emerald-500"
                 : slot.status === "OCCUPIED"
-                ? "bg-blue-500"
-                : "bg-amber-500"
+                  ? "bg-blue-500"
+                  : "bg-amber-500"
             }`}
           />
           <span className="font-bold text-foreground text-sm tracking-wide">
@@ -739,16 +810,24 @@ export default function ParkingServicePage() {
       render: (slot) => {
         const occ = slot.current_occupant;
         if (!occ) {
-          return <span className="text-xs text-muted-foreground italic">None (Vacant)</span>;
+          return (
+            <span className="text-xs text-muted-foreground italic">
+              None (Vacant)
+            </span>
+          );
         }
         if (occ.type === "RESIDENT") {
           return (
             <div className="text-xs space-y-0.5">
               <p className="font-semibold text-foreground">
-                {occ.resident_name} • <span className="text-primary font-bold">{occ.flat_number}</span>
+                {occ.resident_name} •{" "}
+                <span className="text-primary font-bold">
+                  {occ.flat_number}
+                </span>
               </p>
               <p className="text-muted-foreground font-mono">
-                {occ.vehicle_number} {occ.rfid_tag ? `• RFID: ${occ.rfid_tag}` : ""}
+                {occ.vehicle_number}{" "}
+                {occ.rfid_tag ? `• RFID: ${occ.rfid_tag}` : ""}
               </p>
             </div>
           );
@@ -807,7 +886,11 @@ export default function ParkingServicePage() {
                 ? "text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
                 : "text-muted-foreground/30 cursor-not-allowed"
             }`}
-            title={slot.status === "FREE" ? "Delete Slot" : "Cannot delete occupied slot"}
+            title={
+              slot.status === "FREE"
+                ? "Delete Slot"
+                : "Cannot delete occupied slot"
+            }
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -824,7 +907,9 @@ export default function ParkingServicePage() {
       sortable: true,
       render: (item) => (
         <div>
-          <span className="font-bold text-foreground text-sm">{item.slot_number}</span>
+          <span className="font-bold text-foreground text-sm">
+            {item.slot_number}
+          </span>
           <p className="text-xs text-muted-foreground">{item.floor_zone}</p>
         </div>
       ),
@@ -835,7 +920,9 @@ export default function ParkingServicePage() {
       sortable: true,
       render: (item) => (
         <div>
-          <span className="font-semibold text-foreground text-sm">{item.resident_name}</span>
+          <span className="font-semibold text-foreground text-sm">
+            {item.resident_name}
+          </span>
           <p className="text-xs text-primary font-bold">{item.flat_number}</p>
           {item.resident_phone && (
             <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -851,7 +938,9 @@ export default function ParkingServicePage() {
       accessorKey: "vehicle_number",
       render: (item) => (
         <div className="text-xs space-y-0.5">
-          <p className="font-mono font-medium text-foreground">{item.vehicle_number}</p>
+          <p className="font-mono font-medium text-foreground">
+            {item.vehicle_number}
+          </p>
           <p className="text-muted-foreground">Type: {item.vehicle_type}</p>
           {item.rfid_tag && (
             <p className="inline-flex items-center gap-1 font-mono text-[11px] text-primary">
@@ -870,7 +959,9 @@ export default function ParkingServicePage() {
           <p>Start: {item.start_date}</p>
           {item.end_date && <p>End: {item.end_date}</p>}
           {!item.is_active && item.release_date && (
-            <p className="text-red-500 font-medium">Released: {item.release_date}</p>
+            <p className="text-red-500 font-medium">
+              Released: {item.release_date}
+            </p>
           )}
         </div>
       ),
@@ -878,7 +969,7 @@ export default function ParkingServicePage() {
     {
       header: "Status",
       accessorKey: "is_active",
-      render: (item) => (
+      render: (item) =>
         item.is_active ? (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
             <CheckCircle2 className="w-3 h-3" />
@@ -889,14 +980,13 @@ export default function ParkingServicePage() {
             <LogOut className="w-3 h-3" />
             Released
           </span>
-        )
-      ),
+        ),
     },
     {
       header: "Actions",
       accessorKey: "uuid",
       align: "right",
-      render: (item) => (
+      render: (item) =>
         item.is_active ? (
           <button
             onClick={() => handleOpenReleaseModal(item)}
@@ -906,9 +996,10 @@ export default function ParkingServicePage() {
             Release Slot
           </button>
         ) : (
-          <span className="text-xs text-muted-foreground italic">No actions</span>
-        )
-      ),
+          <span className="text-xs text-muted-foreground italic">
+            No actions
+          </span>
+        ),
     },
   ];
 
@@ -920,7 +1011,9 @@ export default function ParkingServicePage() {
       sortable: true,
       render: (item) => (
         <div>
-          <span className="font-bold text-foreground text-sm">{item.slot_number}</span>
+          <span className="font-bold text-foreground text-sm">
+            {item.slot_number}
+          </span>
           <p className="text-xs text-muted-foreground">{item.floor_zone}</p>
         </div>
       ),
@@ -931,13 +1024,17 @@ export default function ParkingServicePage() {
       sortable: true,
       render: (item) => (
         <div>
-          <span className="font-semibold text-foreground text-sm">{item.renter_name}</span>
+          <span className="font-semibold text-foreground text-sm">
+            {item.renter_name}
+          </span>
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Phone className="w-3 h-3" />
             {item.renter_phone}
           </p>
           {item.renter_nid && (
-            <p className="text-[11px] text-muted-foreground">NID: {item.renter_nid}</p>
+            <p className="text-[11px] text-muted-foreground">
+              NID: {item.renter_nid}
+            </p>
           )}
         </div>
       ),
@@ -948,7 +1045,9 @@ export default function ParkingServicePage() {
       render: (item) => (
         <div className="text-xs font-mono space-y-0.5">
           <p className="font-medium text-foreground">{item.vehicle_number}</p>
-          <p className="text-muted-foreground text-[11px]">{item.vehicle_type}</p>
+          <p className="text-muted-foreground text-[11px]">
+            {item.vehicle_type}
+          </p>
         </div>
       ),
     },
@@ -958,7 +1057,9 @@ export default function ParkingServicePage() {
       sortable: true,
       render: (item) => (
         <div className="text-xs space-y-0.5">
-          <p className="font-bold text-foreground">{item.monthly_rent_formatted} / mo</p>
+          <p className="font-bold text-foreground">
+            {item.monthly_rent_formatted} / mo
+          </p>
           <p className="text-emerald-600 dark:text-emerald-400 font-medium">
             Paid: {item.amount_collected_formatted}
           </p>
@@ -1113,21 +1214,34 @@ export default function ParkingServicePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <CSStatCard
           title="Total Slots"
-          value={incomeSummary ? `${incomeSummary.total_slots}` : `${slots.length}`}
+          value={
+            incomeSummary ? `${incomeSummary.total_slots}` : `${slots.length}`
+          }
           subtitle={`${incomeSummary?.occupancy_rate_percent || 0}% Occupancy Rate`}
           icon={Car}
-          trend={{ value: `${incomeSummary?.occupied_slots || 0} Resident Occupied`, isPositive: true }}
+          trend={{
+            value: `${incomeSummary?.occupied_slots || 0} Resident Occupied`,
+            isPositive: true,
+          }}
         />
         <CSStatCard
           title="Available Slots"
-          value={incomeSummary ? `${incomeSummary.free_slots}` : `${dropdownMeta.free_slots.length}`}
+          value={
+            incomeSummary
+              ? `${incomeSummary.free_slots}`
+              : `${dropdownMeta.free_slots.length}`
+          }
           subtitle="Vacant for Allocation / Rental"
           icon={CheckCircle2}
           trend={{ value: "Ready to Assign", isPositive: true }}
         />
         <CSStatCard
           title="Outsider Rentals"
-          value={incomeSummary ? `${incomeSummary.active_external_rentals_count}` : `${rentals.length}`}
+          value={
+            incomeSummary
+              ? `${incomeSummary.active_external_rentals_count}`
+              : `${rentals.length}`
+          }
           subtitle="Rented to Non-Residents"
           icon={Shield}
           trend={{ value: "Funds Building Maintenance", isPositive: true }}
@@ -1225,7 +1339,8 @@ export default function ParkingServicePage() {
                   {
                     key: "RENTED_EXTERNAL",
                     label: "Rented External",
-                    count: slots.filter((s) => s.status === "RENTED_EXTERNAL").length,
+                    count: slots.filter((s) => s.status === "RENTED_EXTERNAL")
+                      .length,
                   },
                 ]}
                 activeTab={slotStatusFilter}
@@ -1284,31 +1399,44 @@ export default function ParkingServicePage() {
               {Object.keys(slotsByFloor).length === 0 ? (
                 <div className="text-center py-12 border border-dashed border-border rounded-xl bg-card">
                   <Car className="w-10 h-10 text-muted-foreground mx-auto mb-2 opacity-50" />
-                  <p className="text-sm font-semibold text-foreground">No parking slots found</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    No parking slots found
+                  </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Click "Add Parking Slot" to provision parking bays for this project.
+                    Click "Add Parking Slot" to provision parking bays for this
+                    project.
                   </p>
                 </div>
               ) : (
                 Object.entries(slotsByFloor).map(([floor, floorSlots]) => (
-                  <div key={floor} className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-4">
+                  <div
+                    key={floor}
+                    className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-4"
+                  >
                     <div className="flex items-center justify-between border-b border-border pb-3">
                       <div className="flex items-center gap-2">
                         <Building className="w-4 h-4 text-primary" />
-                        <h3 className="font-bold text-sm text-foreground">{floor}</h3>
+                        <h3 className="font-bold text-sm text-foreground">
+                          {floor}
+                        </h3>
                         <span className="text-xs text-muted-foreground">
-                          ({floorSlots.length} bays • {floorSlots.filter((s) => s.status === "FREE").length} vacant)
+                          ({floorSlots.length} bays •{" "}
+                          {floorSlots.filter((s) => s.status === "FREE").length}{" "}
+                          vacant)
                         </span>
                       </div>
                       <div className="flex items-center gap-4 text-xs">
                         <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Free
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />{" "}
+                          Free
                         </span>
                         <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-medium">
-                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Resident
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />{" "}
+                          Resident
                         </span>
                         <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">
-                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> External Rent
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />{" "}
+                          External Rent
                         </span>
                       </div>
                     </div>
@@ -1327,8 +1455,8 @@ export default function ParkingServicePage() {
                               isFree
                                 ? "border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500"
                                 : isResident
-                                ? "border-blue-500/30 bg-blue-500/5 hover:border-blue-500"
-                                : "border-amber-500/30 bg-amber-500/5 hover:border-amber-500"
+                                  ? "border-blue-500/30 bg-blue-500/5 hover:border-blue-500"
+                                  : "border-amber-500/30 bg-amber-500/5 hover:border-amber-500"
                             }`}
                           >
                             {/* Top row: slot number & badge */}
@@ -1341,11 +1469,15 @@ export default function ParkingServicePage() {
                                   isFree
                                     ? "bg-emerald-500 text-white"
                                     : isResident
-                                    ? "bg-blue-600 text-white"
-                                    : "bg-amber-600 text-white"
+                                      ? "bg-blue-600 text-white"
+                                      : "bg-amber-600 text-white"
                                 }`}
                               >
-                                {isFree ? "Free" : isResident ? "Owner" : "Rent"}
+                                {isFree
+                                  ? "Free"
+                                  : isResident
+                                    ? "Owner"
+                                    : "Rent"}
                               </span>
                             </div>
 
@@ -1354,7 +1486,9 @@ export default function ParkingServicePage() {
                               {isFree && (
                                 <div className="text-center py-2 text-emerald-600 dark:text-emerald-400">
                                   <Car className="w-6 h-6 mx-auto opacity-40 mb-1" />
-                                  <span className="text-[11px] font-medium">Available</span>
+                                  <span className="text-[11px] font-medium">
+                                    Available
+                                  </span>
                                 </div>
                               )}
                               {isResident && slot.current_occupant && (
@@ -1376,7 +1510,10 @@ export default function ParkingServicePage() {
                                     {slot.current_occupant.renter_name}
                                   </p>
                                   <p className="text-[11px] font-semibold text-foreground">
-                                    {slot.current_occupant.monthly_rent_formatted}
+                                    {
+                                      slot.current_occupant
+                                        .monthly_rent_formatted
+                                    }
                                   </p>
                                   <p className="text-[10px] font-mono text-muted-foreground truncate">
                                     {slot.current_occupant.vehicle_number}
@@ -1390,49 +1527,66 @@ export default function ParkingServicePage() {
                               {isFree ? (
                                 <div className="flex items-center gap-1 w-full justify-between">
                                   <button
-                                    onClick={() => handleOpenAssignModal(slot.id)}
+                                    onClick={() =>
+                                      handleOpenAssignModal(slot.id)
+                                    }
                                     className="text-blue-600 hover:underline font-semibold"
                                   >
                                     Assign
                                   </button>
                                   <button
-                                    onClick={() => handleOpenRentalModal(slot.id)}
+                                    onClick={() =>
+                                      handleOpenRentalModal(slot.id)
+                                    }
                                     className="text-amber-600 hover:underline font-semibold"
                                   >
                                     Rent
                                   </button>
                                 </div>
-                              ) : isResident && slot.current_occupant?.assignment_uuid ? (
+                              ) : isResident &&
+                                slot.current_occupant?.assignment_uuid ? (
                                 <button
                                   onClick={() => {
                                     const a = assignments.find(
-                                      (item) => item.uuid === slot.current_occupant?.assignment_uuid,
+                                      (item) =>
+                                        item.uuid ===
+                                        slot.current_occupant?.assignment_uuid,
                                     );
                                     if (a) handleOpenReleaseModal(a);
-                                    else handleOpenReleaseModal({
-                                      id: slot.current_occupant!.assignment_id!,
-                                      uuid: slot.current_occupant!.assignment_uuid!,
-                                      project_id: projectId!,
-                                      slot_id: slot.id,
-                                      slot_number: slot.slot_number,
-                                      floor_zone: slot.floor_zone,
-                                      flat_number: slot.current_occupant!.flat_number!,
-                                      resident_name: slot.current_occupant!.resident_name!,
-                                      vehicle_number: slot.current_occupant!.vehicle_number,
-                                      vehicle_type: "Car",
-                                      start_date: slot.current_occupant!.start_date,
-                                      is_active: true,
-                                    });
+                                    else
+                                      handleOpenReleaseModal({
+                                        id: slot.current_occupant!
+                                          .assignment_id!,
+                                        uuid: slot.current_occupant!
+                                          .assignment_uuid!,
+                                        project_id: projectId!,
+                                        slot_id: slot.id,
+                                        slot_number: slot.slot_number,
+                                        floor_zone: slot.floor_zone,
+                                        flat_number:
+                                          slot.current_occupant!.flat_number!,
+                                        resident_name:
+                                          slot.current_occupant!.resident_name!,
+                                        vehicle_number:
+                                          slot.current_occupant!.vehicle_number,
+                                        vehicle_type: "Car",
+                                        start_date:
+                                          slot.current_occupant!.start_date,
+                                        is_active: true,
+                                      });
                                   }}
                                   className="text-red-500 hover:underline font-semibold flex items-center gap-0.5"
                                 >
                                   <LogOut className="w-3 h-3" /> Release
                                 </button>
-                              ) : isRent && slot.current_occupant?.rental_uuid ? (
+                              ) : isRent &&
+                                slot.current_occupant?.rental_uuid ? (
                                 <button
                                   onClick={() => {
                                     const r = rentals.find(
-                                      (item) => item.uuid === slot.current_occupant?.rental_uuid,
+                                      (item) =>
+                                        item.uuid ===
+                                        slot.current_occupant?.rental_uuid,
                                     );
                                     if (r) handleOpenPaymentModal(r);
                                   }}
@@ -1501,7 +1655,13 @@ export default function ParkingServicePage() {
               columns={assignmentColumns}
               data={assignments}
               searchPlaceholder="Search by resident, flat, vehicle, RFID..."
-              searchFields={["resident_name", "flat_number", "vehicle_number", "rfid_tag", "slot_number"]}
+              searchFields={[
+                "resident_name",
+                "flat_number",
+                "vehicle_number",
+                "rfid_tag",
+                "slot_number",
+              ]}
             />
           </div>
         </div>
@@ -1517,17 +1677,21 @@ export default function ParkingServicePage() {
                 {
                   key: "DUE",
                   label: "Payment Due",
-                  count: rentals.filter((r) => r.payment_status === "DUE" && r.status === "ACTIVE").length,
+                  count: rentals.filter(
+                    (r) => r.payment_status === "DUE" && r.status === "ACTIVE",
+                  ).length,
                 },
                 {
                   key: "PARTIAL",
                   label: "Partial Paid",
-                  count: rentals.filter((r) => r.payment_status === "PARTIAL").length,
+                  count: rentals.filter((r) => r.payment_status === "PARTIAL")
+                    .length,
                 },
                 {
                   key: "PAID",
                   label: "Fully Paid",
-                  count: rentals.filter((r) => r.payment_status === "PAID").length,
+                  count: rentals.filter((r) => r.payment_status === "PAID")
+                    .length,
                 },
               ]}
               activeTab={rentalFilter}
@@ -1540,7 +1704,12 @@ export default function ParkingServicePage() {
               columns={rentalColumns}
               data={rentals}
               searchPlaceholder="Search by renter name, phone, vehicle plate..."
-              searchFields={["renter_name", "renter_phone", "vehicle_number", "slot_number"]}
+              searchFields={[
+                "renter_name",
+                "renter_phone",
+                "vehicle_number",
+                "slot_number",
+              ]}
             />
           </div>
         </div>
@@ -1557,9 +1726,11 @@ export default function ParkingServicePage() {
                 Parking Maintenance Revenue Feed (Service Charge Integration)
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                Rent collected from external vehicles directly finances building common operations
-                (such as security guard agency bills, common area electricity, and utility pump maintenance).
-                This revenue is aggregated here and streams automatically into the monthly Service Charge ledger.
+                Rent collected from external vehicles directly finances building
+                common operations (such as security guard agency bills, common
+                area electricity, and utility pump maintenance). This revenue is
+                aggregated here and streams automatically into the monthly
+                Service Charge ledger.
               </p>
             </div>
           </div>
@@ -1567,25 +1738,33 @@ export default function ParkingServicePage() {
           {/* Income KPI Highlights */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-4 rounded-xl bg-card border border-border">
-              <span className="text-xs text-muted-foreground font-medium">Monthly Rent Receivable</span>
+              <span className="text-xs text-muted-foreground font-medium">
+                Monthly Rent Receivable
+              </span>
               <p className="text-xl font-bold text-foreground mt-1">
                 {incomeSummary?.monthly_rent_receivable_formatted || "৳ 0"}
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                From {incomeSummary?.active_external_rentals_count || 0} active external contracts
+                From {incomeSummary?.active_external_rentals_count || 0} active
+                external contracts
               </p>
             </div>
             <div className="p-4 rounded-xl bg-card border border-border">
-              <span className="text-xs text-muted-foreground font-medium">Rent Collected This Month</span>
+              <span className="text-xs text-muted-foreground font-medium">
+                Rent Collected This Month
+              </span>
               <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
                 {incomeSummary?.total_rent_collected_formatted || "৳ 0"}
               </p>
               <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5 font-medium">
-                {incomeSummary?.collection_rate_percent || 0}% collection efficiency
+                {incomeSummary?.collection_rate_percent || 0}% collection
+                efficiency
               </p>
             </div>
             <div className="p-4 rounded-xl bg-card border border-border">
-              <span className="text-xs text-muted-foreground font-medium">Outstanding Rent Balance</span>
+              <span className="text-xs text-muted-foreground font-medium">
+                Outstanding Rent Balance
+              </span>
               <p className="text-xl font-bold text-red-500 mt-1">
                 {incomeSummary?.total_rent_due_formatted || "৳ 0"}
               </p>
@@ -1594,9 +1773,12 @@ export default function ParkingServicePage() {
               </p>
             </div>
             <div className="p-4 rounded-xl bg-card border border-border">
-              <span className="text-xs text-muted-foreground font-medium">Commercial Occupancy</span>
+              <span className="text-xs text-muted-foreground font-medium">
+                Commercial Occupancy
+              </span>
               <p className="text-xl font-bold text-foreground mt-1">
-                {incomeSummary?.rented_external_slots || 0} of {incomeSummary?.total_slots || 0} Slots
+                {incomeSummary?.rented_external_slots || 0} of{" "}
+                {incomeSummary?.total_slots || 0} Slots
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 Utilizing surplus building capacity
@@ -1607,7 +1789,9 @@ export default function ParkingServicePage() {
           {/* Collection Progress Bar */}
           <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-3">
             <div className="flex items-center justify-between text-xs font-semibold">
-              <span className="text-foreground">Monthly Rent Collection Progress</span>
+              <span className="text-foreground">
+                Monthly Rent Collection Progress
+              </span>
               <span className="text-primary font-bold">
                 {incomeSummary?.collection_rate_percent || 0}% Completed
               </span>
@@ -1615,12 +1799,20 @@ export default function ParkingServicePage() {
             <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-primary to-emerald-500 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, incomeSummary?.collection_rate_percent || 0)}%` }}
+                style={{
+                  width: `${Math.min(100, incomeSummary?.collection_rate_percent || 0)}%`,
+                }}
               />
             </div>
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>Collected: {incomeSummary?.total_rent_collected_formatted || "৳ 0"}</span>
-              <span>Total Target: {incomeSummary?.monthly_rent_receivable_formatted || "৳ 0"}</span>
+              <span>
+                Collected:{" "}
+                {incomeSummary?.total_rent_collected_formatted || "৳ 0"}
+              </span>
+              <span>
+                Total Target:{" "}
+                {incomeSummary?.monthly_rent_receivable_formatted || "৳ 0"}
+              </span>
             </div>
           </div>
 
@@ -1677,7 +1869,9 @@ export default function ParkingServicePage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-medium text-foreground mb-1">Floor / Zone</label>
+              <label className="block font-medium text-foreground mb-1">
+                Floor / Zone
+              </label>
               <select
                 value={slotFormFloor}
                 onChange={(e) => setSlotFormFloor(e.target.value)}
@@ -1692,10 +1886,14 @@ export default function ParkingServicePage() {
             </div>
 
             <div>
-              <label className="block font-medium text-foreground mb-1">Allowed Vehicle Type</label>
+              <label className="block font-medium text-foreground mb-1">
+                Allowed Vehicle Type
+              </label>
               <select
                 value={slotFormVehicleType}
-                onChange={(e) => setSlotFormVehicleType(e.target.value as ParkingVehicleType)}
+                onChange={(e) =>
+                  setSlotFormVehicleType(e.target.value as ParkingVehicleType)
+                }
                 className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
               >
                 {dropdownMeta.vehicle_types.map((v) => (
@@ -1708,7 +1906,9 @@ export default function ParkingServicePage() {
           </div>
 
           <div>
-            <label className="block font-medium text-foreground mb-1">Notes / Dimensions</label>
+            <label className="block font-medium text-foreground mb-1">
+              Notes / Dimensions
+            </label>
             <textarea
               rows={2}
               value={slotFormNotes}
@@ -1750,7 +1950,9 @@ export default function ParkingServicePage() {
       >
         <form onSubmit={handleUpdateSlot} className="space-y-4 text-xs">
           <div>
-            <label className="block font-medium text-foreground mb-1">Slot Number</label>
+            <label className="block font-medium text-foreground mb-1">
+              Slot Number
+            </label>
             <input
               type="text"
               required
@@ -1762,7 +1964,9 @@ export default function ParkingServicePage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-medium text-foreground mb-1">Floor / Zone</label>
+              <label className="block font-medium text-foreground mb-1">
+                Floor / Zone
+              </label>
               <select
                 value={slotFormFloor}
                 onChange={(e) => setSlotFormFloor(e.target.value)}
@@ -1777,10 +1981,14 @@ export default function ParkingServicePage() {
             </div>
 
             <div>
-              <label className="block font-medium text-foreground mb-1">Allowed Vehicle Type</label>
+              <label className="block font-medium text-foreground mb-1">
+                Allowed Vehicle Type
+              </label>
               <select
                 value={slotFormVehicleType}
-                onChange={(e) => setSlotFormVehicleType(e.target.value as ParkingVehicleType)}
+                onChange={(e) =>
+                  setSlotFormVehicleType(e.target.value as ParkingVehicleType)
+                }
                 className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
               >
                 {dropdownMeta.vehicle_types.map((v) => (
@@ -1793,7 +2001,9 @@ export default function ParkingServicePage() {
           </div>
 
           <div>
-            <label className="block font-medium text-foreground mb-1">Notes</label>
+            <label className="block font-medium text-foreground mb-1">
+              Notes
+            </label>
             <textarea
               rows={2}
               value={slotFormNotes}
@@ -1834,7 +2044,8 @@ export default function ParkingServicePage() {
       >
         <div className="space-y-4 text-xs">
           <p className="text-muted-foreground">
-            This action will soft-delete the slot record. Occupied or rented slots cannot be deleted.
+            This action will soft-delete the slot record. Occupied or rented
+            slots cannot be deleted.
           </p>
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
             <button
@@ -1917,7 +2128,9 @@ export default function ParkingServicePage() {
             </div>
 
             <div>
-              <label className="block font-medium text-foreground mb-1">Resident Phone</label>
+              <label className="block font-medium text-foreground mb-1">
+                Resident Phone
+              </label>
               <input
                 type="text"
                 value={assignFormPhone}
@@ -1944,10 +2157,14 @@ export default function ParkingServicePage() {
             </div>
 
             <div>
-              <label className="block font-medium text-foreground mb-1">Vehicle Type</label>
+              <label className="block font-medium text-foreground mb-1">
+                Vehicle Type
+              </label>
               <select
                 value={assignFormVehicleType}
-                onChange={(e) => setAssignFormVehicleType(e.target.value as ParkingVehicleType)}
+                onChange={(e) =>
+                  setAssignFormVehicleType(e.target.value as ParkingVehicleType)
+                }
                 className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
               >
                 {dropdownMeta.vehicle_types.map((v) => (
@@ -1959,7 +2176,9 @@ export default function ParkingServicePage() {
             </div>
 
             <div>
-              <label className="block font-medium text-foreground mb-1">Barrier RFID Tag</label>
+              <label className="block font-medium text-foreground mb-1">
+                Barrier RFID Tag
+              </label>
               <input
                 type="text"
                 value={assignFormRfid}
@@ -1985,7 +2204,9 @@ export default function ParkingServicePage() {
             </div>
 
             <div>
-              <label className="block font-medium text-foreground mb-1">End Date (Optional)</label>
+              <label className="block font-medium text-foreground mb-1">
+                End Date (Optional)
+              </label>
               <input
                 type="date"
                 value={assignFormEndDate}
@@ -2027,7 +2248,9 @@ export default function ParkingServicePage() {
       >
         <form onSubmit={handleReleaseAssignment} className="space-y-4 text-xs">
           <div>
-            <label className="block font-medium text-foreground mb-1">Release Date</label>
+            <label className="block font-medium text-foreground mb-1">
+              Release Date
+            </label>
             <input
               type="date"
               required
@@ -2038,7 +2261,9 @@ export default function ParkingServicePage() {
           </div>
 
           <div>
-            <label className="block font-medium text-foreground mb-1">Release Reason</label>
+            <label className="block font-medium text-foreground mb-1">
+              Release Reason
+            </label>
             <textarea
               rows={2}
               value={releaseFormReason}
@@ -2049,8 +2274,9 @@ export default function ParkingServicePage() {
           </div>
 
           <p className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
-            Releasing this assignment will return slot {selectedAssignmentForRelease?.slot_number} to
-            FREE status, making it instantly available for other residents or external rental.
+            Releasing this assignment will return slot{" "}
+            {selectedAssignmentForRelease?.slot_number} to FREE status, making
+            it instantly available for other residents or external rental.
           </p>
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
@@ -2134,7 +2360,9 @@ export default function ParkingServicePage() {
             </div>
 
             <div>
-              <label className="block font-medium text-foreground mb-1">National ID / Passport</label>
+              <label className="block font-medium text-foreground mb-1">
+                National ID / Passport
+              </label>
               <input
                 type="text"
                 value={rentalFormNid}
@@ -2161,10 +2389,14 @@ export default function ParkingServicePage() {
             </div>
 
             <div>
-              <label className="block font-medium text-foreground mb-1">Vehicle Type</label>
+              <label className="block font-medium text-foreground mb-1">
+                Vehicle Type
+              </label>
               <select
                 value={rentalFormVehicleType}
-                onChange={(e) => setRentalFormVehicleType(e.target.value as ParkingVehicleType)}
+                onChange={(e) =>
+                  setRentalFormVehicleType(e.target.value as ParkingVehicleType)
+                }
                 className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
               >
                 {dropdownMeta.vehicle_types.map((v) => (
@@ -2186,14 +2418,18 @@ export default function ParkingServicePage() {
                 min="0"
                 required
                 value={rentalFormMonthlyRent}
-                onChange={(e) => setRentalFormMonthlyRent(Number(e.target.value))}
+                onChange={(e) =>
+                  setRentalFormMonthlyRent(Number(e.target.value))
+                }
                 placeholder="e.g. 4500"
                 className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground font-bold"
               />
             </div>
 
             <div>
-              <label className="block font-medium text-foreground mb-1">Security Deposit (BDT)</label>
+              <label className="block font-medium text-foreground mb-1">
+                Security Deposit (BDT)
+              </label>
               <input
                 type="number"
                 min="0"
@@ -2220,7 +2456,9 @@ export default function ParkingServicePage() {
             </div>
 
             <div>
-              <label className="block font-medium text-foreground mb-1">Agreement End Date</label>
+              <label className="block font-medium text-foreground mb-1">
+                Agreement End Date
+              </label>
               <input
                 type="date"
                 value={rentalFormEndDate}
@@ -2231,7 +2469,9 @@ export default function ParkingServicePage() {
           </div>
 
           <div>
-            <label className="block font-medium text-foreground mb-1">Notes / Terms</label>
+            <label className="block font-medium text-foreground mb-1">
+              Notes / Terms
+            </label>
             <textarea
               rows={2}
               value={rentalFormNotes}
@@ -2286,7 +2526,9 @@ export default function ParkingServicePage() {
               </span>
             </div>
             <div className="flex items-center justify-between border-t border-border/40 pt-1">
-              <span className="text-muted-foreground font-semibold">Remaining Due:</span>
+              <span className="text-muted-foreground font-semibold">
+                Remaining Due:
+              </span>
               <span className="font-bold text-red-500">
                 {selectedRentalForPayment?.balance_due_formatted}
               </span>
@@ -2310,7 +2552,9 @@ export default function ParkingServicePage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-medium text-foreground mb-1">Payment Date</label>
+              <label className="block font-medium text-foreground mb-1">
+                Payment Date
+              </label>
               <input
                 type="date"
                 required
@@ -2321,7 +2565,9 @@ export default function ParkingServicePage() {
             </div>
 
             <div>
-              <label className="block font-medium text-foreground mb-1">Receipt / Ref #</label>
+              <label className="block font-medium text-foreground mb-1">
+                Receipt / Ref #
+              </label>
               <input
                 type="text"
                 value={paymentFormReference}
@@ -2333,7 +2579,9 @@ export default function ParkingServicePage() {
           </div>
 
           <div>
-            <label className="block font-medium text-foreground mb-1">Notes</label>
+            <label className="block font-medium text-foreground mb-1">
+              Notes
+            </label>
             <input
               type="text"
               value={paymentFormNotes}
@@ -2374,7 +2622,9 @@ export default function ParkingServicePage() {
       >
         <form onSubmit={handleTerminateRental} className="space-y-4 text-xs">
           <div>
-            <label className="block font-medium text-foreground mb-1">Termination Date</label>
+            <label className="block font-medium text-foreground mb-1">
+              Termination Date
+            </label>
             <input
               type="date"
               required
@@ -2385,7 +2635,9 @@ export default function ParkingServicePage() {
           </div>
 
           <div>
-            <label className="block font-medium text-foreground mb-1">Reason / Handover Notes</label>
+            <label className="block font-medium text-foreground mb-1">
+              Reason / Handover Notes
+            </label>
             <textarea
               rows={2}
               value={terminateFormNotes}
@@ -2396,8 +2648,9 @@ export default function ParkingServicePage() {
           </div>
 
           <p className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
-            Terminating this rental agreement will restore slot {selectedRentalForTerminate?.slot_number} to
-            FREE status and mark the contract as TERMINATED.
+            Terminating this rental agreement will restore slot{" "}
+            {selectedRentalForTerminate?.slot_number} to FREE status and mark
+            the contract as TERMINATED.
           </p>
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
