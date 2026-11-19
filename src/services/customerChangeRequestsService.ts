@@ -208,6 +208,8 @@ export async function getChangeRequests(
   const targetProjectId = params?.projectId || params?.project_id;
   if (targetProjectId && targetProjectId !== "all") {
     queryParams.project_id = targetProjectId;
+  } else {
+    delete queryParams.project_id;
   }
   delete queryParams.projectId;
   delete queryParams.organization_id;
@@ -267,12 +269,13 @@ export async function getChangeRequestByUuid(
 export async function createChangeRequest(
   payload: CreateChangeRequestPayload,
 ): Promise<ChangeRequestListItem> {
+  const targetProj = payload.project_id || payload.projectId;
   const sanitizedPayload: Record<string, unknown> = {
     ...payload,
-    project_id: payload.project_id || payload.projectId || payload.project,
+    ...(targetProj && targetProj !== "all" ? { project_id: targetProj } : {}),
+    ...(payload.project ? { project: payload.project } : {}),
   };
   delete sanitizedPayload.projectId;
-  delete sanitizedPayload.project;
   delete sanitizedPayload.organization_id;
   delete sanitizedPayload.organizationId;
   const res = await api.post(
@@ -289,14 +292,12 @@ export async function updateChangeRequest(
   uuid: string,
   payload: UpdateChangeRequestPayload,
 ): Promise<ChangeRequestListItem> {
+  const targetProj = payload.project_id || payload.projectId;
   const sanitizedPayload: Record<string, unknown> = {
     ...payload,
-    ...(payload.projectId || payload.project_id
-      ? { project_id: payload.project_id || payload.projectId }
-      : {}),
+    ...(targetProj && targetProj !== "all" ? { project_id: targetProj } : {}),
   };
   delete sanitizedPayload.projectId;
-  delete sanitizedPayload.project;
   delete sanitizedPayload.organization_id;
   delete sanitizedPayload.organizationId;
   const res = await api.patch(

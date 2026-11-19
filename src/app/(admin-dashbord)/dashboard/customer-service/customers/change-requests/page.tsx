@@ -181,7 +181,9 @@ export default function ChangeRequestsPage() {
   // Load KPI Statistics from API
   const loadOverviewStats = useCallback(async () => {
     try {
-      const statsRes = await getChangeRequestStats(projectId || undefined);
+      const statsRes = await getChangeRequestStats(
+        projectId && projectId !== "all" ? projectId : undefined,
+      );
       setStats(statsRes);
     } catch (err: unknown) {
       const msg = formatApiErrorMessage(err);
@@ -213,7 +215,8 @@ export default function ChangeRequestsPage() {
           tab: currentTab,
           request_type: currentType !== "all" ? currentType : undefined,
           is_deleted: isDeleted,
-          project_id: projectId || undefined,
+          project_id:
+            projectId && projectId !== "all" ? projectId : undefined,
           limit: 100,
         });
 
@@ -308,7 +311,8 @@ export default function ChangeRequestsPage() {
         customer_name: formCustomerName.trim(),
         unit: formUnit.trim(),
         project: formProject.trim() || project?.name || undefined,
-        project_id: projectId || undefined,
+        project_id:
+          projectId && projectId !== "all" ? projectId : undefined,
         reason: formReason.trim() || undefined,
         transfer_fee:
           formRequestType !== "Cancellation & Refund"

@@ -120,7 +120,7 @@ export default function Customer360Page() {
       if (meta.customer_statuses.length > 0 && !formStatus) {
         setFormStatus(
           meta.customer_statuses[0].value as
-            "active" | "vip" | "disputed" | "closed",
+          "active" | "vip" | "disputed" | "closed",
         );
       }
     } catch (err) {
@@ -325,7 +325,7 @@ export default function Customer360Page() {
     setFormNomineeNid(customer.nominee_nid || "");
     setFormStatus(
       (customer.customer_status || "active") as
-        "active" | "vip" | "disputed" | "closed",
+      "active" | "vip" | "disputed" | "closed",
     );
   };
 
@@ -609,19 +609,17 @@ export default function Customer360Page() {
           <button
             type="button"
             onClick={() => setRecordsTab("active")}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition ${
-              recordsTab === "active"
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition ${recordsTab === "active"
                 ? "bg-white text-[#111827] shadow-xs"
                 : "text-[#6B7280] hover:text-[#111827]"
-            }`}
+              }`}
           >
             <span>Active Records</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded-full font-bold tabular-nums ${
-                recordsTab === "active"
+              className={`text-[10px] px-2 py-0.5 rounded-full font-bold tabular-nums ${recordsTab === "active"
                   ? "bg-[#EEF2FF] text-[#6D4AFF]"
                   : "bg-[#E5E7EB] text-[#4B5563]"
-              }`}
+                }`}
             >
               {stats.total_clients}
             </span>
@@ -629,20 +627,18 @@ export default function Customer360Page() {
           <button
             type="button"
             onClick={() => setRecordsTab("deleted")}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition ${
-              recordsTab === "deleted"
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition ${recordsTab === "deleted"
                 ? "bg-white text-[#DC2626] shadow-xs"
                 : "text-[#6B7280] hover:text-[#DC2626]"
-            }`}
+              }`}
           >
             <span>Deleted Records</span>
             {deletedCount > 0 && (
               <span
-                className={`text-[10px] px-2 py-0.5 rounded-full font-bold tabular-nums ${
-                  recordsTab === "deleted"
+                className={`text-[10px] px-2 py-0.5 rounded-full font-bold tabular-nums ${recordsTab === "deleted"
                     ? "bg-[#FEF2F2] text-[#DC2626]"
                     : "bg-[#E5E7EB] text-[#4B5563]"
-                }`}
+                  }`}
               >
                 {deletedCount}
               </span>
@@ -871,7 +867,7 @@ export default function Customer360Page() {
                   {(
                     Number(
                       customer360Data?.financial_summary.total_paid_amount ||
-                        selectedCustomer.total_paid_amount,
+                      selectedCustomer.total_paid_amount,
                     ) / 100000
                   ).toFixed(2)}{" "}
                   Lac
@@ -886,7 +882,7 @@ export default function Customer360Page() {
                   {(
                     Number(
                       customer360Data?.financial_summary.total_due_amount ||
-                        selectedCustomer.total_due_amount,
+                      selectedCustomer.total_due_amount,
                     ) / 100000
                   ).toFixed(2)}{" "}
                   Lac
@@ -911,7 +907,7 @@ export default function Customer360Page() {
                 Bookings
               </h4>
               {customer360Data?.bookings &&
-              customer360Data.bookings.length > 0 ? (
+                customer360Data.bookings.length > 0 ? (
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {customer360Data.bookings.map((b) => (
                     <div
