@@ -23,6 +23,14 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      {
+        source: "/realbizpro/api/v1/:path*",
+        destination: "https://realbiz-pro-api.onrender.com/realbizpro/api/v1/:path*",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
