@@ -16,12 +16,14 @@ import { adminAuthStorage } from "./admin-auth/adminAuthStorage";
 
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
+    const isAuthRequest = config.url?.includes("/auth/");
+
     const token =
       adminAuthStorage.getAccessToken() ||
       localStorage.getItem("admin_access_token") ||
       localStorage.getItem("access_token") ||
       localStorage.getItem("token");
-    if (token) {
+    if (!isAuthRequest && token) {
       if (config.headers?.set) {
         config.headers.set("Authorization", `Bearer ${token}`);
       } else {
@@ -38,7 +40,7 @@ api.interceptors.request.use((config) => {
         : typeof adminAuthStorage.getUserProfile === "function"
         ? adminAuthStorage.getUserProfile()?.orgId
         : undefined);
-    if (orgId && !config.headers?.["x-organization-id"]) {
+    if (!isAuthRequest && orgId && !config.headers?.["x-organization-id"]) {
       if (config.headers?.set) {
         config.headers.set("x-organization-id", String(orgId));
       } else {
