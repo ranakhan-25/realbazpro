@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: realbiz-pro-frontend
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: pnpm install && pnpm run build
+    startCommand: pnpm start
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://realbiz-pro-api.onrender.com
+      - key: NEXT_PUBLIC_API_URL
+        value: https://realbiz-pro-api.onrender.com/realbizpro/api/v1
+      - key: NODE_VERSION
+        value: 20
