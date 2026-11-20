@@ -33,7 +33,11 @@ api.interceptors.request.use((config) => {
     const orgId =
       localStorage.getItem("realbiz_cs_selected_org_id") ||
       localStorage.getItem("selected_org_id") ||
-      adminAuthStorage.getStoredUserProfile()?.orgId;
+      (typeof adminAuthStorage.getStoredUserProfile === "function"
+        ? adminAuthStorage.getStoredUserProfile()?.orgId
+        : typeof adminAuthStorage.getUserProfile === "function"
+        ? adminAuthStorage.getUserProfile()?.orgId
+        : undefined);
     if (orgId && !config.headers?.["x-organization-id"]) {
       if (config.headers?.set) {
         config.headers.set("x-organization-id", String(orgId));

@@ -142,6 +142,7 @@ export const adminAuthStorage = {
   getAccessToken: getStoredAccessToken,
   getRefreshToken: getStoredRefreshToken,
   getUserProfile: getStoredUserProfile,
+  getStoredUserProfile: getStoredUserProfile,
   setTokens: setStoredTokens,
   clear: clearStoredTokens,
 };
