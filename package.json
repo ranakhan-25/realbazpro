@@ -10,6 +10,7 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "build:dev": "next build --webpack",
+    "start": "next start",
     "preview": "next start",
     "lint": "eslint .",
     "format": "prettier --write .",
